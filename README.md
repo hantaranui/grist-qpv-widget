@@ -11,13 +11,18 @@ Ce widget Grist indique si une adresse se situe dans un Quartier prioritaire de 
 
 Le service API SIGVILLE existe, mais son acces SI demande un compte ANCT et une autorisation. Cette version ne depend donc pas d'une cle API.
 
+## URL GitHub Pages
+
+```text
+https://hantaranui.github.io/grist-qpv-widget/
+```
+
 ## Installation dans Grist
 
-1. Heberger le dossier `qpv-grist-widget` sur une URL accessible par Grist, ou utiliser le mode widget personnalise si votre instance accepte les fichiers locaux.
-2. Dans Grist, ajouter un widget personnalise.
-3. Renseigner l'URL du fichier `index.html`.
-4. Donner l'acces complet au widget si vous souhaitez qu'il ecrive les resultats dans la table.
-5. Associer les colonnes dans la configuration du widget.
+1. Dans Grist, ajouter un widget personnalise.
+2. Renseigner l'URL GitHub Pages ci-dessus.
+3. Donner l'acces complet au widget si vous souhaitez qu'il ecrive les resultats dans la table.
+4. Associer les colonnes dans la configuration du widget.
 
 ## Colonnes attendues
 
