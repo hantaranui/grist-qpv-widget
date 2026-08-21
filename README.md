@@ -11,6 +11,11 @@ Ce widget Grist indique si une adresse se situe dans un Quartier prioritaire de 
 
 Le service API SIGVILLE existe, mais son acces SI demande un compte ANCT et une autorisation. Cette version ne depend donc pas d'une cle API.
 
+## Structure du widget
+
+Tout le code du widget est reuni dans `index.html` : HTML, CSS et JavaScript.
+Ce fichier est donc le bloc principal a charger dans Grist.
+
 ## URL GitHub Pages
 
 ```text
