@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verification QPV</title>
+    <link rel="stylesheet" href="./styles.css?v=3">
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  </head>
+  <body>
+    <main class="app">
+      <section class="status" id="status">
+        <div>
+          <p class="eyebrow">Quartiers prioritaires</p>
+          <h1>Verification QPV</h1>
+        </div>
+        <button id="refreshData" type="button" title="Recharger les contours QPV">Recharger</button>
+      </section>
+
+      <section class="panel" id="setupPanel">
+        <h2>Configuration Grist</h2>
+        <p>
+          Associez au moins une colonne d'adresse dans les options du widget.
+          Les colonnes de sortie sont optionnelles.
+        </p>
+      </section>
+
+      <section class="panel" id="resultPanel" hidden>
+        <div class="resultHeader">
+          <div>
+            <p class="label">Adresse testee</p>
+            <p id="addressText" class="address"></p>
+          </div>
+          <span id="badge" class="badge">En attente</span>
+        </div>
+
+        <dl class="facts">
+          <div>
+            <dt>Quartier</dt>
+            <dd id="qpName">-</dd>
+          </div>
+          <div>
+            <dt>Code QPV</dt>
+            <dd id="qpCode">-</dd>
+          </div>
+          <div>
+            <dt>Adresse BAN</dt>
+            <dd id="banLabel">-</dd>
+          </div>
+          <div>
+            <dt>Score BAN</dt>
+            <dd id="banScore">-</dd>
+          </div>
+        </dl>
+
+        <div class="actions">
+          <button id="checkCurrent" type="button">Verifier la ligne</button>
+          <button id="writeCurrent" type="button">Ecrire dans Grist</button>
+          <button id="checkAll" type="button">Verifier toutes les lignes</button>
+        </div>
+      </section>
+
+      <section class="panel muted" id="logPanel">
+        <p id="message">Initialisation du widget...</p>
+      </section>
+    </main>
+
+    <script src="./app.js?v=3"></script>
+  </body>
+</html>
