@@ -130,9 +130,20 @@
 
       .summary {
         display: grid;
-        grid-template-columns: minmax(220px, .7fr) 1.2fr 1fr 1.1fr;
-        gap: 28px;
+        gap: 18px;
         padding: 20px;
+      }
+
+      .summary-top {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(360px, 1fr);
+        gap: 28px;
+      }
+
+      .summary-charts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 28px;
       }
 
       .metric strong {
@@ -267,7 +278,8 @@
       @media (max-width: 900px) {
         .layout { grid-template-columns: 1fr; padding: 14px; }
         .topbar { align-items: flex-start; flex-direction: column; }
-        .summary { grid-template-columns: 1fr; }
+        .summary-top,
+        .summary-charts { grid-template-columns: 1fr; }
         h1 { font-size: 22px; }
       }
     </style>
@@ -477,19 +489,23 @@
 
         const total = actions.reduce((sum, action) => sum + action.financed, 0);
         summary.innerHTML = `
-          <div class="metric">
-            <strong>${actions.length}</strong><span>actions</span><br><br>
-            <strong>${formatEuro(total)}</strong><span>financement global</span>
+          <div class="summary-top">
+            <div class="metric">
+              <strong>${actions.length}</strong><span>actions</span><br><br>
+              <strong>${formatEuro(total)}</strong><span>financement global</span>
+            </div>
+            <div class="summary-block">
+              <h2>Financeurs</h2>
+              <div class="funders">${funderTotals(actions).map(([name, amount]) => `
+                <div class="funder-row"><span>${escapeHtml(name)}</span><strong>${formatEuro(amount)}</strong></div>
+              `).join('')}</div>
+            </div>
           </div>
-          ${pieBlock('Répartition par statut', groupCount(actions, 'statut'))}
-          ${pieBlock('Répartition par dispositif', groupCount(actions, 'dispositif'))}
-          <div class="summary-block">
-            <h2>Financeurs</h2>
-            <div class="funders">${funderTotals(actions).map(([name, amount]) => `
-              <div class="funder-row"><span>${escapeHtml(name)}</span><strong>${formatEuro(amount)}</strong></div>
-            `).join('')}</div>
+          <div class="summary-charts">
+            ${pieBlock('Répartition par statut', groupCount(actions, 'statut'))}
+            ${pieBlock('Répartition par dispositif', groupCount(actions, 'dispositif'))}
+            ${pieBlock('Répartition par fédération', groupCount(actions, 'federation'))}
           </div>
-          ${pieBlock('Répartition par fédération', groupCount(actions, 'federation'))}
         `;
       }
 
