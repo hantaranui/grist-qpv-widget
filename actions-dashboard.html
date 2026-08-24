@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Actions d'insertion par le sport</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f6f7;
+        --panel: #fff;
+        --panel-soft: #efeff6;
+        --ink: #171719;
+        --muted: #5f6068;
+        --line: #dedee5;
+        --accent: #1d0098;
+        --blue: #3867d6;
+        --orange: #df5b0c;
+        --green: #168348;
+        --violet: #6c63ff;
+        --red: #bd4b9b;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+      }
+
+      button, select {
+        font: inherit;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 22px 18px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        margin: 0;
+        padding-left: 16px;
+        border-left: 4px solid var(--accent);
+        font-size: 26px;
+        line-height: 1.15;
+      }
+
+      .export {
+        min-height: 36px;
+        padding: 0 16px;
+        border: 1px solid var(--accent);
+        background: #fff;
+        color: var(--accent);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 24px;
+        padding: 24px;
+      }
+
+      .filters, .section, .table {
+        background: var(--panel);
+        border: 1px solid var(--line);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 40px;
+        padding: 0 20px;
+        background: var(--panel-soft);
+        border-bottom: 1px solid var(--line);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      .link-button {
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      .filters-body {
+        display: grid;
+        gap: 16px;
+        padding: 18px 20px 20px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-weight: 700;
+      }
+
+      select {
+        width: 100%;
+        min-height: 40px;
+        padding: 0 12px;
+        border: 0;
+        border-bottom: 2px solid #2d2d2d;
+        background: #ededee;
+      }
+
+      main {
+        display: grid;
+        gap: 24px;
+        min-width: 0;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: minmax(220px, .7fr) 1.2fr 1fr 1.1fr;
+        gap: 28px;
+        padding: 20px;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 32px;
+        line-height: 1.05;
+      }
+
+      .metric span {
+        color: var(--muted);
+      }
+
+      .summary-block h2 {
+        margin: 0 0 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+        color: #45454a;
+        font-size: 12px;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+
+      .pie-wrap {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+      }
+
+      .pie {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: var(--pie, #ddd);
+      }
+
+      .legend, .funders {
+        display: grid;
+        gap: 8px;
+      }
+
+      .legend-row, .funder-row {
+        display: grid;
+        grid-template-columns: 14px minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .funder-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        border-bottom: 1px solid #ececf0;
+        padding-bottom: 6px;
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+      }
+
+      .count {
+        font-weight: 700;
+      }
+
+      .table {
+        overflow: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 980px;
+        border-collapse: collapse;
+      }
+
+      th {
+        padding: 12px 16px;
+        background: var(--panel-soft);
+        border-bottom: 1px solid var(--line);
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: .08em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      .strong { font-weight: 800; }
+      .muted { color: var(--muted); }
+
+      .tag {
+        display: inline-block;
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .tag.projet { background: #e8edff; color: #2459d6; }
+      .tag.planifie { background: #fff0df; color: #c75a00; }
+      .tag.realise { background: #e2f3ea; color: #168348; }
+      .tag.annule { background: #f8e2e2; color: #a12828; }
+
+      .bar {
+        height: 6px;
+        margin: 8px 0 6px;
+        background: #ededed;
+      }
+
+      .bar span {
+        display: block;
+        height: 100%;
+        max-width: 100%;
+        background: var(--accent);
+      }
+
+      .money-line {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+      }
+
+      .empty {
+        padding: 28px;
+        color: var(--muted);
+      }
+
+      .is-hidden { display: none; }
+
+      @media (max-width: 900px) {
+        .layout { grid-template-columns: 1fr; padding: 14px; }
+        .topbar { align-items: flex-start; flex-direction: column; }
+        .summary { grid-template-columns: 1fr; }
+        h1 { font-size: 22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>Actions d'insertion par le sport</h1>
+      <button class="export" id="exportBtn">Exporter (CSV)</button>
+    </div>
+
+    <div class="layout">
+      <aside class="filters">
+        <div class="section-head">
+          <span>Filtres</span>
+          <button class="link-button" id="resetBtn">Réinitialiser</button>
+        </div>
+        <div class="filters-body" id="filters"></div>
+      </aside>
+
+      <main>
+        <section class="section">
+          <div class="section-head">
+            <span>Synthèse</span>
+            <button class="link-button" id="toggleSummary">Replier</button>
+          </div>
+          <div class="summary" id="summary"></div>
+        </section>
+
+        <section class="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Agence</th>
+                <th>Club</th>
+                <th>Action</th>
+                <th>Statut</th>
+                <th>Financement</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty is-hidden" id="empty">Aucune action ne correspond aux filtres.</div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      grist.ready({requiredAccess: 'full'});
+
+      const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
+      const COLORS = ['#1d0098', '#3867d6', '#6c63ff', '#168348', '#df5b0c', '#bd4b9b'];
+      const FILTERS = [
+        ['dr', 'Direction régionale (DR)'],
+        ['dd', 'Direction départementale (DD)'],
+        ['agence', 'Agence'],
+        ['federation', 'Fédération'],
+        ['club', 'Club'],
+        ['dispositif', 'Dispositif'],
+        ['statut', 'Statut'],
+        ['financeur', 'Financement']
+      ];
+
+      const state = { raw: {}, actions: [], filters: {}, summaryOpen: true };
+
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        state.filters = {};
+        render();
+      });
+
+      document.getElementById('toggleSummary').addEventListener('click', () => {
+        state.summaryOpen = !state.summaryOpen;
+        render();
+      });
+
+      document.getElementById('exportBtn').addEventListener('click', () => exportCsv(filteredActions()));
+
+      load();
+
+      async function load() {
+        try {
+          const data = await Promise.all(TABLES.map(async table => [table, rows(await grist.docApi.fetchTable(table))]));
+          state.raw = Object.fromEntries(data);
+          state.actions = buildActions(state.raw);
+          render();
+        } catch (error) {
+          document.getElementById('rows').innerHTML = '';
+          document.getElementById('empty').classList.remove('is-hidden');
+          document.getElementById('empty').textContent = "Impossible de lire les tables Grist. Vérifiez que le widget a l'accès complet.";
+          console.error(error);
+        }
+      }
+
+      function rows(table) {
+        const ids = table.id || [];
+        return ids.map((id, index) => {
+          const row = {id};
+          Object.keys(table).forEach(key => {
+            if (key !== 'id') row[key] = table[key][index];
+          });
+          return row;
+        });
+      }
+
+      function byId(items) {
+        return new Map(items.map(item => [item.id, item]));
+      }
+
+      function buildActions(raw) {
+        const actions = byId(raw.Actions);
+        const agencies = byId(raw.Agences);
+        const dds = byId(raw.DD);
+        const drs = byId(raw.DR);
+        const clubs = byId(raw.Structures);
+        const dispositifs = byId(raw.Dispositifs);
+        const federations = byId(raw.Federations);
+        const financements = byId(raw.Financements);
+        const financeurs = byId(raw.Financeurs);
+        const cofs = raw.Cofinancements.reduce((acc, cof) => {
+          const actionId = cof.A || cof.Projet;
+          if (!actionId || !actions.has(actionId)) return acc;
+          const financement = financements.get(cof.Financement) || {};
+          const financeur = financeurs.get(financement.Financeur) || {};
+          const label = financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom;
+          (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0)});
+          return acc;
+        }, {});
+
+        return raw.Actions.map(action => {
+          const agency = agencies.get(action.Agence) || {};
+          const dd = dds.get(agency.DD) || {};
+          const dr = drs.get(dd.DR) || {};
+          const club = clubs.get(action.Club) || {};
+          const dispositif = dispositifs.get(action.Dispositif) || {};
+          const federation = federations.get(action.Federation) || {};
+          const lines = cofs[action.id] || [];
+          const financed = lines.reduce((sum, item) => sum + item.montant, 0);
+          return {
+            id: action.id,
+            intitule: action.Intitule || '',
+            budget: Number(action.Budget || 0),
+            financed,
+            rate: action.Budget ? financed / Number(action.Budget) : 0,
+            participants: Number(action.Jauge || 0),
+            statut: action.Statut || '',
+            date: action.Date || null,
+            agency: agency.Libelle_agence || agency.Code_Aurore || '',
+            dd: dd.Nom || '',
+            dr: dr.Nom || '',
+            club: club.Nom || '',
+            commune: club.Siege || '',
+            dispositif: dispositif.Dispositif || dispositif.Code || '',
+            federation: federation.Nom || '',
+            financeurs: lines
+          };
+        });
+      }
+
+      function render() {
+        renderFilters();
+        const actions = filteredActions();
+        renderSummary(actions);
+        renderRows(actions);
+      }
+
+      function renderFilters() {
+        const container = document.getElementById('filters');
+        container.innerHTML = FILTERS.map(([key, label]) => {
+          const values = optionsFor(key);
+          const selected = state.filters[key] || '';
+          return `<label>${escapeHtml(label)}<select data-filter="${key}">
+            <option value="">Toutes / Tous</option>
+            ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+          </select></label>`;
+        }).join('');
+
+        container.querySelectorAll('select').forEach(select => {
+          select.addEventListener('change', event => {
+            const key = event.target.dataset.filter;
+            state.filters[key] = event.target.value;
+            if (!state.filters[key]) delete state.filters[key];
+            render();
+          });
+        });
+      }
+
+      function optionsFor(key) {
+        const values = new Set();
+        state.actions.forEach(action => {
+          if (key === 'financeur') action.financeurs.forEach(item => item.label && values.add(item.label));
+          else if (action[key]) values.add(action[key]);
+        });
+        return [...values].sort((a, b) => a.localeCompare(b, 'fr'));
+      }
+
+      function filteredActions() {
+        return state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
+          if (key === 'financeur') return action.financeurs.some(item => item.label === value);
+          return action[key] === value;
+        }));
+      }
+
+      function renderSummary(actions) {
+        const summary = document.getElementById('summary');
+        document.getElementById('toggleSummary').textContent = state.summaryOpen ? 'Replier' : 'Déplier';
+        summary.classList.toggle('is-hidden', !state.summaryOpen);
+        if (!state.summaryOpen) return;
+
+        const total = actions.reduce((sum, action) => sum + action.financed, 0);
+        summary.innerHTML = `
+          <div class="metric">
+            <strong>${actions.length}</strong><span>actions</span><br><br>
+            <strong>${formatEuro(total)}</strong><span>financement global</span>
+          </div>
+          ${pieBlock('Répartition par statut', groupCount(actions, 'statut'))}
+          ${pieBlock('Répartition par dispositif', groupCount(actions, 'dispositif'))}
+          <div class="summary-block">
+            <h2>Financeurs</h2>
+            <div class="funders">${funderTotals(actions).map(([name, amount]) => `
+              <div class="funder-row"><span>${escapeHtml(name)}</span><strong>${formatEuro(amount)}</strong></div>
+            `).join('')}</div>
+          </div>
+          ${pieBlock('Répartition par fédération', groupCount(actions, 'federation'))}
+        `;
+      }
+
+      function renderRows(actions) {
+        const tbody = document.getElementById('rows');
+        const empty = document.getElementById('empty');
+        empty.classList.toggle('is-hidden', actions.length > 0);
+        tbody.innerHTML = actions.map(action => `
+          <tr>
+            <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
+            <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.commune)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
+            <td><div class="strong">${escapeHtml(action.intitule)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div></td>
+            <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${formatDate(action.date)}</div></td>
+            <td>
+              <div class="strong">Budget : ${formatEuro(action.budget)}</div>
+              <div class="bar"><span style="width:${Math.round(action.rate * 100)}%"></span></div>
+              <div class="muted">Couvert à ${Math.round(action.rate * 100)}% (${formatEuro(action.financed)})</div>
+              ${action.financeurs.map(item => `<div class="money-line"><span>${escapeHtml(item.label)}</span><span>${formatEuro(item.montant)}</span></div>`).join('')}
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      function pieBlock(title, entries) {
+        const total = entries.reduce((sum, [, count]) => sum + count, 0) || 1;
+        let cursor = 0;
+        const gradient = entries.map(([, count], index) => {
+          const start = cursor;
+          cursor += count / total * 100;
+          return `${COLORS[index % COLORS.length]} ${start}% ${cursor}%`;
+        }).join(', ');
+        return `<div class="summary-block">
+          <h2>${escapeHtml(title)}</h2>
+          <div class="pie-wrap">
+            <div class="pie" style="--pie: conic-gradient(${gradient || '#ddd 0 100%'})"></div>
+            <div class="legend">${entries.map(([name, count], index) => `
+              <div class="legend-row">
+                <span class="swatch" style="background:${COLORS[index % COLORS.length]}"></span>
+                <span>${escapeHtml(name || 'Non renseigné')}</span>
+                <span class="count">${count} (${Math.round(count / total * 100)}%)</span>
+              </div>
+            `).join('')}</div>
+          </div>
+        </div>`;
+      }
+
+      function groupCount(actions, key) {
+        const map = new Map();
+        actions.forEach(action => map.set(action[key] || 'Non renseigné', (map.get(action[key] || 'Non renseigné') || 0) + 1));
+        return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
+      }
+
+      function funderTotals(actions) {
+        const map = new Map();
+        actions.forEach(action => action.financeurs.forEach(item => map.set(item.label, (map.get(item.label) || 0) + item.montant)));
+        return [...map.entries()].sort((a, b) => b[1] - a[1]);
+      }
+
+      function statusClass(status) {
+        return String(status).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      }
+
+      function formatEuro(value) {
+        return `${Math.round(Number(value || 0)).toLocaleString('fr-FR')} €`;
+      }
+
+      function formatDate(value) {
+        if (!value) return '';
+        const date = new Date(Number(value) * 1000);
+        return date.toLocaleDateString('fr-FR');
+      }
+
+      function exportCsv(actions) {
+        const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
+        const lines = actions.map(action => [
+          action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
+          action.statut, formatDate(action.date), action.budget, action.financed,
+          action.financeurs.map(item => `${item.label}: ${item.montant}`).join(' | ')
+        ]);
+        const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
+        const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'actions-insertion-sport.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replace(/`/g, '&#96;');
+      }
+    </script>
+  </body>
+</html>

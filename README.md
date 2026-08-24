@@ -22,6 +22,23 @@ Ce fichier est donc le bloc principal a charger dans Grist.
 https://hantaranui.github.io/grist-qpv-widget/
 ```
 
+## Widget dashboard Partenariat Simplifie
+
+Un deuxieme widget, destine au tableau de bord "Actions d'insertion par le sport", est disponible dans `actions-dashboard.html`.
+Il lit les tables Grist `Actions`, `Cofinancements` et leurs tables de reference pour afficher :
+
+- les filtres DR, DD, agence, federation, club, dispositif, statut et financement ;
+- la synthese des actions et du financement global ;
+- les repartitions par statut, dispositif et federation ;
+- la liste detaillee des actions avec les cofinancements ;
+- l'export CSV.
+
+URL a utiliser dans Grist :
+
+```text
+https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html
+```
+
 ## Installation dans Grist
 
 1. Dans Grist, ajouter un widget personnalise.
