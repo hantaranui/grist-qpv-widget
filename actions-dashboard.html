@@ -76,6 +76,18 @@
         border: 1px solid var(--line);
       }
 
+      .section {
+        overflow: hidden;
+      }
+
+      .section.is-collapsed {
+        align-self: start;
+      }
+
+      .section.is-collapsed .summary {
+        display: none;
+      }
+
       .section-head {
         display: flex;
         align-items: center;
@@ -300,7 +312,7 @@
       </aside>
 
       <main>
-        <section class="section">
+        <section class="section" id="summarySection">
           <div class="section-head">
             <span>Synthèse</span>
             <button class="link-button" id="toggleSummary">Replier</button>
@@ -483,8 +495,9 @@
 
       function renderSummary(actions) {
         const summary = document.getElementById('summary');
+        const section = document.getElementById('summarySection');
         document.getElementById('toggleSummary').textContent = state.summaryOpen ? 'Replier' : 'Déplier';
-        summary.classList.toggle('is-hidden', !state.summaryOpen);
+        section.classList.toggle('is-collapsed', !state.summaryOpen);
         if (!state.summaryOpen) return;
 
         const total = actions.reduce((sum, action) => sum + action.financed, 0);
