@@ -26,7 +26,7 @@ const FILTERS = [
   ['financeur', 'Financement']
 ];
 
-const state = { raw: {}, actions: [], filters: {}, summaryOpen: true };
+const state = { raw: {}, actions: [], filters: {}, summaryOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};

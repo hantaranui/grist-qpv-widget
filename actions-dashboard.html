@@ -332,10 +332,10 @@ td {
       </aside>
 
       <main>
-        <section class="section" id="summarySection">
+        <section class="section is-collapsed" id="summarySection">
           <div class="section-head">
             <span>Synthèse</span>
-            <button class="link-button" id="toggleSummary">Replier</button>
+            <button class="link-button" id="toggleSummary">Déplier</button>
           </div>
           <div class="summary" id="summary"></div>
         </section>
@@ -387,7 +387,7 @@ const FILTERS = [
   ['financeur', 'Financement']
 ];
 
-const state = { raw: {}, actions: [], filters: {}, summaryOpen: true };
+const state = { raw: {}, actions: [], filters: {}, summaryOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
