@@ -447,6 +447,7 @@
             financed,
             rate: action.Budget ? financed / Number(action.Budget) : 0,
             participants: Number(action.Jauge || 0),
+            public: formatChoiceList(action.Public),
             statut: action.Statut || '',
             date: action.Date || null,
             agency: agency.Libelle_agence || agency.Code_Aurore || '',
@@ -572,7 +573,7 @@
           <tr>
             <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
             <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.commune)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
-            <td><div class="strong">${escapeHtml(action.intitule)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div></td>
+            <td><div class="strong">${escapeHtml(action.intitule)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">${escapeHtml(action.public)}</div></td>
             <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${formatDate(action.date)}</div></td>
             <td>
               <div class="strong">Budget : ${formatEuro(action.budget)}</div>
@@ -633,11 +634,17 @@
         return date.toLocaleDateString('fr-FR');
       }
 
+      function formatChoiceList(value) {
+        if (!Array.isArray(value)) return value || '';
+        const choices = value[0] === 'L' ? value.slice(1) : value;
+        return choices.join(', ');
+      }
+
       function exportCsv(actions) {
-        const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
+        const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
         const lines = actions.map(action => [
           action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
-          action.statut, formatDate(action.date), action.budget, action.financed,
+          action.participants, action.public, action.statut, formatDate(action.date), action.budget, action.financed,
           action.financeurs.map(item => `${item.label}: ${item.montant}`).join(' | ')
         ]);
         const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
