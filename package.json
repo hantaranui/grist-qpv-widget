@@ -1,0 +1,9 @@
+{
+  "name": "grist-widgets",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Widgets Grist : verification QPV et tableau de bord Actions d'insertion par le sport.",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

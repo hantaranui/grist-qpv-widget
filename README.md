@@ -13,8 +13,29 @@ Le service API SIGVILLE existe, mais son acces SI demande un compte ANCT et une 
 
 ## Structure du widget
 
-Tout le code du widget est reuni dans `index.html` : HTML, CSS et JavaScript.
-Ce fichier est donc le bloc principal a charger dans Grist.
+Le code source de chaque widget est separe en HTML/CSS/JS sous `src/` :
+
+```text
+src/
+  qpv-widget/index.html, style.css, script.js
+  actions-dashboard/index.html, style.css, script.js
+```
+
+Grist et GitHub Pages ont besoin d'un seul fichier HTML par widget. Le script
+`build.js` reassemble donc chaque dossier `src/<widget>/` en un unique fichier
+`<widget>.html` a la racine du depot (`qpv-widget.html`, `actions-dashboard.html`) :
+
+```text
+npm run build
+```
+
+A chaque modification du code, editer les fichiers dans `src/`, relancer
+`npm run build`, puis commiter a la fois les sources et les fichiers generes a
+la racine (aucune CI ne fait ce build automatiquement).
+
+`index.html` n'est qu'une redirection vers `qpv-widget.html`, conservee pour que
+l'URL racine GitHub Pages ci-dessous continue de fonctionner sans changer la
+configuration du widget dans Grist.
 
 ## URL GitHub Pages
 

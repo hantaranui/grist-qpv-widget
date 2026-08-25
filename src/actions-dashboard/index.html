@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Actions d'insertion par le sport</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>Actions d'insertion par le sport</h1>
+      <button class="export" id="exportBtn">Exporter (CSV)</button>
+    </div>
+
+    <div class="layout">
+      <aside class="filters">
+        <div class="section-head">
+          <span>Filtres</span>
+          <button class="link-button" id="resetBtn">Réinitialiser</button>
+        </div>
+        <div class="filters-body" id="filters"></div>
+      </aside>
+
+      <main>
+        <section class="section" id="summarySection">
+          <div class="section-head">
+            <span>Synthèse</span>
+            <button class="link-button" id="toggleSummary">Replier</button>
+          </div>
+          <div class="summary" id="summary"></div>
+        </section>
+
+        <section class="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Agence</th>
+                <th>Club</th>
+                <th>Action</th>
+                <th>Statut</th>
+                <th>Financement</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty is-hidden" id="empty">Aucune action ne correspond aux filtres.</div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
