@@ -8,18 +8,22 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f6f6f7;
+        --brand-navy: #283276;
+        --brand-blue: #008ECF;
+        --brand-pink: #F29FC5;
+        --brand-yellow: #FFE000;
+        --brand-red: #E1000F;
+        --bg: #f7f8fc;
         --panel: #fff;
-        --panel-soft: #efeff6;
+        --panel-soft: #eef3fb;
         --ink: #171719;
         --muted: #5f6068;
-        --line: #dedee5;
-        --accent: #1d0098;
-        --blue: #3867d6;
-        --orange: #df5b0c;
-        --green: #168348;
-        --violet: #6c63ff;
-        --red: #bd4b9b;
+        --line: #d9dfef;
+        --accent: var(--brand-navy);
+        --blue: var(--brand-blue);
+        --pink: var(--brand-pink);
+        --yellow: var(--brand-yellow);
+        --red: var(--brand-red);
       }
 
       * { box-sizing: border-box; }
@@ -141,8 +145,8 @@
         min-height: 40px;
         padding: 0 12px;
         border: 0;
-        border-bottom: 2px solid #2d2d2d;
-        background: #ededee;
+        border-bottom: 2px solid var(--brand-navy);
+        background: #f1f5fb;
       }
 
       main {
@@ -189,7 +193,7 @@
         margin: 0 0 8px;
         padding-bottom: 8px;
         border-bottom: 1px solid var(--line);
-        color: #45454a;
+        color: var(--brand-navy);
         font-size: 12px;
         letter-spacing: .12em;
         text-transform: uppercase;
@@ -223,7 +227,7 @@
 
       .funder-row {
         grid-template-columns: minmax(0, 1fr) auto;
-        border-bottom: 1px solid #ececf0;
+        border-bottom: 1px solid #e4e9f5;
         padding-bottom: 6px;
       }
 
@@ -273,22 +277,22 @@
         font-weight: 800;
       }
 
-      .tag.projet { background: #e8edff; color: #2459d6; }
-      .tag.planifie { background: #fff0df; color: #c75a00; }
-      .tag.realise { background: #e2f3ea; color: #168348; }
-      .tag.annule { background: #f8e2e2; color: #a12828; }
+      .tag.projet { background: #eef3fb; color: var(--brand-navy); }
+      .tag.planifie { background: #fff8bf; color: var(--brand-navy); }
+      .tag.realise { background: #dff4fb; color: var(--brand-navy); }
+      .tag.annule { background: #fde8eb; color: var(--brand-red); }
 
       .bar {
         height: 6px;
         margin: 8px 0 6px;
-        background: #ededed;
+        background: #edf0f7;
       }
 
       .bar span {
         display: block;
         height: 100%;
         max-width: 100%;
-        background: var(--accent);
+        background: var(--brand-blue);
       }
 
       .money-line {
@@ -359,7 +363,7 @@
       grist.ready({requiredAccess: 'full'});
 
       const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
-      const COLORS = ['#1d0098', '#3867d6', '#6c63ff', '#168348', '#df5b0c', '#bd4b9b'];
+      const COLORS = ['#283276', '#008ECF', '#F29FC5', '#FFE000', '#E1000F'];
       const FILTERS = [
         ['dr', 'Direction régionale (DR)'],
         ['dd', 'Direction départementale (DD)'],
