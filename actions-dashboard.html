@@ -702,8 +702,8 @@
         const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
         const lines = actions.map(action => [
           action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
-          action.participants, action.public, action.statut, formatDate(action.date), action.budget, action.financed,
-          action.financeurs.map(item => `${item.label}: ${item.montant}`).join(' | ')
+          action.participants, action.public, action.statut, formatDate(action.date), formatEuro(action.budget), formatEuro(action.financed),
+          action.financeurs.map(item => `${item.label}: ${formatEuro(item.montant)}`).join(' | ')
         ]);
         const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
         const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
