@@ -464,6 +464,15 @@
         const actions = filteredActions();
         renderSummary(actions);
         renderRows(actions);
+        requestResize();
+      }
+
+      function requestResize() {
+        requestAnimationFrame(() => {
+          if (window.grist && typeof grist.setHeight === 'function') {
+            grist.setHeight(document.documentElement.scrollHeight);
+          }
+        });
       }
 
       function renderFilters() {
@@ -511,8 +520,25 @@
         summary.hidden = !state.summaryOpen;
         if (!state.summaryOpen) {
           summary.innerHTML = '';
+          section.style.height = '40px';
+          section.style.maxHeight = '40px';
+          section.style.minHeight = '0';
+          summary.style.display = 'none';
+          summary.style.height = '0';
+          summary.style.minHeight = '0';
+          summary.style.padding = '0';
+          summary.style.overflow = 'hidden';
           return;
         }
+
+        section.style.height = '';
+        section.style.maxHeight = '';
+        section.style.minHeight = '';
+        summary.style.display = '';
+        summary.style.height = '';
+        summary.style.minHeight = '';
+        summary.style.padding = '';
+        summary.style.overflow = '';
 
         const total = actions.reduce((sum, action) => sum + action.financed, 0);
         summary.innerHTML = `
