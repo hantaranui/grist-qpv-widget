@@ -209,8 +209,8 @@
       .pie {
         width: 72px;
         height: 72px;
-        border-radius: 50%;
-        background: var(--pie, #ddd);
+        display: block;
+        shape-rendering: geometricPrecision;
       }
 
       .legend, .funders {
@@ -277,8 +277,8 @@
         font-weight: 800;
       }
 
-      .tag.projet { background: #eef3fb; color: var(--brand-navy); }
-      .tag.planifie { background: #fff8bf; color: var(--brand-navy); }
+      .tag.projet { background: var(--brand-navy); color: #fff; }
+      .tag.planifie { background: var(--brand-pink); color: var(--brand-navy); }
       .tag.realise { background: #dff4fb; color: var(--brand-navy); }
       .tag.annule { background: #fde8eb; color: var(--brand-red); }
 
@@ -292,7 +292,7 @@
         display: block;
         height: 100%;
         max-width: 100%;
-        background: var(--brand-blue);
+        background: var(--brand-navy);
       }
 
       .money-line {
@@ -363,7 +363,20 @@
       grist.ready({requiredAccess: 'full'});
 
       const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
-      const COLORS = ['#283276', '#008ECF', '#F29FC5', '#FFE000', '#E1000F'];
+      const COLORS = [
+        '#283276',
+        '#008ECF',
+        '#F29FC5',
+        '#FFE000',
+        '#E1000F',
+        '#8B4B8F',
+        '#005B8F',
+        '#D94F9D',
+        '#7A6A00',
+        '#8F0010',
+        '#5F6BC4',
+        '#00A6A6'
+      ];
       const FILTERS = [
         ['dr', 'Direction régionale (DR)'],
         ['dd', 'Direction départementale (DD)'],
@@ -596,25 +609,61 @@
 
       function pieBlock(title, entries) {
         const total = entries.reduce((sum, [, count]) => sum + count, 0) || 1;
-        let cursor = 0;
-        const gradient = entries.map(([, count], index) => {
-          const start = cursor;
-          cursor += count / total * 100;
-          return `${COLORS[index % COLORS.length]} ${start}% ${cursor}%`;
-        }).join(', ');
         return `<div class="summary-block">
           <h2>${escapeHtml(title)}</h2>
           <div class="pie-wrap">
-            <div class="pie" style="--pie: conic-gradient(${gradient || '#ddd 0 100%'})"></div>
+            ${pieSvg(entries, total)}
             <div class="legend">${entries.map(([name, count], index) => `
               <div class="legend-row">
-                <span class="swatch" style="background:${COLORS[index % COLORS.length]}"></span>
+                <span class="swatch" style="background:${colorForIndex(index)}"></span>
                 <span>${escapeHtml(name || 'Non renseigné')}</span>
                 <span class="count">${count} (${Math.round(count / total * 100)}%)</span>
               </div>
             `).join('')}</div>
           </div>
         </div>`;
+      }
+
+      function pieSvg(entries, total) {
+        if (!entries.length) {
+          return '<svg class="pie" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" fill="#ddd"></circle><circle cx="36" cy="36" r="34" fill="none" stroke="#fff" stroke-width="1.5"></circle></svg>';
+        }
+        if (entries.length === 1) {
+          return `<svg class="pie" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" fill="${colorForIndex(0)}"></circle><circle cx="36" cy="36" r="34" fill="none" stroke="#fff" stroke-width="1.5"></circle></svg>`;
+        }
+        let start = -90;
+        const paths = entries.map(([, count], index) => {
+          const angle = index === entries.length - 1 ? 270 : start + (count / total * 360);
+          const path = sectorPath(36, 36, 34, start, angle);
+          start = angle;
+          return `<path d="${path}" fill="${colorForIndex(index)}"></path>`;
+        }).join('');
+        return `<svg class="pie" viewBox="0 0 72 72" aria-hidden="true">${paths}<circle cx="36" cy="36" r="34" fill="none" stroke="#fff" stroke-width="1.5"></circle></svg>`;
+      }
+
+      function colorForIndex(index) {
+        if (index < COLORS.length) return COLORS[index];
+        const hue = (index * 137.508) % 360;
+        return `hsl(${Math.round(hue)} 58% 42%)`;
+      }
+
+      function sectorPath(cx, cy, radius, startAngle, endAngle) {
+        const start = polarPoint(cx, cy, radius, endAngle);
+        const end = polarPoint(cx, cy, radius, startAngle);
+        const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+        return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
+      }
+
+      function polarPoint(cx, cy, radius, angle) {
+        const radians = angle * Math.PI / 180;
+        return {
+          x: round(cx + radius * Math.cos(radians)),
+          y: round(cy + radius * Math.sin(radians))
+        };
+      }
+
+      function round(value) {
+        return Math.round(value * 1000) / 1000;
       }
 
       function groupCount(actions, key) {
