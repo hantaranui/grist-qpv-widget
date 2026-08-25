@@ -86,7 +86,8 @@
       }
 
       .section.is-collapsed {
-        align-self: start;
+        align-self: stretch;
+        width: 100%;
         max-height: 40px;
         min-height: 0;
       }
@@ -548,6 +549,8 @@
           section.style.height = '40px';
           section.style.maxHeight = '40px';
           section.style.minHeight = '0';
+          section.style.width = '100%';
+          section.style.alignSelf = 'stretch';
           summary.style.display = 'none';
           summary.style.height = '0';
           summary.style.minHeight = '0';
@@ -559,6 +562,8 @@
         section.style.height = '';
         section.style.maxHeight = '';
         section.style.minHeight = '';
+        section.style.width = '';
+        section.style.alignSelf = '';
         summary.style.display = '';
         summary.style.height = '';
         summary.style.minHeight = '';
