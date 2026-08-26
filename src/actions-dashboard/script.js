@@ -18,13 +18,14 @@ const COLORS = [
 const FILTERS = [
   ['dr', 'Direction régionale (DR)'],
   ['dd', 'Direction départementale (DD)'],
-  ['agence', 'Agence'],
+  ['agency', 'Agence'],
   ['federation', 'Fédération'],
   ['club', 'Club'],
   ['dispositif', 'Dispositif'],
   ['statut', 'Statut'],
   ['financeur', 'Financement']
 ];
+const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
 const state = { raw: {}, actions: [], filters: {}, statusChoices: [], summaryOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
@@ -39,6 +40,11 @@ document.getElementById('toggleSummary').addEventListener('click', () => {
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => exportCsv(filteredActions()));
+
+document.addEventListener('pointerdown', event => {
+  if (event.target.closest('.filter-search-dropdown')) return;
+  document.querySelectorAll('.filter-search-dropdown[open]').forEach(dropdown => dropdown.removeAttribute('open'));
+});
 
 document.querySelectorAll('[data-sort]').forEach(select => {
   select.addEventListener('change', event => {
@@ -196,10 +202,18 @@ function renderFilters() {
   container.innerHTML = FILTERS.map(([key, label]) => {
     const values = optionsFor(key);
     const selected = state.filters[key] || '';
-    if (key === 'club') {
+    if (SEARCHABLE_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
-        <input class="filter-search" type="search" list="clubSuggestions" data-club-search value="${escapeAttr(selected)}" placeholder="Rechercher un club" aria-label="Rechercher un club">
-        <datalist id="clubSuggestions">${values.map(value => `<option value="${escapeAttr(value)}"></option>`).join('')}</datalist>
+        <details class="filter-search-dropdown">
+          <summary>${escapeHtml(selected || 'Toutes / Tous')}</summary>
+          <div class="filter-search-panel">
+            <input class="filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
+            <div class="filter-search-options">
+              <button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="">Toutes / Tous</button>
+              ${values.map(value => `<button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="${escapeAttr(value)}" title="${escapeAttr(value)}">${escapeHtml(value)}</button>`).join('')}
+            </div>
+          </div>
+        </details>
       </label>`;
     }
     return `<label>${escapeHtml(label)}
@@ -219,15 +233,23 @@ function renderFilters() {
     });
   });
 
-  container.querySelectorAll('[data-club-search]').forEach(input => {
+  container.querySelectorAll('[data-filter-search]').forEach(input => {
     input.addEventListener('input', event => {
-      const value = event.target.value;
-      if (value) state.filters.club = value;
-      else delete state.filters.club;
-      const actions = filteredActions();
-      renderSummary(actions);
-      renderRows(actions);
-      requestResize();
+      const query = normalizeText(event.target.value);
+      const key = event.target.dataset.filterSearch;
+      container.querySelectorAll(`[data-filter-key="${key}"]`).forEach(option => {
+        option.hidden = query && !normalizeText(option.dataset.filterValue).includes(query);
+      });
+    });
+  });
+
+  container.querySelectorAll('[data-filter-key]').forEach(option => {
+    option.addEventListener('click', event => {
+      const key = event.currentTarget.dataset.filterKey;
+      const value = event.currentTarget.dataset.filterValue;
+      if (value) state.filters[key] = value;
+      else delete state.filters[key];
+      render();
     });
   });
 }
@@ -251,7 +273,6 @@ function normalizeText(value) {
 function filteredActions() {
   const actions = state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
     if (key === 'financeur') return action.financeurs.some(item => item.label === value);
-    if (key === 'club') return normalizeText(action.club).includes(normalizeText(value));
     return action[key] === value;
   }));
   return sortActions(actions);

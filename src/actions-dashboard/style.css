@@ -190,14 +190,93 @@ select {
 
 select:hover { border-color: var(--brand-blue); }
 
-.filter-search {
+.filter-search-dropdown {
+  position: relative;
   width: 100%;
+}
+
+.filter-search-dropdown summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   min-height: var(--ft--form-control-height);
   padding: 0 12px;
   border: 1px solid var(--ft--color-background-neutral-default-weak);
   border-bottom: 2px solid var(--brand-navy);
+  border-radius: var(--radius-control);
   background: var(--panel);
   color: var(--ink);
+  font-weight: 400;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-search-dropdown summary::-webkit-details-marker { display: none; }
+.filter-search-dropdown summary::after {
+  width: 7px;
+  height: 7px;
+  margin-left: 12px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: '';
+  transform: rotate(45deg) translateY(-2px);
+}
+.filter-search-dropdown[open] summary::after { transform: rotate(225deg) translateY(-2px); }
+
+.filter-search-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
+}
+
+.filter-search-input {
+  width: 100%;
+  min-height: var(--ft--form-control-height);
+  padding: 0 12px;
+  border: 1px solid var(--ft--color-background-neutral-default-weak);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+}
+
+.filter-search-options {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.filter-search-option {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-search-option:hover,
+.filter-search-option:focus-visible {
+  background: var(--ft--color-background-primary-weakest);
 }
 
 .filters select,
