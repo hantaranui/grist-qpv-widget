@@ -146,6 +146,7 @@ function buildActions(raw) {
     const financed = lines.reduce((sum, item) => sum + item.montant, 0);
     return {
       id: action.id,
+      aapId: action.Lie_a_l_AAP || 0,
       intitule: action.Intitule || '',
       budget: Number(action.Budget || 0),
       financed,
@@ -573,8 +574,8 @@ async function saveEdit(event, action) {
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
   rows.forEach(row => {
-    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, A: action.id}]);
-    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, A: action.id}]);
+    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, A: action.id}]);
+    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, A: action.id}]);
   });
   action.financeurs.filter(item => !usedIds.has(item.id)).forEach(item => userActions.push(['RemoveRecord', 'Cofinancements', item.id]));
   try {
@@ -585,7 +586,10 @@ async function saveEdit(event, action) {
     state.editingId = null;
     await load();
   } catch (error) {
-    message.textContent = "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
+    const detail = String(error?.message || error || '').trim();
+    message.textContent = detail
+      ? `L'enregistrement n'a pas abouti : ${detail}`
+      : "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
     message.classList.remove('is-hidden');
     submit.disabled = false;
     console.error(error);
