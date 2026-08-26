@@ -156,6 +156,7 @@ function buildActions(raw) {
       publicChoices: choiceValues(action.Public),
       statut: action.Statut || '',
       date: action.Date || null,
+      periodeApprox: action.Periode_approx || '',
       clubId: action.Club || 0,
       agencyId: action.Agence || 0,
       dispositifId: action.Dispositif || 0,
@@ -328,7 +329,7 @@ function renderRows(actions) {
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.ville)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
       <td><div class="strong">${escapeHtml(action.intitule)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div></td>
-      <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${formatDate(action.date)}</div></td>
+      <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
         <div class="bar"><span style="width:${Math.round(action.rate * 100)}%"></span></div>
@@ -364,8 +365,11 @@ function renderEdit() {
   const editView = document.getElementById('editView');
   editView.innerHTML = `
     <header class="edit-header">
+      <div class="edit-header-title">
       <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
       <h1>${escapeHtml(action.intitule || 'Modifier une action')}</h1>
+      </div>
+      <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm">Enregistrer</button></div>
     </header>
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
@@ -379,28 +383,34 @@ function renderEdit() {
             <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
           </div>
         </section>
-        <section class="edit-card">
-          <div class="section-head"><span>Agence</span></div>
+        <div class="edit-stack">
+          <section class="edit-card">
+            <div class="section-head"><span>Agence</span></div>
           <div class="edit-fields">
             <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '')}</select></div>
-            <div class="edit-field"><label>Direction départementale (DD)</label><div class="readonly-value" id="editDd">${escapeHtml(dd.Nom || '')}</div></div>
-            <div class="edit-field"><label>Direction régionale (DR)</label><div class="readonly-value" id="editDr">${escapeHtml(dr.Nom || '')}</div></div>
+            <div class="agency-summary">
+              <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
+              <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
+            </div>
           </div>
         </section>
         <section class="edit-card">
           <div class="section-head"><span>Club</span></div>
           <div class="edit-fields">
-            <div class="edit-field"><label for="editClub">Club</label><select id="editClub">${referenceOptions(state.raw.Structures, action.clubId, item => item.Nom || '')}</select></div>
-            <div class="edit-field"><label>Ville</label><div class="readonly-value" id="editCity">${escapeHtml(cityOf(club, communesByCode(state.raw.Communes)))}</div></div>
-            <div class="edit-field"><label>Fédération</label><div class="readonly-value" id="editFederationName">${escapeHtml(federationNameForClub(club, action.federationId))}</div><input id="editFederation" type="hidden" value="${federationIdForClub(club, action.federationId)}"></div>
+            <div class="club-summary">
+              <div><strong>Club :</strong> ${escapeHtml(action.club)}</div>
+              <div><strong>Ville :</strong> ${escapeHtml(cityOf(club, communesByCode(state.raw.Communes)))}</div>
+              <div><strong>Fédération :</strong> ${escapeHtml(action.federation)}</div>
+            </div>
           </div>
         </section>
+        </div>
         <section class="edit-card">
           <div class="section-head"><span>Statut</span></div>
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
-              <span class="status-editor-label">Statut de l'action</span><span class="status-editor-label">Date de planification</span>
-              ${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label><div class="status-date${status === action.statut ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}"><input class="edit-status-date" type="date" value="${status === action.statut ? dateInputValue(action.date) : ''}"></div>`).join('')}
+              <span class="status-editor-label">Statut de l'action</span><span class="status-editor-label" id="statusPeriodLabel">${escapeHtml(statusFieldConfig(action.statut).label)}</span>
+              ${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label>${statusPeriodControl(status, action)}`).join('')}
             </div>
           </div>
         </section>
@@ -416,13 +426,11 @@ function renderEdit() {
           </div>
         </section>
       </div>
-      <div class="edit-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit">Enregistrer</button></div>
     </form>
   `;
   document.getElementById('backToDashboard').addEventListener('click', closeEdit);
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
-  document.getElementById('editClub').addEventListener('change', updateClubDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
   bindStatusEditor();
@@ -439,11 +447,16 @@ function renderEdit() {
 function bindStatusEditor() {
   const editor = document.getElementById('statusEditor');
   editor.querySelectorAll('[name="editStatus"]').forEach(radio => radio.addEventListener('change', () => {
-    const previousDate = editor.querySelector('.status-date:not(.is-hidden) input')?.value || '';
-    editor.querySelectorAll('.status-date').forEach(container => {
+    const previous = editor.querySelector('.status-period:not(.is-hidden) input');
+    const previousKind = previous?.dataset.periodKind || '';
+    const previousValue = previous?.value || '';
+    const config = statusFieldConfig(radio.value);
+    document.getElementById('statusPeriodLabel').textContent = config.label;
+    editor.querySelectorAll('.status-period').forEach(container => {
       const visible = container.dataset.statusDate === radio.value;
       container.classList.toggle('is-hidden', !visible);
-      if (visible) container.querySelector('input').value = previousDate;
+      const input = container.querySelector('input');
+      if (visible && input && previousKind === input.dataset.periodKind && previousValue) input.value = previousValue;
     });
   }));
 }
@@ -523,15 +536,6 @@ function updateAgencyDetails() {
   document.getElementById('editDr').textContent = dr.Nom || '';
 }
 
-function updateClubDetails() {
-  const club = byId(state.raw.Structures).get(Number(document.getElementById('editClub').value)) || {};
-  document.getElementById('editCity').textContent = cityOf(club, communesByCode(state.raw.Communes));
-  const federation = document.getElementById('editFederation');
-  const federationId = federationIdForClub(club, Number(federation.value || 0));
-  federation.value = federationId;
-  document.getElementById('editFederationName').textContent = federationNameForClub(club, federationId);
-}
-
 function updateFinanceSummary() {
   const total = [...document.querySelectorAll('.finance-amount')].reduce((sum, input) => sum + Number(input.value || 0), 0);
   const budget = Number(document.getElementById('editBudget').value || 0);
@@ -557,17 +561,17 @@ async function saveEdit(event, action) {
     montant: Number(row.querySelector('.finance-amount').value || 0)
   })).filter(row => row.financement && row.montant >= 0);
   const status = document.querySelector('[name="editStatus"]:checked')?.value || '';
-  const date = document.querySelector('.status-date:not(.is-hidden) .edit-status-date')?.value || '';
+  const statusConfig = statusFieldConfig(status);
+  const periodValue = document.querySelector('.status-period:not(.is-hidden) input')?.value.trim() || '';
   const actionUpdate = {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
     Jauge: Number(document.getElementById('editParticipants').value || 0),
     Public: ['L', ...publicValues],
     Agence: Number(document.getElementById('editAgency').value || 0),
-    Club: Number(document.getElementById('editClub').value || 0),
-    Federation: Number(document.getElementById('editFederation').value || 0),
     Statut: status,
-    Date: date ? Math.floor(new Date(`${date}T00:00:00`).getTime() / 1000) : null,
+    Date: statusConfig.kind === 'date' && periodValue ? Math.floor(new Date(`${periodValue}T00:00:00`).getTime() / 1000) : null,
+    Periode_approx: statusConfig.kind === 'text' ? periodValue : '',
     Budget: Number(document.getElementById('editBudget').value || 0)
   };
   const currentIds = new Set(action.financeurs.map(item => item.id));
@@ -719,24 +723,6 @@ function federationClubCounts(actions) {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
 }
 
-function federationIdForClub(club, preferredId = 0) {
-  const ids = refListIds(club.Federations);
-  return ids.includes(preferredId) ? preferredId : (ids[0] || 0);
-}
-
-function federationNameForClub(club, preferredId = 0) {
-  const federations = byId(state.raw.Federations);
-  const ids = refListIds(club.Federations);
-  const selectedId = federationIdForClub(club, preferredId);
-  const name = federations.get(selectedId)?.Nom;
-  if (name) return name;
-  return ids.length > 1 ? 'Plusieurs fédérations définies' : 'Aucune fédération définie';
-}
-
-function refListIds(value) {
-  return Array.isArray(value) ? value.slice(value[0] === 'L' ? 1 : 0).map(Number).filter(Boolean) : [];
-}
-
 function communesByCode(communes) {
   const map = new Map();
   (communes || []).forEach(commune => {
@@ -779,6 +765,30 @@ function statusClass(status) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+function statusFieldConfig(status) {
+  const normalized = statusClass(status);
+  if (normalized === 'projet' || normalized === 'a-confirmer') return {kind: 'text', label: 'Période de réalisation'};
+  if (normalized === 'planifie' || normalized === 'planifiee') return {kind: 'date', label: 'Date de planification'};
+  if (normalized === 'realise' || normalized === 'realisee') return {kind: 'date', label: 'Date de réalisation'};
+  if (normalized === 'annule' || normalized === 'annulee') return {kind: 'none', label: ''};
+  return {kind: 'date', label: 'Date'};
+}
+
+function statusPeriodControl(status, action) {
+  const config = statusFieldConfig(status);
+  const visible = status === action.statut;
+  const value = config.kind === 'date' ? dateInputValue(action.date) : action.periodeApprox;
+  const input = config.kind === 'none' ? '' : `<input class="edit-status-period" data-period-kind="${config.kind}" type="${config.kind === 'date' ? 'date' : 'text'}" value="${escapeAttr(value)}">`;
+  return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+function statusPeriodValue(action) {
+  const config = statusFieldConfig(action.statut);
+  if (config.kind === 'text') return action.periodeApprox;
+  if (config.kind === 'date') return formatDate(action.date);
+  return '';
 }
 
 function formatEuro(value) {
