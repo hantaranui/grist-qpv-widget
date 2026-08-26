@@ -196,10 +196,18 @@ function renderFilters() {
   container.innerHTML = FILTERS.map(([key, label]) => {
     const values = optionsFor(key);
     const selected = state.filters[key] || '';
-    return `<label>${escapeHtml(label)}<select data-filter="${key}">
+    if (key === 'club') {
+      return `<label>${escapeHtml(label)}
+        <input class="filter-search" type="search" list="clubSuggestions" data-club-search value="${escapeAttr(selected)}" placeholder="Rechercher un club" aria-label="Rechercher un club">
+        <datalist id="clubSuggestions">${values.map(value => `<option value="${escapeAttr(value)}"></option>`).join('')}</datalist>
+      </label>`;
+    }
+    return `<label>${escapeHtml(label)}
+      <select data-filter="${key}">
       <option value="">Toutes / Tous</option>
       ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
-    </select></label>`;
+      </select>
+    </label>`;
   }).join('');
 
   container.querySelectorAll('select').forEach(select => {
@@ -208,6 +216,18 @@ function renderFilters() {
       state.filters[key] = event.target.value;
       if (!state.filters[key]) delete state.filters[key];
       render();
+    });
+  });
+
+  container.querySelectorAll('[data-club-search]').forEach(input => {
+    input.addEventListener('input', event => {
+      const value = event.target.value;
+      if (value) state.filters.club = value;
+      else delete state.filters.club;
+      const actions = filteredActions();
+      renderSummary(actions);
+      renderRows(actions);
+      requestResize();
     });
   });
 }
@@ -221,9 +241,17 @@ function optionsFor(key) {
   return [...values].sort((a, b) => a.localeCompare(b, 'fr'));
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('fr');
+}
+
 function filteredActions() {
   const actions = state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
     if (key === 'financeur') return action.financeurs.some(item => item.label === value);
+    if (key === 'club') return normalizeText(action.club).includes(normalizeText(value));
     return action[key] === value;
   }));
   return sortActions(actions);
