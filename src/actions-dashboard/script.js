@@ -27,7 +27,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], summaryOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -42,18 +42,16 @@ document.getElementById('toggleSummary').addEventListener('click', () => {
 document.getElementById('exportBtn').addEventListener('click', () => exportCsv(filteredActions()));
 
 document.addEventListener('pointerdown', event => {
-  if (event.target.closest('.filter-search-dropdown')) return;
-  document.querySelectorAll('.filter-search-dropdown[open]').forEach(dropdown => dropdown.removeAttribute('open'));
+  if (event.target.closest('.filter-search-dropdown, .sort-menu')) return;
+  document.querySelectorAll('.filter-search-dropdown[open], .sort-menu[open]').forEach(dropdown => dropdown.removeAttribute('open'));
 });
 
-document.querySelectorAll('[data-sort]').forEach(select => {
-  select.addEventListener('change', event => {
-    const key = event.target.dataset.sort;
-    const direction = event.target.value;
+document.querySelectorAll('[data-sort-option]').forEach(button => {
+  button.addEventListener('click', event => {
+    const key = event.currentTarget.dataset.sortOption;
+    const direction = event.currentTarget.dataset.sortDirection;
     state.sort = direction ? {key, direction} : {};
-    document.querySelectorAll('[data-sort]').forEach(menu => {
-      if (menu !== event.target) menu.value = '';
-    });
+    document.querySelectorAll('.sort-menu[open]').forEach(menu => menu.removeAttribute('open'));
     renderRows(filteredActions());
   });
 });
@@ -205,7 +203,7 @@ function renderFilters() {
     if (SEARCHABLE_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
         <details class="filter-search-dropdown">
-          <summary>${escapeHtml(selected || 'Toutes / Tous')}</summary>
+          <summary><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
             <input class="filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -217,10 +215,13 @@ function renderFilters() {
       </label>`;
     }
     return `<label>${escapeHtml(label)}
-      <select data-filter="${key}">
-      <option value="">Toutes / Tous</option>
-      ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
-      </select>
+      <span class="select-control">
+        <select data-filter="${key}">
+          <option value="">Toutes / Tous</option>
+          ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+        </select>
+        <span class="icon icon-chevron-d" aria-hidden="true"></span>
+      </span>
     </label>`;
   }).join('');
 
@@ -306,9 +307,15 @@ function renderSummary(actions) {
     <div class="summary-charts">
       ${pieBlock('Répartition par statut', groupCount(actions, 'statut'))}
       ${pieBlock('Répartition par dispositif', groupCount(actions, 'dispositif'))}
-      ${pieBlock('Répartition par fédération', groupCount(actions, 'federation', 10))}
+      ${federationPieBlock(actions)}
     </div>
   `;
+
+  document.getElementById('toggleFederationOthers')?.addEventListener('click', () => {
+    state.federationOthersOpen = !state.federationOthersOpen;
+    renderSummary(actions);
+    requestResize();
+  });
 }
 
 function renderRows(actions) {
@@ -356,7 +363,7 @@ function renderEdit() {
   const editView = document.getElementById('editView');
   editView.innerHTML = `
     <header class="edit-header">
-      <button class="back-button" id="backToDashboard">← Actions d'insertion par le sport</button>
+      <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
       <h1>${escapeHtml(action.intitule || 'Modifier une action')}</h1>
     </header>
     <div class="edit-message is-hidden" id="editMessage"></div>
@@ -368,7 +375,7 @@ function renderEdit() {
             <div class="edit-field"><label for="editTitle">Intitulé de l'action</label><input id="editTitle" required value="${escapeAttr(action.intitule)}"></div>
             <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '')}</select></div>
             <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" type="number" min="0" value="${action.participants}"></div>
-            <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span aria-hidden="true">&#9662;</span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
+            <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
           </div>
         </section>
         <section class="edit-card">
@@ -384,7 +391,7 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="edit-field"><label for="editClub">Club</label><select id="editClub">${referenceOptions(state.raw.Structures, action.clubId, item => item.Nom || '')}</select></div>
             <div class="edit-field"><label>Ville</label><div class="readonly-value" id="editCity">${escapeHtml(cityOf(club, communesByCode(state.raw.Communes)))}</div></div>
-            <div class="edit-field"><label>Fédération</label><div class="readonly-value">${escapeHtml(action.federation)}</div></div>
+            <div class="edit-field"><label>Fédération</label><div class="readonly-value" id="editFederationName">${escapeHtml(federationNameForClub(club, action.federationId))}</div><input id="editFederation" type="hidden" value="${federationIdForClub(club, action.federationId)}"></div>
           </div>
         </section>
         <section class="edit-card">
@@ -402,7 +409,7 @@ function renderEdit() {
             <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="finance-list">
               <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span aria-hidden="true"></span></div>
-              <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('')}</div>
+              <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
               <button class="add-finance-button" type="button" id="addFinance">+ Ajouter un financeur</button>
             </div>
           </div>
@@ -419,7 +426,9 @@ function renderEdit() {
   bindPublicPicker();
   bindStatusEditor();
   document.getElementById('addFinance').addEventListener('click', () => {
-    document.getElementById('financeRows').insertAdjacentHTML('beforeend', financeRow({}));
+    const rows = document.getElementById('financeRows');
+    rows.querySelector('.finance-empty')?.remove();
+    rows.insertAdjacentHTML('beforeend', financeRow({}));
     bindFinanceRows();
   });
   document.getElementById('editForm').addEventListener('submit', event => saveEdit(event, action));
@@ -444,13 +453,17 @@ function bindPublicPicker() {
   toggle.addEventListener('click', event => {
     event.stopPropagation();
     picker.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', String(picker.classList.contains('is-open')));
   });
   picker.addEventListener('click', event => event.stopPropagation());
   picker.querySelectorAll('.public-choice').forEach(choice => choice.addEventListener('change', () => {
     const selected = [...picker.querySelectorAll('.public-choice:checked')].map(input => input.value);
     document.getElementById('publicToggleValue').textContent = selected.join(', ') || 'Choisir un public';
   }));
-  document.addEventListener('click', () => picker.classList.remove('is-open'));
+  document.addEventListener('click', () => {
+    picker.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  });
 }
 
 function referenceOptions(items, selectedId, labelFor) {
@@ -485,10 +498,16 @@ function financeRow(item) {
   </div>`;
 }
 
+function financeEmptyState() {
+  return '<div class="finance-empty">Aucun financeur ajouté.</div>';
+}
+
 function bindFinanceRows() {
   document.querySelectorAll('.remove-finance-button').forEach(button => {
     button.onclick = () => {
+      const rows = button.closest('#financeRows');
       button.closest('.finance-row').remove();
+      if (!rows.querySelector('.finance-row')) rows.innerHTML = financeEmptyState();
       updateFinanceSummary();
     };
   });
@@ -506,6 +525,10 @@ function updateAgencyDetails() {
 function updateClubDetails() {
   const club = byId(state.raw.Structures).get(Number(document.getElementById('editClub').value)) || {};
   document.getElementById('editCity').textContent = cityOf(club, communesByCode(state.raw.Communes));
+  const federation = document.getElementById('editFederation');
+  const federationId = federationIdForClub(club, Number(federation.value || 0));
+  federation.value = federationId;
+  document.getElementById('editFederationName').textContent = federationNameForClub(club, federationId);
 }
 
 function updateFinanceSummary() {
@@ -541,6 +564,7 @@ async function saveEdit(event, action) {
     Public: ['L', ...publicValues],
     Agence: Number(document.getElementById('editAgency').value || 0),
     Club: Number(document.getElementById('editClub').value || 0),
+    Federation: Number(document.getElementById('editFederation').value || 0),
     Statut: status,
     Date: date ? Math.floor(new Date(`${date}T00:00:00`).getTime() / 1000) : null,
     Budget: Number(document.getElementById('editBudget').value || 0)
@@ -582,6 +606,47 @@ function pieBlock(title, entries) {
         </div>
       `).join('')}</div>
     </div>
+  </div>`;
+}
+
+function federationPieBlock(actions) {
+  const allEntries = federationClubCounts(actions);
+  const total = allEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
+  const topEntries = allEntries.slice(0, 10);
+  const otherEntries = allEntries.slice(10);
+  const chartEntries = otherEntries.length
+    ? [...topEntries, ['Autres fédérations', otherEntries.reduce((sum, [, count]) => sum + count, 0)]]
+    : topEntries;
+  const otherCount = otherEntries.reduce((sum, [, count]) => sum + count, 0);
+  const otherIndex = chartEntries.length - 1;
+
+  return `<div class="summary-block">
+    <h2>Répartition par fédération</h2>
+    <div class="pie-wrap">
+      ${pieSvg(chartEntries, total)}
+      <div class="legend">
+        ${topEntries.map(([name, count], index) => legendRow(name, count, total, colorForIndex(index))).join('')}
+        ${otherEntries.length ? `
+          <div class="federation-others">
+            <button class="federation-others-toggle" id="toggleFederationOthers" type="button" aria-expanded="${state.federationOthersOpen}">
+              <span class="swatch" style="background:${colorForIndex(otherIndex)}"></span>
+              <span class="federation-others-name">Autres fédérations (${otherEntries.length})<span class="icon ${state.federationOthersOpen ? 'icon-chevron-u' : 'icon-chevron-d'}" aria-hidden="true"></span></span>
+              <span class="count">${otherCount} ${otherCount > 1 ? 'clubs' : 'club'} (${Math.round(otherCount / total * 100)}%)</span>
+            </button>
+            ${state.federationOthersOpen ? `<div class="federation-others-details">
+              ${otherEntries.map(([name, count]) => legendRow(name, count, total, colorForIndex(otherIndex), true)).join('')}
+            </div>` : ''}
+          </div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function legendRow(name, count, total, color, nested = false) {
+  return `<div class="legend-row${nested ? ' legend-row-nested' : ''}">
+    <span class="swatch" style="background:${color}"></span>
+    <span>${escapeHtml(name || 'Non renseigné')}</span>
+    <span class="count">${count} (${Math.round(count / total * 100)}%)</span>
   </div>`;
 }
 
@@ -635,6 +700,37 @@ function groupCount(actions, key, limit = 0) {
   const visible = entries.slice(0, limit);
   const others = entries.slice(limit).reduce((sum, [, count]) => sum + count, 0);
   return [...visible, ['Autres fédérations', others]];
+}
+
+function federationClubCounts(actions) {
+  const clubsByFederation = new Map();
+  actions.forEach(action => {
+    const federation = action.federation || 'Non renseigné';
+    const club = action.clubId || action.club || action.id;
+    if (!clubsByFederation.has(federation)) clubsByFederation.set(federation, new Set());
+    clubsByFederation.get(federation).add(club);
+  });
+  return [...clubsByFederation.entries()]
+    .map(([name, clubs]) => [name, clubs.size])
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
+}
+
+function federationIdForClub(club, preferredId = 0) {
+  const ids = refListIds(club.Federations);
+  return ids.includes(preferredId) ? preferredId : (ids[0] || 0);
+}
+
+function federationNameForClub(club, preferredId = 0) {
+  const federations = byId(state.raw.Federations);
+  const ids = refListIds(club.Federations);
+  const selectedId = federationIdForClub(club, preferredId);
+  const name = federations.get(selectedId)?.Nom;
+  if (name) return name;
+  return ids.length > 1 ? 'Plusieurs fédérations définies' : 'Aucune fédération définie';
+}
+
+function refListIds(value) {
+  return Array.isArray(value) ? value.slice(value[0] === 'L' ? 1 : 0).map(Number).filter(Boolean) : [];
 }
 
 function communesByCode(communes) {
