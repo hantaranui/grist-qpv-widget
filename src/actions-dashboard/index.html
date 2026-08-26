@@ -8,46 +8,59 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div class="topbar">
-      <h1>Actions d'insertion par le sport</h1>
-      <button class="export" id="exportBtn">Exporter (CSV)</button>
-    </div>
+    <div id="dashboardView">
+      <div class="topbar">
+        <h1>Actions d'insertion par le sport</h1>
+        <button class="export" id="exportBtn">Exporter (CSV)</button>
+      </div>
 
-    <div class="layout">
-      <aside class="filters">
-        <div class="section-head">
-          <span>Filtres</span>
-          <button class="link-button" id="resetBtn">Réinitialiser</button>
-        </div>
-        <div class="filters-body" id="filters"></div>
-      </aside>
-
-      <main>
-        <section class="section is-collapsed" id="summarySection">
+      <div class="layout">
+        <aside class="filters">
           <div class="section-head">
-            <span>Synthèse</span>
-            <button class="link-button" id="toggleSummary">Déplier</button>
+            <span>Filtres</span>
+            <button class="link-button" id="resetBtn">Réinitialiser</button>
           </div>
-          <div class="summary" id="summary"></div>
-        </section>
+          <div class="filters-body" id="filters"></div>
+        </aside>
 
-        <section class="table">
-          <table>
+        <main>
+          <section class="section is-collapsed" id="summarySection">
+            <div class="section-head">
+              <span>Synthèse</span>
+              <button class="link-button" id="toggleSummary">Déplier</button>
+            </div>
+            <div class="summary" id="summary"></div>
+          </section>
+
+          <section class="table">
+            <table>
+            <colgroup>
+              <col class="col-agency">
+              <col class="col-club">
+              <col class="col-action">
+              <col class="col-status">
+              <col class="col-finance">
+              <col class="col-edit">
+            </colgroup>
             <thead>
               <tr>
-                <th>Agence</th>
-                <th>Club</th>
-                <th>Action</th>
-                <th>Statut</th>
-                <th>Financement</th>
+                <th>Agence <select data-sort="agency" aria-label="Trier la colonne Agence"><option value="" aria-label="Aucun tri"></option><option value="asc">A-Z</option><option value="desc">Z-A</option></select></th>
+                <th>Club <select data-sort="club" aria-label="Trier la colonne Club"><option value="" aria-label="Aucun tri"></option><option value="asc">A-Z</option><option value="desc">Z-A</option></select></th>
+                <th>Action <select data-sort="intitule" aria-label="Trier la colonne Action"><option value="" aria-label="Aucun tri"></option><option value="asc">A-Z</option><option value="desc">Z-A</option></select></th>
+                <th>Statut <select data-sort="statut" aria-label="Trier la colonne Statut"><option value="" aria-label="Aucun tri"></option><option value="asc">A-Z</option><option value="desc">Z-A</option></select></th>
+                <th>Financement <select data-sort="budget" aria-label="Trier la colonne Financement"><option value="" aria-label="Aucun tri"></option><option value="asc">Croissant</option><option value="desc">Décroissant</option></select></th>
+                <th aria-label="Modifier"></th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
-          </table>
-          <div class="empty is-hidden" id="empty">Aucune action ne correspond aux filtres.</div>
-        </section>
-      </main>
+            </table>
+            <div class="empty is-hidden" id="empty">Aucune action ne correspond aux filtres.</div>
+          </section>
+        </main>
+      </div>
     </div>
+
+    <section class="edit-view is-hidden" id="editView"></section>
 
     <script src="script.js"></script>
   </body>
