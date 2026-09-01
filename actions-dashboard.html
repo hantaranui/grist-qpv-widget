@@ -6,6 +6,7 @@
     <title>Actions d'insertion par le sport</title>
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
     <style>
 :root {
   color-scheme: light;
@@ -572,7 +573,26 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .remove-finance-button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; height: 34px; padding: 0 var(--ft--button-sm-padding-x); border: 1px solid var(--ft--icon-error); background: var(--panel); color: var(--ft--icon-error); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; }
 .remove-finance-button:hover { background: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
-.edit-view { min-height: 100vh; background: var(--bg); }
+.edit-view {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px 16px;
+  background: rgba(15, 20, 56, .45);
+}
+.edit-view.is-hidden { display: none; }
+.edit-panel {
+  width: 100%;
+  max-width: 1120px;
+  background: var(--panel);
+  border-radius: var(--radius-surface);
+  box-shadow: 0 16px 40px rgba(15, 20, 56, .3);
+  overflow: hidden;
+}
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; gap: 8px; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -615,6 +635,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.annulee:has(input:checked) { border-color: var(--ft--border-error); color: var(--ft--icon-error); }
 .status-option.a-confirmer:has(input:checked) { border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
 .status-period input { width: 100%; min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
+.status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
 .finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
@@ -911,18 +932,13 @@ function buildActions(raw) {
 }
 
 function render() {
-  const editing = state.view === 'edit';
-  document.getElementById('dashboardView').classList.toggle('is-hidden', editing);
-  document.getElementById('editView').classList.toggle('is-hidden', !editing);
-  if (editing) {
-    renderEdit();
-    requestResize();
-    return;
-  }
   renderFilters();
   const actions = filteredActions();
   renderSummary(actions);
   renderRows(actions);
+  const editing = state.view === 'edit';
+  document.getElementById('editView').classList.toggle('is-hidden', !editing);
+  if (editing) renderEdit();
   requestResize();
 }
 
@@ -1103,6 +1119,7 @@ function renderEdit() {
   const total = action.financeurs.reduce((sum, item) => sum + item.montant, 0);
   const editView = document.getElementById('editView');
   editView.innerHTML = `
+  <div class="edit-panel">
     <header class="edit-header">
       <div class="edit-header-title">
       <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
@@ -1166,6 +1183,7 @@ function renderEdit() {
         </section>
       </div>
     </form>
+  </div>
   `;
   document.getElementById('backToDashboard').addEventListener('click', closeEdit);
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
@@ -1173,6 +1191,7 @@ function renderEdit() {
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
   bindStatusEditor();
+  bindDatePickers();
   document.getElementById('addFinance').addEventListener('click', () => {
     const rows = document.getElementById('financeRows');
     rows.querySelector('.finance-empty')?.remove();
@@ -1186,18 +1205,45 @@ function renderEdit() {
 function bindStatusEditor() {
   const editor = document.getElementById('statusEditor');
   editor.querySelectorAll('[name="editStatus"]').forEach(radio => radio.addEventListener('change', () => {
-    const previous = editor.querySelector('.status-period:not(.is-hidden) input');
+    const previous = editor.querySelector('.status-period:not(.is-hidden) .edit-status-period');
     const previousKind = previous?.dataset.periodKind || '';
-    const previousValue = previous?.value || '';
+    const previousValue = previous ? readPeriodValue(previous) : '';
     const config = statusFieldConfig(radio.value);
     document.getElementById('statusPeriodLabel').textContent = config.label;
     editor.querySelectorAll('.status-period').forEach(container => {
       const visible = container.dataset.statusDate === radio.value;
       container.classList.toggle('is-hidden', !visible);
-      const input = container.querySelector('input');
-      if (visible && input && previousKind === input.dataset.periodKind && previousValue) input.value = previousValue;
+      const input = container.querySelector('.edit-status-period');
+      if (visible && input && previousKind === input.dataset.periodKind && previousValue) writePeriodValue(input, previousValue);
     });
   }));
+}
+
+// <ft-datepicker> (widget officiel France Travail) n'expose pas de propriété
+// .value fiable : sa valeur choisie n'arrive que via l'évènement personnalisé
+// "ft-datepicker-input-change", donc on la garde dans data-iso-value plutôt
+// que de la relire depuis l'élément. readPeriodValue()/writePeriodValue()
+// centralisent cette différence face au simple <input type="text"> (Projet).
+function bindDatePickers() {
+  document.querySelectorAll('.edit-status-period[data-period-kind="date"]').forEach(picker => {
+    picker.addEventListener('ft-datepicker-input-change', event => {
+      const raw = event.detail && event.detail.value;
+      picker.dataset.isoValue = raw ? frDateToIso(raw) : '';
+    });
+  });
+}
+
+function readPeriodValue(input) {
+  return input.dataset.periodKind === 'date' ? (input.dataset.isoValue || '') : (input.value || '');
+}
+
+function writePeriodValue(input, value) {
+  if (input.dataset.periodKind === 'date') {
+    input.dataset.isoValue = value;
+    input.setAttribute('value', isoToFrDate(value));
+  } else {
+    input.value = value;
+  }
 }
 
 function bindPublicPicker() {
@@ -1301,7 +1347,8 @@ async function saveEdit(event, action) {
   })).filter(row => row.financement && row.montant >= 0);
   const status = document.querySelector('[name="editStatus"]:checked')?.value || '';
   const statusConfig = statusFieldConfig(status);
-  const periodValue = document.querySelector('.status-period:not(.is-hidden) input')?.value.trim() || '';
+  const periodInput = document.querySelector('.status-period:not(.is-hidden) .edit-status-period');
+  const periodValue = periodInput ? readPeriodValue(periodInput).trim() : '';
   const actionUpdate = {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
@@ -1518,8 +1565,13 @@ function statusFieldConfig(status) {
 function statusPeriodControl(status, action) {
   const config = statusFieldConfig(status);
   const visible = status === action.statut;
-  const value = config.kind === 'date' ? dateInputValue(action.date) : action.periodeApprox;
-  const input = config.kind === 'none' ? '' : `<input class="edit-status-period" data-period-kind="${config.kind}" type="${config.kind === 'date' ? 'date' : 'text'}" value="${escapeAttr(value)}">`;
+  let input = '';
+  if (config.kind === 'date') {
+    const iso = dateInputValue(action.date);
+    input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"></ft-datepicker>`;
+  } else if (config.kind === 'text') {
+    input = `<input class="edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
+  }
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
 }
 
@@ -1553,6 +1605,18 @@ function dateInputValue(value) {
   if (!value) return '';
   const date = new Date(Number(value) * 1000);
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
+
+// <ft-datepicker> attend/renvoie le format "JJ/MM/AAAA", le reste du widget
+// travaille en "AAAA-MM-JJ" (comme <input type="date">).
+function isoToFrDate(iso) {
+  const m = String(iso || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+function frDateToIso(fr) {
+  const m = String(fr || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
 }
 
 function exportCsv(actions) {

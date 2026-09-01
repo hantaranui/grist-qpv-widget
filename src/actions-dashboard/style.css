@@ -563,7 +563,26 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .remove-finance-button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; height: 34px; padding: 0 var(--ft--button-sm-padding-x); border: 1px solid var(--ft--icon-error); background: var(--panel); color: var(--ft--icon-error); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; }
 .remove-finance-button:hover { background: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
-.edit-view { min-height: 100vh; background: var(--bg); }
+.edit-view {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px 16px;
+  background: rgba(15, 20, 56, .45);
+}
+.edit-view.is-hidden { display: none; }
+.edit-panel {
+  width: 100%;
+  max-width: 1120px;
+  background: var(--panel);
+  border-radius: var(--radius-surface);
+  box-shadow: 0 16px 40px rgba(15, 20, 56, .3);
+  overflow: hidden;
+}
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; gap: 8px; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -606,6 +625,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.annulee:has(input:checked) { border-color: var(--ft--border-error); color: var(--ft--icon-error); }
 .status-option.a-confirmer:has(input:checked) { border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
 .status-period input { width: 100%; min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
+.status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
 .finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
