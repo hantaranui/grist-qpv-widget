@@ -60,7 +60,14 @@ load();
 
 async function load() {
   try {
-    const data = await Promise.all(TABLES.map(async table => [table, rows(await grist.docApi.fetchTable(table))]));
+    const data = await Promise.all(TABLES.map(async table => {
+      try {
+        return [table, rows(await grist.docApi.fetchTable(table))];
+      } catch (error) {
+        console.warn(`Accès refusé ou table introuvable : ${table}`, error);
+        return [table, []];
+      }
+    }));
     state.raw = Object.fromEntries(data);
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
