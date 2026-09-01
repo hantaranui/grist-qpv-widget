@@ -154,7 +154,6 @@ function buildActions(raw) {
     const financed = lines.reduce((sum, item) => sum + item.montant, 0);
     return {
       id: action.id,
-      aapId: action.Reponse_AAP || 0,
       intitule: action.Intitule || '',
       budget: Number(action.Budget || 0),
       financed,
@@ -618,8 +617,8 @@ async function saveEdit(event, action) {
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
   rows.forEach(row => {
-    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, Action: action.id}]);
-    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, Action: action.id}]);
+    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
+    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
   });
   action.financeurs.filter(item => !usedIds.has(item.id)).forEach(item => userActions.push(['RemoveRecord', 'Cofinancements', item.id]));
   try {
