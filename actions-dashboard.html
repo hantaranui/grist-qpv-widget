@@ -756,7 +756,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -791,7 +791,8 @@ async function load() {
   try {
     const data = await Promise.all(TABLES.map(async table => [table, rows(await grist.docApi.fetchTable(table))]));
     state.raw = Object.fromEntries(data);
-    state.statusChoices = await loadStatusChoices();
+    state.statusChoices = await loadColumnChoices('Actions', 'Statut');
+    state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.actions = buildActions(state.raw);
     render();
   } catch (error) {
@@ -802,18 +803,18 @@ async function load() {
   }
 }
 
-async function loadStatusChoices() {
+async function loadColumnChoices(tableId, colId) {
   try {
     const [tables, columns] = await Promise.all([
       grist.docApi.fetchTable('_grist_Tables'),
       grist.docApi.fetchTable('_grist_Tables_column')
     ]);
-    const actionTable = rows(tables).find(table => table.tableId === 'Actions');
-    const statusColumn = rows(columns).find(column => column.parentId === actionTable?.id && column.colId === 'Statut');
-    const options = parseWidgetOptions(statusColumn?.widgetOptions);
+    const table = rows(tables).find(item => item.tableId === tableId);
+    const column = rows(columns).find(item => item.parentId === table?.id && item.colId === colId);
+    const options = parseWidgetOptions(column?.widgetOptions);
     return Array.isArray(options.choices) ? options.choices : [];
   } catch (error) {
-    console.warn('Impossible de lire les choix de statut', error);
+    console.warn(`Impossible de lire les choix de ${tableId}.${colId}`, error);
     return [];
   }
 }
@@ -855,7 +856,7 @@ function buildActions(raw) {
   const financements = byId(raw.Financements);
   const financeurs = byId(raw.Financeurs);
   const cofs = raw.Cofinancements.reduce((acc, cof) => {
-    const actionId = cof.A;
+    const actionId = cof.Action;
     if (!actionId || !actions.has(actionId)) return acc;
     const financement = financements.get(cof.Financement) || {};
     const financeur = financeurs.get(financement.Financeur) || {};
@@ -875,7 +876,7 @@ function buildActions(raw) {
     const financed = lines.reduce((sum, item) => sum + item.montant, 0);
     return {
       id: action.id,
-      aapId: action.Lie_a_l_AAP || 0,
+      aapId: action.Reponse_AAP || 0,
       intitule: action.Intitule || '',
       budget: Number(action.Budget || 0),
       financed,
@@ -1089,7 +1090,9 @@ function renderEdit() {
   const dr = byId(state.raw.DR).get(dd.DR) || {};
   const club = byId(state.raw.Structures).get(action.clubId) || {};
   const statusChoices = state.statusChoices.length ? state.statusChoices : [...new Set(state.actions.map(item => item.statut).filter(Boolean))];
-  const publicChoices = [...new Set(state.actions.flatMap(item => item.publicChoices))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const publicChoices = state.publicChoices.length
+    ? state.publicChoices
+    : [...new Set(state.actions.flatMap(item => item.publicChoices))].sort((a, b) => a.localeCompare(b, 'fr'));
   const total = action.financeurs.reduce((sum, item) => sum + item.montant, 0);
   const editView = document.getElementById('editView');
   editView.innerHTML = `
@@ -1098,7 +1101,7 @@ function renderEdit() {
       <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
       <h1>${escapeHtml(action.intitule || 'Modifier une action')}</h1>
       </div>
-      <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm">Enregistrer</button></div>
+      <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm" id="saveEdit">Enregistrer</button></div>
     </header>
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
@@ -1282,7 +1285,7 @@ function closeEdit() {
 async function saveEdit(event, action) {
   event.preventDefault();
   const message = document.getElementById('editMessage');
-  const submit = event.currentTarget.querySelector('[type="submit"]');
+  const submit = document.getElementById('saveEdit');
   const publicValues = [...document.querySelectorAll('.public-choice:checked')].map(input => input.value);
   const rows = [...document.querySelectorAll('.finance-row')].map(row => ({
     id: Number(row.dataset.cofinancementId || 0),
@@ -1307,8 +1310,8 @@ async function saveEdit(event, action) {
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
   rows.forEach(row => {
-    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, A: action.id}]);
-    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, A: action.id}]);
+    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, Action: action.id}]);
+    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Projet: action.aapId, Action: action.id}]);
   });
   action.financeurs.filter(item => !usedIds.has(item.id)).forEach(item => userActions.push(['RemoveRecord', 'Cofinancements', item.id]));
   try {
