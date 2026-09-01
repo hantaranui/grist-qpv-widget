@@ -598,7 +598,10 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
 .back-button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--brand-navy); font-weight: 500; text-decoration: underline; cursor: pointer; }
 .edit-header h1 { margin: 0; }
-.edit-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; padding: 24px 40px 40px; align-items: stretch; }
+.edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
+.edit-row { display: grid; gap: 24px; align-items: stretch; }
+.edit-row-top { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.edit-row-bottom { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -682,7 +685,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .summary-top,
   .summary-charts { grid-template-columns: 1fr; }
   h1 { font-size: 22px; }
-  .edit-layout { grid-template-columns: 1fr; padding: 14px; }
+  .edit-layout { padding: 14px; }
+  .edit-row-top,
+  .edit-row-bottom { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
   .finance-editor { grid-template-columns: 1fr; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
@@ -1130,6 +1135,7 @@ function renderEdit() {
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
       <div class="edit-layout">
+        <div class="edit-row edit-row-top">
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields">
@@ -1161,6 +1167,8 @@ function renderEdit() {
           </div>
         </section>
         </div>
+        </div>
+        <div class="edit-row edit-row-bottom">
         <section class="edit-card">
           <div class="section-head"><span>Statut</span></div>
           <div class="edit-fields">
@@ -1181,6 +1189,7 @@ function renderEdit() {
             </div>
           </div>
         </section>
+        </div>
       </div>
     </form>
   </div>

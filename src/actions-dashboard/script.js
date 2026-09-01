@@ -380,6 +380,7 @@ function renderEdit() {
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
       <div class="edit-layout">
+        <div class="edit-row edit-row-top">
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields">
@@ -411,6 +412,8 @@ function renderEdit() {
           </div>
         </section>
         </div>
+        </div>
+        <div class="edit-row edit-row-bottom">
         <section class="edit-card">
           <div class="section-head"><span>Statut</span></div>
           <div class="edit-fields">
@@ -431,6 +434,7 @@ function renderEdit() {
             </div>
           </div>
         </section>
+        </div>
       </div>
     </form>
   </div>
