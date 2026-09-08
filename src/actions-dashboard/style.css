@@ -760,3 +760,14 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-header-actions { width: 100%; justify-content: flex-end; }
   .edit-actions, .edit-message { padding-left: 14px; padding-right: 14px; }
 }
+
+/* Sur un ecran de telephone, les 100px de la colonne « Modifier » figee
+   accapareraient un tiers de la largeur et recouvriraient la colonne Club. Elle
+   redevient donc une colonne ordinaire, qui defile avec le reste du tableau.
+   Le gel reste actif au-dessus de ce seuil, ou il est un gain. */
+@media (max-width: 700px) {
+  .table thead th:last-child,
+  .table tbody td:last-child {
+    position: static;
+  }
+}
