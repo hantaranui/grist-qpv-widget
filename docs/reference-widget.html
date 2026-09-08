@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Actions d'insertion par le sport — Widget Grist</title>
+
+<!--
+  ============================================================================
+  WIDGET GRIST : "Actions d'insertion par le sport"  (version corrigée)
+  ============================================================================
+  A copier/coller intégralement dans l'éditeur de Custom Widget de Grist.
+  Aucune donnée fictive : tout provient exclusivement de l'API Grist.
+
+  CORRECTIF APPORTÉ DANS CETTE VERSION
+  --------------------------------------------------------------------------
+  Les colonnes Action.Agence, Action.Club et Action.Dispositif peuvent,
+  selon votre document, contenir SOIT une vraie référence Grist (rowId),
+  SOIT un simple code/texte (ex: "Code Aurore", "SIRET", "Code dispositif").
+  La résolution ci-dessous teste systématiquement les deux possibilités
+  (fonction findRow) :
+    1. La valeur est essayée comme rowId Grist dans la table cible.
+    2. Si ça ne correspond à rien, elle est comparée (en texte) à
+       plusieurs colonnes "candidates" de la table cible (nom, code, sigle...).
+  Si aucune correspondance n'est trouvée, la valeur brute de l'action est
+  affichée telle quelle plutôt que de masquer l'information.
+
+  CHAÎNE DE JOINTURES (Lookups) IMPLÉMENTÉE
+  --------------------------------------------------------------------------
+    1. Action.Agence   -> table "Agences"     => Libellé agence, DD, DR.
+    2. Action.Club     -> table "Structures"  => Nom du club.
+    3. Structure.Code Insee -> table "Communes" => Libellé Commune.
+    4. Action.Dispositif -> table "Dispositifs" => libellé du dispositif.
+    5. Cofinancements.Projet == Action.A (comparaison PAR VALEUR)
+         => tous les cofinancements de l'action courante.
+
+  Toute valeur manquante ou introuvable est affichée avec un repli visuel
+  neutre ("—") plutôt que de provoquer une erreur.
+  ============================================================================
+-->
+
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+
+<!-- ============================================================================
+     Design System France Travail — styles officiels + police d'icônes (icon-*)
+     + autoloader des web-composants (ft-header, ft-alert, etc., si utilisés
+     ultérieurement). Placés AVANT notre <style> ci-dessous afin que nos
+     propres règles (mêmes noms de classes comme .btn) restent prioritaires
+     en cas de conflit, sans avoir à utiliser !important.
+     ============================================================================ -->
+<link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+<script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
+
+<style>
+  /* ==========================================================================
+     0. VARIABLES DE THÈME
+     ========================================================================== */
+  /* ==========================================================================
+     0. CHARTE GRAPHIQUE — Design System France Travail
+     Le CDN officiel (chargé dans <head>, voir plus haut) fournit désormais :
+       - la police Marianne (vrais fichiers, tous poids/styles) ;
+       - la police d'icônes ft-ds-font-icons (classes .icon / .icon-xxx) ;
+       - les variables CSS officielles --ft-color-... (:root).
+     On RÉFÉRENCE ces variables officielles via var(--ft-color-x, repli) :
+     la valeur de repli (identique à nos anciennes valeurs codées en dur)
+     ne s'applique que si jamais le CDN ne se charge pas (réseau bloqué...),
+     ce qui rend le widget fonctionnel même sans connexion à ce CDN.
+     Les noms de nos propres variables (--navy, --blue, --orange...) sont
+     conservés pour ne pas avoir à modifier chaque règle du fichier.
+     ========================================================================== */
+  :root{
+    --navy:        var(--ft-color-text-primary-default, #283276);
+    --blue:        var(--ft-color-text-link-default, #2458E5);
+    --blue-light:  var(--ft-color-background-info-weakest, #EFF4FF);
+    --info:        var(--ft-color-text-info-default, #043392);      /* statut "Projet" */
+    --info-light:  var(--ft-color-background-info-weakest, #EFF4FF);
+    --orange:      var(--ft-color-text-warning-default, #7C4701);   /* statut "Planifié" */
+    --orange-light:var(--ft-color-background-warning-weakest, #FFFAEB);
+    --green:       var(--ft-color-text-success-default, #068148);   /* statut "Réalisé" */
+    --green-light: var(--ft-color-background-success-weakest, #ECFDF3);
+    --red:         var(--ft-color-text-error-default, #BA251A);
+    --red-light:   var(--ft-color-background-error-weakest, #FFECEB);
+    --bg-page:     var(--ft-color-background-neutral-weakest, #F5F5F8);
+    --bg-card:     var(--ft-color-background-neutral-light, #FFFFFF);
+    --bg-head:     var(--ft-color-background-neutral-weaker, #E6E7EC);
+    --border:      var(--ft-color-border-neutral-default, #CDCFD8);
+    --text-main:   var(--ft-color-text-content-default, #2E2E31);
+    --text-muted:  var(--ft-color-text-content-weaker, #71747F);
+    --radius-sm:   4px;
+    /* ---- Design System France Travail : Radius / Shadows / Spacing ---- */
+    --radius-box:  12px;  /* "box-radius-default" — à appliquer par défaut sur toutes les boîtes (cartes, panneaux) */
+    --radius-btn:  8px;   /* "radius-m" — utilisé pour boutons, champs de saisie, select */
+    --shadow-header: 0 4px 8px rgba(15,20,56,.08); /* Drop-Shadow-Bottom — pour les en-têtes */
+    --shadow-box:    0 0 8px rgba(15,20,56,.16);   /* Drop-Shadow-All — pour tous les autres cas */
+    --sp-xxs: 2px; --sp-xs1: 4px; --sp-xs2: 8px; --sp-s1: 12px; --sp-s2: 16px; --sp-m1: 20px; --sp-m2: 24px;
+    --font-heading: 'Marianne', Arial, Helvetica, sans-serif;           /* Titres (Marianne, chargée par le CDN officiel) */
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* SF Pro / polices système */
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg-page);
+    color:var(--text-main);
+    font-family:var(--font-body);
+    font-size:13px;
+  }
+  a{ color:var(--blue); text-decoration:none; cursor:pointer; }
+  /* Cible explicitement nos liens d'action (Réinitialiser, Replier/Déplier...).
+     Nécessaire car le CSS France Travail applique color:inherit aux <a> sans
+     attribut href/class (a:not([href]):not([class])), plus spécifique que la
+     règle "a" ci-dessus : donner une classe à ces liens évite ce reset. */
+  .link-action{ color:var(--blue) !important; text-decoration:none; cursor:pointer; }
+  .link-action:hover{ text-decoration:underline; }
+  a:hover{ text-decoration:underline; }
+  #app{ padding:14px; }
+
+  .state-banner{ padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:10px; font-size:12.5px; }
+  .state-banner.info{  background:var(--blue-light); border:1px solid #C4D4F7; color:var(--info); }
+  .state-banner.error{ background:var(--red-light); border:1px solid #F5A39E; color:var(--red); }
+  .state-banner.warn{  background:var(--orange-light); border:1px solid #FFCC52; color:var(--orange); }
+
+  .header{
+    background:var(--bg-card); border:1px solid var(--border); border-top:4px solid var(--navy);
+    border-radius:var(--radius-box); box-shadow:var(--shadow-header); /* Drop-Shadow-Bottom : réservée aux en-têtes */
+    display:flex; align-items:center; justify-content:space-between; padding:var(--sp-s2) var(--sp-m1); margin-bottom:var(--sp-s1);
+  }
+  .header h1{
+    margin:0; font-size:20px; font-weight:700; color:var(--navy);
+    border-left:4px solid var(--blue); padding-left:12px;
+    font-family:var(--font-heading); /* Titre/h2 strong (22px/26px, Bold) */
+  }
+  .header .header-actions{ display:flex; align-items:center; gap:var(--sp-s1); }
+  /* .btn / .btn-primary / .btn-secondary : styles OFFICIELS fournis par le CDN
+     France Travail (styles.css) — on ne les redéfinit plus ici. On ajuste
+     seulement la hauteur pour rester compact dans ce petit widget. */
+  .btn{ --ft--button-height: 2rem; --ft--button-padding-x: 0.875rem; font-size:13px; }
+  .icon-btn{
+    border:1px solid var(--border); background:var(--bg-card); border-radius:50%;
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:14px; color:var(--text-muted);
+  }
+  .icon-btn:hover{ background:var(--bg-head); }
+
+  .widget-layout{ display:flex; gap:12px; align-items:flex-start; }
+
+  .filters{ width:250px; flex:0 0 250px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-box); box-shadow:var(--shadow-box); }
+  .filters-head{ display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--border); border-radius:var(--radius-box) var(--radius-box) 0 0; }
+  .filters-head .title{ font-weight:700; letter-spacing:.03em; font-size:12px; }
+  .filter-group{ padding:10px 14px 0 14px; }
+  .filter-group label{ display:block; font-size:12px; font-weight:600; margin-bottom:4px; }
+  .filter-group select{
+    width:100%; padding:7px 8px; border:1px solid var(--border); background-color:var(--bg-head);
+    border-radius:var(--radius-sm); font-size:13px; color:var(--text-main); margin-bottom:10px;
+    height:auto; line-height:1.4; /* évite le texte coupé (hauteur fixe officielle 2.5rem incompatible avec ce padding réduit) */
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; /* tronque avec "…" si le texte est trop long */
+  }
+
+  .widget-main{ flex:1 1 auto; min-width:0; }
+  .card{ background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-box); box-shadow:var(--shadow-box); margin-bottom:var(--sp-s1); overflow:hidden; }
+  .card-head{
+    display:flex; justify-content:space-between; align-items:center; background:var(--bg-head);
+    padding:10px 16px; border-bottom:1px solid var(--border);
+  }
+  .card-head .title{ font-weight:700; letter-spacing:.03em; font-size:12px; font-family:var(--font-heading); }
+
+  .synthese-body{ padding:var(--sp-m1); }
+  .synthese-top{ display:flex; gap:60px; flex-wrap:wrap; margin-bottom:18px; }
+  .stat-block .stat-count{ font-size:30px; font-weight:800; }
+  .stat-block .stat-count-label{ font-size:12px; color:var(--text-muted); margin-top:-4px; }
+  .stat-block .stat-amount{ font-size:26px; font-weight:800; margin-top:14px; }
+  .stat-block .stat-amount-label{ font-size:12px; color:var(--text-muted); }
+
+  .financeurs{ flex:1; min-width:260px; }
+  .financeurs .title{ font-weight:700; font-size:12px; letter-spacing:.03em; margin-bottom:8px; }
+  .financeurs table{ width:100%; border-collapse:collapse; }
+  .financeurs td{ padding:5px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .financeurs td.amount{ text-align:right; font-weight:600; white-space:nowrap; }
+
+  .pies-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  .pie-block .title{ font-weight:700; font-size:12px; letter-spacing:.03em; margin-bottom:10px; }
+  .pie-flex{ display:flex; align-items:flex-start; gap:16px; }
+  .pie-svg{ flex:0 0 auto; }
+  .pie-legend{ flex:1; font-size:12px; }
+  .pie-legend .legend-row{ display:flex; align-items:center; justify-content:space-between; padding:2px 0; }
+  .pie-legend .legend-label{ display:flex; align-items:center; gap:6px; }
+  .legend-swatch{ width:9px; height:9px; border-radius:2px; display:inline-block; flex:0 0 auto; }
+  .pie-legend .legend-value{ color:var(--text-main); font-weight:600; white-space:nowrap; padding-left:8px; }
+  .legend-row-autres{ cursor:pointer; font-weight:600; }
+  .legend-row-autres:hover{ text-decoration:underline; }
+  .legend-detail{ margin-left:15px; border-left:2px solid var(--border); padding-left:8px; margin-top:2px; }
+  .legend-row-sub{ display:flex; justify-content:space-between; padding:1px 0; color:var(--text-muted); font-size:11.5px; }
+
+  .list-head-row, .list-row{
+    display:grid; grid-template-columns: 1.1fr 0.9fr 1.0fr 0.9fr 2.2fr 84px; gap:14px; padding:18px 18px;
+  }
+  .list-head-row{ background:var(--bg-head); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; letter-spacing:.04em; }
+  .list-row{ border-bottom:1px solid var(--border); }
+  .list-row:last-child{ border-bottom:none; }
+
+  .th-cell{ display:flex; align-items:center; gap:var(--sp-xs1); }
+  /* ---- Icônes (classes fournies par votre bibliothèque d'icônes — le rendu
+     visuel dépend de la feuille de style/police d'icônes que vous chargez) --- */
+  .icon{ display:inline-block; width:1em; height:1em; line-height:1; vertical-align:middle; }
+  /* Deux icônes distinctes (haut/bas) empilées, plutôt qu'une seule icône
+     combinée retournée en CSS — un icône symétrique "haut+bas" ne montre
+     aucune différence visuelle une fois retourné, d'où l'ambiguïté du tri. */
+  .sort-btns{ display:inline-flex; flex-direction:column; gap:1px; margin-left:4px; line-height:0; }
+  .sort-icon{ cursor:pointer; color:#c2c6cd; font-size:15px; transition:color .15s ease; }
+  /* Bulle d'aide au survol (façon .tooltip officiel du Design System : fond
+     sombre, texte blanc, coins arrondis, petite flèche) — contient l'icône
+     de sens de tri + son explication. */
+  .sort-icon-wrap{ position:relative; display:inline-flex; }
+  .sort-tooltip{
+    display:none; position:absolute; top:50%; left:calc(100% + 8px); transform:translateY(-50%);
+    background:#171717; color:#fff; font-size:12px; font-weight:400; white-space:nowrap;
+    padding:.25rem .5rem; border-radius:4px; z-index:30; line-height:1.4;
+    align-items:center; gap:5px;
+  }
+  .sort-tooltip .icon{ font-size:11px; }
+  .sort-tooltip:after{
+    content:""; position:absolute; right:100%; top:50%; transform:translateY(-50%);
+    border-width:5px 5px 5px 0; border-style:solid; border-color:transparent #171717 transparent transparent;
+  }
+  .sort-icon-wrap:hover .sort-tooltip{ display:inline-flex; }
+  .sort-icon:hover{ color:var(--navy); }
+  .sort-icon.active{ color:var(--blue); }
+
+  /* Note : les <select> utilisent désormais la classe officielle "form-control"
+     du CDN France Travail, qui gère déjà nativement sa propre flèche
+     (icône intégrée en arrière-plan) — plus besoin d'habillage manuel ici. */
+
+  /* Habillage des <input type="date"> : masque l'icône native, affiche la nôtre,
+     et déclenche le sélecteur natif au clic (showPicker, si le navigateur le permet). */
+  .date-wrap{ position:relative; display:block; }
+  .date-wrap input[type="date"]{ width:100%; }
+  /* Préserve la largeur flexible du champ date lorsqu'il est encadré dans une
+     ligne STATUT (voir .statut-extra-inline) ou une ligne de financement. */
+  .statut-line .date-wrap{ flex:1; max-width:260px; }
+  .date-wrap input[type="date"]{ padding-right:26px !important; }
+  .date-wrap input[type="date"]::-webkit-calendar-picker-indicator{ opacity:0; position:absolute; right:0; width:26px; height:100%; cursor:pointer; }
+  .date-wrap .icon-calendar{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    pointer-events:none; color:var(--text-muted); font-size:12px;
+  }
+
+  .cell-primary{ font-weight:700; margin-bottom:3px; }
+  .cell-secondary{ color:var(--text-muted); font-size:12px; line-height:1.65; }
+
+  .btn-modifier{
+    font-size:12px; font-weight:600; cursor:pointer; border-radius:var(--radius-sm); padding:6px 10px;
+    background:var(--bg-card); border:1px solid var(--blue); color:var(--blue); white-space:nowrap;
+  }
+  .btn-modifier:hover{ background:var(--blue-light); }
+
+  .badge{ display:inline-block; padding:2px 9px; border-radius:12px; font-size:11px; font-weight:700; margin-bottom:8px; }
+  .badge-planifie{ background:var(--orange-light); color:var(--orange); }
+  .badge-realise{  background:var(--green-light);  color:var(--green); }
+  .badge-projet{   background:var(--info-light);   color:var(--info); }
+  .badge-annule{   background:var(--red-light);    color:var(--red); }
+  .badge-default{  background:#eee; color:#555; }
+
+  .progress-track{ width:100%; height:8px; background:#D5D8DE; border:1px solid #B9BEC7; border-radius:4px; margin:8px 0; overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--blue); }
+  .fin-line{ display:flex; justify-content:space-between; font-size:12px; padding:2px 0; }
+  .fin-line .famount{ font-weight:600; }
+  .fin-coverage{ font-size:11.5px; color:var(--text-muted); margin-bottom:3px; }
+
+  .empty-state{ padding:40px; text-align:center; color:var(--text-muted); }
+
+  /* ==========================================================================
+     7. PAGE / MODALE D'ÉDITION D'UNE ACTION
+     ========================================================================== */
+  .edit-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:flex-start; justify-content:center; z-index:60; overflow:auto; padding:26px 14px; }
+  .edit-panel{ background:#fff; width:980px; max-width:100%; border-radius:var(--radius-box); box-shadow:var(--shadow-box); padding:22px 26px 26px; }
+
+  .edit-header{ border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:18px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+  .edit-header-title{ min-width:0; } /* colonne gauche : lien retour + titre */
+  .edit-back{ font-size:13px; display:inline-flex; align-items:center; gap:var(--sp-xs1); margin-bottom:var(--sp-xs2); }
+  .edit-panel h2{
+    margin:0; font-size:24px; font-weight:700; color:var(--navy);
+    border-left:4px solid var(--blue); padding-left:12px;
+    font-family:var(--font-heading); /* Titre/h1 strong (24px/28px, Bold) */
+  }
+
+  .edit-cards-row{ display:grid; gap:16px; margin-bottom:16px; }
+  .edit-cards-row.row-top{ grid-template-columns: 2fr 1fr; align-items:start; }
+  .edit-side-col{ display:flex; flex-direction:column; gap:16px; }
+  .edit-readonly-line{ font-size:13.5px; color:var(--text-main); }
+  .edit-readonly-key{ color:var(--text-muted); }
+  .edit-cards-row.row-bottom{ grid-template-columns: 0.8fr 1.2fr; }
+
+  .edit-card{ border:1px solid var(--border); background:#fff; border-radius:var(--radius-box); box-shadow:var(--shadow-box); }
+  .edit-card-head{
+    background:var(--bg-head); padding:8px 14px; border-bottom:1px solid var(--border);
+    font-weight:700; font-size:12px; letter-spacing:.04em; color:var(--navy);
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--font-heading);
+    border-radius:var(--radius-box) var(--radius-box) 0 0; /* coins arrondis en haut, sans overflow:hidden sur .edit-card (qui coupait le menu Public) */
+  }
+  .edit-card-body{ padding:var(--sp-m1); }
+
+  .edit-field{ margin-bottom:12px; }
+  .edit-field label{ display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:4px; }
+  .edit-readonly{ font-size:13.5px; color:var(--text-main); }
+  .edit-field input, .edit-field select{
+    width:100%; padding:8px 9px; border:1px solid var(--border); border-radius:var(--radius-btn); font-size:13.5px;
+    height:auto; line-height:1.4; /* évite le texte coupé (hauteur fixe officielle 2.5rem incompatible avec ce padding réduit) */
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .edit-input-filled{ background-color:var(--bg-head); }
+  .multiselect{ position:relative; }
+  .multiselect-display{
+    /* Reprend EXACTEMENT le style des <select>/<input> ci-dessus (même boîte),
+       ET la même flèche officielle que les <select class="form-control">
+       (identique SVG en fond, pour une cohérence visuelle totale avec les filtres). */
+    width:100%; padding:8px 9px; padding-right:1.75rem; border:1px solid var(--border); border-radius:var(--radius-btn); font-size:13.5px;
+    box-sizing:border-box; display:block; cursor:pointer;
+    user-select:none; color:var(--text-main);
+    background-image:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+    background-repeat:no-repeat; background-position:right .5rem center;
+  }
+  .multiselect-display .multiselect-text{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .multiselect-panel{
+    position:absolute; top:calc(100% + 3px); left:0; right:0; background:#fff;
+    border:1px solid var(--border); border-radius:var(--radius-btn); padding:6px 4px; max-height:160px;
+    overflow:auto; z-index:20; box-shadow:var(--shadow-box); display:none;
+  }
+  .multiselect-panel.open{ display:block; }
+  .multiselect-panel label{
+    display:flex; align-items:center; padding:5px 8px; cursor:pointer; border-radius:3px;
+  }
+  .multiselect-panel label:hover{ background:var(--bg-head); }
+
+  /* ==========================================================================
+     Composant "liste déroulante personnalisée" — remplace les <select> natifs
+     (dont le panneau d'options n'est pas stylable en CSS, quel que soit le
+     navigateur). Réutilise les classes officielles .dropdown-menu/.dropdown-item
+     du CDN France Travail pour un rendu 100% conforme à la charte, avec une
+     taille FIXE (légèrement plus grande que le champ) et troncature "…".
+     ========================================================================== */
+  .ft-select{ position:relative; }
+  .ft-select-display{
+    width:100%; text-align:left; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    display:block; color:var(--text-main);
+    /* Style explicite (indépendant des tailles par défaut du .form-control officiel,
+       pour rester compact et cohérent avec le reste du widget), avec la MÊME
+       flèche officielle que les <select> (identique SVG en fond). */
+    font-size:13.5px; padding:8px 9px; padding-right:1.75rem; height:auto; line-height:1.4;
+    border:1px solid var(--border); border-radius:var(--radius-btn); background-color:#fff;
+    background-image:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+    background-repeat:no-repeat; background-position:right .5rem center;
+  }
+  .ft-select-display:focus{ outline:none; box-shadow:inset 0 0 0 .125rem var(--navy); }
+  .ft-select-menu{
+    display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:1000;
+    min-width:100%;
+  }
+  .ft-select-menu.show{ display:flex; flex-direction:column; } /* barre de recherche fixe + liste défilante */
+  .ft-select-search{
+    margin:2px 2px 4px; padding:6px 8px; font-size:12.5px; border:1px solid var(--border);
+    border-radius:var(--radius-btn); flex:0 0 auto;
+  }
+  .ft-select-search:focus{ outline:none; border-color:var(--navy); }
+  .ft-select-items{ overflow-y:auto; max-height:220px; }
+  .ft-select-menu .dropdown-item{
+    cursor:pointer; border-radius:4px; font-size:13px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .ft-select-menu .dropdown-item.active{ background-color:var(--navy); color:#fff; }
+  .ft-select-menu .dropdown-item-text{ display:block; padding:.25rem; color:var(--text-muted); font-style:italic; }
+  /* Colonne fixe pour la case à cocher : garantit un alignement identique sur
+     toutes les lignes, quelle que soit la longueur du texte à droite. */
+  .multiselect-panel label input[type="checkbox"]{ flex:0 0 16px; width:16px; height:16px; margin:0; }
+  .multiselect-panel label span{ flex:1; margin-left:8px; font-size:12.5px; }
+
+  /* ---- STATUT ---- */
+  .statut-head-row{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-bottom:8px; padding-right:4px; }
+  .statut-line{ display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+  .statut-radiobox{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:6px;
+    border:1px solid transparent; font-size:13.5px; cursor:pointer; color:var(--text-main);
+    flex:0 0 auto; min-width:120px;
+  }
+  .statut-radiobox input[type="radio"]{ cursor:pointer; }
+  .statut-radiobox.selected.pill-projet{   border-color:var(--info);   background:var(--info-light);   color:var(--info);   font-weight:600; }
+  .statut-radiobox.selected.pill-planifie{ border-color:var(--orange); background:var(--orange-light); color:var(--orange); font-weight:600; }
+  .statut-radiobox.selected.pill-realise{  border-color:var(--green);  background:var(--green-light);  color:var(--green);  font-weight:600; }
+  .statut-radiobox.selected.pill-annule{   border-color:var(--red);    background:var(--red-light);    color:var(--red);    font-weight:600; }
+  .statut-extra-inline{
+    flex:1; max-width:260px; background:var(--bg-head); border:1px solid var(--border);
+    border-bottom:2px solid #444; border-radius:3px; padding:8px 12px; font-size:13px; color:var(--text-main);
+    height:auto; line-height:1.4;
+  }
+  .statut-extra-inline:focus{ outline:none; border-bottom-color:var(--blue); }
+
+  /* ---- FINANCEMENT ---- */
+  .fin-summary{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); font-weight:400; }
+  .fin-summary strong{ font-weight:700; }
+  .fin-summary .progress-track{ width:80px; margin:0; }
+  .fin-body-flex{ display:flex; gap:20px; }
+  .fin-budget-col{ flex:0 0 140px; }
+  .fin-rows-col{ flex:1; min-width:0; }
+  .fin-rows-header{ display:grid; grid-template-columns: 1fr 110px 70px; gap:8px; font-size:11.5px; color:var(--text-muted); margin-bottom:5px; }
+  .fin-row{ display:grid; grid-template-columns: 1fr 110px 70px; gap:8px; align-items:center; margin-bottom:8px; }
+  .fin-row select, .fin-row input{
+    padding:7px 8px; border:1px solid var(--border); border-radius:var(--radius-btn); font-size:12.5px;
+    background-color:var(--bg-head); height:auto; line-height:1.4;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .btn-retirer{
+    font-size:12px; font-weight:600; color:var(--red); border:1px solid var(--red); background:#fff;
+    border-radius:var(--radius-btn); padding:5px 10px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-retirer:hover{ background:var(--red-light); }
+  .btn-add-financeur{
+    margin-top:6px; font-size:12.5px; font-weight:600; color:var(--blue); border:1px solid var(--blue);
+    background:#fff; border-radius:var(--radius-btn); padding:7px 10px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-add-financeur:hover{ background:var(--blue-light); }
+
+  .edit-actions{ display:flex; justify-content:flex-end; gap:var(--sp-s1); margin-top:var(--sp-xs2); }
+
+  @media (max-width: 900px){
+    .widget-layout{ flex-direction:column; }
+    .filters{ width:100%; flex:none; }
+    .pies-row{ grid-template-columns:1fr; }
+    .list-head-row, .list-row{ grid-template-columns:1fr; }
+    .edit-cards-row.row-top, .edit-cards-row.row-bottom{ grid-template-columns:1fr; }
+    .fin-body-flex{ flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div id="stateBanner"></div>
+  <div class="toaster top right" id="appToaster"></div>
+  <div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,.75); z-index:2000; align-items:center; justify-content:center;">
+    <ft-spinner size="default" label="Chargement en cours"></ft-spinner>
+  </div>
+
+  <div class="header">
+    <h1>Actions d'insertion par le sport</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary" id="btnExport" type="button"><span class="btn-content">Exporter (CSV)</span></button>
+    </div>
+  </div>
+
+  <div class="widget-layout">
+
+    <div class="filters">
+      <div class="filters-head">
+        <span class="title">FILTRES</span>
+        <a id="btnReset" class="link-action">Réinitialiser</a>
+      </div>
+      <div id="filtersBody"></div>
+      <div style="height:10px;"></div>
+    </div>
+
+    <div class="widget-main">
+
+      <div class="card">
+        <div class="card-head">
+          <span class="title">SYNTHÈSE</span>
+          <a id="btnCollapse" class="link-action">Déplier</a>
+        </div>
+        <div class="synthese-body" id="syntheseBody" style="display:none;">
+          <div class="synthese-top">
+            <div class="stat-block">
+              <div class="stat-count" id="statCount">0</div>
+              <div class="stat-count-label">actions</div>
+              <div class="stat-amount" id="statAmount">0 €</div>
+              <div class="stat-amount-label">financement global</div>
+            </div>
+            <div class="financeurs">
+              <div class="title">FINANCEURS</div>
+              <table><tbody id="financeursBody"></tbody></table>
+            </div>
+          </div>
+          <div class="pies-row">
+            <div class="pie-block">
+              <div class="title">RÉPARTITION PAR STATUT</div>
+              <div class="pie-flex" id="pieStatut"></div>
+            </div>
+            <div class="pie-block">
+              <div class="title">RÉPARTITION PAR DISPOSITIF</div>
+              <div class="pie-flex" id="pieDispositif"></div>
+            </div>
+            <div class="pie-block">
+              <div class="title">RÉPARTITION PAR FÉDÉRATION</div>
+              <div class="pie-flex" id="pieFederation"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="list-head-row" id="listHeadRow"><!-- généré par renderListHeader() (tri) --></div>
+        <div id="listBody"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================ MODALE D'ÉDITION D'UNE ACTION ============================ -->
+<div class="edit-overlay" id="editOverlay" style="display:none;">
+  <div class="edit-panel">
+
+    <div class="edit-header">
+      <div class="edit-header-title">
+        <a id="editBackLink" class="edit-back"><span aria-hidden="true" class="icon icon-arrow-left"></span> Actions d'insertion par le sport</a>
+        <h2 id="editTitle"></h2>
+      </div>
+      <div class="edit-actions">
+        <button class="btn btn-secondary" id="btnEditCancel" type="button"><span class="btn-content">Annuler</span></button>
+        <button class="btn btn-primary" id="btnEditSave" type="button"><span class="btn-content">Enregistrer</span></button>
+      </div>
+    </div>
+
+    <!-- Rangée 1 : ACTION (élargie) / AGENCE+CLUB (empilées) -->
+    <div class="edit-cards-row row-top">
+      <div class="edit-card">
+        <div class="edit-card-head">ACTION</div>
+        <div class="edit-card-body">
+          <div class="edit-field"><label class="form-label">Intitulé de l'action</label><input type="text" id="editIntitule" class="edit-input-filled form-control"></div>
+          <div class="edit-field"><label class="form-label">Dispositif</label><div class="ft-select" id="editDispositif"><button type="button" class="ft-select-display" id="editDispositif-display"></button><div class="dropdown-menu ft-select-menu" id="editDispositif-menu"></div></div></div>
+          <div class="edit-field"><label class="form-label">Nombre de participants</label><input type="number" id="editJauge" class="edit-input-filled form-control"></div>
+          <div class="edit-field">
+            <label class="form-label">Public</label>
+            <div class="multiselect" id="editPublicMulti">
+              <div class="multiselect-display edit-input-filled" id="editPublicDisplay"></div>
+              <div class="multiselect-panel" id="editPublicPanel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-side-col">
+        <div class="edit-card">
+          <div class="edit-card-head">AGENCE</div>
+          <div class="edit-card-body">
+            <div class="edit-field"><label class="form-label">Agence</label><div class="ft-select" id="editAgence"><button type="button" class="ft-select-display" id="editAgence-display"></button><div class="dropdown-menu ft-select-menu" id="editAgence-menu"></div></div></div>
+            <div class="edit-readonly-line"><span class="edit-readonly-key">DD :</span> <span id="editDD"></span></div>
+            <div class="edit-readonly-line"><span class="edit-readonly-key">DR :</span> <span id="editDR"></span></div>
+          </div>
+        </div>
+
+        <div class="edit-card">
+          <div class="edit-card-head">CLUB</div>
+          <div class="edit-card-body">
+            <div class="edit-readonly-line"><span class="edit-readonly-key">Club :</span> <span id="editClubReadonly"></span></div>
+            <div class="edit-readonly-line"><span class="edit-readonly-key">Ville :</span> <span id="editCommune"></span></div>
+            <div class="edit-readonly-line"><span class="edit-readonly-key">Fédération :</span> <span id="editFederation"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rangée 2 : STATUT / FINANCEMENT -->
+    <div class="edit-cards-row row-bottom">
+      <div class="edit-card">
+        <div class="edit-card-head">STATUT</div>
+        <div class="edit-card-body">
+          <div class="statut-head-row"><span>Statut de l'action</span><span id="editStatutExtraLabel"></span></div>
+          <div id="editStatutLines"></div>
+        </div>
+      </div>
+
+      <div class="edit-card">
+        <div class="edit-card-head">
+          <span>FINANCEMENT</span>
+          <span class="fin-summary">
+            Financé : <strong id="editFinance"></strong>
+            <span class="progress-track"><div class="progress-fill" id="editFinanceBar" style="width:0%;"></div></span>
+            Reste à financer : <strong id="editReste"></strong>
+          </span>
+        </div>
+        <div class="edit-card-body">
+          <div class="fin-body-flex">
+            <div class="fin-budget-col">
+              <div class="edit-field"><label class="form-label">Budget total (€)</label><input type="number" id="editBudget" class="edit-input-filled form-control"></div>
+              <button class="btn-add-financeur" id="btnAddFinanceur">+ Ajouter un financeur</button>
+            </div>
+            <div class="fin-rows-col">
+              <div class="fin-rows-header"><span>Financeur</span><span>Montant (€)</span><span></span></div>
+              <div id="editFinRows"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   1. CONFIGURATION DES TABLES SECONDAIRES
+   Valeurs par défaut = en-têtes exacts des fichiers CSV fournis.
+   ============================================================================ */
+const DEFAULT_CONFIG = {
+  agenceTable: 'Agences',
+  agence: { nom: 'Libellé agence', candidats: ['Code Aurore', 'Libellé agence'], dr: 'DR', dd: 'DD' },
+
+  structureTable: 'Structures',
+  structure: { nom: 'Nom', candidats: ['Nom', 'Sigle', 'SIRET'], insee: 'Code Insee' },
+
+  communeTable: 'Communes',
+  commune: { insee: 'Code Insee', libelle: 'Libellé Commune' },
+
+  dispositifTable: 'Dispositifs',
+  dispositif: { libelle: 'Dispositif', candidats: ['Code', 'Dispositif'] },
+
+  cofinTable: 'Cofinancements',
+  cofin: { projet: 'Projet', a: 'A', financement: 'Financement', montant: 'Montant' },
+
+  // Tables de référence supplémentaires : certaines colonnes ne sont pas du
+  // texte mais des références vers des tables à une seule colonne "Nom".
+  financeurTable: 'Financeurs',
+  financeur: { nom: 'Nom' },
+
+  ddTable: 'DD',
+  ddLookup: { nom: 'Nom' },
+
+  drTable: 'DR',
+  drLookup: { nom: 'Nom' }
+};
+
+// ============================================================================
+// Détection AUTOMATIQUE des colonnes de la table Actions (celle attachée au
+// widget), par nom réel — plutôt qu'un mapping manuel à configurer dans Grist
+// (source d'erreur humaine, cf. le bug "Date"/mapping vide). Pour chaque champ
+// logique, on essaie chaque variante de libellé possible, en ignorant accents/
+// casse/espaces (comme partout ailleurs dans ce widget). Vous pouvez ajouter
+// vos propres variantes ici si vos colonnes portent un nom différent.
+// ============================================================================
+const ACTIONS_FIELD_CANDIDATES = {
+  id:         ['A', 'Id', 'Identifiant', 'Référence', 'Reference'],
+  intitule:   ['Intitulé', 'Intitule', 'Titre', "Nom de l'action", 'Action', 'Libellé'],
+  club:       ['Club'],
+  agence:     ['Agence'],
+  dispositif: ['Dispositif'],
+  federation: ['Fédération', 'Federation'],
+  jauge:      ['Jauge', 'Participants', 'Nombre de participants'],
+  statut:     ['Statut'],
+  date:       ['Date'],
+  periode:    ['Période approx', 'Periode approx', 'Période', 'Periode', 'Periode_approx', 'Période_approx'],
+  budget:     ['Budget'],
+  code:       ['Code'],
+  public:     ['Public']
+};
+// Résout, pour un enregistrement brut Grist donné (clés = vrais colId), le
+// nom de colonne réel correspondant à chaque champ logique ci-dessus.
+function resolveActionsFieldMap(sampleRecord){
+  const keys = Object.keys(sampleRecord || {});
+  const map = {};
+  Object.keys(ACTIONS_FIELD_CANDIDATES).forEach(logicalKey => {
+    let found = null;
+    for (const cand of ACTIONS_FIELD_CANDIDATES[logicalKey]){
+      const target = normalize(cand);
+      found = keys.find(k => normalize(k) === target);
+      if (found) break;
+    }
+    map[logicalKey] = found; // null si aucune colonne correspondante trouvée
+  });
+  return map;
+}
+
+let CONFIG = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+function deepMerge(base, override){
+  if (!override) return base;
+  const out = Array.isArray(base) ? [...base] : {...base};
+  for (const k in override){
+    if (override[k] && typeof override[k] === 'object' && !Array.isArray(override[k])){
+      out[k] = deepMerge(base[k] || {}, override[k]);
+    } else {
+      out[k] = override[k];
+    }
+  }
+  return out;
+}
+
+/* ============================================================================
+   2. ÉTAT GLOBAL
+   ============================================================================ */
+const state = {
+  actionRecords: [],
+  rawTables: { agence:null, structure:null, commune:null, dispositif:null, cofin:null,
+               financeur:null, ddTable:null, drTable:null, ready:false },
+  cofinRows: [],
+  joined: [],
+  filters: { dr:'', dd:'', agence:'', federation:'', club:'', dispositif:'', statut:'', financement:'' },
+  collapsed: true, // synthèse repliée par défaut au chargement
+  sort: { key: null, dir: 'asc' },
+  editing: null, // action en cours d'édition (null si la modale est fermée)
+  // Nombre d'enregistrements actuellement en cours d'écriture vers Grist (mise
+  // à jour optimiste). Pendant ce laps de temps, on IGNORE les notifications
+  // onRecords entrantes : Grist peut renvoyer un instantané encore ancien
+  // (l'écriture n'étant pas terminée côté serveur), ce qui écraserait sinon
+  // notre affichage local déjà à jour par des valeurs pas encore modifiées —
+  // symptôme observé : "le changement n'apparaît que quand c'est bien changé
+  // dans la table".
+  savesInFlight: 0
+};
+
+// Palette des camemberts : reprend les couleurs "Décoratives" du Design
+// System France Travail (nuances -50, choisies pour leur bon contraste en
+// aplat), afin que les graphiques restent cohérents avec la charte.
+const PALETTE = [
+  '#283276', // france-travail-50 (primaire)
+  '#0B43B4', // blue-50
+  '#068148', // green-50
+  '#AE6200', // orange-50
+  '#BA251A', // red-50
+  '#69408C', // purple-40 (decorative)
+  '#933366', // pink-50 (decorative)
+  '#DF6E00', // yellow-50 (decorative)
+  '#90897E', // sand-50 (decorative)
+  '#5B5D65'  // gray-70 (neutral, repli)
+];
+
+/* ============================================================================
+   3. OUTILS GÉNÉRIQUES
+   ============================================================================ */
+const NA = '—';
+
+function safe(v, fallback = NA){
+  if (v === null || v === undefined) return fallback;
+  const s = String(v).trim();
+  return s === '' ? fallback : s;
+}
+// Retire un préfixe "DD"/"DR" en tête de valeur (ex. "DD Alpes-Maritimes" ->
+// "Alpes-Maritimes"), avec ou sans séparateur (espace, tiret, deux-points).
+// Si la valeur ne commence pas par ce préfixe, elle est renvoyée telle quelle.
+function stripDdDrPrefix(v){
+  if (v === null || v === undefined) return v;
+  return String(v).replace(/^(DD|DR)\s*[-:]?\s*/i, '').trim() || v;
+}
+// Met en forme un texte : première lettre en majuscule, le reste en minuscule.
+// Utilisé pour toutes les colonnes du tableau SAUF la colonne Agence.
+function capitalize(v){
+  if (v === null || v === undefined) return v;
+  const s = String(v);
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+function euro(n){
+  n = Number(n) || 0;
+  return n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €';
+}
+function formatDate(d){
+  if (d === null || d === undefined || d === '') return NA;
+  if (Array.isArray(d)) {
+    if (d[0] === 'D' || d[0] === 'DateTime') d = d[1];
+    else return String(d);
+  }
+  // Colonne TEXTE au format français "JJ-MM-AAAA" ou "JJ/MM/AAAA" (ambigu
+  // pour new Date()) : on la reconnaît explicitement avant le parsing générique.
+  if (typeof d === 'string') {
+    const m = d.trim().match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (m) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+  }
+  let date;
+  if (typeof d === 'number') date = new Date(d * 1000);
+  else date = new Date(d);
+  if (isNaN(date.getTime())) return String(d);
+  return date.toLocaleDateString('fr-FR');
+}
+// Convertit une référence Grist (rowId simple, tableau typé ou objet {rowId}) en id numérique.
+function refToId(v){
+  if (v === null || v === undefined) return null;
+  if (Array.isArray(v)) return v[v.length - 1];
+  if (typeof v === 'object' && 'rowId' in v) return v.rowId;
+  return v;
+}
+
+// ----------------------------------------------------------------------------
+// Recherche de colonne "tolérante" : les identifiants de colonnes (colId) de
+// Grist ne contiennent jamais d'espaces ni d'accents (ex: "Libellé agence"
+// devient souvent "Libell_agence" en interne). On ne peut donc pas se fier à
+// une correspondance exacte avec le libellé affiché. normalize() met tout en
+// minuscules et retire accents/espaces/tirets/underscores pour comparer.
+// ----------------------------------------------------------------------------
+function normalize(s){
+  return String(s === null || s === undefined ? '' : s)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ''); // retire espaces, underscores, tirets, apostrophes...
+}
+// Retrouve, dans une table columnaire retournée par fetchTable(), la clé
+// réelle correspondant à un libellé attendu (ex: "Code Insee"), même si le
+// colId technique diffère par les accents/espaces. Retourne null si absent.
+function getColKey(tbl, desiredLabel){
+  if (!tbl || !desiredLabel) return null;
+  if (Object.prototype.hasOwnProperty.call(tbl, desiredLabel)) return desiredLabel;
+  const target = normalize(desiredLabel);
+  return Object.keys(tbl).find(k => normalize(k) === target) || null;
+}
+// Lit la valeur d'une "colonne logique" (par libellé) à l'index donné, en
+// utilisant la résolution tolérante ci-dessus. Retourne null si introuvable.
+function readCol(tbl, desiredLabel, index){
+  const key = getColKey(tbl, desiredLabel);
+  return (key && tbl[key]) ? tbl[key][index] : null;
+}
+function groupCount(list, keyFn){
+  const map = new Map();
+  list.forEach(item => {
+    const k = keyFn(item) || NA;
+    map.set(k, (map.get(k) || 0) + 1);
+  });
+  return [...map.entries()].map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || String(a.label).localeCompare(String(b.label)));
+}
+function uniqueSorted(list, keyFn){
+  return [...new Set(list.map(keyFn).filter(v => v && v !== NA))]
+    .sort((a, b) => String(a).localeCompare(String(b)));
+}
+// Décode une valeur "ChoiceList" Grist (multi-choix). Grist encode ce type
+// sous forme de tableau taggé ['L', valeur1, valeur2, ...] ; certaines
+// versions renvoient déjà un simple tableau. Sans ce décodage, chaque action
+// produit un tableau JS distinct, donc un Set ne peut jamais les dédupliquer
+// correctement — c'est ce qui causait les doublons "Homme, Homme, Homme...".
+function parseChoiceList(raw){
+  if (raw === null || raw === undefined || raw === '') return [];
+  if (Array.isArray(raw)){
+    if (raw.length && raw[0] === 'L') return raw.slice(1);
+    return raw;
+  }
+  return [String(raw)];
+}
+// Reconstruit le format attendu par Grist pour écrire une ChoiceList.
+function formatChoiceList(values){
+  return ['L', ...values];
+}
+// Unique + tri, mais pour un champ multi-valeurs (tableau par élément) :
+// aplatit toutes les valeurs de tous les éléments avant de dédupliquer.
+function uniqueFlatSorted(list, keyFn){
+  const set = new Set();
+  list.forEach(item => (keyFn(item) || []).forEach(v => {
+    if (v !== null && v !== undefined && v !== '') set.add(v);
+  }));
+  return [...set].sort((a, b) => String(a).localeCompare(String(b)));
+}
+function escapeHtml(s){
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[c]);
+}
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(cell => {
+    const s = (cell === null || cell === undefined) ? '' : String(cell);
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function showBanner(kind, text){
+  const el = document.getElementById('stateBanner');
+  if (!text){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="state-banner ${kind}">${escapeHtml(text)}</div>`;
+}
+
+// Affiche un toast officiel France Travail (succès/erreur) dans le coin
+// supérieur droit, qui se ferme automatiquement après quelques secondes.
+function showToast(kind, title, message){
+  const container = document.getElementById('appToaster');
+  if (!container) return;
+  const el = document.createElement('ft-alert');
+  el.className = 'alert alert-toast'; // classes officielles (composant + variante toast)
+  el.setAttribute('version', kind); // 'success' ou 'error'
+  // Style de repli explicite : garantit un affichage visible IMMÉDIATEMENT,
+  // que le composant officiel se charge correctement ou non (l'attente de
+  // son chargement asynchrone s'est révélée peu fiable — le toast pouvait ne
+  // plus s'afficher du tout).
+  const bg = kind === 'success' ? '#ECFDF3' : '#FFECEB';
+  const accent = kind === 'success' ? '#068148' : '#BA251A';
+  el.style.display = 'block';
+  el.style.background = bg;
+  el.style.borderRadius = '12px';
+  el.style.padding = '12px 16px';
+  el.style.width = '300px';
+  el.style.boxShadow = '0 3px 7px -1px rgba(15,20,56,.2)';
+  el.style.fontFamily = 'var(--font-body)';
+  el.innerHTML = `<p class="alert-title" style="margin:0; font-weight:700; color:${accent};">${escapeHtml(title)}</p><p class="alert-content" style="margin:4px 0 0; color:var(--text-main);">${escapeHtml(message)}</p>`;
+  container.appendChild(el);
+  setTimeout(() => { el.remove(); }, 5000);
+}
+
+/* ============================================================================
+   4. RÉSOLUTION GÉNÉRIQUE D'UNE VALEUR VERS UNE LIGNE D'UNE AUTRE TABLE
+   Teste d'abord la valeur comme rowId Grist, puis comme correspondance
+   textuelle sur une liste de colonnes candidates. Retourne l'index de ligne
+   trouvé (dans les tableaux "columnaires" retournés par fetchTable), ou null.
+   ============================================================================ */
+function findRowIndex(table, rawValue, candidateCols){
+  if (!table || rawValue === null || rawValue === undefined || rawValue === '') return null;
+
+  // 1) Essai en tant que référence Grist (rowId)
+  const asId = refToId(rawValue);
+  if (asId !== null && table.id){
+    const idx = table.id.indexOf(asId);
+    if (idx !== -1) return idx;
+  }
+
+  // 2) Essai en tant que correspondance textuelle sur les colonnes candidates
+  //    (résolution tolérante des noms de colonnes via getColKey).
+  const strVal = String(rawValue).trim().toLowerCase();
+  for (const col of (candidateCols || [])){
+    const realKey = getColKey(table, col);
+    if (!realKey) continue;
+    const colData = table[realKey];
+    const idx = colData.findIndex(v => v !== null && v !== undefined && String(v).trim().toLowerCase() === strVal);
+    if (idx !== -1) return idx;
+  }
+  return null;
+}
+
+// Résout une valeur (rowId ou texte) vers le libellé "Nom" d'une table de
+// référence à une seule colonne significative (ex: DD, DR, Financeurs).
+// Retourne null si la table est absente ou si aucune correspondance trouvée
+// (l'appelant décide alors d'afficher la valeur brute en repli).
+function resolveLookupLabel(tbl, rawValue, nomLabel, index){
+  const idx = index ? indexedFindRowIndex(tbl, rawValue, index) : findRowIndex(tbl, rawValue, [nomLabel]);
+  if (idx === null) return null;
+  return readCol(tbl, nomLabel, idx);
+}
+
+/* ============================================================================
+   5. CHARGEMENT DES TABLES SECONDAIRES
+   ============================================================================ */
+async function loadLookupTables(){
+  const [agenceTbl, structureTbl, communeTbl, dispositifTbl, cofinTbl, financeurTbl, ddTbl, drTbl] = await Promise.all([
+    grist.docApi.fetchTable(CONFIG.agenceTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.structureTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.communeTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.dispositifTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.cofinTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.financeurTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.ddTable).catch(() => null),
+    grist.docApi.fetchTable(CONFIG.drTable).catch(() => null)
+  ]);
+
+  state.rawTables = {
+    agence: agenceTbl, structure: structureTbl, commune: communeTbl, dispositif: dispositifTbl, cofin: cofinTbl,
+    financeur: financeurTbl, ddTable: ddTbl, drTable: drTbl, ready: true
+  };
+
+  // Index de recherche construits UNE SEULE FOIS ici (pas à chaque rendu) —
+  // voir resolveAgence/resolveStructure/resolveDispositif/resolveCommune,
+  // qui font ce lookup pour CHAQUE action à CHAQUE rendu : sans cet index,
+  // chaque rendu redevient un parcours complet de ces tables pour chaque
+  // ligne (très lent dès que le nombre d'actions ou de lignes grandit).
+  state.agenceIndex = buildLookupIndex(agenceTbl, CONFIG.agence.candidats);
+  state.structureIndex = buildLookupIndex(structureTbl, CONFIG.structure.candidats);
+  state.dispositifIndex = buildLookupIndex(dispositifTbl, CONFIG.dispositif.candidats);
+  state.ddIndex = buildLookupIndex(ddTbl, [CONFIG.ddLookup.nom]);
+  state.drIndex = buildLookupIndex(drTbl, [CONFIG.drLookup.nom]);
+  state.financeurIndex = buildLookupIndex(financeurTbl, [CONFIG.financeur.nom]);
+  state.communeIndex = new Map();
+  if (communeTbl){
+    const inseeKey = getColKey(communeTbl, CONFIG.commune.insee);
+    if (inseeKey){
+      const n = (communeTbl.id || []).length;
+      for (let i = 0; i < n; i++){
+        const v = communeTbl[inseeKey][i];
+        if (v === null || v === undefined || v === '') continue;
+        state.communeIndex.set(normalize(String(v)), i);
+      }
+    }
+  }
+
+  rebuildCofinRows();
+}
+
+function rebuildCofinRows(){
+  const cofinTbl = state.rawTables.cofin;
+  const financeurTbl = state.rawTables.financeur;
+  // Cofinancements : liste "plate", avec résolution tolérante des colonnes
+  // ET résolution du Financeur (référence vers la table "Financeurs" -> "Nom").
+  const cofinRows = [];
+  if (cofinTbl){
+    const CF = CONFIG.cofin;
+    const n = (cofinTbl.id || []).length;
+    for (let i = 0; i < n; i++){
+      const rawFinancement = readCol(cofinTbl, CF.financement, i);
+      const financementLabel = resolveLookupLabel(financeurTbl, rawFinancement, CONFIG.financeur.nom, state.financeurIndex);
+      cofinRows.push({
+        id:          cofinTbl.id[i],
+        projet:      readCol(cofinTbl, CF.projet, i),
+        cofinA:      readCol(cofinTbl, CF.a, i),
+        rawFinancement: rawFinancement, // valeur brute (rowId ou texte) — nécessaire pour l'édition
+        financement: financementLabel || rawFinancement, // repli sur la valeur brute si non résolue
+        montant:     Number(readCol(cofinTbl, CF.montant, i)) || 0
+      });
+    }
+  }
+  state.cofinRows = cofinRows;
+  rebuildCofinIndex();
+}
+
+// Reconstruit UNIQUEMENT les index de recherche (Map) à partir de
+// state.cofinRows déjà en mémoire — rapide (pas de lecture de table), utilisé
+// après une modification locale (voir la sauvegarde) pour ne pas avoir à tout
+// redériver depuis la table brute Grist.
+function rebuildCofinIndex(){
+  const cofinRows = state.cofinRows;
+  // Index pour un rapprochement O(1) au lieu d'un parcours complet de TOUS
+  // les cofinancements pour CHAQUE action (voir findCofinancements) — cela
+  // évite un ralentissement notable dès que la table Cofinancements contient
+  // beaucoup de lignes.
+  const byProjetVal = new Map();   // valeur "Projet" (texte, normalisée) -> [cofinRows]
+  const byProjetRowId = new Map(); // rowId Grist référencé par "Projet"    -> [cofinRows]
+  const byCofinA = new Map();      // valeur "A" (texte, normalisée)       -> [cofinRows]
+  cofinRows.forEach(c => {
+    if (c.projet !== null && c.projet !== undefined){
+      const key = String(c.projet).trim().toLowerCase();
+      if (!byProjetVal.has(key)) byProjetVal.set(key, []);
+      byProjetVal.get(key).push(c);
+      const rid = refToId(c.projet);
+      if (rid !== null && rid !== undefined){
+        if (!byProjetRowId.has(rid)) byProjetRowId.set(rid, []);
+        byProjetRowId.get(rid).push(c);
+      }
+    }
+    if (c.cofinA !== null && c.cofinA !== undefined){
+      const key = String(c.cofinA).trim().toLowerCase();
+      if (!byCofinA.has(key)) byCofinA.set(key, []);
+      byCofinA.get(key).push(c);
+    }
+  });
+  state.cofinIndex = { byProjetVal, byProjetRowId, byCofinA };
+}
+
+/* ============================================================================
+   6. JOINTURE : Action -> Agence / Structure(Club) -> Commune / Dispositif
+   ============================================================================ */
+// Construit un index { byRowId: Map, byText: Map } pour une table et une
+// liste de colonnes candidates — permet une recherche en O(1) au lieu d'un
+// parcours complet de la table à CHAQUE ligne d'action, à CHAQUE rendu (voir
+// resolveAgence/resolveStructure/resolveDispositif ci-dessous). C'est le
+// même principe que l'index déjà appliqué aux Cofinancements.
+function buildLookupIndex(table, candidateCols){
+  const byRowId = new Map();
+  const byText = new Map();
+  if (!table) return { byRowId, byText };
+  const n = (table.id || []).length;
+  for (let i = 0; i < n; i++) byRowId.set(table.id[i], i);
+  candidateCols.forEach(col => {
+    const key = getColKey(table, col);
+    if (!key) return;
+    for (let i = 0; i < n; i++){
+      const v = table[key][i];
+      if (v === null || v === undefined || v === '') continue;
+      const norm = normalize(String(v));
+      if (!byText.has(norm)) byText.set(norm, i);
+    }
+  });
+  return { byRowId, byText };
+}
+// Équivalent indexé de findRowIndex() (même logique : rowId d'abord, puis
+// correspondance texte), mais en O(1) grâce à l'index précalculé.
+function indexedFindRowIndex(table, rawValue, index){
+  if (!table || rawValue === null || rawValue === undefined || rawValue === '' || !index) return null;
+  const asId = refToId(rawValue);
+  if (asId !== null && index.byRowId.has(asId)) return index.byRowId.get(asId);
+  const norm = normalize(String(rawValue));
+  return index.byText.has(norm) ? index.byText.get(norm) : null;
+}
+
+function resolveAgence(rawAgenceValue){
+  const tbl = state.rawTables.agence;
+  const AG = CONFIG.agence;
+  const idx = indexedFindRowIndex(tbl, rawAgenceValue, state.agenceIndex);
+  if (idx === null) return { nom: null, dr: null, dd: null };
+
+  const rawDr = readCol(tbl, AG.dr, idx);
+  const rawDd = readCol(tbl, AG.dd, idx);
+  // DD et DR peuvent être de simples valeurs texte OU des références vers les
+  // tables "DD" / "DR" (à colonne "Nom") : on tente la résolution, avec repli
+  // sur la valeur brute si la table est absente ou si rien ne correspond.
+  const drLabel = resolveLookupLabel(state.rawTables.drTable, rawDr, CONFIG.drLookup.nom, state.drIndex);
+  const ddLabel = resolveLookupLabel(state.rawTables.ddTable, rawDd, CONFIG.ddLookup.nom, state.ddIndex);
+
+  return {
+    nom: readCol(tbl, AG.nom, idx),
+    dr:  drLabel || rawDr,
+    dd:  ddLabel || rawDd
+  };
+}
+function resolveStructure(rawClubValue){
+  const tbl = state.rawTables.structure;
+  const ST = CONFIG.structure;
+  const idx = indexedFindRowIndex(tbl, rawClubValue, state.structureIndex);
+  if (idx === null) return { nom: null, insee: null };
+  return {
+    nom:   readCol(tbl, ST.nom, idx),
+    insee: readCol(tbl, ST.insee, idx)
+  };
+}
+function resolveCommune(insee){
+  const tbl = state.rawTables.commune;
+  const CO = CONFIG.commune;
+  if (!tbl || insee === null || insee === undefined || insee === '' || !state.communeIndex) return null;
+  const idx = state.communeIndex.get(normalize(String(insee)));
+  if (idx === undefined) return null;
+  return readCol(tbl, CO.libelle, idx);
+}
+function resolveDispositif(rawDispositifValue){
+  const tbl = state.rawTables.dispositif;
+  const DI = CONFIG.dispositif;
+  const idx = indexedFindRowIndex(tbl, rawDispositifValue, state.dispositifIndex);
+  if (idx === null) return null;
+  return readCol(tbl, DI.libelle, idx);
+}
+
+// Recherche tous les cofinancements correspondant à une action donnée, en
+// testant plusieurs stratégies de rapprochement (voir loadLookupTables) :
+//   1. Cofinancement.Projet == Action.A          (comparaison par valeur)
+//   2. Cofinancement.Projet == rowId Grist de l'action (si Projet est une vraie référence)
+//   3. Cofinancement.A      == Action.Code        (comparaison par valeur)
+function findCofinancements(rec){
+  const aVal   = rec.id   !== undefined && rec.id   !== null ? String(rec.id).trim().toLowerCase()   : null;
+  const codeVal= rec.code !== undefined && rec.code !== null ? String(rec.code).trim().toLowerCase() : null;
+  const rowId  = rec._gristRowId;
+
+  const idx = state.cofinIndex;
+  if (!idx){
+    // Filet de sécurité si l'index n'a pas encore été construit (ne devrait
+    // pas arriver en usage normal, loadLookupTables s'exécutant avant tout rendu).
+    return [];
+  }
+  const seen = new Set(); // évite les doublons si une ligne correspond via plusieurs stratégies
+  const results = [];
+  const addAll = (list) => {
+    if (!list) return;
+    list.forEach(c => { if (!seen.has(c.id)) { seen.add(c.id); results.push(c); } });
+  };
+  if (aVal !== null) addAll(idx.byProjetVal.get(aVal));
+  if (rowId !== null && rowId !== undefined) addAll(idx.byProjetRowId.get(rowId));
+  if (codeVal !== null) addAll(idx.byCofinA.get(codeVal));
+
+  return results.map(c => ({ id: c.id, rawFinancement: c.rawFinancement, financement: c.financement, montant: c.montant }));
+}
+
+function buildJoinedActions(){
+  state.joined = state.actionRecords.map(rec => {
+    const agenceInfo = resolveAgence(rec.agence);
+    const structureInfo = resolveStructure(rec.club);
+    const commune = structureInfo.insee ? resolveCommune(structureInfo.insee) : null;
+    const dispositifLabel = resolveDispositif(rec.dispositif);
+    const cofinancements = findCofinancements(rec);
+
+    return {
+      rowId: rec._gristRowId,
+      A: rec.id,
+      intitule:   rec.intitule,
+      // Nom du club : celui trouvé dans la table Structures ; à défaut, la valeur brute de l'action.
+      club:       structureInfo.nom || rec.club,
+      dispositif: dispositifLabel || rec.dispositif,
+      federation: rec.federation,
+      jauge:      rec.jauge,
+      statut:     rec.statut,
+      date:       rec.date,
+      periode:    rec.periode,
+      budget:     Number(rec.budget) || 0,
+      public:     parseChoiceList(rec.public),
+      // Nom de l'agence : celui trouvé dans la table Agences ; à défaut, la valeur brute de l'action.
+      agenceNom:  agenceInfo.nom || rec.agence,
+      dr:         agenceInfo.dr,
+      dd:         agenceInfo.dd,
+      commune:    commune,
+      cofinancements
+    };
+  });
+}
+
+function recomputeAndRender(){
+  if (!state.rawTables.ready) return;
+  buildJoinedActions();
+  renderAll();
+}
+
+/* ============================================================================
+   7. FILTRAGE (côté client, en complément du filtrage/tri natif de Grist)
+   ============================================================================ */
+// Détecte un statut "Annulé" de façon tolérante (accents/casse).
+function isAnnule(statut){
+  return normalize(statut).startsWith('annul');
+}
+
+// Applique les filtres actifs à state.joined, à l'exception éventuelle d'une
+// clé donnée (utilisé pour construire des filtres en cascade : les options
+// proposées pour un filtre tiennent compte de TOUS LES AUTRES filtres actifs).
+function applyFilters(list, excludeKey){
+  const f = state.filters;
+  return list.filter(a => {
+    if (excludeKey !== 'dr'          && f.dr          && a.dr !== f.dr) return false;
+    if (excludeKey !== 'dd'          && f.dd          && a.dd !== f.dd) return false;
+    if (excludeKey !== 'agence'      && f.agence      && a.agenceNom !== f.agence) return false;
+    if (excludeKey !== 'federation'  && f.federation  && a.federation !== f.federation) return false;
+    if (excludeKey !== 'club'        && f.club        && a.club !== f.club) return false;
+    if (excludeKey !== 'dispositif'  && f.dispositif  && a.dispositif !== f.dispositif) return false;
+    if (excludeKey !== 'statut'      && f.statut      && a.statut !== f.statut) return false;
+    if (excludeKey !== 'financement' && f.financement && !a.cofinancements.some(c => c.financement === f.financement)) return false;
+    return true;
+  });
+}
+function getFilteredActions(){
+  return applyFilters(state.joined, null);
+}
+
+/* ============================================================================
+   8. CAMEMBERTS SVG
+   ============================================================================ */
+function polarToCartesian(cx, cy, r, angleDeg){
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function arcPath(cx, cy, r, startAngle, endAngle){
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArc = (endAngle - startAngle) <= 180 ? '0' : '1';
+  return `M ${cx} ${cy} L ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)} Z`;
+}
+function buildPieSVG(entries, size = 90){
+  const r = size / 2, cx = r, cy = r;
+  const total = entries.reduce((s, e) => s + e.count, 0) || 1;
+  let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+  if (entries.length === 1){
+    svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${entries[0].color}"></circle>`;
+  } else {
+    let angle = 0;
+    entries.forEach(e => {
+      const sweep = (e.count / total) * 360;
+      svg += `<path d="${arcPath(cx, cy, r, angle, angle + sweep)}" fill="${e.color}"></path>`;
+      angle += sweep;
+    });
+  }
+  svg += `</svg>`;
+  return svg;
+}
+// Découpe la légende (affichage seulement) au-delà de "maxVisible" catégories :
+// les suivantes sont listées dans un accordéon "Autres", repliable. Le
+// GRAPHIQUE, lui, garde systématiquement TOUTES les catégories réelles —
+// seule la légende masque les éléments secondaires pour rester lisible.
+function splitLegend(grouped, maxVisible = 10){
+  if (grouped.length <= maxVisible) return { visible: grouped, hidden: null };
+  return { visible: grouped.slice(0, maxVisible), hidden: grouped.slice(maxVisible) };
+}
+
+// État d'ouverture du groupe "Autres" par camembert (persiste tant que le
+// widget reste ouvert, y compris à travers les rafraîchissements de filtres).
+const piesOpenState = {};
+
+function renderPieBlock(containerId, actions, keyFn, autresLabel = 'Autres'){
+  const isOpen = !!piesOpenState[containerId];
+  const grouped = groupCount(actions, keyFn);
+  const total = grouped.reduce((s, e) => s + e.count, 0) || 1;
+  // Couleur "réelle" de chaque catégorie (celle qu'elle garde une fois dépliée).
+  const realColored = grouped.map((e, i) => ({ ...e, color: PALETTE[i % PALETTE.length] }));
+
+  // Seule la LÉGENDE est tronquée pour rester lisible ; l'excédent va dans
+  // un accordéon "Autres" dépliable.
+  const { visible, hidden } = splitLegend(realColored);
+  // Couleur unique et neutre représentant le groupe "Autres" replié.
+  const AUTRES_COLOR = '#8A8D96';
+
+  // Le CAMEMBERT est dynamique : replié, toutes les parts du groupe "Autres"
+  // prennent la même couleur neutre (elles apparaissent visuellement comme
+  // une seule part) ; déplié, chacune reprend sa vraie couleur individuelle.
+  //
+  // Important : replié, on ne se contente pas de colorer les parts en gris —
+  // on les FUSIONNE en une unique part (une seule entrée dans le tableau
+  // passé au SVG), sinon les traits de séparation entre parts adjacentes de
+  // même couleur restent visibles (artefact de rendu SVG). Une vraie part
+  // unique n'a, par définition, aucune délimitation interne.
+  let pieColored;
+  if (hidden && !isOpen){
+    const autresCount = hidden.reduce((s, e) => s + e.count, 0);
+    pieColored = [...visible, { label: autresLabel, count: autresCount, color: AUTRES_COLOR }];
+  } else {
+    pieColored = realColored; // déplié (ou pas de groupe "Autres") : chaque part individuelle
+  }
+
+  const legendRow = (e) => {
+    const pct = Math.round((e.count / total) * 100);
+    return `<div class="legend-row">
+              <span class="legend-label">
+                <span class="legend-swatch" style="background:${e.color}"></span>${escapeHtml(e.label)}
+              </span>
+              <span class="legend-value">${e.count} (${pct}%)</span>
+            </div>`;
+  };
+
+  const visibleHtml = visible.map(legendRow).join('');
+
+  let hiddenHtml = '';
+  if (hidden){
+    const hiddenTotal = hidden.reduce((s, e) => s + e.count, 0);
+    const hiddenPct = Math.round((hiddenTotal / total) * 100);
+    // Flèche : vers le HAUT quand replié, vers le BAS quand déplié.
+    const arrow = isOpen ? '▾' : '▴';
+    hiddenHtml = `<div class="legend-row legend-row-autres" data-autres-toggle="${containerId}">
+         <span class="legend-label"><span class="legend-swatch" style="background:${AUTRES_COLOR}"></span>${escapeHtml(autresLabel)} (${hidden.length}) ${arrow}</span>
+         <span class="legend-value">${hiddenTotal} (${hiddenPct}%)</span>
+       </div>
+       <div class="legend-detail" id="${containerId}-detail" style="display:${isOpen ? 'block' : 'none'};">
+         ${hidden.map(legendRow).join('')}
+       </div>`;
+  }
+
+  document.getElementById(containerId).innerHTML = grouped.length
+    ? `<div class="pie-svg">${buildPieSVG(pieColored)}</div><div class="pie-legend">${visibleHtml}${hiddenHtml}</div>`
+    : `<div class="pie-legend"><em>Aucune donnée</em></div>`;
+
+  if (hidden){
+    const toggleRow = document.querySelector(`[data-autres-toggle="${containerId}"]`);
+    if (toggleRow){
+      toggleRow.addEventListener('click', () => {
+        piesOpenState[containerId] = !piesOpenState[containerId];
+        // Re-rendu complet de CE camembert uniquement (couleurs du SVG +
+        // légende + flèche), avec les mêmes données/paramètres qu'à l'appel initial.
+        renderPieBlock(containerId, actions, keyFn, autresLabel);
+      });
+    }
+  }
+}
+
+/* ============================================================================
+   9. TRI DE LA LISTE DES ACTIONS (colonnes + flèches ▲▼ dans l'en-tête)
+   ============================================================================ */
+const SORT_DEFS = [
+  { key: 'agence',      label: 'AGENCE',           valueFn: a => a.agenceNom || '' },
+  { key: 'club',        label: 'CLUB / COMMUNE',   valueFn: a => a.club || '' },
+  { key: 'action',      label: 'ACTION',           valueFn: a => a.intitule || '' },
+  { key: 'statut',      label: 'STATUT',           valueFn: a => a.statut || '' },
+  { key: 'financement', label: 'FINANCEMENT',      valueFn: a => a.cofinancements.reduce((s, c) => s + c.montant, 0) }
+];
+
+function renderListHeader(){
+  const row = document.getElementById('listHeadRow');
+  const cells = SORT_DEFS.map(def => {
+    const isAsc  = state.sort.key === def.key && state.sort.dir === 'asc';
+    const isDesc = state.sort.key === def.key && state.sort.dir === 'desc';
+    // "Financement" est numérique (Croissant/Décroissant) ; les autres colonnes
+    // sont du texte (A→Z / Z→A) — la bulle au survol reflète ce sens exact.
+    const isNumeric = def.key === 'financement';
+    const ascText  = isNumeric ? 'Croissant'  : 'A à Z';
+    const descText = isNumeric ? 'Décroissant' : 'Z à A';
+    return `<div class="th-cell">
+              <span>${def.label}</span>
+              <span class="sort-btns" data-sort-key="${def.key}">
+                <span class="sort-icon-wrap">
+                  <span aria-hidden="true" class="icon icon-chevron-u-full sort-icon ${isAsc ? 'active' : ''}" data-dir="asc"></span>
+                  <span class="sort-tooltip"><span aria-hidden="true" class="icon icon-arrow-up"></span>${ascText}</span>
+                </span>
+                <span class="sort-icon-wrap">
+                  <span aria-hidden="true" class="icon icon-chevron-d-full sort-icon ${isDesc ? 'active' : ''}" data-dir="desc"></span>
+                  <span class="sort-tooltip"><span aria-hidden="true" class="icon icon-arrow-down"></span>${descText}</span>
+                </span>
+              </span>
+            </div>`;
+  }).join('') + `<div></div>`; // colonne "Modifier" : pas de tri
+
+  row.innerHTML = cells;
+  row.querySelectorAll('.sort-icon').forEach(icon => {
+    icon.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      const key = icon.closest('.sort-btns').dataset.sortKey;
+      const dir = icon.dataset.dir; // chaque flèche sélectionne explicitement son propre sens
+      state.sort = { key, dir };
+      renderAll();
+    });
+  });
+}
+
+// Applique le tri actif (state.sort) à une liste d'actions déjà filtrées,
+// sans modifier les données ni les calculs de synthèse (qui utilisent
+// getFilteredActions() séparément, avant tri).
+function sortActions(list){
+  if (!state.sort.key) return list;
+  const def = SORT_DEFS.find(d => d.key === state.sort.key);
+  if (!def) return list;
+  const dir = state.sort.dir === 'desc' ? -1 : 1;
+  return [...list].sort((a, b) => {
+    const va = def.valueFn(a), vb = def.valueFn(b);
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb), 'fr') * dir;
+  });
+}
+
+/* ============================================================================
+   10. FILTRES (colonne de gauche)
+   ============================================================================ */
+const FILTER_DEFS = [
+  { key: 'dr',          label: 'Direction régionale (DR)',      keyFn: a => a.dr },
+  { key: 'dd',          label: 'Direction départementale (DD)', keyFn: a => a.dd },
+  { key: 'agence',      label: 'Agence',                        keyFn: a => a.agenceNom },
+  { key: 'federation',  label: 'Fédération',                    keyFn: a => a.federation },
+  { key: 'club',        label: 'Club',                          keyFn: a => a.club },
+  { key: 'dispositif',  label: 'Dispositif',                    keyFn: a => a.dispositif },
+  { key: 'statut',      label: 'Statut',                        keyFn: a => a.statut },
+  { key: 'financement', label: 'Financement',                   keyFn: null }
+];
+
+// Habille les <select> avec l'icône "chevron-d" (flèche native masquée) et les
+// <input type="date"> avec l'icône "calendar" (le pictogramme natif du
+// navigateur est masqué en CSS, cette fonction ajoute le nôtre par-dessus et
+// rebranche l'ouverture du sélecteur natif au clic).
+// ============================================================================
+// Composant générique "liste déroulante personnalisée" (remplace <select>).
+// buildCustomSelectHtml() génère le squelette HTML (à placer là où était le
+// <select>) ; hydrateCustomSelect() le peuple et branche les événements.
+// ============================================================================
+// Troncature "en dur" du texte (en plus du CSS text-overflow:ellipsis, pour
+// garantir visuellement le "…" même si la mesure CSS échoue dans certains cas) ;
+// le texte complet reste consultable via l'attribut title (infobulle native).
+function truncateLabel(str, max){
+  str = String(str == null ? '' : str);
+  return str.length > max ? str.slice(0, max - 1).trimEnd() + '…' : str;
+}
+function buildCustomSelectHtml(id, extraClass){
+  return `<div class="ft-select ${extraClass || ''}" id="${id}">
+            <button type="button" class="ft-select-display" id="${id}-display"></button>
+            <div class="dropdown-menu ft-select-menu" id="${id}-menu"></div>
+          </div>`;
+}
+function closeAllCustomSelects(){
+  document.querySelectorAll('.ft-select-menu.show').forEach(m => m.classList.remove('show'));
+}
+document.addEventListener('click', closeAllCustomSelects);
+
+// options: [{value, label}] ; currentValue/currentLabel : sélection actuelle
+// (currentLabel sert de repli si currentValue ne correspond à aucune option,
+// ex. une valeur historique). onChange(value) est appelé à la sélection.
+// Seuil au-delà duquel une barre de recherche apparaît en haut de la liste
+// (inutile de l'afficher pour une poignée d'options).
+const SELECT_SEARCH_THRESHOLD = 7;
+
+function hydrateCustomSelect(id, options, currentValue, currentLabel, onChange, placeholder){
+  const displayEl = document.getElementById(`${id}-display`);
+  const menuEl = document.getElementById(`${id}-menu`);
+  if (!displayEl || !menuEl) return;
+
+  const hasCurrent = options.some(o => String(o.value) === String(currentValue));
+  const allOptions = (!hasCurrent && currentValue !== null && currentValue !== undefined && currentValue !== '')
+    ? [{ value: currentValue, label: currentLabel || currentValue }, ...options]
+    : options;
+
+  const current = allOptions.find(o => String(o.value) === String(currentValue));
+  // L'option "Toutes / Tous" (value === '') garde sa casse d'origine : la
+  // passer dans capitalize() la transformerait en "Toutes / tous".
+  const labelFor = (o) => (o.value === '' ? o.label : capitalize(o.label));
+  const displayLabel = current ? labelFor(current) : (placeholder || 'Toutes / Tous');
+  displayEl.textContent = truncateLabel(displayLabel, 34);
+  displayEl.title = displayLabel;
+
+  const showSearch = allOptions.length > SELECT_SEARCH_THRESHOLD;
+  const itemsHtml = allOptions.length
+    ? allOptions.map(o => {
+        const fullLabel = labelFor(o);
+        return `<button type="button" class="dropdown-item ${String(o.value) === String(currentValue) ? 'active' : ''}" data-value="${escapeHtml(o.value)}" data-search="${escapeHtml(normalize(fullLabel))}" title="${escapeHtml(fullLabel)}">${escapeHtml(truncateLabel(fullLabel, 34))}</button>`;
+      }).join('')
+    : `<span class="dropdown-item-text">Aucune option</span>`;
+
+  menuEl.innerHTML =
+    (showSearch ? `<input type="text" class="ft-select-search" placeholder="Rechercher…" autocomplete="off">` : '') +
+    `<div class="ft-select-items">${itemsHtml}</div>` +
+    `<div class="dropdown-item-text ft-select-noresult" style="display:none;">Aucun résultat</div>`;
+
+  menuEl.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllCustomSelects();
+      // Met à jour l'affichage du champ IMMÉDIATEMENT avec le choix fait,
+      // indépendamment de ce que fait onChange (qui ne redessine pas
+      // forcément ce composant) — sinon la sélection semblait sans effet.
+      const chosenLabel = item.getAttribute('title') || item.textContent;
+      displayEl.textContent = truncateLabel(chosenLabel, 34);
+      displayEl.title = chosenLabel;
+      menuEl.querySelectorAll('.dropdown-item').forEach(i => i.classList.toggle('active', i === item));
+      onChange(item.dataset.value);
+    });
+  });
+
+  const searchEl = menuEl.querySelector('.ft-select-search');
+  if (searchEl){
+    searchEl.addEventListener('click', (e) => e.stopPropagation());
+    searchEl.addEventListener('input', () => {
+      const term = normalize(searchEl.value);
+      let anyVisible = false;
+      menuEl.querySelectorAll('.dropdown-item').forEach(item => {
+        const match = !term || (item.dataset.search || '').includes(term);
+        item.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
+      });
+      const noResultEl = menuEl.querySelector('.ft-select-noresult');
+      if (noResultEl) noResultEl.style.display = anyVisible ? 'none' : 'block';
+    });
+  }
+
+  displayEl.onclick = (e) => {
+    e.stopPropagation();
+    const isOpen = menuEl.classList.contains('show');
+    closeAllCustomSelects();
+    if (!isOpen){
+      // Taille FIXE, légèrement plus grande que le champ (troncature "…" sinon).
+      const w = Math.max(displayEl.offsetWidth, 160);
+      menuEl.style.width = (w + 24) + 'px';
+      menuEl.classList.add('show');
+      // Réinitialise la recherche à chaque ouverture et donne le focus direct
+      // pour pouvoir taper immédiatement.
+      if (searchEl){
+        searchEl.value = '';
+        menuEl.querySelectorAll('.dropdown-item').forEach(item => { item.style.display = ''; });
+        const noResultEl = menuEl.querySelector('.ft-select-noresult');
+        if (noResultEl) noResultEl.style.display = 'none';
+        setTimeout(() => searchEl.focus(), 0);
+      }
+    }
+  };
+}
+
+function decorateFormControls(root){
+  root.querySelectorAll('input[type="date"]').forEach(inp => {
+    if (inp.parentElement && inp.parentElement.classList.contains('date-wrap')) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'date-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const icon = document.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.className = 'icon icon-calendar';
+    icon.style.cursor = 'pointer';
+    icon.style.pointerEvents = 'auto';
+    icon.addEventListener('click', () => {
+      try { inp.showPicker(); } catch (e) { inp.focus(); } // showPicker() indisponible sur certains navigateurs
+    });
+    wrap.appendChild(icon);
+  });
+}
+
+function renderFilters(){
+  const body = document.getElementById('filtersBody');
+  const optionsByKey = {}; // conservé pour l'hydratation après insertion du HTML
+
+  body.innerHTML = FILTER_DEFS.map(def => {
+    // Options en cascade : calculées sur les actions qui respectent déjà
+    // TOUS LES AUTRES filtres actifs (mais pas celui-ci), afin que par
+    // exemple choisir une DR ne propose plus, pour "Agence", que les
+    // agences réellement présentes dans cette DR.
+    const scoped = applyFilters(state.joined, def.key);
+
+    let options;
+    if (def.key === 'financement'){
+      const all = new Set();
+      scoped.forEach(a => a.cofinancements.forEach(c => { if (c.financement) all.add(c.financement); }));
+      options = [...all].sort((a, b) => String(a).localeCompare(String(b)));
+    } else {
+      options = uniqueSorted(scoped, def.keyFn);
+    }
+    // Sécurité : si la valeur actuellement sélectionnée n'existe plus parmi
+    // les options en cascade (car un autre filtre l'a rendue incompatible),
+    // on la réinitialise pour éviter un filtre "fantôme" invisible à l'écran.
+    if (state.filters[def.key] && !options.includes(state.filters[def.key])){
+      state.filters[def.key] = '';
+    }
+    optionsByKey[def.key] = options;
+    return `<div class="filter-group">
+              <label class="form-label">${def.label}</label>
+              ${buildCustomSelectHtml('filter-' + def.key)}
+            </div>`;
+  }).join('');
+
+  FILTER_DEFS.forEach(def => {
+    // Option explicite "Toutes / Tous" en tête de liste, pour pouvoir la
+    // sélectionner directement au lieu de devoir cliquer "Réinitialiser".
+    const opts = [{ value: '', label: 'Toutes / Tous' }, ...optionsByKey[def.key].map(o => ({ value: o, label: o }))];
+    hydrateCustomSelect('filter-' + def.key, opts, state.filters[def.key], null, (value) => {
+      state.filters[def.key] = value;
+      renderAll();
+    }, 'Toutes / Tous');
+  });
+}
+
+/* ============================================================================
+   10. SYNTHÈSE
+   ============================================================================ */
+function renderSynthese(filtered){
+  // Les actions au statut "Annulé" restent visibles dans la liste ci-dessous,
+  // mais ne comptent pas dans la synthèse (compteur, montants, camemberts, financeurs).
+  const forSynthese = filtered.filter(a => !isAnnule(a.statut));
+
+  document.getElementById('statCount').textContent = forSynthese.length;
+
+  const allCofins = forSynthese.flatMap(a => a.cofinancements);
+  const totalGlobal = allCofins.reduce((s, c) => s + c.montant, 0);
+  document.getElementById('statAmount').textContent = euro(totalGlobal);
+
+  const byFinanceur = new Map();
+  allCofins.forEach(c => {
+    const label = c.financement || NA;
+    byFinanceur.set(label, (byFinanceur.get(label) || 0) + c.montant);
+  });
+  const financeursSorted = [...byFinanceur.entries()].sort((a, b) => b[1] - a[1]);
+  document.getElementById('financeursBody').innerHTML = financeursSorted.length
+    ? financeursSorted.map(([name, amount]) =>
+        `<tr><td>${escapeHtml(name)}</td><td class="amount">${euro(amount)}</td></tr>`).join('')
+    : `<tr><td colspan="2"><em>Aucun financement</em></td></tr>`;
+
+  renderPieBlock('pieStatut',     forSynthese, a => a.statut);
+  renderPieBlock('pieDispositif', forSynthese, a => a.dispositif || 'Non défini');
+  renderPieBlock('pieFederation', forSynthese, a => a.federation, 'Autres fédérations');
+}
+
+/* ============================================================================
+   11. LISTE DES ACTIONS
+   ============================================================================ */
+// Ramène n'importe quelle variante du texte de statut (accord au masculin/
+// féminin, casse, accents, suffixe additionnel...) à l'une des 3 valeurs
+// canoniques utilisées dans le code. Comparer par PRÉFIXE (comme le fait déjà
+// statutBadgeClass ci-dessous) plutôt que par égalité stricte évite qu'une
+// variante inattendue dans les données (ex. "Planifiée" vs "Planifié") casse
+// silencieusement l'affichage du champ date.
+function canonicalStatut(s){
+  const n = normalize(s);
+  if (n.startsWith('annul')) return 'Annulée';
+  if (n.startsWith('projet')) return 'Projet';
+  if (n.startsWith('planifi')) return 'Planifiée';
+  if (n.startsWith('realis')) return 'Réalisée';
+  return '';
+}
+function statutBadgeClass(statut){
+  const s = (statut || '').toString().toLowerCase();
+  if (s.startsWith('annul')) return 'badge-annule';
+  if (s.startsWith('planifi')) return 'badge-planifie';
+  if (s.startsWith('réalis') || s.startsWith('realis')) return 'badge-realise';
+  if (s.startsWith('projet')) return 'badge-projet';
+  return 'badge-default';
+}
+
+function renderList(filtered){
+  const listBody = document.getElementById('listBody');
+  if (!filtered.length){
+    listBody.innerHTML = `<div class="empty-state">Aucune action ne correspond aux filtres sélectionnés.</div>`;
+    return;
+  }
+
+  listBody.innerHTML = filtered.map((a, idx) => {
+    const totalCofin = a.cofinancements.reduce((s, c) => s + c.montant, 0);
+    const pct = a.budget > 0 ? Math.min(100, Math.round((totalCofin / a.budget) * 100)) : 0;
+    const finLines = a.cofinancements.length
+      ? a.cofinancements.slice().sort((x, y) => y.montant - x.montant)
+          .map(c => `<div class="fin-line"><span class="fname">${escapeHtml(capitalize(safe(c.financement)))}</span><span class="famount">${euro(c.montant)}</span></div>`).join('')
+      : `<div class="fin-line"><span class="muted-na">Aucun cofinancement enregistré</span></div>`;
+
+    return `
+      <div class="list-row">
+        <div>
+          <div class="cell-primary">${escapeHtml(safe(a.agenceNom))}</div>
+          <div class="cell-secondary">${escapeHtml(safe(a.dd))}<br>${escapeHtml(safe(a.dr))}</div>
+        </div>
+        <div>
+          <div class="cell-primary">${escapeHtml(capitalize(safe(a.club)))}</div>
+          <div class="cell-secondary">${escapeHtml(capitalize(safe(a.commune)))}<br>${escapeHtml(capitalize(safe(a.federation)))}</div>
+        </div>
+        <div>
+          <div class="cell-primary">${escapeHtml(capitalize(safe(a.intitule)))}</div>
+          <div class="cell-secondary">${escapeHtml(capitalize(safe(a.dispositif)))}<br>${a.jauge !== null && a.jauge !== undefined && a.jauge !== '' ? escapeHtml(a.jauge) + ' participants' : NA}${(a.public && a.public.length) ? '<br>' + escapeHtml(a.public.map(capitalize).join(', ')) : ''}</div>
+        </div>
+        <div>
+          <span class="badge ${statutBadgeClass(a.statut)}">${escapeHtml(capitalize(safe(a.statut)))}</span>
+          <div class="cell-secondary">${a.date ? escapeHtml(formatDate(a.date)) : (canonicalStatut(a.statut) === 'Projet' && a.periode) ? escapeHtml(a.periode) : ''}</div>
+        </div>
+        <div>
+          <div class="cell-primary">Budget : ${euro(a.budget)}</div>
+          <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+          <div class="fin-coverage">Couvert à ${pct}% (${euro(totalCofin)})</div>
+          ${finLines}
+        </div>
+        <div>
+          <button class="btn-modifier" data-edit-index="${idx}">Modifier</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  listBody.querySelectorAll('[data-edit-index]').forEach(btn => {
+    btn.addEventListener('click', () => openEdit(filtered[Number(btn.dataset.editIndex)]));
+  });
+}
+
+/* ============================================================================
+   12. RENDU GLOBAL
+   ============================================================================ */
+function renderAll(){
+  renderFilters();
+  renderListHeader();
+  const filtered = getFilteredActions();
+  renderSynthese(filtered);
+  renderList(sortActions(filtered));
+}
+
+/* ============================================================================
+   13. ACTIONS UTILISATEUR
+   ============================================================================ */
+document.getElementById('btnReset').addEventListener('click', () => {
+  Object.keys(state.filters).forEach(k => state.filters[k] = '');
+  renderAll();
+});
+
+document.getElementById('btnCollapse').addEventListener('click', () => {
+  state.collapsed = !state.collapsed;
+  document.getElementById('syntheseBody').style.display = state.collapsed ? 'none' : '';
+  document.getElementById('btnCollapse').textContent = state.collapsed ? 'Déplier' : 'Replier';
+});
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  const filtered = getFilteredActions();
+  const header = ['Agence', 'DD', 'DR', 'Club', 'Commune', 'Fédération', 'Action', 'Dispositif',
+                   'Participants', 'Public', 'Statut', 'Date', 'Budget', 'Financeurs (détail)', 'Total cofinancé'];
+  const rows = [header, ...filtered.map(a => {
+    const totalCofin = a.cofinancements.reduce((s, c) => s + c.montant, 0);
+    const detail = a.cofinancements.map(c => `${safe(c.financement)}: ${c.montant}€`).join(' | ');
+    return [safe(a.agenceNom), safe(a.dd), safe(a.dr), safe(a.club), safe(a.commune), safe(a.federation),
+            safe(a.intitule), safe(a.dispositif), a.jauge, (a.public||[]).map(capitalize).join(', '), safe(a.statut), formatDate(a.date), a.budget,
+            detail, totalCofin];
+  })];
+  downloadCSV('actions_insertion_sport_export.csv', rows);
+});
+
+/* ============================================================================
+   14. MODALE D'ÉDITION D'UNE ACTION (page "Modifier")
+   ============================================================================ */
+const STATUT_ROWS = [
+  { value: 'Projet',    cls: 'pill-projet' },
+  { value: 'Planifiée', cls: 'pill-planifie' },
+  { value: 'Réalisée',  cls: 'pill-realise' },
+  { value: 'Annulée',   cls: 'pill-annule' }
+];
+
+// Convertit une date (chaîne ISO ou timestamp Grist en secondes) vers le
+// format attendu par un <input type="date"> ("AAAA-MM-JJ").
+function toDateInputValue(d){
+  if (!d) return '';
+  // Grist encode parfois les colonnes Date/DateTime sous forme de tableau
+  // typé ['D', secondesEpoch] ou ['DateTime', secondesEpoch, fuseau] plutôt
+  // qu'un nombre brut (selon la version de l'API/plugin) : on déballe cette
+  // forme avant de convertir, sinon la date calculée est fantaisiste.
+  if (Array.isArray(d)) {
+    if (d[0] === 'D' || d[0] === 'DateTime') d = d[1];
+    else return '';
+  }
+  // Colonne TEXTE au format français "JJ-MM-AAAA" ou "JJ/MM/AAAA" (ambigu
+  // pour new Date(), qui peut l'interpréter à l'envers en MM-JJ) : on la
+  // reconnaît explicitement avant toute tentative de parsing générique.
+  if (typeof d === 'string') {
+    const m = d.trim().match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (m) {
+      const day = m[1].padStart(2, '0'), month = m[2].padStart(2, '0'), year = m[3];
+      return `${year}-${month}-${day}`;
+    }
+  }
+  const date = typeof d === 'number' ? new Date(d * 1000) : new Date(d);
+  if (isNaN(date.getTime())) return '';
+  // IMPORTANT : on lit la date en HEURE LOCALE (getFullYear/getMonth/getDate),
+  // pas en UTC (toISOString), sinon un décalage d'un jour apparaît : minuit
+  // heure de Paris le 01/10 correspond à 22h UTC le 30/09, donc lire en UTC
+  // affichait systématiquement le jour précédent.
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Convertit le format interne "AAAA-MM-JJ" (voir toDateInputValue ci-dessus)
+// vers le format "JJ/MM/AAAA" attendu par l'attribut "value" du webcomposant
+// <ft-datepicker> (voir doc : https://designsystem.francetravail.io/webco/#/webcomponents/ft-datepicker).
+function isoToFrDate(iso){
+  const m = String(iso || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+// Convertit le format "JJ/MM/AAAA" renvoyé par les évènements de <ft-datepicker>
+// vers le format interne "AAAA-MM-JJ".
+function frDateToIso(fr){
+  const m = String(fr || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+function openEdit(action){
+  // Copie de travail : toute modification se fait sur ce brouillon, rien
+  // n'est écrit dans Grist avant d'appuyer sur "Enregistrer". "dirty" trace
+  // quels champs ont RÉELLEMENT été modifiés par la personne : seuls ceux-là
+  // seront renvoyés à Grist à l'enregistrement (pour ne jamais réécrire par
+  // erreur un champ non touché avec une valeur mal reconstituée).
+  state.editing = {
+    action,
+    intitule: action.intitule || '',
+    jauge: action.jauge || '',
+    public: [...(action.public || [])], // copie du tableau (multi-choix)
+    statut: action.statut || '',
+    date: toDateInputValue(action.date),
+    periode: action.periode || '',
+    budget: action.budget || 0,
+    agenceRowId: null,    // renseigné une fois la liste Agence peuplée (voir renderEditPanel)
+    clubNom: action.club || '',
+    dispositifRowId: null, // renseigné une fois la liste Dispositif peuplée (rowId Grist, la colonne étant une référence)
+    dirty: { intitule:false, jauge:false, public:false, statut:false, date:false, periode:false,
+              budget:false, agence:false, club:false, dispositif:false },
+    // deletedIds : rowId des cofinancements existants à supprimer à l'enregistrement.
+    deletedIds: [],
+    // cofins : { rowId (null si nouveau), financeurRowId, label, montant, touched }
+    // "touched" = ligne existante réellement modifiée (montant ou financeur changé).
+    cofins: action.cofinancements.map(c => ({
+      rowId: c.id || null,
+      financeurRowId: refToId(c.rawFinancement),
+      label: c.financement,
+      montant: c.montant,
+      touched: false
+    }))
+  };
+  renderEditPanel();
+  document.getElementById('editOverlay').style.display = 'flex';
+}
+function closeEdit(){
+  state.editing = null;
+  document.getElementById('editOverlay').style.display = 'none';
+}
+
+// Construit un <select> à partir d'une liste {value, label}, avec repli sur
+// une option "libre" si la valeur actuelle n'existe dans aucune des options
+// (ex: valeur historique qui ne correspond plus à une ligne de la table).
+function buildSelectOptions(options, currentValue, currentLabel){
+  const hasCurrent = options.some(o => String(o.value) === String(currentValue));
+  const extra = (!hasCurrent && currentLabel)
+    ? `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(capitalize(currentLabel))} (actuel)</option>`
+    : '';
+  return extra + options.map(o =>
+    `<option value="${escapeHtml(o.value)}" ${String(o.value) === String(currentValue) ? 'selected' : ''}>${escapeHtml(capitalize(o.label))}</option>`
+  ).join('');
+}
+
+// ---- PUBLIC : affichage fermé façon "select" (texte des valeurs choisies +
+// flèche), qui déplie un panneau à cases à cocher au clic. Se ferme au clic
+// en dehors, ou après sélection.
+function renderPublicMultiselect(){
+  const ed = state.editing;
+  const displayEl = document.getElementById('editPublicDisplay');
+  const panelEl = document.getElementById('editPublicPanel');
+  const options = uniqueFlatSorted(state.joined, x => x.public);
+
+  function updateDisplay(){
+    const fullText = ed.public.length ? ed.public.map(capitalize).join(', ') : 'Sélectionner…';
+    displayEl.innerHTML = `<span class="multiselect-text" title="${escapeHtml(fullText)}">${escapeHtml(truncateLabel(fullText, 40))}</span>`;
+  }
+  updateDisplay();
+
+  panelEl.innerHTML = options.length
+    ? options.map(v => `<label><input type="checkbox" value="${escapeHtml(v)}" ${ed.public.includes(v) ? 'checked' : ''}><span>${escapeHtml(capitalize(v))}</span></label>`).join('')
+    : '<em style="padding:4px 8px; font-size:12px;">Aucune valeur disponible</em>';
+
+  panelEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked){ if (!ed.public.includes(cb.value)) ed.public.push(cb.value); }
+      else { ed.public = ed.public.filter(v => v !== cb.value); }
+      ed.dirty.public = true;
+      updateDisplay();
+    });
+  });
+
+  displayEl.onclick = (e) => {
+    e.stopPropagation();
+    panelEl.classList.toggle('open');
+  };
+}
+// Ferme tout panneau multi-sélection ouvert au clic en dehors (listener
+// global unique, posé une seule fois — indépendant du nombre d'ouvertures
+// de la modale, pour éviter d'empiler des listeners à chaque édition).
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.multiselect-panel.open').forEach(panel => {
+    const parent = panel.closest('.multiselect');
+    if (parent && !parent.contains(e.target)) panel.classList.remove('open');
+  });
+});
+
+function renderEditPanel(){
+  const ed = state.editing;
+  const a = ed.action;
+
+  document.getElementById('editTitle').textContent = capitalize(safe(a.intitule));
+  document.getElementById('editIntitule').value = ed.intitule;
+  document.getElementById('editJauge').value = ed.jauge;
+
+  // ---- PUBLIC : multi-sélection, mais avec l'apparence d'un simple champ
+  // "select" (boîte grisée + flèche) — le panneau à cocher ne s'ouvre qu'au
+  // clic, conformément au design partagé. ----------------------------------
+  renderPublicMultiselect();
+
+  // ---- Liste déroulante AGENCE (source : table Agences) ------------------
+  const agenceTbl = state.rawTables.agence;
+  const AG = CONFIG.agence;
+  const agNomKey = agenceTbl ? getColKey(agenceTbl, AG.nom) : null;
+  let agenceOptions = [];
+  if (agenceTbl && agNomKey){
+    // Résout le rowId Agence actuel de l'action (même logique qu'à l'affichage).
+    const currentAgenceIdx = findRowIndex(agenceTbl, a.agence !== undefined ? a.agence : a.agenceNom, AG.candidats);
+    if (ed.agenceRowId === null){
+      ed.agenceRowId = currentAgenceIdx !== null ? agenceTbl.id[currentAgenceIdx] : null;
+    }
+    agenceOptions = agenceTbl.id.map((rowId, i) => ({ value: rowId, label: agenceTbl[agNomKey][i] }));
+  }
+  hydrateCustomSelect('editAgence', agenceOptions, ed.agenceRowId, a.agenceNom, (value) => {
+    ed.agenceRowId = Number(value) || null;
+    ed.dirty.agence = true;
+    const info = resolveAgence(ed.agenceRowId);
+    document.getElementById('editDD').textContent = stripDdDrPrefix(safe(info.dd));
+    document.getElementById('editDR').textContent = stripDdDrPrefix(safe(info.dr));
+  }, 'Choisir une agence…');
+  // Affiche le DD/DR correspondant au choix courant (initial ou déjà changé).
+  const initialAgenceInfo = resolveAgence(ed.agenceRowId !== null ? ed.agenceRowId : (a.agence !== undefined ? a.agence : a.agenceNom));
+  document.getElementById('editDD').textContent = stripDdDrPrefix(safe(initialAgenceInfo.dd || a.dd));
+  document.getElementById('editDR').textContent = stripDdDrPrefix(safe(initialAgenceInfo.dr || a.dr));
+
+  // ---- CLUB : affichage seul (plus modifiable depuis cette modale) --------
+  document.getElementById('editClubReadonly').textContent = capitalize(safe(a.club));
+  document.getElementById('editCommune').textContent = capitalize(safe(a.commune));
+  // Fédération : affichage seul (dérivée du club), pas de liste — conforme à la maquette.
+  document.getElementById('editFederation').textContent = capitalize(safe(a.federation));
+
+  // ---- Liste déroulante DISPOSITIF (source : table Dispositifs) -----------
+  // IMPORTANT : la colonne "Dispositif" de la table Actions est une vraie
+  // référence Grist vers la table Dispositifs (pas du texte) — il faut donc
+  // y écrire le rowId Grist du dispositif choisi, exactement comme pour
+  // Agence, et non son "Code" (texte) : écrire un texte dans une colonne de
+  // référence provoque une erreur "référence inconnue" côté Grist, qui finit
+  // par convertir la colonne en texte brut (référence cassée).
+  const dispositifTbl = state.rawTables.dispositif;
+  const diLibelleKey = dispositifTbl ? getColKey(dispositifTbl, CONFIG.dispositif.libelle) : null;
+  let dispositifOptions = [];
+  if (dispositifTbl && diLibelleKey){
+    const currentIdx = findRowIndex(dispositifTbl, a.dispositif, CONFIG.dispositif.candidats);
+    if (ed.dispositifRowId === null){
+      ed.dispositifRowId = currentIdx !== null ? dispositifTbl.id[currentIdx] : null;
+    }
+    dispositifOptions = dispositifTbl.id.map((rowId, i) => ({ value: rowId, label: dispositifTbl[diLibelleKey][i] }));
+  }
+  hydrateCustomSelect('editDispositif', dispositifOptions, ed.dispositifRowId, a.dispositif, (value) => {
+    ed.dispositifRowId = Number(value) || null; ed.dirty.dispositif = true;
+  }, 'Choisir un dispositif…');
+
+  renderStatutSection();
+
+  document.getElementById('editBudget').value = ed.budget || 0;
+
+  renderEditFinancement();
+
+  decorateFormControls(document.getElementById('editOverlay'));
+}
+
+// ---- STATUT : une ligne par option ; SEUL le radio+mot est encadré/coloré
+// quand il est sélectionné (pas toute la ligne). Le champ complémentaire
+// (période ou date) apparaît à droite, sur la ligne de l'option actuellement
+// sélectionnée : "Projet" -> texte libre "Période de réalisation" (colonne
+// Période approx) ; tout le reste (Planifiée / Réalisée / toute autre
+// variante de texte que "Projet") -> date (colonne Date). Ce champ ne dépend
+// PLUS d'une correspondance exacte du texte de statut : dès que le statut
+// n'est pas reconnu comme "Projet", le champ date s'affiche systématiquement.
+//
+// NOTE : le champ date utilise le webcomposant officiel <ft-datepicker>.
+// Son attribut "value" attend le format "JJ/MM/AAAA" (et non "AAAA-MM-JJ"
+// comme un <input type="date"> natif) — voir isoToFrDate()/frDateToIso()
+// ci-dessus. La valeur saisie/choisie est récupérée via l'évènement
+// "ft-datepicker-input-change" (et non un évènement "change" standard),
+// dont le detail contient { value, valid } — voir doc officielle :
+// https://designsystem.francetravail.io/webco/#/webcomponents/ft-datepicker
+function renderStatutSection(){
+  const ed = state.editing;
+  const canon = canonicalStatut(ed.statut);
+  const isProjet  = canon === 'Projet';
+  const isAnnulee = canon === 'Annulée';
+
+  document.getElementById('editStatutExtraLabel').textContent =
+    isProjet ? 'Période de réalisation' : (isAnnulee ? '' : 'Date');
+
+  const linesEl = document.getElementById('editStatutLines');
+  linesEl.innerHTML = STATUT_ROWS.map(p => {
+    const selected = canon === p.value;
+    let extraHtml = '';
+    if (selected && isProjet){
+      extraHtml = `<input type="text" class="statut-extra-inline form-control" id="editPeriode" placeholder="ex : Sept. 2025 – juin 2026" value="${escapeHtml(ed.periode || '')}">`;
+    } else if (selected && !isProjet && !isAnnulee){
+      extraHtml = `<ft-datepicker id="editDate" value="${escapeHtml(isoToFrDate(ed.date))}" required></ft-datepicker>`;
+    }
+    return `<div class="statut-line">
+              <span class="statut-radiobox ${selected ? 'selected ' + p.cls : ''}" data-statut-value="${escapeHtml(p.value)}">
+                <input type="radio" name="statutRadio" value="${escapeHtml(p.value)}" ${selected ? 'checked' : ''}> ${escapeHtml(p.value)}
+              </span>
+              ${extraHtml}
+            </div>`;
+  }).join('');
+
+  linesEl.querySelectorAll('.statut-radiobox').forEach(el => {
+    el.addEventListener('click', () => {
+      ed.statut = el.dataset.statutValue;
+      ed.dirty.statut = true;
+      renderStatutSection(); // seule cette section est reconstruite (pas toute la modale)
+    });
+  });
+  const periodeInput = document.getElementById('editPeriode');
+  if (periodeInput){
+    periodeInput.addEventListener('input', (e) => { ed.periode = e.target.value; ed.dirty.periode = true; });
+    // Empêche le clic dans le champ de re-déclencher le clic sur le radio parent.
+    periodeInput.addEventListener('click', (e) => e.stopPropagation());
+  }
+  const dateInput = document.getElementById('editDate');
+  if (dateInput){
+    // <ft-datepicker> n'émet pas d'évènement "change" standard : il faut
+    // écouter son évènement personnalisé "ft-datepicker-input-change", dont
+    // le detail renvoie { value: "JJ/MM/AAAA", valid: boolean }.
+    dateInput.addEventListener('ft-datepicker-input-change', (e) => {
+      const raw = e.detail && e.detail.value;
+      ed.date = raw ? frDateToIso(raw) : '';
+      ed.dirty.date = true;
+    });
+    dateInput.addEventListener('click', (e) => e.stopPropagation());
+  }
+  decorateFormControls(document.getElementById('editStatutLines'));
+}
+
+// Retourne la liste des financeurs {rowId, nom} disponibles (table "Financeurs").
+function getFinanceurOptions(){
+  const financeurTbl = state.rawTables.financeur;
+  const nomKey = financeurTbl ? getColKey(financeurTbl, CONFIG.financeur.nom) : null;
+  if (!financeurTbl || !nomKey) return [];
+  return financeurTbl.id.map((rowId, i) => ({ value: rowId, label: financeurTbl[nomKey][i] }));
+}
+
+// Recalcule UNIQUEMENT les totaux (Financé / Reste à financer / barre) sans
+// toucher au reste du DOM — utilisé pendant la saisie pour ne jamais recréer
+// les <input> en cours d'édition (ce qui ferait perdre le focus/curseur).
+function updateFinSummary(){
+  const ed = state.editing;
+  const totalFinance = ed.cofins.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  const budget = Number(document.getElementById('editBudget').value) || ed.budget || 0;
+  const reste = Math.max(0, budget - totalFinance);
+  document.getElementById('editFinance').textContent = euro(totalFinance);
+  document.getElementById('editReste').textContent = euro(reste);
+  document.getElementById('editFinanceBar').style.width = budget > 0 ? Math.min(100, Math.round((totalFinance / budget) * 100)) + '%' : '0%';
+}
+
+// Reconstruit entièrement la liste des lignes de financement (financeur +
+// montant + retirer). À n'appeler qu'à l'ouverture, ou après un ajout/retrait
+// de ligne — JAMAIS pendant la frappe dans un champ (voir updateFinSummary).
+function renderEditFinancement(){
+  const ed = state.editing;
+  updateFinSummary();
+
+  const financeurOptions = getFinanceurOptions();
+  const rowsEl = document.getElementById('editFinRows');
+  rowsEl.innerHTML = ed.cofins.map((c, i) => `
+    <div class="fin-row">
+      ${buildCustomSelectHtml('cofinFinanceur-' + i)}
+      <input type="number" class="form-control" data-cofin-montant="${i}" value="${c.montant}">
+      <button type="button" class="btn-retirer" data-cofin-remove="${i}">Retirer</button>
+    </div>`).join('') || `<div class="fin-row"><em>Aucun financeur</em></div>`;
+
+  ed.cofins.forEach((c, i) => {
+    hydrateCustomSelect('cofinFinanceur-' + i, financeurOptions, c.financeurRowId, c.label, (value) => {
+      const found = financeurOptions.find(o => String(o.value) === String(value));
+      state.editing.cofins[i].financeurRowId = Number(value) || null;
+      state.editing.cofins[i].label = found ? found.label : value;
+      state.editing.cofins[i].touched = true;
+    }, 'Choisir un financeur…');
+  });
+  rowsEl.querySelectorAll('[data-cofin-montant]').forEach(input => {
+    // IMPORTANT : on met à jour uniquement l'état + les totaux (updateFinSummary),
+    // sans jamais reconstruire cette liste de lignes pendant la frappe —
+    // sinon l'input est recréé à chaque caractère et perd le focus/curseur.
+    input.addEventListener('input', () => {
+      const i = Number(input.dataset.cofinMontant);
+      state.editing.cofins[i].montant = Number(input.value) || 0;
+      state.editing.cofins[i].touched = true;
+      updateFinSummary();
+    });
+  });
+  rowsEl.querySelectorAll('[data-cofin-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.cofinRemove);
+      const removed = state.editing.cofins.splice(i, 1)[0];
+      if (removed.rowId) state.editing.deletedIds.push(removed.rowId);
+      renderEditFinancement(); // ici une reconstruction complète est nécessaire (une ligne a disparu)
+    });
+  });
+  decorateFormControls(rowsEl);
+}
+
+document.getElementById('editBackLink').addEventListener('click', closeEdit);
+document.getElementById('btnEditCancel').addEventListener('click', closeEdit);
+document.getElementById('editBudget').addEventListener('input', (e) => {
+  state.editing.dirty.budget = true;
+  updateFinSummary(); // pas de reconstruction complète ici non plus
+});
+document.getElementById('editIntitule').addEventListener('input', (e) => {
+  state.editing.intitule = e.target.value; state.editing.dirty.intitule = true;
+});
+document.getElementById('editJauge').addEventListener('input', (e) => {
+  state.editing.jauge = e.target.value; state.editing.dirty.jauge = true;
+});
+
+document.getElementById('btnAddFinanceur').addEventListener('click', () => {
+  // Ajoute une ligne vide directement modifiable (financeur + montant),
+  // conforme à la maquette : pas de champ de saisie séparé.
+  state.editing.cofins.push({ rowId: null, financeurRowId: null, label: '', montant: 0, touched: true });
+  renderEditFinancement();
+});
+
+document.getElementById('btnEditSave').addEventListener('click', () => {
+  const ed = state.editing;
+  if (!ed) return;
+
+  const actions = [];
+  const M = state.actionsFieldMap || {};
+
+  // 1) Mise à jour des champs de l'action — UNIQUEMENT ceux réellement
+  //    modifiés (voir ed.dirty). Un champ non touché n'est jamais renvoyé,
+  //    pour ne jamais risquer d'écraser une valeur existante par une
+  //    reconstruction imparfaite (ex: référence invalide).
+  const fields = {};
+  if (ed.dirty.intitule   && M.intitule)   fields[M.intitule]   = ed.intitule;
+  if (ed.dirty.jauge      && M.jauge)      fields[M.jauge]      = ed.jauge;
+  if (ed.dirty.public     && M.public)     fields[M.public]     = formatChoiceList(ed.public); // écrit au format ChoiceList Grist
+  if (ed.dirty.agence     && M.agence)     fields[M.agence]     = ed.agenceRowId;    // rowId Grist de l'agence choisie
+  if (ed.dirty.club       && M.club)       fields[M.club]       = ed.clubNom;        // nom du club choisi (texte)
+  if (ed.dirty.dispositif && M.dispositif) fields[M.dispositif] = ed.dispositifRowId; // rowId Grist du dispositif choisi (référence)
+  if (ed.dirty.statut     && M.statut)     fields[M.statut]     = ed.statut;
+  if (ed.dirty.date       && M.date)       fields[M.date]       = ed.date || null;
+  if (ed.dirty.periode    && M.periode)    fields[M.periode]    = ed.periode || null;
+  if (ed.dirty.budget     && M.budget)     fields[M.budget]     = Number(document.getElementById('editBudget').value) || 0;
+  if (Object.keys(fields).length){
+    actions.push(['UpdateRecord', ACTION_TABLE_ID, ed.action.rowId, fields]);
+  }
+
+  // 2) Cofinancements : résolution des colonnes réelles de la table.
+  const cofinTbl = state.rawTables.cofin;
+  const projetKey      = getColKey(cofinTbl, CONFIG.cofin.projet);
+  const financementKey = getColKey(cofinTbl, CONFIG.cofin.financement);
+  const montantKey     = getColKey(cofinTbl, CONFIG.cofin.montant);
+
+  // Suppressions
+  ed.deletedIds.forEach(rowId => {
+    actions.push(['RemoveRecord', CONFIG.cofinTable, rowId]);
+  });
+  // Ajouts / mises à jour — uniquement les lignes réellement modifiées
+  // (ed.touched) ; une ligne existante non touchée n'est jamais renvoyée.
+  // On mémorise l'index (dans "actions") de chaque AddRecord afin de
+  // récupérer son rowId réel dans la réponse de Grist (retValues) et
+  // corriger l'identifiant temporaire posé ci-dessous (mise à jour optimiste).
+  const newCofinLinks = []; // [{ actionIndex, cofinArrIndex, tempId }]
+  ed.cofins.forEach((c, cofinArrIndex) => {
+    if (!c.touched) return;
+    if (!c.financeurRowId) return; // ligne sans financeur choisi : ignorée
+    if (!c.rowId){
+      const fieldsNew = {};
+      if (projetKey) fieldsNew[projetKey] = ed.action.A;
+      if (financementKey) fieldsNew[financementKey] = c.financeurRowId;
+      if (montantKey) fieldsNew[montantKey] = c.montant;
+      // Identifiant temporaire négatif (garanti unique) : permet d'afficher
+      // la ligne immédiatement, avant même de connaître son vrai rowId Grist.
+      const tempId = -(Date.now() + cofinArrIndex);
+      c.rowId = tempId;
+      newCofinLinks.push({ actionIndex: actions.length, cofinArrIndex, tempId });
+      actions.push(['AddRecord', CONFIG.cofinTable, null, fieldsNew]);
+    } else {
+      const fieldsUpd = {};
+      if (montantKey) fieldsUpd[montantKey] = c.montant;
+      if (financementKey) fieldsUpd[financementKey] = c.financeurRowId;
+      actions.push(['UpdateRecord', CONFIG.cofinTable, c.rowId, fieldsUpd]);
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // MISE À JOUR OPTIMISTE : on applique tout de suite l'état local et on
+  // ferme la fenêtre, SANS attendre la confirmation du serveur — puisqu'on
+  // connaît déjà exactement les valeurs qu'on vient de choisir. L'écriture
+  // réelle vers Grist continue juste après, en arrière-plan. C'est ce qui
+  // rend l'enregistrement instantané à l'usage ; en échange, si l'écriture
+  // échoue (perte réseau, conflit...), l'erreur n'apparaît qu'après coup —
+  // voir le rattrapage dans le .catch ci-dessous.
+  // ------------------------------------------------------------------
+  const rec = state.actionRecords.find(r => r._gristRowId === ed.action.rowId);
+  if (rec){
+    if (ed.dirty.intitule)   rec.intitule   = ed.intitule;
+    if (ed.dirty.jauge)      rec.jauge      = ed.jauge;
+    if (ed.dirty.public)     rec.public     = formatChoiceList(ed.public); // même format "brut" que ce qu'on vient d'écrire
+    if (ed.dirty.agence)     rec.agence     = ed.agenceRowId;
+    if (ed.dirty.club)       rec.club       = ed.clubNom;
+    if (ed.dirty.dispositif) rec.dispositif = ed.dispositifRowId;
+    if (ed.dirty.statut)     rec.statut     = ed.statut;
+    if (ed.dirty.date)       rec.date       = ed.date || '';
+    if (ed.dirty.periode)    rec.periode    = ed.periode || '';
+    if (ed.dirty.budget)     rec.budget     = fields[M.budget] !== undefined ? fields[M.budget] : rec.budget;
+  }
+
+  // Cofinancements : retire les supprimés, met à jour/ajoute les autres —
+  // le libellé du financeur est résolu localement (table Financeurs déjà
+  // en mémoire, pas besoin de la recharger).
+  const financeurTbl = state.rawTables.financeur;
+  state.cofinRows = state.cofinRows.filter(c => !ed.deletedIds.includes(c.id));
+  ed.cofins.forEach(c => {
+    if (!c.touched || !c.financeurRowId || !c.rowId) return;
+    const label = resolveLookupLabel(financeurTbl, c.financeurRowId, CONFIG.financeur.nom, state.financeurIndex) || c.label;
+    const existing = state.cofinRows.find(r => r.id === c.rowId);
+    if (existing){
+      existing.rawFinancement = c.financeurRowId;
+      existing.financement = label;
+      existing.montant = c.montant;
+    } else {
+      state.cofinRows.push({
+        id: c.rowId,
+        projet: ed.action.A,
+        cofinA: null,
+        rawFinancement: c.financeurRowId,
+        financement: label,
+        montant: c.montant
+      });
+    }
+  });
+  rebuildCofinIndex(); // rapide : reconstruit uniquement les index Map, pas de fetch réseau
+
+  closeEdit();
+  // Filet de sécurité : un très bref spinner pendant le recalcul (normalement
+  // quasi instantané désormais grâce aux index de recherche), au cas où un
+  // très gros document rendrait ce recalcul malgré tout perceptible.
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  // setTimeout(…, 0) : laisse le navigateur afficher la fermeture de la
+  // fenêtre AVANT de lancer le recalcul complet du tableau (potentiellement
+  // coûteux) — sinon tout s'exécute dans le même bloc synchrone et la
+  // fenêtre semble "traîner" avant de disparaître à l'écran.
+  setTimeout(() => {
+    recomputeAndRender();
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }, 0);
+
+  // ------------------------------------------------------------------
+  // Écriture réelle en arrière-plan (après avoir déjà tout affiché).
+  // ------------------------------------------------------------------
+  if (!actions.length) return;
+  state.savesInFlight++;
+  grist.docApi.applyUserActions(actions).then((result) => {
+    // Remplace les identifiants temporaires par les vrais rowId Grist,
+    // pour que ces lignes restent modifiables/supprimables normalement
+    // lors d'une prochaine édition.
+    const retValues = result && result.retValues ? result.retValues : [];
+    newCofinLinks.forEach(({ actionIndex, tempId }) => {
+      const newRowId = retValues[actionIndex];
+      if (!newRowId) return;
+      const row = state.cofinRows.find(r => r.id === tempId);
+      if (row) row.id = newRowId;
+    });
+    if (newCofinLinks.length) rebuildCofinIndex();
+    showToast('success', 'Message de succès', 'Les modifications ont bien été enregistrées.');
+  }).catch((e) => {
+    showToast('error', 'Message d\'erreur', "L'enregistrement a échoué côté serveur : " + e.message + " — veuillez rouvrir l'action et réessayer.");
+  }).finally(() => {
+    state.savesInFlight--;
+  });
+});
+
+/* ============================================================================
+   15. INITIALISATION — API GRIST OFFICIELLE UNIQUEMENT
+   ============================================================================ */
+// Nom (colId) de la table "Action" dans le document Grist. Utilisé uniquement
+// pour écrire les modifications (Statut/Date/Budget) depuis la modale
+// d'édition. Ajustez cette constante si votre table porte un autre nom.
+const ACTION_TABLE_ID = 'Actions';
+
+function startWidget(){
+  if (!window.grist){
+    showBanner('error', "Ce widget doit être ouvert depuis un document Grist (API Grist introuvable). Aucune donnée de démonstration n'est disponible.");
+    return;
+  }
+
+  // Déclare le mapping de colonnes pour la table "Action" attachée au widget.
+  // type: 'Any' pour TOUTES les colonnes afin que Grist propose l'ensemble des
+  // colonnes disponibles quel que soit leur type interne (Texte, Choix,
+  // Référence, Numérique...) — un type plus restrictif masquerait certaines colonnes.
+  // requiredAccess: 'full' (et non 'read table') car la modale d'édition
+  // doit pouvoir écrire les modifications dans le document.
+  // Plus de mapping manuel de colonnes à configurer dans Grist : le widget
+  // détecte automatiquement les colonnes de la table Actions par leur nom
+  // réel (voir resolveActionsFieldMap ci-dessus). requiredAccess:'full' reste
+  // nécessaire pour pouvoir écrire les modifications (UpdateRecord).
+  grist.ready({ requiredAccess: 'full' });
+
+  grist.onOptions((options) => {
+    CONFIG = deepMerge(DEFAULT_CONFIG, options && options.appConfig);
+  });
+
+  grist.onRecords((records) => {
+    // Ignore les notifications entrantes tant qu'un enregistrement est en
+    // cours d'écriture (voir state.savesInFlight) : Grist peut renvoyer un
+    // instantané pas encore à jour, qui écraserait sinon notre affichage
+    // optimiste déjà correct par des valeurs pas encore modifiées.
+    if (state.savesInFlight > 0) return;
+
+    // Résolution automatique des colonnes réelles (recalculée à chaque appel :
+    // opération peu coûteuse, et robuste si des colonnes sont ajoutées/
+    // renommées pendant que le widget est ouvert).
+    state.actionsFieldMap = resolveActionsFieldMap(records[0]);
+    const M = state.actionsFieldMap;
+
+    // Avertit si des colonnes essentielles n'ont pas pu être détectées
+    // automatiquement (nom trop différent des variantes connues) — pour ne
+    // pas échouer silencieusement comme le faisait le mapping manuel Grist.
+    const missingEssential = ['id', 'intitule', 'statut'].filter(k => !M[k]);
+    if (missingEssential.length){
+      showBanner('error', `Colonnes introuvables dans la table Actions : ${missingEssential.join(', ')}. Vérifiez le nom de ces colonnes (voir ACTIONS_FIELD_CANDIDATES dans le code).`);
+    }
+
+    state.actionRecords = records.map(r => {
+      const mapped = {};
+      Object.keys(ACTIONS_FIELD_CANDIDATES).forEach(logicalKey => {
+        mapped[logicalKey] = M[logicalKey] ? r[M[logicalKey]] : undefined;
+      });
+      return { ...mapped, _gristRowId: r.id };
+    });
+
+    if (!state.rawTables.ready){
+      document.getElementById('loadingOverlay').style.display = 'flex';
+      loadLookupTables()
+        .then(() => { document.getElementById('loadingOverlay').style.display = 'none'; recomputeAndRender(); })
+        .catch(e => {
+          document.getElementById('loadingOverlay').style.display = 'none';
+          showBanner('error', "Erreur lors du chargement des tables secondaires : " + e.message);
+        });
+    } else {
+      recomputeAndRender();
+    }
+  });
+
+  // NOTE : on n'écoute PAS grist.onRecord() ici. Ce widget affiche un tableau
+  // de bord multi-lignes ; onRecord() ne renvoie que la ligne "courante" (celle
+  // du curseur) et écraserait la liste complète reçue via onRecords() —
+  // c'est exactement ce qui causait le bug "1 seule ligne affichée".
+}
+
+startWidget();
+</script>
+</body>
+</html>
