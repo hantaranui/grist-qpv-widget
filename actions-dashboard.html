@@ -15,6 +15,14 @@
   --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Marianne, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   --radius-control: var(--ft--button-border-radius-sm);
   --radius-surface: var(--ft--button-border-radius);
+  /* Hauteur utile laissee au tableau : tout ce qui le precede dans la page
+     (topbar, marges du layout, entete de la synthese repliee). */
+  --table-viewport: calc(100vh - 210px);
+  /* Largeur plancher d'une colonne de filtre. Le plus long libelle,
+     « Direction departementale (DD) », mesure 212 px en 14px/700 : en dessous
+     de ce plancher le titre se couperait en deux lignes. On garde une marge
+     pour les variantes de police (Segoe UI sous Windows). */
+  --filter-col: 230px;
   --brand-navy: var(--ft--color-primary);
   --brand-blue: var(--ft--icon-info);
   --brand-pink: var(--ft--bg-info);
@@ -111,7 +119,9 @@ h1 {
   width: 100%;
   max-width: none;
   margin: 0;
-  grid-template-columns: 250px minmax(0, 1fr);
+  /* 270px - 32px de padding = 238px utiles, soit le plus long libelle de filtre
+     (212px) sans rupture de ligne. */
+  grid-template-columns: 270px minmax(0, 1fr);
   align-items: start;
   gap: 24px;
   padding: 24px;
@@ -177,6 +187,18 @@ h1 {
   display: grid;
   gap: 16px;
   padding: 18px 16px 20px;
+}
+
+/* Le titre d'un filtre ne se coupe jamais en milieu de libelle : si la place
+   manque, c'est le bloc entier qui passe a la ligne suivante de la grille.
+   Le nowrap est neutralise sur les enfants pour ne pas figer le select ni le
+   menu de recherche. */
+.filters-body > label {
+  white-space: nowrap;
+}
+
+.filters-body > label > * {
+  white-space: normal;
 }
 
 label {
@@ -439,7 +461,14 @@ main > .table {
 }
 
 .table {
+  /* Le conteneur doit rester borne en hauteur. Sans cela il grandit avec le
+     nombre de lignes et sa barre de defilement horizontale se retrouve sous la
+     derniere ligne, donc hors ecran : impossible d'atteindre les colonnes de
+     droite sans avoir deroule toute la liste au prealable. */
+  max-height: var(--table-viewport);
+  min-height: 260px;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 table {
@@ -470,6 +499,19 @@ th {
   text-align: left;
   text-transform: uppercase;
   font-family: var(--font-title);
+}
+
+/* Les entetes restent visibles pendant le defilement vertical du tableau. */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* Un th sticky cree un contexte d'empilement : sans ce rehaussement, le menu de
+   tri d'une colonne passerait sous la colonne suivante. */
+.table thead th:has(details[open]) {
+  z-index: 6;
 }
 
 th > select {
@@ -508,6 +550,29 @@ td {
 }
 
 tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
+
+/* La colonne « Modifier » est la plus a droite, donc la plus penible a atteindre
+   des que le tableau deborde. On la fige contre le bord droit du conteneur. */
+.table thead th:last-child,
+.table tbody td:last-child {
+  position: sticky;
+  right: 0;
+  border-left: 1px solid var(--line);
+}
+
+.table thead th:last-child {
+  z-index: 4;
+}
+
+.table tbody td:last-child {
+  z-index: 2;
+  /* Fond opaque obligatoire : la cellule figee se superpose aux autres. */
+  background: var(--panel);
+}
+
+.table tbody tr:hover td:last-child {
+  background: var(--ft--color-background-primary-weakest);
+}
 
 .strong { font-weight: 800; }
 .muted { margin-top: 2px; color: var(--muted); }
@@ -679,8 +744,19 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   border: 0;
 }
 
+/* La colonne de filtres et le tableau (980 px minimum) ne tiennent plus cote a
+   cote sous ~1340 px : 24 + 270 + 24 + 980 + 24 = 1322 px, plus la barre de
+   defilement de l'iframe. On rend alors sa largeur au tableau et on repartit les
+   filtres sur autant de colonnes que la place le permet, chacune assez large
+   pour son titre. */
+@media (max-width: 1340px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .filters-body { grid-template-columns: repeat(auto-fit, minmax(var(--filter-col), 1fr)); }
+}
+
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; padding: 14px; }
+  :root { --table-viewport: calc(100vh - 150px); }
+  .layout { padding: 14px; }
   .topbar { align-items: flex-start; flex-direction: column; }
   .summary-top,
   .summary-charts { grid-template-columns: 1fr; }
