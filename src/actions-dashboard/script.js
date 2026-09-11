@@ -27,7 +27,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], versementChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -71,6 +71,7 @@ async function load() {
     state.raw = Object.fromEntries(data);
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
+    state.versementChoices = await loadColumnChoices('Cofinancements', 'Statut_Versement');
     state.actions = buildActions(state.raw);
     render();
   } catch (error) {
@@ -139,7 +140,7 @@ function buildActions(raw) {
     const financement = financements.get(cof.Financement) || {};
     const financeur = financeurs.get(financement.Financeur) || {};
     const label = financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom;
-    (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0)});
+    (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0), statutVersement: cof.Statut_Versement || ''});
     return acc;
   }, {});
 
@@ -156,6 +157,7 @@ function buildActions(raw) {
       id: action.id,
       intitule: action.Intitule || '',
       budget: Number(action.Budget || 0),
+      ouvertAuFinancement: action.Ouvert_au_financement === true,
       financed,
       rate: action.Budget ? financed / Number(action.Budget) : 0,
       participants: Number(action.Jauge || 0),
@@ -417,17 +419,24 @@ function renderEdit() {
           <div class="section-head"><span>Statut</span></div>
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
-              <span class="status-editor-label">Statut de l'action</span><span class="status-editor-label" id="statusPeriodLabel">${escapeHtml(statusFieldConfig(action.statut).label)}</span>
-              ${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label>${statusPeriodControl(status, action)}`).join('')}
+              <div class="status-head-row"><span>Statut de l'action</span></div>
+              <div class="status-options">${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label>`).join('')}</div>
+              <div class="status-period-slot">
+                <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
+                ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
+              </div>
             </div>
           </div>
         </section>
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
+          <div class="finance-open">
+            <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
+          </div>
           <div class="finance-editor">
             <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="finance-list">
-              <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span aria-hidden="true"></span></div>
+              <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span>Statut de versement</span><span aria-hidden="true"></span></div>
               <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
               <button class="add-finance-button" type="button" id="addFinance">+ Ajouter un financeur</button>
             </div>
@@ -462,7 +471,7 @@ function bindStatusEditor() {
     const previousKind = previous?.dataset.periodKind || '';
     const previousValue = previous ? readPeriodValue(previous) : '';
     const config = statusFieldConfig(radio.value);
-    document.getElementById('statusPeriodLabel').textContent = config.label;
+    document.getElementById('statusPeriodLabel').textContent = outerPeriodLabel(radio.value);
     editor.querySelectorAll('.status-period').forEach(container => {
       const visible = container.dataset.statusDate === radio.value;
       container.classList.toggle('is-hidden', !visible);
@@ -546,8 +555,18 @@ function financeRow(item) {
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
+    <select class="finance-status">${versementOptions(item.statutVersement || '')}</select>
     <button class="remove-finance-button" type="button">Retirer</button>
   </div>`;
+}
+
+function versementOptions(selected) {
+  const choices = state.versementChoices.length ? state.versementChoices : ['Non versé', 'En cours', 'Versé'];
+  const options = choices.map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
+  // Un cofinancement encore sans statut dans Grist ne doit pas afficher le
+  // premier choix à tort : on garde une option vide tant que rien n'est saisi.
+  if (!choices.includes(selected)) options.unshift('<option value="" selected>À définir</option>');
+  return options.join('');
 }
 
 function financeEmptyState() {
@@ -596,7 +615,8 @@ async function saveEdit(event, action) {
   const rows = [...document.querySelectorAll('.finance-row')].map(row => ({
     id: Number(row.dataset.cofinancementId || 0),
     financement: Number(row.querySelector('.finance-select').value || 0),
-    montant: Number(row.querySelector('.finance-amount').value || 0)
+    montant: Number(row.querySelector('.finance-amount').value || 0),
+    statutVersement: row.querySelector('.finance-status').value || ''
   })).filter(row => row.financement && row.montant >= 0);
   const status = document.querySelector('[name="editStatus"]:checked')?.value || '';
   const statusConfig = statusFieldConfig(status);
@@ -611,14 +631,16 @@ async function saveEdit(event, action) {
     Statut: status,
     Date: statusConfig.kind === 'date' && periodValue ? Math.floor(new Date(`${periodValue}T00:00:00`).getTime() / 1000) : null,
     Periode_approx: statusConfig.kind === 'text' ? periodValue : '',
-    Budget: Number(document.getElementById('editBudget').value || 0)
+    Budget: Number(document.getElementById('editBudget').value || 0),
+    Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
   rows.forEach(row => {
-    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
-    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
+    const fields = {Financement: row.financement, Montant: row.montant, Action: action.id, Statut_Versement: row.statutVersement};
+    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, fields]);
+    else userActions.push(['AddRecord', 'Cofinancements', null, fields]);
   });
   action.financeurs.filter(item => !usedIds.has(item.id)).forEach(item => userActions.push(['RemoveRecord', 'Cofinancements', item.id]));
   try {
@@ -821,11 +843,16 @@ function statusPeriodControl(status, action) {
   let input = '';
   if (config.kind === 'date') {
     const iso = dateInputValue(action.date);
-    input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"></ft-datepicker>`;
+    input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"><span slot="label">${escapeHtml(config.label)}</span></ft-datepicker>`;
   } else if (config.kind === 'text') {
     input = `<input class="edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+function outerPeriodLabel(status) {
+  const config = statusFieldConfig(status);
+  return config.kind === 'text' ? config.label : '';
 }
 
 function statusPeriodValue(action) {

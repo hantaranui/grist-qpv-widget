@@ -156,6 +156,13 @@ h1 {
   border-bottom: 0;
 }
 
+.filters > .section-head,
+.section > .section-head,
+.edit-card > .section-head {
+  border-top-left-radius: calc(var(--radius-surface) - 1px);
+  border-top-right-radius: calc(var(--radius-surface) - 1px);
+}
+
 .section-head {
   display: flex;
   align-items: center;
@@ -635,7 +642,7 @@ th:last-child,
 td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--ft--table-padding-x); }
 .save-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); background: var(--brand-navy); color: var(--ft-color-background-neutral-light); }
 .add-finance-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); }
-.remove-finance-button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; height: 34px; padding: 0 var(--ft--button-sm-padding-x); border: 1px solid var(--ft--icon-error); background: var(--panel); color: var(--ft--icon-error); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; }
+.remove-finance-button { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 34px; height: 34px; padding: 0 4px; white-space: nowrap; border: 1px solid var(--ft--icon-error); background: var(--panel); color: var(--ft--icon-error); font-size: 12px; font-weight: 500; line-height: 1; cursor: pointer; }
 .remove-finance-button:hover { background: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
 .edit-view {
@@ -665,8 +672,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-header h1 { margin: 0; }
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
-.edit-row-top { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-.edit-row-bottom { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+.edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+.edit-row-bottom { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -689,37 +696,50 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .club-summary strong { font-weight: 700; }
 .agency-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .agency-summary strong { font-weight: 700; }
-.status-editor { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 10px; align-items: center; }
-.status-editor-label { color: var(--muted); }
-.status-editor-label:nth-child(2) { justify-self: end; }
-.status-option { display: inline-flex; align-items: center; justify-self: start; width: 160px; min-height: var(--ft--button-sm-height); gap: 6px; padding: var(--ft--button-sm-padding-y) var(--ft--button-sm-padding-x); border: 1px solid var(--line); color: var(--ink); font-weight: 500; cursor: pointer; }
+/* Une ligne par statut, sur le modele du widget de reference : le controle de
+   periode accompagne son statut au lieu d'occuper une cellule de grille. Les
+   lignes non selectionnees n'ont donc que leur bouton et gardent toutes la
+   meme hauteur, quelle que soit la hauteur du champ de periode affiche. */
+.status-editor { display: grid; gap: 8px; }
+.status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
+.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.status-option { display: inline-flex; align-items: center; white-space: nowrap; font-size: 13px; min-height: var(--ft--button-sm-height); gap: 8px; padding: var(--ft--button-sm-padding-y) 10px; border: 1px solid transparent; border-radius: var(--radius-control); color: var(--ink); font-weight: 500; cursor: pointer; }
+.status-option:hover { background: var(--ft--color-background-neutral-default-weakest); }
 .status-option:has(input:checked) { font-weight: 700; }
-.status-option.projet:has(input:checked) { border-color: var(--ft--border-info); color: var(--ft--icon-info); }
+.status-option.projet:has(input:checked) { background: var(--ft--bg-info); border-color: var(--ft--border-info); color: var(--ft--icon-info); }
 .status-option.planifie:has(input:checked),
-.status-option.planifiee:has(input:checked) { border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+.status-option.planifiee:has(input:checked) { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
 .status-option.realise:has(input:checked),
-.status-option.realisee:has(input:checked) { border-color: var(--ft--border-success); color: var(--ft--icon-success); }
+.status-option.realisee:has(input:checked) { background: var(--ft--bg-success); border-color: var(--ft--border-success); color: var(--ft--icon-success); }
 .status-option.annule:has(input:checked),
-.status-option.annulee:has(input:checked) { border-color: var(--ft--border-error); color: var(--ft--icon-error); }
-.status-option.a-confirmer:has(input:checked) { border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
-.status-period input { width: 100%; min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
+.status-option.annulee:has(input:checked) { background: var(--ft--bg-error); border-color: var(--ft--border-error); color: var(--ft--icon-error); }
+.status-option.a-confirmer:has(input:checked) { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+.status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
+.status-period-label { color: var(--muted); font-size: 12px; }
+.status-period-label:empty { display: none; }
+.status-period { min-width: 0; max-width: 280px; }
+.status-period input { width: 100%; min-width: 0; min-height: var(--ft--form-control-height); padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
 .finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
 .finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
-.finance-editor { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 24px; padding: 24px; }
+.finance-open { padding: 16px 24px 0; }
+.finance-open-option { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.finance-open-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-navy); cursor: pointer; }
+.finance-editor { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding: 24px; }
 .finance-budget { display: grid; grid-template-rows: 24px 34px; row-gap: 10px; align-self: start; }
-.finance-budget label { display: flex; align-items: center; }
+.finance-budget label { display: flex; align-items: center; white-space: nowrap; }
 .finance-budget input { width: 100%; min-width: 0; height: 34px; min-height: 34px; margin: 0; box-sizing: border-box; }
 .finance-list { display: grid; grid-template-rows: 24px auto auto; row-gap: 10px; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1fr) 110px 68px; gap: 10px; align-items: center; height: 24px; color: var(--muted); }
+.finance-list-head > span { padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 1.15fr) 62px; gap: 8px; align-items: center; height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .add-finance-button { justify-self: start; }
-.finance-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 68px; gap: 10px; min-height: 34px; align-items: center; }
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 1.15fr) 62px; gap: 8px; min-height: 34px; align-items: center; }
 .finance-row select,
-.finance-row input { height: 34px; min-height: 34px; padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
+.finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
 .cancel-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); border: 1px solid var(--brand-navy); background: var(--panel); color: var(--brand-navy); font-weight: 500; cursor: pointer; }
 .edit-message { padding: 10px 40px 0; color: var(--brand-red); font-weight: 700; }
@@ -730,7 +750,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 }
 
 .is-hidden { display: none; }
-.status-period.is-hidden { display: block; visibility: hidden; }
+.status-period.is-hidden { display: none; }
 
 .sr-only {
   position: absolute;
@@ -766,6 +786,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-row-bottom { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
   .finance-editor { grid-template-columns: 1fr; }
+  .finance-list-head { display: none; }
+  .finance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; }
+  .finance-row .finance-select { grid-column: 1 / -1; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
   .edit-header-actions { width: 100%; justify-content: flex-end; }
   .edit-actions, .edit-message { padding-left: 14px; padding-right: 14px; }
@@ -869,7 +892,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], versementChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -913,6 +936,7 @@ async function load() {
     state.raw = Object.fromEntries(data);
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
+    state.versementChoices = await loadColumnChoices('Cofinancements', 'Statut_Versement');
     state.actions = buildActions(state.raw);
     render();
   } catch (error) {
@@ -981,7 +1005,7 @@ function buildActions(raw) {
     const financement = financements.get(cof.Financement) || {};
     const financeur = financeurs.get(financement.Financeur) || {};
     const label = financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom;
-    (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0)});
+    (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0), statutVersement: cof.Statut_Versement || ''});
     return acc;
   }, {});
 
@@ -998,6 +1022,7 @@ function buildActions(raw) {
       id: action.id,
       intitule: action.Intitule || '',
       budget: Number(action.Budget || 0),
+      ouvertAuFinancement: action.Ouvert_au_financement === true,
       financed,
       rate: action.Budget ? financed / Number(action.Budget) : 0,
       participants: Number(action.Jauge || 0),
@@ -1259,17 +1284,24 @@ function renderEdit() {
           <div class="section-head"><span>Statut</span></div>
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
-              <span class="status-editor-label">Statut de l'action</span><span class="status-editor-label" id="statusPeriodLabel">${escapeHtml(statusFieldConfig(action.statut).label)}</span>
-              ${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label>${statusPeriodControl(status, action)}`).join('')}
+              <div class="status-head-row"><span>Statut de l'action</span></div>
+              <div class="status-options">${statusChoices.map(status => `<label class="status-option ${statusClass(status)}"><input type="radio" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}>${escapeHtml(status)}</label>`).join('')}</div>
+              <div class="status-period-slot">
+                <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
+                ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
+              </div>
             </div>
           </div>
         </section>
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
+          <div class="finance-open">
+            <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
+          </div>
           <div class="finance-editor">
             <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="finance-list">
-              <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span aria-hidden="true"></span></div>
+              <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span>Statut de versement</span><span aria-hidden="true"></span></div>
               <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
               <button class="add-finance-button" type="button" id="addFinance">+ Ajouter un financeur</button>
             </div>
@@ -1304,7 +1336,7 @@ function bindStatusEditor() {
     const previousKind = previous?.dataset.periodKind || '';
     const previousValue = previous ? readPeriodValue(previous) : '';
     const config = statusFieldConfig(radio.value);
-    document.getElementById('statusPeriodLabel').textContent = config.label;
+    document.getElementById('statusPeriodLabel').textContent = outerPeriodLabel(radio.value);
     editor.querySelectorAll('.status-period').forEach(container => {
       const visible = container.dataset.statusDate === radio.value;
       container.classList.toggle('is-hidden', !visible);
@@ -1388,8 +1420,18 @@ function financeRow(item) {
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
+    <select class="finance-status">${versementOptions(item.statutVersement || '')}</select>
     <button class="remove-finance-button" type="button">Retirer</button>
   </div>`;
+}
+
+function versementOptions(selected) {
+  const choices = state.versementChoices.length ? state.versementChoices : ['Non versé', 'En cours', 'Versé'];
+  const options = choices.map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
+  // Un cofinancement encore sans statut dans Grist ne doit pas afficher le
+  // premier choix à tort : on garde une option vide tant que rien n'est saisi.
+  if (!choices.includes(selected)) options.unshift('<option value="" selected>À définir</option>');
+  return options.join('');
 }
 
 function financeEmptyState() {
@@ -1438,7 +1480,8 @@ async function saveEdit(event, action) {
   const rows = [...document.querySelectorAll('.finance-row')].map(row => ({
     id: Number(row.dataset.cofinancementId || 0),
     financement: Number(row.querySelector('.finance-select').value || 0),
-    montant: Number(row.querySelector('.finance-amount').value || 0)
+    montant: Number(row.querySelector('.finance-amount').value || 0),
+    statutVersement: row.querySelector('.finance-status').value || ''
   })).filter(row => row.financement && row.montant >= 0);
   const status = document.querySelector('[name="editStatus"]:checked')?.value || '';
   const statusConfig = statusFieldConfig(status);
@@ -1453,14 +1496,16 @@ async function saveEdit(event, action) {
     Statut: status,
     Date: statusConfig.kind === 'date' && periodValue ? Math.floor(new Date(`${periodValue}T00:00:00`).getTime() / 1000) : null,
     Periode_approx: statusConfig.kind === 'text' ? periodValue : '',
-    Budget: Number(document.getElementById('editBudget').value || 0)
+    Budget: Number(document.getElementById('editBudget').value || 0),
+    Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
   rows.forEach(row => {
-    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
-    else userActions.push(['AddRecord', 'Cofinancements', null, {Financement: row.financement, Montant: row.montant, Action: action.id}]);
+    const fields = {Financement: row.financement, Montant: row.montant, Action: action.id, Statut_Versement: row.statutVersement};
+    if (row.id && currentIds.has(row.id)) userActions.push(['UpdateRecord', 'Cofinancements', row.id, fields]);
+    else userActions.push(['AddRecord', 'Cofinancements', null, fields]);
   });
   action.financeurs.filter(item => !usedIds.has(item.id)).forEach(item => userActions.push(['RemoveRecord', 'Cofinancements', item.id]));
   try {
@@ -1663,11 +1708,16 @@ function statusPeriodControl(status, action) {
   let input = '';
   if (config.kind === 'date') {
     const iso = dateInputValue(action.date);
-    input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"></ft-datepicker>`;
+    input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"><span slot="label">${escapeHtml(config.label)}</span></ft-datepicker>`;
   } else if (config.kind === 'text') {
     input = `<input class="edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+function outerPeriodLabel(status) {
+  const config = statusFieldConfig(status);
+  return config.kind === 'text' ? config.label : '';
 }
 
 function statusPeriodValue(action) {
