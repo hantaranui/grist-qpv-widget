@@ -82,18 +82,72 @@ async function load() {
   }
 }
 
+// Les listes de choix vivent dans la configuration des colonnes Grist. Trois
+// chemins pour les lire, du plus fiable au dernier recours :
+//   1. l'API REST /columns, qui ne demande que le droit de lecture de la table ;
+//   2. les tables de métadonnées, refusées aux utilisateurs non propriétaires
+//      dès qu'une règle d'accès retire la lecture par défaut (`-CRUD` sur `*`) ;
+//   3. les listes ci-dessous, pour que personne ne se retrouve avec un menu vide.
+const FALLBACK_CHOICES = {
+  'Actions.Statut': ['A confirmer', 'Planifiée', 'Réalisée', 'Annulée'],
+  'Actions.Public': ['BRSA', 'ZRR', 'QPV', 'Jeunes', 'Seniors', 'DELD', 'Infra Bac', 'DEBOE', 'Femmes', 'Hommes'],
+  'Cofinancements.Statut_Versement': ['Non versé', 'En cours', 'Versé']
+};
+
+let accessTokenPromise = null;
+const columnsCache = new Map();
+let metaTablesPromise = null;
+
 async function loadColumnChoices(tableId, colId) {
+  const fromRest = await choicesFromRestApi(tableId, colId);
+  if (fromRest.length) return fromRest;
+  const fromMeta = await choicesFromMetaTables(tableId, colId);
+  if (fromMeta.length) return fromMeta;
+  console.warn(`Choix de ${tableId}.${colId} illisibles dans Grist : utilisation de la liste de secours.`);
+  return FALLBACK_CHOICES[`${tableId}.${colId}`] || [];
+}
+
+async function choicesFromRestApi(tableId, colId) {
+  const columns = await fetchTableColumns(tableId);
+  const column = columns.find(item => item.id === colId);
+  const options = parseWidgetOptions(column?.fields?.widgetOptions);
+  return Array.isArray(options.choices) ? options.choices : [];
+}
+
+function fetchTableColumns(tableId) {
+  if (!columnsCache.has(tableId)) {
+    columnsCache.set(tableId, requestTableColumns(tableId).catch(error => {
+      console.warn(`Impossible de lire les colonnes de ${tableId} via l'API REST`, error);
+      return [];
+    }));
+  }
+  return columnsCache.get(tableId);
+}
+
+async function requestTableColumns(tableId) {
+  accessTokenPromise ||= grist.docApi.getAccessToken({readOnly: true});
+  const {token, baseUrl} = await accessTokenPromise;
+  const url = `${baseUrl}/tables/${encodeURIComponent(tableId)}/columns?auth=${encodeURIComponent(token)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status} sur ${tableId}/columns`);
+  const payload = await response.json();
+  return Array.isArray(payload.columns) ? payload.columns : [];
+}
+
+async function choicesFromMetaTables(tableId, colId) {
   try {
-    const [tables, columns] = await Promise.all([
+    metaTablesPromise ||= Promise.all([
       grist.docApi.fetchTable('_grist_Tables'),
       grist.docApi.fetchTable('_grist_Tables_column')
     ]);
+    const [tables, columns] = await metaTablesPromise;
     const table = rows(tables).find(item => item.tableId === tableId);
     const column = rows(columns).find(item => item.parentId === table?.id && item.colId === colId);
     const options = parseWidgetOptions(column?.widgetOptions);
     return Array.isArray(options.choices) ? options.choices : [];
   } catch (error) {
-    console.warn(`Impossible de lire les choix de ${tableId}.${colId}`, error);
+    console.warn(`Impossible de lire les choix de ${tableId}.${colId} dans les métadonnées`, error);
+    metaTablesPromise = null;
     return [];
   }
 }
@@ -363,10 +417,10 @@ function renderEdit() {
   const dd = byId(state.raw.DD).get(agency.DD) || {};
   const dr = byId(state.raw.DR).get(dd.DR) || {};
   const club = byId(state.raw.Structures).get(action.clubId) || {};
-  const statusChoices = state.statusChoices.length ? state.statusChoices : [...new Set(state.actions.map(item => item.statut).filter(Boolean))];
-  const publicChoices = state.publicChoices.length
-    ? state.publicChoices
-    : [...new Set(state.actions.flatMap(item => item.publicChoices))].sort((a, b) => a.localeCompare(b, 'fr'));
+  // Une valeur déjà saisie dans Grist mais absente de la configuration de la
+  // colonne doit rester sélectionnable, sinon l'action perdrait son statut.
+  const statusChoices = withExistingValues(state.statusChoices, state.actions.map(item => item.statut));
+  const publicChoices = withExistingValues(state.publicChoices, state.actions.flatMap(item => item.publicChoices));
   const total = action.financeurs.reduce((sum, item) => sum + item.montant, 0);
   const editView = document.getElementById('editView');
   editView.innerHTML = `
@@ -561,7 +615,7 @@ function financeRow(item) {
 }
 
 function versementOptions(selected) {
-  const choices = state.versementChoices.length ? state.versementChoices : ['Non versé', 'En cours', 'Versé'];
+  const choices = state.versementChoices;
   const options = choices.map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
   // Un cofinancement encore sans statut dans Grist ne doit pas afficher le
   // premier choix à tort : on garde une option vide tant que rien n'est saisi.
@@ -870,6 +924,11 @@ function formatDate(value) {
   if (!value) return '';
   const date = new Date(Number(value) * 1000);
   return date.toLocaleDateString('fr-FR');
+}
+
+function withExistingValues(choices, values) {
+  const extras = [...new Set(values.filter(value => value && !choices.includes(value)))].sort((a, b) => a.localeCompare(b, 'fr'));
+  return [...choices, ...extras];
 }
 
 function formatChoiceList(value) {
