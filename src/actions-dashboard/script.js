@@ -1,6 +1,6 @@
 grist.ready({requiredAccess: 'full'});
 
-const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Communes', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
+const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -27,7 +27,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], versementChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], versementChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -71,6 +71,7 @@ async function load() {
     state.raw = Object.fromEntries(data);
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
+    state.formatChoices = await loadColumnChoices('Actions', 'Format');
     state.versementChoices = await loadColumnChoices('Cofinancements', 'Statut_Versement');
     state.actions = buildActions(state.raw);
     render();
@@ -91,6 +92,7 @@ async function load() {
 const FALLBACK_CHOICES = {
   'Actions.Statut': ['A confirmer', 'Planifiée', 'Réalisée', 'Annulée'],
   'Actions.Public': ['BRSA', 'ZRR', 'QPV', 'Jeunes', 'Seniors', 'DELD', 'Infra Bac', 'DEBOE', 'Femmes', 'Hommes'],
+  'Actions.Format': ['Demi-journée', 'Journée'],
   'Cofinancements.Statut_Versement': ['Non versé', 'En cours', 'Versé']
 };
 
@@ -183,7 +185,6 @@ function buildActions(raw) {
   const dds = byId(raw.DD);
   const drs = byId(raw.DR);
   const clubs = byId(raw.Structures);
-  const communes = communesByCode(raw.Communes);
   const dispositifs = byId(raw.Dispositifs);
   const federations = byId(raw.Federations);
   const financements = byId(raw.Financements);
@@ -215,6 +216,9 @@ function buildActions(raw) {
       financed,
       rate: action.Budget ? financed / Number(action.Budget) : 0,
       participants: Number(action.Jauge || 0),
+      format: action.Format || '',
+      lieu: action.Lieu || '',
+      commentaire: action.Commentaire || '',
       public: formatChoiceList(action.Public),
       publicChoices: choiceValues(action.Public),
       statut: action.Statut || '',
@@ -228,7 +232,7 @@ function buildActions(raw) {
       dd: dd.Nom || '',
       dr: dr.Nom || '',
       club: club.Nom || '',
-      ville: cityOf(club, communes),
+      ville: action.Ville || '',
       dispositif: dispositif.Dispositif || dispositif.Code || '',
       federation: federation.Nom || '',
       financeurs: lines
@@ -416,7 +420,6 @@ function renderEdit() {
   const agency = byId(state.raw.Agences).get(action.agencyId) || {};
   const dd = byId(state.raw.DD).get(agency.DD) || {};
   const dr = byId(state.raw.DR).get(dd.DR) || {};
-  const club = byId(state.raw.Structures).get(action.clubId) || {};
   // Une valeur déjà saisie dans Grist mais absente de la configuration de la
   // colonne doit rester sélectionnable, sinon l'action perdrait son statut.
   const statusChoices = withExistingValues(state.statusChoices, state.actions.map(item => item.statut));
@@ -438,11 +441,15 @@ function renderEdit() {
         <div class="edit-row edit-row-top">
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
-          <div class="edit-fields">
-            <div class="edit-field"><label for="editTitle">Intitulé de l'action</label><input id="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+          <div class="edit-fields edit-fields-action">
+            <div class="edit-field edit-field-wide"><label for="editTitle">Intitulé de l'action</label><input id="editTitle" required value="${escapeAttr(action.intitule)}"></div>
             <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '')}</select></div>
+            <div class="edit-field"><label for="editFormat">Format</label><select id="editFormat">${formatOptions(action.format)}</select></div>
             <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" type="number" min="0" value="${action.participants}"></div>
             <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
+            <div class="edit-field"><label for="editVille">Ville</label><input id="editVille" value="${escapeAttr(action.ville)}"></div>
+            <div class="edit-field"><label for="editLieu">Lieu</label><input id="editLieu" value="${escapeAttr(action.lieu)}"></div>
+            <div class="edit-field edit-field-wide"><label for="editCommentaire">Commentaire</label><textarea id="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
           </div>
         </section>
         <div class="edit-stack">
@@ -461,7 +468,6 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="club-summary">
               <div><strong>Club :</strong> ${escapeHtml(action.club)}</div>
-              <div><strong>Ville :</strong> ${escapeHtml(cityOf(club, communesByCode(state.raw.Communes)))}</div>
               <div><strong>Fédération :</strong> ${escapeHtml(action.federation)}</div>
             </div>
           </div>
@@ -614,6 +620,15 @@ function financeRow(item) {
   </div>`;
 }
 
+function formatOptions(selected) {
+  const options = withExistingValues(state.formatChoices, [selected])
+    .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
+  // Le format n'est pas obligatoire : tant qu'il n'est pas saisi, aucun choix ne
+  // doit apparaitre selectionne par defaut.
+  options.unshift(`<option value=""${selected ? '' : ' selected'}>Choisir un format</option>`);
+  return options.join('');
+}
+
 function versementOptions(selected) {
   const choices = state.versementChoices;
   const options = choices.map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
@@ -680,6 +695,10 @@ async function saveEdit(event, action) {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
     Jauge: Number(document.getElementById('editParticipants').value || 0),
+    Format: document.getElementById('editFormat').value,
+    Ville: document.getElementById('editVille').value.trim(),
+    Lieu: document.getElementById('editLieu').value.trim(),
+    Commentaire: document.getElementById('editCommentaire').value.trim(),
     Public: ['L', ...publicValues],
     Agence: Number(document.getElementById('editAgency').value || 0),
     Statut: status,
@@ -836,23 +855,6 @@ function federationClubCounts(actions) {
   return [...clubsByFederation.entries()]
     .map(([name, clubs]) => [name, clubs.size])
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
-}
-
-function communesByCode(communes) {
-  const map = new Map();
-  (communes || []).forEach(commune => {
-    if (commune.Code_Insee && commune.Libelle_Commune && !map.has(commune.Code_Insee)) {
-      map.set(commune.Code_Insee, commune.Libelle_Commune);
-    }
-  });
-  return map;
-}
-
-function cityOf(club, communes = new Map()) {
-  const city = communes.get(club.Code_Insee);
-  if (city) return city;
-  const fallback = String(club.Siege || '').trim();
-  return fallback === 'Oui' || fallback === 'Non' ? '' : fallback;
 }
 
 function sortActions(actions) {
