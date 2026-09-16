@@ -740,11 +740,14 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { width: 100%; min-width: 0; height: 34px; min-height: 34px; margin: 0; box-sizing: border-box; }
 .finance-list { display: grid; grid-template-rows: 24px auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 1.15fr) 62px; gap: 8px; align-items: center; height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) 62px; gap: 16px; align-items: center; height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .add-finance-button { justify-self: start; }
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 1.15fr) 62px; gap: 8px; min-height: 34px; align-items: center; }
+/* Le champ Montant etait le plus etroit de la ligne, coince entre deux colonnes
+   plus larges. Le selecteur de financeur avait de la marge : il en cede une
+   partie au montant, ce qui ramene aussi le statut vers la gauche. */
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) 62px; gap: 16px; min-height: 34px; align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: 34px; padding: 6px 8px; color: var(--ink); }
 .finance-row select,
 .finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
