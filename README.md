@@ -43,7 +43,7 @@ configuration du widget dans Grist.
 https://hantaranui.github.io/grist-qpv-widget/
 ```
 
-## Widget dashboard Partenariat Simplifie
+## Widget dashboard des actions
 
 Un deuxieme widget, destine au tableau de bord "Actions d'insertion par le sport", est disponible dans `actions-dashboard.html`.
 Il lit les tables Grist `Actions`, `Cofinancements` et leurs tables de reference pour afficher :
