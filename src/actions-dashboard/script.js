@@ -27,7 +27,7 @@ const FILTERS = [
 ];
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], versementChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -72,7 +72,6 @@ async function load() {
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
-    state.versementChoices = await loadColumnChoices('Cofinancements', 'Statut_Versement');
     state.actions = buildActions(state.raw);
     render();
   } catch (error) {
@@ -92,8 +91,7 @@ async function load() {
 const FALLBACK_CHOICES = {
   'Actions.Statut': ['A confirmer', 'Planifiée', 'Réalisée', 'Annulée'],
   'Actions.Public': ['BRSA', 'ZRR', 'QPV', 'Jeunes', 'Seniors', 'DELD', 'Infra Bac', 'DEBOE', 'Femmes', 'Hommes'],
-  'Actions.Format': ['Demi-journée', 'Journée'],
-  'Cofinancements.Statut_Versement': ['Non versé', 'En cours', 'Versé']
+  'Actions.Format': ['Demi-journée', 'Journée']
 };
 
 let accessTokenPromise = null;
@@ -491,10 +489,10 @@ function renderEdit() {
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
+            <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
           </div>
           <div class="finance-editor">
-            <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="finance-list">
               <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span>Statut de versement</span><span aria-hidden="true"></span></div>
               <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
@@ -615,7 +613,7 @@ function financeRow(item) {
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
-    <select class="finance-status">${versementOptions(item.statutVersement || '')}</select>
+    <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement || 'À définir')}</div>
     <button class="remove-finance-button" type="button">Retirer</button>
   </div>`;
 }
@@ -626,15 +624,6 @@ function formatOptions(selected) {
   // Le format n'est pas obligatoire : tant qu'il n'est pas saisi, aucun choix ne
   // doit apparaitre selectionne par defaut.
   options.unshift(`<option value=""${selected ? '' : ' selected'}>Choisir un format</option>`);
-  return options.join('');
-}
-
-function versementOptions(selected) {
-  const choices = state.versementChoices;
-  const options = choices.map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`);
-  // Un cofinancement encore sans statut dans Grist ne doit pas afficher le
-  // premier choix à tort : on garde une option vide tant que rien n'est saisi.
-  if (!choices.includes(selected)) options.unshift('<option value="" selected>À définir</option>');
   return options.join('');
 }
 
@@ -685,7 +674,7 @@ async function saveEdit(event, action) {
     id: Number(row.dataset.cofinancementId || 0),
     financement: Number(row.querySelector('.finance-select').value || 0),
     montant: Number(row.querySelector('.finance-amount').value || 0),
-    statutVersement: row.querySelector('.finance-status').value || ''
+    statutVersement: row.querySelector('.finance-status').dataset.statut || ''
   })).filter(row => row.financement && row.montant >= 0);
   const status = document.querySelector('[name="editStatus"]:checked')?.value || '';
   const statusConfig = statusFieldConfig(status);

@@ -720,10 +720,11 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-summary strong { color: var(--ink); }
 .finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
 .finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
-.finance-open { padding: 16px 24px 0; }
-.finance-open-option { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
+.finance-open .finance-budget { width: 120px; }
+.finance-open-option { display: inline-flex; align-items: center; min-height: 34px; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
 .finance-open-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-navy); cursor: pointer; }
-.finance-editor { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding: 24px; }
+.finance-editor { padding: 24px; }
 .finance-budget { display: grid; grid-template-rows: 24px 34px; row-gap: 10px; align-self: start; }
 .finance-budget label { display: flex; align-items: center; white-space: nowrap; }
 .finance-budget input { width: 100%; min-width: 0; height: 34px; min-height: 34px; margin: 0; box-sizing: border-box; }
@@ -734,6 +735,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .add-finance-button { justify-self: start; }
 .finance-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.75fr) minmax(0, 1.15fr) 62px; gap: 8px; min-height: 34px; align-items: center; }
+.finance-row .finance-status { display: flex; align-items: center; min-height: 34px; padding: 6px 8px; color: var(--ink); }
 .finance-row select,
 .finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
@@ -782,7 +784,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-row-bottom { grid-template-columns: 1fr; }
   .edit-fields-action { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
-  .finance-editor { grid-template-columns: 1fr; }
   .finance-list-head { display: none; }
   .finance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; }
   .finance-row .finance-select { grid-column: 1 / -1; }
