@@ -17,7 +17,6 @@
   --radius-surface: var(--ft--button-border-radius);
   /* Hauteur utile laissee au tableau : tout ce qui le precede dans la page
      (topbar, marges du layout, entete de la synthese repliee). */
-  --table-viewport: calc(100vh - 210px);
   /* Largeur plancher d'une colonne de filtre. Le plus long libelle,
      « Direction departementale (DD) », mesure 212 px en 14px/700 : en dessous
      de ce plancher le titre se couperait en deux lignes. On garde une marge
@@ -46,6 +45,9 @@
 
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
@@ -114,17 +116,37 @@ h1 {
   color: var(--ft-color-background-neutral-light);
 }
 
+/* La page occupe la hauteur de l'ecran et la distribue : le tableau recupere
+   tout ce que l'en-tete et les bandeaux ne prennent pas, quelle que soit la
+   taille de l'ecran. La fiche de detail est en position fixed, hors de ce flux. */
+#dashboardView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .layout {
   display: grid;
+  flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: none;
   margin: 0;
   /* 270px - 32px de padding = 238px utiles, soit le plus long libelle de filtre
      (212px) sans rupture de ligne. */
   grid-template-columns: 270px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   align-items: start;
   gap: 24px;
   padding: 24px;
+}
+
+/* La colonne des filtres garde la hauteur de son contenu, le contenu principal
+   prend toute celle de la ligne. */
+.layout > main {
+  align-self: stretch;
+  min-height: 0;
 }
 
 /* Filtres replies : la colonne de gauche n'a plus de contenu a montrer, elle
@@ -132,6 +154,7 @@ h1 {
    pleine largeur, et le tableau occupe tout l'espace. Deplier rend la colonne. */
 .layout.filters-collapsed {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .filters, .section, .table {
@@ -411,9 +434,12 @@ main {
   min-width: 0;
 }
 
-main > .section,
-main > .table {
+main > .section {
   flex: 0 0 auto;
+}
+
+main > .table {
+  flex: 1 1 auto;
 }
 
 .summary {
@@ -532,8 +558,10 @@ main > .table {
   /* Le conteneur doit rester borne en hauteur. Sans cela il grandit avec le
      nombre de lignes et sa barre de defilement horizontale se retrouve sous la
      derniere ligne, donc hors ecran : impossible d'atteindre les colonnes de
-     droite sans avoir deroule toute la liste au prealable. */
-  max-height: var(--table-viewport);
+     droite sans avoir deroule toute la liste au prealable. La hauteur vient de
+     la place libre dans la page ; le plafond n'est qu'un garde-fou pour le cas
+     ou la colonne des filtres depasserait l'ecran. */
+  max-height: 100vh;
   min-height: 260px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -847,7 +875,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 }
 
 @media (max-width: 900px) {
-  :root { --table-viewport: calc(100vh - 150px); }
   .layout { padding: 14px; }
   .topbar { align-items: flex-start; flex-direction: column; }
   .summary-top,
