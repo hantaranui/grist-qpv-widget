@@ -1,6 +1,6 @@
 grist.ready({requiredAccess: 'full'});
 
-const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs'];
+const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP'];
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -16,6 +16,7 @@ const COLORS = [
   '#00A6A6'
 ];
 const FILTERS = [
+  ['osiris', 'Numéro Osiris'],
   ['dr', 'Direction régionale (DR)'],
   ['dd', 'Direction départementale (DD)'],
   ['agency', 'Agence'],
@@ -23,11 +24,16 @@ const FILTERS = [
   ['club', 'Club'],
   ['dispositif', 'Dispositif'],
   ['statut', 'Statut'],
-  ['financeur', 'Financement']
+  ['financeur', 'Financeur'],
+  ['financement', 'Financement']
 ];
+// Filtres a liste deroulante avec recherche, filtres a saisie libre, et les
+// trois etats de financement, qui sont calcules et non lus dans une colonne.
 const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
+const TEXT_FILTERS = new Set(['osiris']);
+const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -36,6 +42,11 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 document.getElementById('toggleSummary').addEventListener('click', () => {
   state.summaryOpen = !state.summaryOpen;
+  render();
+});
+
+document.getElementById('toggleFilters').addEventListener('click', () => {
+  state.filtersOpen = !state.filtersOpen;
   render();
 });
 
@@ -185,6 +196,7 @@ function buildActions(raw) {
   const clubs = byId(raw.Structures);
   const dispositifs = byId(raw.Dispositifs);
   const federations = byId(raw.Federations);
+  const reponses = byId(raw.Reponses_AAP);
   const financements = byId(raw.Financements);
   const financeurs = byId(raw.Financeurs);
   const cofs = raw.Cofinancements.reduce((acc, cof) => {
@@ -204,15 +216,20 @@ function buildActions(raw) {
     const club = clubs.get(action.Club) || {};
     const dispositif = dispositifs.get(action.Dispositif) || {};
     const federation = federations.get(action.Federation) || {};
+    const reponse = reponses.get(action.Reponse_AAP) || {};
     const lines = cofs[action.id] || [];
     const financed = lines.reduce((sum, item) => sum + item.montant, 0);
     return {
       id: action.id,
       intitule: action.Intitule || '',
+      // Formule Grist : numero Osiris suivi de l'intitule, ou l'intitule seul.
+      nomComplet: action.Nom_complet || action.Intitule || '',
+      osiris: reponse.Numero_Action_Osiris || '',
       budget: Number(action.Budget || 0),
       ouvertAuFinancement: action.Ouvert_au_financement === true,
       financed,
       rate: action.Budget ? financed / Number(action.Budget) : 0,
+      financement: financementState(financed, Number(action.Budget || 0)),
       participants: Number(action.Jauge || 0),
       format: action.Format || '',
       lieu: action.Lieu || '',
@@ -238,6 +255,22 @@ function buildActions(raw) {
   });
 }
 
+function financementState(financed, budget) {
+  if (budget > 0) {
+    const rate = financed / budget;
+    if (rate >= 1) return FINANCEMENT_STATES[0];
+    return rate > 0 ? FINANCEMENT_STATES[1] : FINANCEMENT_STATES[2];
+  }
+  return financed > 0 ? FINANCEMENT_STATES[0] : FINANCEMENT_STATES[2];
+}
+
+function renderResults() {
+  const actions = filteredActions();
+  renderSummary(actions);
+  renderRows(actions);
+  requestResize();
+}
+
 function render() {
   renderFilters();
   const actions = filteredActions();
@@ -259,9 +292,16 @@ function requestResize() {
 
 function renderFilters() {
   const container = document.getElementById('filters');
+  document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
+  document.getElementById('toggleFilters').textContent = state.filtersOpen ? 'Replier' : 'Déplier';
   container.innerHTML = FILTERS.map(([key, label]) => {
-    const values = optionsFor(key);
     const selected = state.filters[key] || '';
+    if (TEXT_FILTERS.has(key)) {
+      return `<label>${escapeHtml(label)}
+        <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
+      </label>`;
+    }
+    const values = optionsFor(key);
     if (SEARCHABLE_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
         <details class="filter-search-dropdown">
@@ -296,6 +336,17 @@ function renderFilters() {
     });
   });
 
+  container.querySelectorAll('[data-filter-text]').forEach(input => {
+    input.addEventListener('input', event => {
+      const key = event.target.dataset.filterText;
+      const value = event.target.value.trim();
+      if (value) state.filters[key] = value;
+      else delete state.filters[key];
+      // On ne reconstruit pas les filtres : le champ garde le focus et le curseur.
+      renderResults();
+    });
+  });
+
   container.querySelectorAll('[data-filter-search]').forEach(input => {
     input.addEventListener('input', event => {
       const query = normalizeText(event.target.value);
@@ -318,6 +369,9 @@ function renderFilters() {
 }
 
 function optionsFor(key) {
+  // Les trois etats de financement sont toujours proposes, dans cet ordre, meme
+  // si aucune action de la selection courante ne s'y trouve.
+  if (key === 'financement') return [...FINANCEMENT_STATES];
   const values = new Set();
   state.actions.forEach(action => {
     if (key === 'financeur') action.financeurs.forEach(item => item.label && values.add(item.label));
@@ -336,6 +390,7 @@ function normalizeText(value) {
 function filteredActions() {
   const actions = state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
     if (key === 'financeur') return action.financeurs.some(item => item.label === value);
+    if (key === 'osiris') return normalizeText(action.osiris).includes(normalizeText(value));
     return action[key] === value;
   }));
   return sortActions(actions);
@@ -388,7 +443,7 @@ function renderRows(actions) {
     <tr>
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
-      <td><div class="strong">${escapeHtml(action.intitule)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
+      <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
       <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
@@ -429,7 +484,7 @@ function renderEdit() {
     <header class="edit-header">
       <div class="edit-header-title">
       <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
-      <h1>${escapeHtml(action.intitule || 'Modifier une action')}</h1>
+      <h1>${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
       <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm" id="saveEdit">Enregistrer</button></div>
     </header>

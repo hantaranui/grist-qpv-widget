@@ -146,6 +146,24 @@ h1 {
   border-bottom: 0;
 }
 
+/* La zone des filtres se replie comme la synthese, mais garde ses controles dans
+   le DOM : les valeurs choisies survivent au repliement. */
+.filters.is-collapsed .filters-body {
+  display: none;
+}
+
+.filters.is-collapsed > .section-head {
+  border-bottom: 0;
+}
+
+/* Le titre et le bouton Reinitialiser vont ensemble a gauche, le bouton de
+   repliement reste seul a droite. */
+.section-head-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .filters > .section-head,
 .section > .section-head,
 .edit-card > .section-head {
@@ -295,6 +313,19 @@ select:hover { border-color: var(--brand-blue); }
   border-radius: var(--radius-control);
   color: var(--ink);
 }
+
+.filter-text-input {
+  width: 100%;
+  min-height: var(--ft--form-control-height);
+  padding: 0 12px;
+  border: 1px solid var(--ft--color-background-neutral-default-weak);
+  border-bottom: 2px solid var(--brand-navy);
+  background: var(--panel);
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.filter-text-input:hover { border-color: var(--brand-blue); }
 
 .filter-search-options {
   display: grid;
