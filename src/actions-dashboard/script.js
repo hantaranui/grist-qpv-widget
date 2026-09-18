@@ -299,7 +299,12 @@ function renderFilters() {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
-        <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
+        <span class="filter-text-control">
+          <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
+          <button class="filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+          </button>
+        </span>
       </label>`;
     }
     const values = optionsFor(key);
@@ -337,15 +342,31 @@ function renderFilters() {
     });
   });
 
+  // Le tableau ne se recalcule qu'a la demande : sur des milliers d'actions, un
+  // filtrage a chaque frappe fige la page. On ne reconstruit pas non plus les
+  // filtres, pour que le champ garde son texte, son focus et son curseur.
+  const applyTextFilter = key => {
+    const input = container.querySelector(`[data-filter-text="${key}"]`);
+    const value = input ? input.value.trim() : '';
+    if (value) state.filters[key] = value;
+    else delete state.filters[key];
+    renderResults();
+  };
+
   container.querySelectorAll('[data-filter-text]').forEach(input => {
-    input.addEventListener('input', event => {
-      const key = event.target.dataset.filterText;
-      const value = event.target.value.trim();
-      if (value) state.filters[key] = value;
-      else delete state.filters[key];
-      // On ne reconstruit pas les filtres : le champ garde le focus et le curseur.
-      renderResults();
+    // L'evenement « search » couvre la touche Entree et la croix d'effacement
+    // que le navigateur ajoute lui-meme au champ.
+    input.addEventListener('search', () => applyTextFilter(input.dataset.filterText));
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyTextFilter(input.dataset.filterText);
+      }
     });
+  });
+
+  container.querySelectorAll('[data-filter-submit]').forEach(button => {
+    button.addEventListener('click', () => applyTextFilter(button.dataset.filterSubmit));
   });
 
   container.querySelectorAll('[data-filter-search]').forEach(input => {
@@ -484,7 +505,6 @@ function renderEdit() {
   <div class="edit-panel">
     <header class="edit-header">
       <div class="edit-header-title">
-      <button class="back-button" id="backToDashboard"><span class="icon icon-arrow-left" aria-hidden="true"></span>Actions d'insertion par le sport</button>
       <h1>${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
       <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm" id="saveEdit">Enregistrer</button></div>
@@ -561,7 +581,6 @@ function renderEdit() {
     </form>
   </div>
   `;
-  document.getElementById('backToDashboard').addEventListener('click', closeEdit);
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
@@ -669,7 +688,7 @@ function financeRow(item) {
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
-    <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement || 'À définir')}</div>
+    <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     <button class="remove-finance-button" type="button">Retirer</button>
   </div>`;
 }
