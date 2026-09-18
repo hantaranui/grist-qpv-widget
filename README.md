@@ -33,6 +33,21 @@ A chaque modification du code, editer les fichiers dans `src/`, relancer
 `npm run build`, puis commiter a la fois les sources et les fichiers generes a
 la racine (aucune CI ne fait ce build automatiquement).
 
+## Tests
+
+```text
+npm test
+```
+
+Les tests s'executent avec le lanceur integre de Node, sans dependance. Ils
+couvrent la logique pure du tableau de bord (construction des actions a partir
+des tables Grist, filtres, tri, listes de choix) et verifient que les fichiers
+HTML assembles a la racine correspondent bien aux sources de `src/`.
+
+`src/actions-dashboard/script.js` etant un script de page et non un module, il
+est evalue dans un bac a sable muni de doublures du DOM et de l'API Grist :
+voir `test/helpers/widget.js`.
+
 `index.html` n'est qu'une redirection vers `qpv-widget.html`, conservee pour que
 l'URL racine GitHub Pages ci-dessous continue de fonctionner sans changer la
 configuration du widget dans Grist.
