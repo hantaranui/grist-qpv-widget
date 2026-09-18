@@ -127,6 +127,13 @@ h1 {
   padding: 24px;
 }
 
+/* Filtres replies : la colonne de gauche n'a plus de contenu a montrer, elle
+   laisserait une bande vide sur un grand ecran. Le bandeau passe donc au-dessus,
+   pleine largeur, et le tableau occupe tout l'espace. Deplier rend la colonne. */
+.layout.filters-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .filters, .section, .table {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -856,7 +863,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
         <button class="export" id="exportBtn">Exporter (CSV)</button>
       </div>
 
-      <div class="layout">
+      <div class="layout" id="layout">
         <aside class="filters is-collapsed" id="filtersSection">
           <div class="section-head">
             <span class="section-head-group"><span>Filtres</span><button class="link-button" id="resetBtn">Réinitialiser</button></span>
@@ -1201,6 +1208,7 @@ function requestResize() {
 function renderFilters() {
   const container = document.getElementById('filters');
   document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
+  document.getElementById('layout').classList.toggle('filters-collapsed', !state.filtersOpen);
   document.getElementById('toggleFilters').textContent = state.filtersOpen ? 'Replier' : 'Déplier';
   container.innerHTML = FILTERS.map(([key, label]) => {
     const selected = state.filters[key] || '';

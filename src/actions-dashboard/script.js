@@ -293,6 +293,7 @@ function requestResize() {
 function renderFilters() {
   const container = document.getElementById('filters');
   document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
+  document.getElementById('layout').classList.toggle('filters-collapsed', !state.filtersOpen);
   document.getElementById('toggleFilters').textContent = state.filtersOpen ? 'Replier' : 'Déplier';
   container.innerHTML = FILTERS.map(([key, label]) => {
     const selected = state.filters[key] || '';
