@@ -15,11 +15,23 @@ const vm = require("vm");
 const SCRIPT = path.join(__dirname, "..", "..", "src", "actions-dashboard", "script.js");
 const EXPORTED = ["state", "FILTERS", "FINANCEMENT_STATES", "SEARCHABLE_FILTERS", "TEXT_FILTERS", "FALLBACK_CHOICES", "TABLES"];
 
+// Les doublures gardent ce qui se verifie depuis un test : le HTML ecrit dans
+// l'element et les classes posees dessus. Le reste ne fait rien.
 function makeElement() {
+  const classes = new Set();
   return {
     innerHTML: "", textContent: "", value: "", checked: false, hidden: false, disabled: false,
     dataset: {}, style: {}, files: [],
-    classList: {add() {}, remove() {}, toggle() {}, contains: () => false},
+    classList: {
+      add: (...names) => names.forEach((name) => classes.add(name)),
+      remove: (...names) => names.forEach((name) => classes.delete(name)),
+      contains: (name) => classes.has(name),
+      toggle(name, force) {
+        const on = force === undefined ? !classes.has(name) : Boolean(force);
+        if (on) classes.add(name); else classes.delete(name);
+        return on;
+      },
+    },
     addEventListener() {}, removeEventListener() {}, setAttribute() {}, removeAttribute() {},
     querySelector: () => makeElement(), querySelectorAll: () => [], closest: () => null,
     insertAdjacentHTML() {}, appendChild() {}, click() {}, focus() {},
@@ -34,13 +46,17 @@ function loadWidget() {
   // la sortie des tests avec.
   const quiet = {log() {}, warn() {}, error() {}, info() {}};
 
+  const elements = new Map();
+
   const sandbox = {
     console: quiet,
     setTimeout,
     requestAnimationFrame: () => {},
     fetch: () => Promise.reject(new Error("réseau indisponible en test")),
     document: {
-      getElementById: () => makeElement(),
+      // Un meme identifiant renvoie toujours le meme element, sans quoi un test
+      // ne pourrait pas relire ce qu'un rendu vient d'ecrire.
+      getElementById: (id) => elements.get(id) || elements.set(id, makeElement()).get(id),
       querySelector: () => makeElement(),
       querySelectorAll: () => [],
       createElement: () => makeElement(),
@@ -65,7 +81,7 @@ function loadWidget() {
 
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: "script.js"});
-  return Object.assign(Object.create(null), sandbox, sandbox.__widget);
+  return Object.assign(Object.create(null), sandbox, sandbox.__widget, {elements});
 }
 
 module.exports = {loadWidget, makeElement};
