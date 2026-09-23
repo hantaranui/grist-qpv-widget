@@ -107,7 +107,7 @@ h1 {
   min-height: 0;
 }
 
-.layout {
+.dashboard-layout {
   display: grid;
   flex: 1;
   min-height: 0;
@@ -125,7 +125,7 @@ h1 {
 
 /* La colonne des filtres garde la hauteur de son contenu, le contenu principal
    prend toute celle de la ligne. */
-.layout > main {
+.dashboard-layout > main {
   align-self: stretch;
   min-height: 0;
 }
@@ -133,29 +133,29 @@ h1 {
 /* Filtres replies : la colonne de gauche n'a plus de contenu a montrer, elle
    laisserait une bande vide sur un grand ecran. Le bandeau passe donc au-dessus,
    pleine largeur, et le tableau occupe tout l'espace. Deplier rend la colonne. */
-.layout.filters-collapsed {
+.dashboard-layout.filters-collapsed {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.filters, .section, .table {
+.filters, .board-section, .table-panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-surface);
 }
 
-.section {
+.board-section {
   overflow: hidden;
 }
 
-.section.is-collapsed {
+.board-section.is-collapsed {
   align-self: stretch;
   width: 100%;
   max-height: 40px;
   min-height: 0;
 }
 
-.section.is-collapsed .summary {
+.board-section.is-collapsed .summary {
   display: none;
   height: 0;
   min-height: 0;
@@ -163,7 +163,7 @@ h1 {
   padding: 0;
 }
 
-.section.is-collapsed .section-head {
+.board-section.is-collapsed .section-head {
   border-bottom: 0;
 }
 
@@ -186,7 +186,7 @@ h1 {
 }
 
 .filters > .section-head,
-.section > .section-head,
+.board-section > .section-head,
 .edit-card > .section-head {
   border-top-left-radius: calc(var(--radius-surface) - 1px);
   border-top-right-radius: calc(var(--radius-surface) - 1px);
@@ -395,11 +395,11 @@ main {
   min-width: 0;
 }
 
-main > .section {
+main > .board-section {
   flex: 0 0 auto;
 }
 
-main > .table {
+main > .table-panel {
   flex: 1 1 auto;
 }
 
@@ -515,7 +515,7 @@ main > .table {
   font-weight: 700;
 }
 
-.table {
+.table-panel {
   /* Le conteneur doit rester borne en hauteur. Sans cela il grandit avec le
      nombre de lignes et sa barre de defilement horizontale se retrouve sous la
      derniere ligne, donc hors ecran : impossible d'atteindre les colonnes de
@@ -559,7 +559,7 @@ th {
 }
 
 /* Les entetes restent visibles pendant le defilement vertical du tableau. */
-.table thead th {
+.table-panel thead th {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -567,7 +567,7 @@ th {
 
 /* Un th sticky cree un contexte d'empilement : sans ce rehaussement, le menu de
    tri d'une colonne passerait sous la colonne suivante. */
-.table thead th:has(details[open]) {
+.table-panel thead th:has(details[open]) {
   z-index: 6;
 }
 
@@ -602,7 +602,7 @@ td {
 
 /* Le tableau France Travail centre les cellules par défaut. Le dashboard doit
    démarrer chaque information au même niveau pour faciliter le balayage. */
-.table td {
+.table-panel td {
   vertical-align: top;
 }
 
@@ -610,31 +610,31 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 
 /* La colonne « Modifier » est la plus a droite, donc la plus penible a atteindre
    des que le tableau deborde. On la fige contre le bord droit du conteneur. */
-.table thead th:last-child,
-.table tbody td:last-child {
+.table-panel thead th:last-child,
+.table-panel tbody td:last-child {
   position: sticky;
   right: 0;
   border-left: 1px solid var(--line);
 }
 
-.table thead th:last-child {
+.table-panel thead th:last-child {
   z-index: 4;
 }
 
-.table tbody td:last-child {
+.table-panel tbody td:last-child {
   z-index: 2;
   /* Fond opaque obligatoire : la cellule figee se superpose aux autres. */
   background: var(--panel);
 }
 
-.table tbody tr:hover td:last-child {
+.table-panel tbody tr:hover td:last-child {
   background: var(--ft--color-background-primary-weakest);
 }
 
 .strong { font-weight: 800; }
 .muted { margin-top: 2px; color: var(--muted); }
 
-.tag {
+.status-tag {
   display: inline-block;
   padding: 4px 8px;
   border-radius: var(--radius-control);
@@ -645,16 +645,16 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
   border: 1px solid transparent;
 }
 
-.tag.projet { background: var(--ft--bg-info); border-color: var(--ft--border-info); color: var(--ft--icon-info); }
-.tag.planifie,
-.tag.planifiee { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
-.tag.realise,
-.tag.realisee { background: var(--ft--bg-success); border-color: var(--ft--border-success); color: var(--ft--icon-success); }
-.tag.annule,
-.tag.annulee { background: var(--ft--bg-error); border-color: var(--ft--border-error); color: var(--ft--icon-error); }
-.tag.a-confirmer { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
-.tag.en_cours { background: var(--ft--bg-info); color: var(--ft--icon-info); }
-.tag.suspendu { background: var(--ft--bg-warning); color: var(--ft--icon-warning); }
+.status-tag.projet { background: var(--ft--bg-info); border-color: var(--ft--border-info); color: var(--ft--icon-info); }
+.status-tag.planifie,
+.status-tag.planifiee { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+.status-tag.realise,
+.status-tag.realisee { background: var(--ft--bg-success); border-color: var(--ft--border-success); color: var(--ft--icon-success); }
+.status-tag.annule,
+.status-tag.annulee { background: var(--ft--bg-error); border-color: var(--ft--border-error); color: var(--ft--icon-error); }
+.status-tag.a-confirmer { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+.status-tag.en_cours { background: var(--ft--bg-info); color: var(--ft--icon-info); }
+.status-tag.suspendu { background: var(--ft--bg-warning); color: var(--ft--icon-warning); }
 
 .bar {
   height: 6px;
@@ -799,30 +799,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .is-hidden { display: none; }
 .status-period.is-hidden { display: none; }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* La colonne de filtres et le tableau (980 px minimum) ne tiennent plus cote a
    cote sous ~1340 px : 24 + 270 + 24 + 980 + 24 = 1322 px, plus la barre de
    defilement de l'iframe. On rend alors sa largeur au tableau et on repartit les
    filtres sur autant de colonnes que la place le permet, chacune assez large
    pour son titre. */
 @media (max-width: 1340px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-layout { grid-template-columns: minmax(0, 1fr); }
   .filters-body { grid-template-columns: repeat(auto-fit, minmax(var(--filter-col), 1fr)); }
 }
 
 @media (max-width: 900px) {
-  .layout { padding: 14px; }
+  .dashboard-layout { padding: 14px; }
   .topbar { align-items: flex-start; flex-direction: column; }
   .summary-top,
   .summary-charts { grid-template-columns: 1fr; }
@@ -845,8 +833,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    redevient donc une colonne ordinaire, qui defile avec le reste du tableau.
    Le gel reste actif au-dessus de ce seuil, ou il est un gain. */
 @media (max-width: 700px) {
-  .table thead th:last-child,
-  .table tbody td:last-child {
+  .table-panel thead th:last-child,
+  .table-panel tbody td:last-child {
     position: static;
   }
 }
@@ -859,7 +847,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
         <button class="btn btn-secondary" type="button" id="exportBtn"><span class="btn-content">Exporter (CSV)</span></button>
       </div>
 
-      <div class="layout" id="layout">
+      <div class="dashboard-layout" id="layout">
         <aside class="filters is-collapsed" id="filtersSection">
           <div class="section-head">
             <span class="section-head-group"><span>Filtres</span><button class="btn btn-link btn-sm" type="button" id="resetBtn"><span class="btn-content">Réinitialiser</span></button></span>
@@ -869,7 +857,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
         </aside>
 
         <main>
-          <section class="section is-collapsed" id="summarySection">
+          <section class="board-section is-collapsed" id="summarySection">
             <div class="section-head">
               <span>Synthèse</span>
               <button class="btn btn-link btn-sm" type="button" id="toggleSummary"><span class="btn-content">Déplier</span></button>
@@ -877,7 +865,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
             <div class="summary" id="summary"></div>
           </section>
 
-          <section class="table">
+          <section class="table-panel">
             <table>
             <caption class="sr-only">Liste des actions d'insertion par le sport</caption>
             <colgroup>
@@ -1383,7 +1371,7 @@ function renderRows(actions) {
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
       <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
-      <td><span class="tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
+      <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
         <div class="bar"><span style="width:${Math.round(action.rate * 100)}%"></span></div>
