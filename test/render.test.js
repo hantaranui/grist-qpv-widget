@@ -24,6 +24,20 @@ function seed() {
   w.state.sort = {};
 }
 
+function editHtml({agence = 1, dispositif = 0} = {}) {
+  seed();
+  w.state.raw.Actions[0].Agence = agence;
+  w.state.raw.Actions[0].Dispositif = dispositif;
+  w.state.actions = w.buildActions(w.state.raw);
+  w.state.view = "edit";
+  w.state.editingId = 1;
+  w.renderEdit();
+  const html = w.document.getElementById("editView").innerHTML;
+  w.state.view = "dashboard";
+  w.state.editingId = null;
+  return html;
+}
+
 function filtersHtml({open}) {
   seed();
   w.state.filtersOpen = open;
@@ -105,4 +119,20 @@ test("la fiche de detail n'a plus de lien de retour", () => {
   assert.match(html, /id="editTitle"[^>]*value="Créneaux"/, "le champ modifiable garde l'intitule seul");
   w.state.view = "dashboard";
   w.state.editingId = null;
+});
+
+test("une action sans agence n'en affiche aucune plutot que la premiere de la liste", () => {
+  const html = editHtml({agence: 0});
+  assert.match(html, /<option value="" selected>Choisir une agence<\/option>/);
+  assert.ok(!/<option value="1" selected>AUCH<\/option>/.test(html), "aucune agence n'est preselectionnee");
+});
+
+test("une action rattachee a une agence n'affiche pas l'invite", () => {
+  const html = editHtml({agence: 1});
+  assert.ok(!html.includes("Choisir une agence"), "l'invite disparait des qu'une agence est connue");
+  assert.match(html, /<option value="1" selected>AUCH<\/option>/);
+});
+
+test("le dispositif suit la meme regle que l'agence", () => {
+  assert.match(editHtml({dispositif: 0}), /<option value="" selected>Choisir un dispositif<\/option>/);
 });

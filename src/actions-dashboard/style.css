@@ -566,9 +566,9 @@ table {
   table-layout: fixed;
 }
 
-.col-agency { width: 20%; }
+.col-agency { width: 15%; }
 .col-club { width: 17%; }
-.col-action { width: 22%; }
+.col-action { width: 27%; }
 .col-status { width: 12%; }
 .col-finance { width: 25%; }
 .col-edit { width: 100px; }

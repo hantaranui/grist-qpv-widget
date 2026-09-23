@@ -517,7 +517,7 @@ function renderEdit() {
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields edit-fields-action">
             <div class="edit-field edit-field-wide"><label for="editTitle">Intitulé de l'action</label><input id="editTitle" required value="${escapeAttr(action.intitule)}"></div>
-            <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '')}</select></div>
+            <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
             <div class="edit-field"><label for="editFormat">Format</label><select id="editFormat">${formatOptions(action.format)}</select></div>
             <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" type="number" min="0" value="${action.participants}"></div>
             <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
@@ -530,7 +530,7 @@ function renderEdit() {
           <section class="edit-card">
             <div class="section-head"><span>Agence</span></div>
           <div class="edit-fields">
-            <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '')}</select></div>
+            <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
             <div class="agency-summary">
               <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
               <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
@@ -660,13 +660,20 @@ function bindPublicPicker() {
   });
 }
 
-function referenceOptions(items, selectedId, labelFor) {
-  return [...items]
+function referenceOptions(items, selectedId, labelFor, placeholder) {
+  const selectable = [...items]
     .map(item => [item.id, labelFor(item)])
     .filter(([, label]) => label)
-    .sort((a, b) => a[1].localeCompare(b[1], 'fr'))
-    .map(([id, label]) => `<option value="${id}"${id === selectedId ? ' selected' : ''}>${escapeHtml(label)}</option>`)
-    .join('');
+    .sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+  const options = selectable.map(([id, label]) =>
+    `<option value="${id}"${id === selectedId ? ' selected' : ''}>${escapeHtml(label)}</option>`);
+  // Sans reference, le navigateur afficherait la premiere option de la liste :
+  // l'action paraitrait rattachee a une agence qu'elle n'a pas, et le simple fait
+  // d'enregistrer la fiche l'y rattacherait pour de bon.
+  if (!selectable.some(([id]) => id === selectedId)) {
+    options.unshift(`<option value="" selected>${escapeHtml(placeholder)}</option>`);
+  }
+  return options.join('');
 }
 
 function financeOptions(selectedId) {
