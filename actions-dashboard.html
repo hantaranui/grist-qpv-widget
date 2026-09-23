@@ -58,7 +58,7 @@ button, select, input {
   font: inherit;
 }
 
-button {
+button:not(.btn) {
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 500;
@@ -69,7 +69,7 @@ button:disabled {
   font-style: italic;
 }
 
-button, select, input { border-radius: var(--radius-control); }
+button:not(.btn), select, input { border-radius: var(--radius-control); }
 
 button:focus-visible,
 select:focus-visible,
@@ -95,25 +95,6 @@ h1 {
   font-size: 28px;
   line-height: 1.15;
   font-family: var(--font-title);
-}
-
-.export {
-  min-height: 40px;
-  padding: 0 18px;
-  border: 1px solid var(--accent);
-  background: var(--panel);
-  color: var(--accent);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
-}
-
-.export:hover,
-.edit-button:hover,
-.add-finance-button:hover,
-.cancel-button:hover {
-  background: var(--brand-navy);
-  color: var(--ft-color-background-neutral-light);
 }
 
 /* La page occupe la hauteur de l'ecran et la distribue : le tableau recupere
@@ -225,17 +206,6 @@ h1 {
   letter-spacing: .06em;
   text-transform: uppercase;
   font-family: var(--font-title);
-}
-
-.link-button {
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
 }
 
 .filters-body {
@@ -361,20 +331,11 @@ select:hover { border-color: var(--brand-blue); }
 }
 
 .filter-text-submit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
   width: var(--ft--form-control-height);
   min-height: var(--ft--form-control-height);
   padding: 0;
-  border: 1px solid var(--brand-navy);
-  background: var(--brand-navy);
-  color: var(--ft-color-background-neutral-light);
-  cursor: pointer;
 }
-
-.filter-text-submit:hover { background: var(--brand-blue); border-color: var(--brand-blue); }
 
 .filter-text-input {
   width: 100%;
@@ -714,25 +675,12 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
   gap: 16px;
 }
 
-.edit-button,
-.save-button,
-.add-finance-button {
-  border: 1px solid var(--brand-navy);
-  background: var(--panel);
-  color: var(--brand-navy);
-  min-height: var(--ft--button-height);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
-}
-
-.edit-button { min-height: var(--ft--button-sm-height); padding: var(--ft--button-sm-padding-y) var(--ft--button-sm-padding-x); font-size: 13px; }
 th:last-child,
 td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--ft--table-padding-x); }
-.save-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); background: var(--brand-navy); color: var(--ft-color-background-neutral-light); }
-.add-finance-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); }
-.remove-finance-button { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 34px; height: 34px; padding: 0 4px; white-space: nowrap; border: 1px solid var(--ft--icon-error); background: var(--panel); color: var(--ft--icon-error); font-size: 12px; font-weight: 500; line-height: 1; cursor: pointer; }
-.remove-finance-button:hover { background: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
+/* Le design system n'offre pas de bouton destructeur : on garde la couleur
+   d'erreur par-dessus le bouton secondaire, et la largeur de la colonne. */
+.finance-remove { width: 100%; border-color: var(--ft--icon-error); color: var(--ft--icon-error); }
+.finance-remove:hover { background: var(--ft--icon-error); border-color: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
 .edit-view {
   position: fixed;
@@ -831,7 +779,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
-.finance-list .add-finance-button { justify-self: start; }
+.finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
    jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
@@ -841,7 +789,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-row select,
 .finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
-.cancel-button { padding: var(--ft--button-padding-y) var(--ft--button-padding-x); border: 1px solid var(--brand-navy); background: var(--panel); color: var(--brand-navy); font-weight: 500; cursor: pointer; }
 .edit-message { padding: 10px 40px 0; color: var(--brand-red); font-weight: 700; }
 
 .empty {
@@ -909,14 +856,14 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
     <div id="dashboardView">
       <div class="topbar">
         <h1>Actions d'insertion par le sport</h1>
-        <button class="export" id="exportBtn">Exporter (CSV)</button>
+        <button class="btn btn-secondary" type="button" id="exportBtn"><span class="btn-content">Exporter (CSV)</span></button>
       </div>
 
       <div class="layout" id="layout">
         <aside class="filters is-collapsed" id="filtersSection">
           <div class="section-head">
-            <span class="section-head-group"><span>Filtres</span><button class="link-button" id="resetBtn">Réinitialiser</button></span>
-            <button class="link-button" id="toggleFilters">Déplier</button>
+            <span class="section-head-group"><span>Filtres</span><button class="btn btn-link btn-sm" type="button" id="resetBtn"><span class="btn-content">Réinitialiser</span></button></span>
+            <button class="btn btn-link btn-sm" type="button" id="toggleFilters"><span class="btn-content">Déplier</span></button>
           </div>
           <div class="filters-body" id="filters"></div>
         </aside>
@@ -925,7 +872,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
           <section class="section is-collapsed" id="summarySection">
             <div class="section-head">
               <span>Synthèse</span>
-              <button class="link-button" id="toggleSummary">Déplier</button>
+              <button class="btn btn-link btn-sm" type="button" id="toggleSummary"><span class="btn-content">Déplier</span></button>
             </div>
             <div class="summary" id="summary"></div>
           </section>
@@ -1228,6 +1175,12 @@ function financementState(financed, budget) {
   return financed > 0 ? FINANCEMENT_STATES[0] : FINANCEMENT_STATES[2];
 }
 
+// Le design system place le libelle d'un bouton dans un span dedie.
+function buttonLabel(id, text) {
+  const button = document.getElementById(id);
+  (button.querySelector('.btn-content') || button).textContent = text;
+}
+
 function renderResults() {
   const actions = filteredActions();
   renderSummary(actions);
@@ -1258,14 +1211,14 @@ function renderFilters() {
   const container = document.getElementById('filters');
   document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
   document.getElementById('layout').classList.toggle('filters-collapsed', !state.filtersOpen);
-  document.getElementById('toggleFilters').textContent = state.filtersOpen ? 'Replier' : 'Déplier';
+  buttonLabel('toggleFilters', state.filtersOpen ? 'Replier' : 'Déplier');
   container.innerHTML = FILTERS.map(([key, label]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
         <span class="filter-text-control">
           <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
-          <button class="filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
+          <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
           </button>
         </span>
@@ -1385,7 +1338,7 @@ function filteredActions() {
 function renderSummary(actions) {
   const summary = document.getElementById('summary');
   const section = document.getElementById('summarySection');
-  document.getElementById('toggleSummary').textContent = state.summaryOpen ? 'Replier' : 'Déplier';
+  buttonLabel('toggleSummary', state.summaryOpen ? 'Replier' : 'Déplier');
   section.classList.toggle('is-collapsed', !state.summaryOpen);
   summary.hidden = !state.summaryOpen;
   if (!state.summaryOpen) {
@@ -1437,7 +1390,7 @@ function renderRows(actions) {
         <div class="muted">Couvert à ${Math.round(action.rate * 100)}% (${formatEuro(action.financed)})</div>
         ${action.financeurs.map(item => `<div class="money-line"><span>${escapeHtml(item.label)}</span><span>${formatEuro(item.montant)}</span></div>`).join('')}
       </td>
-      <td><button class="edit-button" data-edit-action="${action.id}">Modifier</button></td>
+      <td><button class="btn btn-secondary btn-sm" type="button" data-edit-action="${action.id}"><span class="btn-content">Modifier</span></button></td>
     </tr>
   `).join('');
   tbody.querySelectorAll('[data-edit-action]').forEach(button => {
@@ -1471,7 +1424,7 @@ function renderEdit() {
       <div class="edit-header-title">
       <h1>${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
-      <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm" id="saveEdit">Enregistrer</button></div>
+      <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
@@ -1536,7 +1489,7 @@ function renderEdit() {
             <div class="finance-list">
               <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span>Statut de versement</span><span aria-hidden="true"></span></div>
               <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
-              <button class="add-finance-button" type="button" id="addFinance">+ Ajouter un financeur</button>
+              <button class="btn btn-secondary finance-add" type="button" id="addFinance"><span class="btn-content">+ Ajouter un financeur</span></button>
             </div>
           </div>
         </section>
@@ -1660,7 +1613,7 @@ function financeRow(item) {
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
-    <button class="remove-finance-button" type="button">Retirer</button>
+    <button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>
   </div>`;
 }
 
@@ -1678,7 +1631,7 @@ function financeEmptyState() {
 }
 
 function bindFinanceRows() {
-  document.querySelectorAll('.remove-finance-button').forEach(button => {
+  document.querySelectorAll('.finance-remove').forEach(button => {
     button.onclick = () => {
       const rows = button.closest('#financeRows');
       button.closest('.finance-row').remove();

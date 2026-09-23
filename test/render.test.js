@@ -38,6 +38,9 @@ function editHtml({agence = 1, dispositif = 0} = {}) {
   return html;
 }
 
+// Le libelle d'un bouton du design system vit dans son span .btn-content.
+const label = (id) => w.document.getElementById(id).querySelector(".btn-content").textContent;
+
 function filtersHtml({open}) {
   seed();
   w.state.filtersOpen = open;
@@ -72,12 +75,12 @@ test("replier les filtres libere la largeur du tableau", () => {
   filtersHtml({open: false});
   assert.ok(w.document.getElementById("filtersSection").classList.contains("is-collapsed"));
   assert.ok(w.document.getElementById("layout").classList.contains("filters-collapsed"));
-  assert.equal(w.document.getElementById("toggleFilters").textContent, "Déplier");
+  assert.equal(label("toggleFilters"), "Déplier");
 
   filtersHtml({open: true});
   assert.ok(!w.document.getElementById("filtersSection").classList.contains("is-collapsed"));
   assert.ok(!w.document.getElementById("layout").classList.contains("filters-collapsed"));
-  assert.equal(w.document.getElementById("toggleFilters").textContent, "Replier");
+  assert.equal(label("toggleFilters"), "Replier");
 });
 
 test("un statut de versement vide n'affiche rien", () => {
@@ -135,4 +138,28 @@ test("une action rattachee a une agence n'affiche pas l'invite", () => {
 
 test("le dispositif suit la meme regle que l'agence", () => {
   assert.match(editHtml({dispositif: 0}), /<option value="" selected>Choisir un dispositif<\/option>/);
+});
+
+test("les boutons portent les classes du design system", () => {
+  const html = editHtml();
+  assert.match(html, /class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</);
+  assert.match(html, /class="btn btn-primary"[^>]*id="saveEdit"><span class="btn-content">Enregistrer</);
+  assert.match(html, /class="btn btn-secondary finance-add"/, "ajouter un financeur");
+  assert.match(w.financeRow({statutVersement: "", montant: 10}),
+    /class="btn btn-secondary btn-sm finance-remove"/, "retirer un financeur");
+
+  seed();
+  w.renderRows(w.state.actions);
+  assert.match(w.document.getElementById("rows").innerHTML,
+    /class="btn btn-secondary btn-sm"[^>]*data-edit-action/, "modifier une action");
+
+  assert.match(filtersHtml({open: true}), /class="btn btn-primary filter-text-submit"/, "loupe de recherche");
+});
+
+test("plus aucune classe de bouton maison dans le rendu", () => {
+  const rendus = [editHtml(), filtersHtml({open: true})].join(" ");
+  for (const ancienne of ["edit-button", "save-button", "cancel-button", "link-button",
+                          "add-finance-button", "remove-finance-button"]) {
+    assert.ok(!rendus.includes(ancienne), `${ancienne} a bien disparu`);
+  }
 });

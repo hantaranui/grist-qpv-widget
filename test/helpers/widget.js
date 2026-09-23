@@ -19,6 +19,7 @@ const EXPORTED = ["state", "FILTERS", "FINANCEMENT_STATES", "SEARCHABLE_FILTERS"
 // l'element et les classes posees dessus. Le reste ne fait rien.
 function makeElement() {
   const classes = new Set();
+  const children = new Map();
   return {
     innerHTML: "", textContent: "", value: "", checked: false, hidden: false, disabled: false,
     dataset: {}, style: {}, files: [],
@@ -33,7 +34,12 @@ function makeElement() {
       },
     },
     addEventListener() {}, removeEventListener() {}, setAttribute() {}, removeAttribute() {},
-    querySelector: () => makeElement(), querySelectorAll: () => [], closest: () => null,
+    // Un meme selecteur renvoie toujours le meme enfant : sans cela, ecrire dans
+    // un element retrouve par querySelector se perdrait dans une doublure neuve.
+    querySelector(selector) {
+      return children.get(selector) || children.set(selector, makeElement()).get(selector);
+    },
+    querySelectorAll: () => [], closest: () => null,
     insertAdjacentHTML() {}, appendChild() {}, click() {}, focus() {},
   };
 }

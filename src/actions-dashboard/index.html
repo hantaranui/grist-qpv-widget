@@ -13,14 +13,14 @@
     <div id="dashboardView">
       <div class="topbar">
         <h1>Actions d'insertion par le sport</h1>
-        <button class="export" id="exportBtn">Exporter (CSV)</button>
+        <button class="btn btn-secondary" type="button" id="exportBtn"><span class="btn-content">Exporter (CSV)</span></button>
       </div>
 
       <div class="layout" id="layout">
         <aside class="filters is-collapsed" id="filtersSection">
           <div class="section-head">
-            <span class="section-head-group"><span>Filtres</span><button class="link-button" id="resetBtn">Réinitialiser</button></span>
-            <button class="link-button" id="toggleFilters">Déplier</button>
+            <span class="section-head-group"><span>Filtres</span><button class="btn btn-link btn-sm" type="button" id="resetBtn"><span class="btn-content">Réinitialiser</span></button></span>
+            <button class="btn btn-link btn-sm" type="button" id="toggleFilters"><span class="btn-content">Déplier</span></button>
           </div>
           <div class="filters-body" id="filters"></div>
         </aside>
@@ -29,7 +29,7 @@
           <section class="section is-collapsed" id="summarySection">
             <div class="section-head">
               <span>Synthèse</span>
-              <button class="link-button" id="toggleSummary">Déplier</button>
+              <button class="btn btn-link btn-sm" type="button" id="toggleSummary"><span class="btn-content">Déplier</span></button>
             </div>
             <div class="summary" id="summary"></div>
           </section>

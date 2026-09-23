@@ -264,6 +264,12 @@ function financementState(financed, budget) {
   return financed > 0 ? FINANCEMENT_STATES[0] : FINANCEMENT_STATES[2];
 }
 
+// Le design system place le libelle d'un bouton dans un span dedie.
+function buttonLabel(id, text) {
+  const button = document.getElementById(id);
+  (button.querySelector('.btn-content') || button).textContent = text;
+}
+
 function renderResults() {
   const actions = filteredActions();
   renderSummary(actions);
@@ -294,14 +300,14 @@ function renderFilters() {
   const container = document.getElementById('filters');
   document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
   document.getElementById('layout').classList.toggle('filters-collapsed', !state.filtersOpen);
-  document.getElementById('toggleFilters').textContent = state.filtersOpen ? 'Replier' : 'Déplier';
+  buttonLabel('toggleFilters', state.filtersOpen ? 'Replier' : 'Déplier');
   container.innerHTML = FILTERS.map(([key, label]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
       return `<label>${escapeHtml(label)}
         <span class="filter-text-control">
           <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
-          <button class="filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
+          <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
           </button>
         </span>
@@ -421,7 +427,7 @@ function filteredActions() {
 function renderSummary(actions) {
   const summary = document.getElementById('summary');
   const section = document.getElementById('summarySection');
-  document.getElementById('toggleSummary').textContent = state.summaryOpen ? 'Replier' : 'Déplier';
+  buttonLabel('toggleSummary', state.summaryOpen ? 'Replier' : 'Déplier');
   section.classList.toggle('is-collapsed', !state.summaryOpen);
   summary.hidden = !state.summaryOpen;
   if (!state.summaryOpen) {
@@ -473,7 +479,7 @@ function renderRows(actions) {
         <div class="muted">Couvert à ${Math.round(action.rate * 100)}% (${formatEuro(action.financed)})</div>
         ${action.financeurs.map(item => `<div class="money-line"><span>${escapeHtml(item.label)}</span><span>${formatEuro(item.montant)}</span></div>`).join('')}
       </td>
-      <td><button class="edit-button" data-edit-action="${action.id}">Modifier</button></td>
+      <td><button class="btn btn-secondary btn-sm" type="button" data-edit-action="${action.id}"><span class="btn-content">Modifier</span></button></td>
     </tr>
   `).join('');
   tbody.querySelectorAll('[data-edit-action]').forEach(button => {
@@ -507,7 +513,7 @@ function renderEdit() {
       <div class="edit-header-title">
       <h1>${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
-      <div class="edit-header-actions"><button type="button" class="cancel-button" id="cancelEdit">Annuler</button><button class="save-button" type="submit" form="editForm" id="saveEdit">Enregistrer</button></div>
+      <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
     <div class="edit-message is-hidden" id="editMessage"></div>
     <form id="editForm">
@@ -572,7 +578,7 @@ function renderEdit() {
             <div class="finance-list">
               <div class="finance-list-head"><span>Financeur</span><span>Montant (€)</span><span>Statut de versement</span><span aria-hidden="true"></span></div>
               <div id="financeRows">${action.financeurs.map(item => financeRow(item)).join('') || financeEmptyState()}</div>
-              <button class="add-finance-button" type="button" id="addFinance">+ Ajouter un financeur</button>
+              <button class="btn btn-secondary finance-add" type="button" id="addFinance"><span class="btn-content">+ Ajouter un financeur</span></button>
             </div>
           </div>
         </section>
@@ -696,7 +702,7 @@ function financeRow(item) {
     <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
-    <button class="remove-finance-button" type="button">Retirer</button>
+    <button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>
   </div>`;
 }
 
@@ -714,7 +720,7 @@ function financeEmptyState() {
 }
 
 function bindFinanceRows() {
-  document.querySelectorAll('.remove-finance-button').forEach(button => {
+  document.querySelectorAll('.finance-remove').forEach(button => {
     button.onclick = () => {
       const rows = button.closest('#financeRows');
       button.closest('.finance-row').remove();
