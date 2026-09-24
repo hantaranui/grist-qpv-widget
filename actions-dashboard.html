@@ -457,12 +457,6 @@ main > .table-panel {
   font-weight: 700;
 }
 
-/* Le conteneur de defilement est le notre et non « table-responsive » du design
-   system : celui-ci impose height:100%, qui casse la chaine de hauteur dont
-   depend le defilement interne, et surtout « tr:first-of-type > * {width:140px} »,
-   qui ecraserait notre colgroup puisque table-layout:fixed fait de la premiere
-   ligne la reference des largeurs. Il vise une autre forme de tableau que la
-   notre. Son role, lui, est bien rempli ici. */
 .table-panel {
   /* Le conteneur doit rester borne en hauteur. Sans cela il grandit avec le
      nombre de lignes et sa barre de defilement horizontale se retrouve sous la
@@ -863,7 +857,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
             <div class="summary" id="summary"></div>
           </section>
 
-          <section class="table-panel">
+          <section class="table-responsive table-panel">
             <table class="table">
             <caption class="sr-only">Liste des actions d'insertion par le sport</caption>
             <colgroup>
