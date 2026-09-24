@@ -179,7 +179,7 @@ test("l'echec d'un enregistrement est annonce aux lecteurs d'ecran", () => {
 
 test("le champ obligatoire porte le marqueur du design system", () => {
   assert.match(editHtml(),
-    /<label for="editTitle">Intitulé de l'action<span class="required">&nbsp;\*<\/span><\/label>/);
+    /<label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;\*<\/span><\/label>/);
 });
 
 test("chaque controle de la fiche porte un name", () => {
@@ -189,4 +189,26 @@ test("chaque controle de la fiche porte un name", () => {
                        "editBudget", "editOpenToFunding"]) {
     assert.ok(html.includes(`name="${champ}"`), `${champ} porte un name`);
   }
+});
+
+test("les libelles de champ portent form-label", () => {
+  const html = editHtml();
+  for (const champ of ["editTitle", "editDispositif", "editFormat", "editParticipants",
+                       "editVille", "editLieu", "editCommentaire", "editAgency", "editBudget"]) {
+    assert.ok(html.includes(`<label class="form-label" for="${champ}">`), `${champ}`);
+  }
+  assert.match(html, /<span class="form-label" id="publicLabel">Public<\/span>/,
+    "le sélecteur de public n'est pas étiquetable : son libellé le nomme par aria-labelledby");
+  assert.match(html, /aria-labelledby="publicLabel publicToggleValue"/);
+});
+
+test("les filtres relient leur libelle a leur controle", () => {
+  const html = filtersHtml({open: true});
+  assert.match(html, /<label class="form-label" for="filter-osiris">Numéro Osiris<\/label>/);
+  assert.match(html, /<input class="filter-text-input" type="search" id="filter-osiris"/);
+  assert.match(html, /<label class="form-label" for="filter-statut">Statut<\/label>/);
+  assert.match(html, /<select id="filter-statut"/);
+  // Un <details> ne s'etiquette pas : le libelle le nomme a distance.
+  assert.match(html, /<span class="form-label" id="filter-club-label">Club<\/span>/);
+  assert.match(html, /<summary aria-labelledby="filter-club-label">/);
 });

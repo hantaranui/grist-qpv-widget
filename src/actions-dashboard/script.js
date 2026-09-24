@@ -304,20 +304,22 @@ function renderFilters() {
   container.innerHTML = FILTERS.map(([key, label]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
-      return `<label>${escapeHtml(label)}
+      return `<div class="filter-field">
+        <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
         <span class="filter-text-control">
-          <input class="filter-text-input" type="search" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher" aria-label="Rechercher par ${escapeAttr(label)}">
+          <input class="filter-text-input" type="search" id="filter-${key}" name="filter-${key}" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher">
           <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
           </button>
         </span>
-      </label>`;
+      </div>`;
     }
     const values = optionsFor(key);
     if (SEARCHABLE_FILTERS.has(key)) {
-      return `<label>${escapeHtml(label)}
+      return `<div class="filter-field">
+        <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
+          <summary aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
             <input class="filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -326,17 +328,18 @@ function renderFilters() {
             </div>
           </div>
         </details>
-      </label>`;
+      </div>`;
     }
-    return `<label>${escapeHtml(label)}
+    return `<div class="filter-field">
+      <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
       <span class="select-control">
-        <select data-filter="${key}">
+        <select id="filter-${key}" name="filter-${key}" data-filter="${key}">
           <option value="">Toutes / Tous</option>
           ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
         </select>
         <span class="icon icon-chevron-d" aria-hidden="true"></span>
       </span>
-    </label>`;
+    </div>`;
   }).join('');
 
   container.querySelectorAll('select').forEach(select => {
@@ -525,21 +528,21 @@ function renderEdit() {
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields edit-fields-action">
-            <div class="edit-field edit-field-wide"><label for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
-            <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
-            <div class="edit-field"><label for="editFormat">Format</label><select id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
-            <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
-            <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
-            <div class="edit-field"><label for="editVille">Ville</label><input id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
-            <div class="edit-field"><label for="editLieu">Lieu</label><input id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
-            <div class="edit-field edit-field-wide"><label for="editCommentaire">Commentaire</label><textarea id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
+            <div class="edit-field edit-field-wide"><label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+            <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
+            <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
+            <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
+            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
+            <div class="edit-field"><label class="form-label" for="editVille">Ville</label><input id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
+            <div class="edit-field"><label class="form-label" for="editLieu">Lieu</label><input id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
+            <div class="edit-field edit-field-wide"><label class="form-label" for="editCommentaire">Commentaire</label><textarea id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
           </div>
         </section>
         <div class="edit-stack">
           <section class="edit-card">
             <div class="section-head"><span>Agence</span></div>
           <div class="edit-fields">
-            <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
+            <div class="edit-field"><label class="form-label" for="editAgency">Agence</label><select id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
             <div class="agency-summary">
               <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
               <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
@@ -574,7 +577,7 @@ function renderEdit() {
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
-            <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
+            <div class="edit-field finance-budget"><label class="form-label" for="editBudget">Budget total (€)</label><input id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding" name="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
           </div>
           <div class="finance-editor">

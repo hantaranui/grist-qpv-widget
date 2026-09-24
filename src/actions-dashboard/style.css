@@ -208,20 +208,14 @@ h1 {
    manque, c'est le bloc entier qui passe a la ligne suivante de la grille.
    Le nowrap est neutralise sur les enfants pour ne pas figer le select ni le
    menu de recherche. */
-.filters-body > label {
+.filters-body > .filter-field {
+  display: grid;
+  gap: 8px;
   white-space: nowrap;
 }
 
-.filters-body > label > * {
+.filters-body > .filter-field > * {
   white-space: normal;
-}
-
-label {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  font-weight: 700;
-  color: var(--ink);
 }
 
 select {
@@ -706,7 +700,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-card .section-head { min-height: 40px; }
 .edit-fields { display: grid; gap: 16px; padding: 24px; }
 .edit-field { display: grid; gap: 6px; color: var(--muted); }
-.edit-field label { font-weight: 400; }
 /* La carte « Action » porte huit champs : sur deux colonnes elle reste lisible
    sans allonger la modale. Intitule et Commentaire gardent la pleine largeur. */
 .edit-fields-action { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-content: start; }
