@@ -243,7 +243,6 @@ h1 {
 
 .filter-search-dropdown summary::-webkit-details-marker { display: none; }
 .filter-search-dropdown summary .icon { margin-left: 12px; font-size: 16px; }
-.filter-search-dropdown[open] summary .icon { transform: rotate(180deg); }
 
 .sort-menu { position: relative; }
 .sort-menu summary { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ft--table-th-height); cursor: pointer; list-style: none; }
@@ -662,7 +661,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .public-picker { position: relative; }
 .public-toggle { display: flex; align-items: center; justify-content: space-between; text-align: left; cursor: pointer; }
 .public-toggle .icon { font-size: 14px; }
-.public-picker.is-open .public-toggle .icon { transform: rotate(180deg); }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
 .readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }

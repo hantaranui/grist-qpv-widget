@@ -279,3 +279,10 @@ test("les jauges de financement utilisent la barre du design system", () => {
 
   assert.match(editHtml(), /<span class="progress finance-progress" role="progressbar"/);
 });
+
+test("les controles qui tiennent lieu de liste deroulante portent le meme indicateur", () => {
+  // L'icone du design system pour un select est un double triangle haut-bas, pas
+  // un chevron. Nos deux controles maison s'alignent dessus.
+  assert.match(filtersHtml({open: true}), /<summary class="form-control"[^>]*>.*?icon icon-chevron-up-down/s);
+  assert.match(editHtml(), /id="publicToggleValue"[^>]*>[^<]*<\/span><span class="icon icon-chevron-up-down"/);
+});

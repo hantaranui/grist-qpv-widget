@@ -253,7 +253,6 @@ h1 {
 
 .filter-search-dropdown summary::-webkit-details-marker { display: none; }
 .filter-search-dropdown summary .icon { margin-left: 12px; font-size: 16px; }
-.filter-search-dropdown[open] summary .icon { transform: rotate(180deg); }
 
 .sort-menu { position: relative; }
 .sort-menu summary { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ft--table-th-height); cursor: pointer; list-style: none; }
@@ -672,7 +671,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .public-picker { position: relative; }
 .public-toggle { display: flex; align-items: center; justify-content: space-between; text-align: left; cursor: pointer; }
 .public-toggle .icon { font-size: 14px; }
-.public-picker.is-open .public-toggle .icon { transform: rotate(180deg); }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
 .readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
@@ -1173,7 +1171,7 @@ function renderFilters() {
       return `<div class="filter-field">
         <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
             <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -1380,7 +1378,7 @@ function renderEdit() {
             <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select class="form-control" id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
             <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select class="form-control" id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
             <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input class="form-control" id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
-            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="form-control public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map((value, index) => `<div class="form-check with-checked-bg public-option"><input class="form-check-input public-choice" type="checkbox" id="public-${index}" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}><label class="form-check-label" for="public-${index}">${escapeHtml(value)}</label></div>`).join('')}</div></div></div>
+            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="form-control public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map((value, index) => `<div class="form-check with-checked-bg public-option"><input class="form-check-input public-choice" type="checkbox" id="public-${index}" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}><label class="form-check-label" for="public-${index}">${escapeHtml(value)}</label></div>`).join('')}</div></div></div>
             <div class="edit-field"><label class="form-label" for="editVille">Ville</label><input class="form-control" id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
             <div class="edit-field"><label class="form-label" for="editLieu">Lieu</label><input class="form-control" id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
             <div class="edit-field edit-field-wide"><label class="form-label" for="editCommentaire">Commentaire</label><textarea class="form-control" id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
