@@ -52,3 +52,20 @@ test("les classes renommees sont bien celles utilisees", () => {
     assert.ok(classesRedefinies(CSS).has(nom), `.${nom} doit exister dans la feuille`);
   }
 });
+
+test("la couleur du statut choisi vient des jetons semantiques du design system", () => {
+  // On remplace la teinte que « with-checked-bg » applique, on ne superpose pas
+  // un second fond : le selecteur doit donc viser le meme ::before que lui.
+  assert.match(CSS,
+    /\.status-options \.form-check \.form-check-input:checked \+ \.form-check-label::before \{ background-color: var\(--statut-fond\); \}/);
+
+  for (const [statut, jeton] of [["planifiee", "warning"], ["realisee", "success"],
+                                 ["annulee", "error"], ["a-confirmer", "warning"]]) {
+    const regle = new RegExp(`\\.status-option\\.${statut}[^}]*--statut-fond: var\\(--ft--bg-${jeton}\\)`);
+    assert.match(CSS, regle, `${statut} prend le jeton ${jeton}`);
+  }
+
+  // Aucune couleur ecrite en dur : tout passe par la palette du design system.
+  const bloc = CSS.slice(CSS.indexOf(".status-option.projet"), CSS.indexOf(".status-head-row"));
+  assert.ok(!/#[0-9a-fA-F]{3,6}/.test(bloc), "pas de couleur hors palette");
+});
