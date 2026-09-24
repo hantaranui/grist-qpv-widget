@@ -218,37 +218,6 @@ h1 {
   white-space: normal;
 }
 
-select {
-  width: 100%;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-bottom: 2px solid var(--brand-navy);
-  background: var(--panel);
-  color: var(--ink);
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-
-select:hover { border-color: var(--brand-blue); }
-
-.filters .select-control {
-  position: relative;
-  display: block;
-}
-
-.filters .select-control select {
-  appearance: none;
-  padding-right: 40px;
-}
-
-.filters .select-control .icon {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
 .filter-search-dropdown {
   position: relative;
   width: 100%;
@@ -299,15 +268,6 @@ select:hover { border-color: var(--brand-blue); }
   box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
 }
 
-.filter-search-input {
-  width: 100%;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-radius: var(--radius-control);
-  color: var(--ink);
-}
-
 .filter-text-control {
   display: flex;
   gap: 8px;
@@ -321,19 +281,8 @@ select:hover { border-color: var(--brand-blue); }
   padding: 0;
 }
 
-.filter-text-input {
-  width: 100%;
-  min-width: 0;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-bottom: 2px solid var(--brand-navy);
-  background: var(--panel);
-  color: var(--ink);
-  font-weight: 400;
-}
-
-.filter-text-input:hover { border-color: var(--brand-blue); }
+/* Le champ partage sa ligne avec le bouton loupe : il prend la place restante. */
+.filter-text-input { min-width: 0; }
 
 .filter-search-options {
   display: grid;
@@ -704,19 +653,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    sans allonger la modale. Intitule et Commentaire gardent la pleine largeur. */
 .edit-fields-action { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-content: start; }
 .edit-field-wide { grid-column: 1 / -1; }
-.edit-field input,
-.edit-field textarea,
-.edit-field select { min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
 .edit-field textarea { font: inherit; line-height: 1.5; resize: vertical; }
 #editTitle { font-weight: 700; }
 .public-picker { position: relative; }
-.public-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); text-align: left; cursor: pointer; }
+.public-toggle { display: flex; align-items: center; justify-content: space-between; text-align: left; cursor: pointer; }
 .public-toggle .icon { font-size: 14px; }
 .public-picker.is-open .public-toggle .icon { transform: rotate(180deg); }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
 .public-option { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 400; cursor: pointer; }
-.readonly-value { min-height: 34px; color: var(--ink); font-size: 15px; }
+.readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
 .club-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .club-summary strong { font-weight: 700; }
 .agency-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
@@ -751,26 +697,25 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
 .finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
 .finance-open .finance-budget { width: 120px; }
-.finance-open-option { display: inline-flex; align-items: center; min-height: 34px; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.finance-open-option { display: inline-flex; align-items: center; min-height: var(--ft--form-control-height); gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
 .finance-open-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-navy); cursor: pointer; }
 .finance-editor { padding: 24px; }
-.finance-budget { display: grid; grid-template-rows: 24px 34px; row-gap: 10px; align-self: start; }
+.finance-budget { display: grid; grid-template-rows: 24px var(--ft--form-control-height); row-gap: 10px; align-self: start; }
 .finance-budget label { display: flex; align-items: center; white-space: nowrap; }
-.finance-budget input { width: 100%; min-width: 0; height: 34px; min-height: 34px; margin: 0; box-sizing: border-box; }
+.finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
 .finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
-.finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
+.finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
    jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
    lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: 34px; align-items: center; }
-.finance-row .finance-status { display: flex; align-items: center; min-height: 34px; padding: 6px 8px; color: var(--ink); }
-.finance-row select,
-.finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+.finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
+.finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
 .edit-message { padding: 10px 40px 0; color: var(--brand-red); font-weight: 700; }
 

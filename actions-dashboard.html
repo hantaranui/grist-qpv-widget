@@ -228,37 +228,6 @@ h1 {
   white-space: normal;
 }
 
-select {
-  width: 100%;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-bottom: 2px solid var(--brand-navy);
-  background: var(--panel);
-  color: var(--ink);
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-
-select:hover { border-color: var(--brand-blue); }
-
-.filters .select-control {
-  position: relative;
-  display: block;
-}
-
-.filters .select-control select {
-  appearance: none;
-  padding-right: 40px;
-}
-
-.filters .select-control .icon {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
 .filter-search-dropdown {
   position: relative;
   width: 100%;
@@ -309,15 +278,6 @@ select:hover { border-color: var(--brand-blue); }
   box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
 }
 
-.filter-search-input {
-  width: 100%;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-radius: var(--radius-control);
-  color: var(--ink);
-}
-
 .filter-text-control {
   display: flex;
   gap: 8px;
@@ -331,19 +291,8 @@ select:hover { border-color: var(--brand-blue); }
   padding: 0;
 }
 
-.filter-text-input {
-  width: 100%;
-  min-width: 0;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-bottom: 2px solid var(--brand-navy);
-  background: var(--panel);
-  color: var(--ink);
-  font-weight: 400;
-}
-
-.filter-text-input:hover { border-color: var(--brand-blue); }
+/* Le champ partage sa ligne avec le bouton loupe : il prend la place restante. */
+.filter-text-input { min-width: 0; }
 
 .filter-search-options {
   display: grid;
@@ -714,19 +663,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    sans allonger la modale. Intitule et Commentaire gardent la pleine largeur. */
 .edit-fields-action { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-content: start; }
 .edit-field-wide { grid-column: 1 / -1; }
-.edit-field input,
-.edit-field textarea,
-.edit-field select { min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
 .edit-field textarea { font: inherit; line-height: 1.5; resize: vertical; }
 #editTitle { font-weight: 700; }
 .public-picker { position: relative; }
-.public-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--ft--form-control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); text-align: left; cursor: pointer; }
+.public-toggle { display: flex; align-items: center; justify-content: space-between; text-align: left; cursor: pointer; }
 .public-toggle .icon { font-size: 14px; }
 .public-picker.is-open .public-toggle .icon { transform: rotate(180deg); }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
 .public-option { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 400; cursor: pointer; }
-.readonly-value { min-height: 34px; color: var(--ink); font-size: 15px; }
+.readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
 .club-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .club-summary strong { font-weight: 700; }
 .agency-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
@@ -761,26 +707,25 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
 .finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
 .finance-open .finance-budget { width: 120px; }
-.finance-open-option { display: inline-flex; align-items: center; min-height: 34px; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.finance-open-option { display: inline-flex; align-items: center; min-height: var(--ft--form-control-height); gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
 .finance-open-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-navy); cursor: pointer; }
 .finance-editor { padding: 24px; }
-.finance-budget { display: grid; grid-template-rows: 24px 34px; row-gap: 10px; align-self: start; }
+.finance-budget { display: grid; grid-template-rows: 24px var(--ft--form-control-height); row-gap: 10px; align-self: start; }
 .finance-budget label { display: flex; align-items: center; white-space: nowrap; }
-.finance-budget input { width: 100%; min-width: 0; height: 34px; min-height: 34px; margin: 0; box-sizing: border-box; }
+.finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
 .finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
-.finance-empty { display: flex; align-items: center; min-height: 34px; color: var(--muted); font-size: 14px; font-style: italic; }
+.finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
    jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
    lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: 34px; align-items: center; }
-.finance-row .finance-status { display: flex; align-items: center; min-height: 34px; padding: 6px 8px; color: var(--ink); }
-.finance-row select,
-.finance-row input { min-width: 0; height: 34px; min-height: 34px; padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); box-sizing: border-box; }
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+.finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
+.finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
 .edit-message { padding: 10px 40px 0; color: var(--brand-red); font-weight: 700; }
 
@@ -1199,7 +1144,7 @@ function renderFilters() {
       return `<div class="filter-field">
         <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
         <span class="filter-text-control">
-          <input class="filter-text-input" type="search" id="filter-${key}" name="filter-${key}" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher">
+          <input class="form-control filter-text-input" type="search" id="filter-${key}" name="filter-${key}" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher">
           <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${key}" aria-label="Lancer la recherche par ${escapeAttr(label)}" title="Chercher">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
           </button>
@@ -1213,7 +1158,7 @@ function renderFilters() {
         <details class="filter-search-dropdown">
           <summary aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
-            <input class="filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
+            <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
               <button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="">Toutes / Tous</button>
               ${values.map(value => `<button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="${escapeAttr(value)}" title="${escapeAttr(value)}">${escapeHtml(value)}</button>`).join('')}
@@ -1224,13 +1169,10 @@ function renderFilters() {
     }
     return `<div class="filter-field">
       <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
-      <span class="select-control">
-        <select id="filter-${key}" name="filter-${key}" data-filter="${key}">
-          <option value="">Toutes / Tous</option>
-          ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
-        </select>
-        <span class="icon icon-chevron-d" aria-hidden="true"></span>
-      </span>
+      <select class="form-control" id="filter-${key}" name="filter-${key}" data-filter="${key}">
+        <option value="">Toutes / Tous</option>
+        ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+      </select>
     </div>`;
   }).join('');
 
@@ -1420,21 +1362,21 @@ function renderEdit() {
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields edit-fields-action">
-            <div class="edit-field edit-field-wide"><label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
-            <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
-            <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
-            <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
-            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
-            <div class="edit-field"><label class="form-label" for="editVille">Ville</label><input id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
-            <div class="edit-field"><label class="form-label" for="editLieu">Lieu</label><input id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
-            <div class="edit-field edit-field-wide"><label class="form-label" for="editCommentaire">Commentaire</label><textarea id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
+            <div class="edit-field edit-field-wide"><label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input class="form-control" id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+            <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select class="form-control" id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
+            <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select class="form-control" id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
+            <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input class="form-control" id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
+            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="form-control public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
+            <div class="edit-field"><label class="form-label" for="editVille">Ville</label><input class="form-control" id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
+            <div class="edit-field"><label class="form-label" for="editLieu">Lieu</label><input class="form-control" id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
+            <div class="edit-field edit-field-wide"><label class="form-label" for="editCommentaire">Commentaire</label><textarea class="form-control" id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
           </div>
         </section>
         <div class="edit-stack">
           <section class="edit-card">
             <div class="section-head"><span>Agence</span></div>
           <div class="edit-fields">
-            <div class="edit-field"><label class="form-label" for="editAgency">Agence</label><select id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
+            <div class="edit-field"><label class="form-label" for="editAgency">Agence</label><select class="form-control" id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
             <div class="agency-summary">
               <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
               <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
@@ -1469,7 +1411,7 @@ function renderEdit() {
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
-            <div class="edit-field finance-budget"><label class="form-label" for="editBudget">Budget total (€)</label><input id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
+            <div class="edit-field finance-budget"><label class="form-label" for="editBudget">Budget total (€)</label><input class="form-control" id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding" name="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
           </div>
           <div class="finance-editor">
@@ -1598,8 +1540,8 @@ function financeLabel(financement, financeurs) {
 
 function financeRow(item) {
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
-    <input class="finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
+    <select class="form-control finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     <button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>
   </div>`;

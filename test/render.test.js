@@ -205,10 +205,31 @@ test("les libelles de champ portent form-label", () => {
 test("les filtres relient leur libelle a leur controle", () => {
   const html = filtersHtml({open: true});
   assert.match(html, /<label class="form-label" for="filter-osiris">Numéro Osiris<\/label>/);
-  assert.match(html, /<input class="filter-text-input" type="search" id="filter-osiris"/);
+  assert.match(html, /<input class="form-control filter-text-input" type="search" id="filter-osiris"/);
   assert.match(html, /<label class="form-label" for="filter-statut">Statut<\/label>/);
-  assert.match(html, /<select id="filter-statut"/);
+  assert.match(html, /<select class="form-control" id="filter-statut"/);
   // Un <details> ne s'etiquette pas : le libelle le nomme a distance.
   assert.match(html, /<span class="form-label" id="filter-club-label">Club<\/span>/);
   assert.match(html, /<summary aria-labelledby="filter-club-label">/);
+});
+
+test("chaque champ porte form-control", () => {
+  const html = editHtml();
+  for (const champ of ["editTitle", "editParticipants", "editVille", "editLieu", "editBudget"]) {
+    assert.ok(html.includes(`<input class="form-control" id="${champ}"`), `${champ}`);
+  }
+  for (const champ of ["editDispositif", "editFormat", "editAgency"]) {
+    assert.ok(html.includes(`<select class="form-control" id="${champ}"`), `${champ}`);
+  }
+  assert.match(html, /<textarea class="form-control" id="editCommentaire"/);
+  assert.match(html, /<button class="form-control public-toggle"/,
+    "le sélecteur de public reprend l'habillage de champ plutôt que de le copier");
+  assert.match(w.financeRow({statutVersement: "", montant: 10}),
+    /<select class="form-control finance-select">/);
+});
+
+test("le chevron des listes deroulantes n'est plus dessine deux fois", () => {
+  const html = filtersHtml({open: true});
+  assert.ok(!html.includes("select-control"),
+    "select.form-control fournit son propre chevron : notre habillage a disparu");
 });
