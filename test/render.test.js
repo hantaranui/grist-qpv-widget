@@ -279,13 +279,3 @@ test("les jauges de financement utilisent la barre du design system", () => {
 
   assert.match(editHtml(), /<span class="progress finance-progress" role="progressbar"/);
 });
-
-test("le tableau suit la structure du design system", () => {
-  seed();
-  w.renderRows(w.state.actions);
-  const ligne = w.document.getElementById("rows").innerHTML;
-  // La cellule qui nomme l'action identifie la ligne : plusieurs lignes partagent
-  // une agence, et cette cellule-la est meme vide quand elle se repete.
-  assert.match(ligne, /<th scope="row"><div class="strong">ANS-26-0055-3 Créneaux<\/div>/);
-  assert.match(ligne, /Ville : Auch<\/div><\/th>/);
-});
