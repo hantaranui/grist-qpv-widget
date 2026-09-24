@@ -319,7 +319,7 @@ function renderFilters() {
       return `<div class="filter-field">
         <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
             <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -1013,7 +1013,7 @@ function statusPeriodControl(status, action) {
     const iso = dateInputValue(action.date);
     input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"><span slot="label">${escapeHtml(config.label)}</span></ft-datepicker>`;
   } else if (config.kind === 'text') {
-    input = `<input class="edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
+    input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
 }

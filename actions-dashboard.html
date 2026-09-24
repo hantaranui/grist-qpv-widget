@@ -233,18 +233,12 @@ h1 {
   width: 100%;
 }
 
+/* Le resume porte form-control : il ne reste que ce que le design system ne dit
+   pas d'un <summary>, sa disposition interne et le masquage du triangle natif. */
 .filter-search-dropdown summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--ft--form-control-height);
-  padding: 0 12px;
-  border: 1px solid var(--ft--color-background-neutral-default-weak);
-  border-bottom: 2px solid var(--brand-navy);
-  border-radius: var(--radius-control);
-  background: var(--panel);
-  color: var(--ink);
-  font-weight: 400;
   cursor: pointer;
   list-style: none;
 }
@@ -692,7 +686,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
 .status-period { min-width: 0; max-width: 280px; }
-.status-period input { width: 100%; min-width: 0; min-height: var(--ft--form-control-height); padding: 6px 8px; border: 0; border-bottom: 2px solid var(--ft--color-background-neutral-default-strongest); background: var(--ft--color-background-neutral-default-weakest); color: var(--ink); }
+.status-period input { min-width: 0; }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
@@ -1147,7 +1141,7 @@ function renderFilters() {
       return `<div class="filter-field">
         <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></summary>
           <div class="filter-search-panel">
             <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -1841,7 +1835,7 @@ function statusPeriodControl(status, action) {
     const iso = dateInputValue(action.date);
     input = `<ft-datepicker class="edit-status-period" data-period-kind="date" data-iso-value="${escapeAttr(iso)}" value="${escapeAttr(isoToFrDate(iso))}"><span slot="label">${escapeHtml(config.label)}</span></ft-datepicker>`;
   } else if (config.kind === 'text') {
-    input = `<input class="edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
+    input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
 }

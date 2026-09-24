@@ -210,7 +210,7 @@ test("les filtres relient leur libelle a leur controle", () => {
   assert.match(html, /<select class="form-control" id="filter-statut"/);
   // Un <details> ne s'etiquette pas : le libelle le nomme a distance.
   assert.match(html, /<span class="form-label" id="filter-club-label">Club<\/span>/);
-  assert.match(html, /<summary aria-labelledby="filter-club-label">/);
+  assert.match(html, /<summary class="form-control" aria-labelledby="filter-club-label">/);
 });
 
 test("chaque champ porte form-control", () => {
@@ -250,4 +250,12 @@ test("le groupe de statuts porte sa legende", () => {
   const html = editHtml();
   assert.match(html, /<p class="form-legend" id="statusLegend">Statut de l'action<\/p>/);
   assert.match(html, /<div class="status-options" role="group" aria-labelledby="statusLegend">/);
+});
+
+test("plus aucun champ ne dessine son propre habillage", () => {
+  const css = require("node:fs").readFileSync(
+    require("node:path").join(__dirname, "..", "src", "actions-dashboard", "style.css"), "utf8");
+  // Le soulignement epais etait notre facon de dessiner un champ avant form-control.
+  assert.ok(!css.includes("border-bottom: 2px solid"),
+    "un champ habille a la main a survecu : le design system s'en charge");
 });
