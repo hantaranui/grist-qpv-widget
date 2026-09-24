@@ -661,7 +661,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .public-picker.is-open .public-toggle .icon { transform: rotate(180deg); }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
-.public-option { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 400; cursor: pointer; }
 .readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
 .club-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .club-summary strong { font-weight: 700; }
@@ -672,19 +671,13 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    lignes non selectionnees n'ont donc que leur bouton et gardent toutes la
    meme hauteur, quelle que soit la hauteur du champ de periode affiche. */
 .status-editor { display: grid; gap: 8px; }
-.status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
+.status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.status-head-row .form-legend { margin-top: 0; }
 .status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.status-option { display: inline-flex; align-items: center; white-space: nowrap; font-size: 13px; min-height: var(--ft--button-sm-height); gap: 8px; padding: var(--ft--button-sm-padding-y) 10px; border: 1px solid transparent; border-radius: var(--radius-control); color: var(--ink); font-weight: 500; cursor: pointer; }
-.status-option:hover { background: var(--ft--color-background-neutral-default-weakest); }
-.status-option:has(input:checked) { font-weight: 700; }
-.status-option.projet:has(input:checked) { background: var(--ft--bg-info); border-color: var(--ft--border-info); color: var(--ft--icon-info); }
-.status-option.planifie:has(input:checked),
-.status-option.planifiee:has(input:checked) { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
-.status-option.realise:has(input:checked),
-.status-option.realisee:has(input:checked) { background: var(--ft--bg-success); border-color: var(--ft--border-success); color: var(--ft--icon-success); }
-.status-option.annule:has(input:checked),
-.status-option.annulee:has(input:checked) { background: var(--ft--bg-error); border-color: var(--ft--border-error); color: var(--ft--icon-error); }
-.status-option.a-confirmer:has(input:checked) { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+/* Le fond de selection vient de « with-checked-bg » : le statut choisi se lit
+   comme partout ailleurs dans les outils France Travail. Les couleurs par statut
+   restent portees par la pastille du tableau. */
+.status-option { white-space: nowrap; }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
@@ -697,8 +690,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
 .finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
 .finance-open .finance-budget { width: 120px; }
-.finance-open-option { display: inline-flex; align-items: center; min-height: var(--ft--form-control-height); gap: 10px; color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; }
-.finance-open-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-navy); cursor: pointer; }
 .finance-editor { padding: 24px; }
 .finance-budget { display: grid; grid-template-rows: 24px var(--ft--form-control-height); row-gap: 10px; align-self: start; }
 .finance-budget label { display: flex; align-items: center; white-space: nowrap; }

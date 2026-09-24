@@ -233,3 +233,21 @@ test("le chevron des listes deroulantes n'est plus dessine deux fois", () => {
   assert.ok(!html.includes("select-control"),
     "select.form-control fournit son propre chevron : notre habillage a disparu");
 });
+
+test("cases et boutons radio suivent la structure form-check", () => {
+  const html = editHtml();
+  assert.match(html,
+    /<div class="form-check with-checked-bg finance-open-option"><input class="form-check-input" type="checkbox" id="editOpenToFunding"/);
+  assert.match(html,
+    /<label class="form-check-label" for="editOpenToFunding">Ouvert au financement<\/label>/);
+  assert.match(html,
+    /<div class="form-check with-checked-bg public-option"><input class="form-check-input public-choice" type="checkbox" id="public-0"/);
+  assert.match(html,
+    /<div class="form-check with-checked-bg status-option [a-z-]+"><input class="form-check-input" type="radio" id="status-0" name="editStatus"/);
+});
+
+test("le groupe de statuts porte sa legende", () => {
+  const html = editHtml();
+  assert.match(html, /<p class="form-legend" id="statusLegend">Statut de l'action<\/p>/);
+  assert.match(html, /<div class="status-options" role="group" aria-labelledby="statusLegend">/);
+});
