@@ -675,8 +675,11 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    correspondance que celle de la pastille du tableau. */
 .status-option { white-space: nowrap; }
 
-.status-options .form-check .form-check-input:checked + .form-check-label::before { background-color: var(--statut-fond); }
-.status-options .form-check .form-check-input:checked + .form-check-label { color: var(--statut-encre); font-weight: 700; }
+/* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
+   celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
+   mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
+.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
+.status-options .form-check-input:checked + .form-check-label { color: var(--statut-encre); font-weight: 700; }
 
 .status-option.projet { --statut-fond: var(--ft--bg-info); --statut-encre: var(--ft--icon-info); }
 .status-option.planifie,

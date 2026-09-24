@@ -56,8 +56,12 @@ test("les classes renommees sont bien celles utilisees", () => {
 test("la couleur du statut choisi vient des jetons semantiques du design system", () => {
   // On remplace la teinte que « with-checked-bg » applique, on ne superpose pas
   // un second fond : le selecteur doit donc viser le meme ::before que lui.
+  // Le fond va sur le conteneur : le ::before du design system passe au-dessus du
+  // texte, donc une couleur franche posee dessus masquerait le libelle.
   assert.match(CSS,
-    /\.status-options \.form-check \.form-check-input:checked \+ \.form-check-label::before \{ background-color: var\(--statut-fond\); \}/);
+    /\.status-options \.form-check:has\(\.form-check-input:checked\) \{ background-color: var\(--statut-fond\)/);
+  assert.ok(!/form-check-label::before \{ background-color/.test(CSS),
+    "ne pas peindre le calque que le design system superpose au texte");
 
   for (const [statut, jeton] of [["planifiee", "warning"], ["realisee", "success"],
                                  ["annulee", "error"], ["a-confirmer", "warning"]]) {
