@@ -71,6 +71,13 @@ test("le statut se distingue par son fond, jamais par la couleur du texte", () =
       `le statut ${statut} du formulaire prend le meme fond`);
   }
 
+  // La couleur va sur le calque du design system, pas sur un fond a nous : nos
+  // deux boites ne coincidaient pas tout a fait.
+  assert.match(CSS, /\.status-options \.form-check-input:checked \+ \.form-check-label::before \{\s*background-color: var\(--statut-fond\);\s*z-index: -1;/);
+  assert.match(CSS, /\.status-options \.form-check \{ isolation: isolate; \}/);
+  {
+  }
+
   // Aucune couleur ecrite en dur : tout passe par la palette du design system.
   const bloc = CSS.slice(CSS.indexOf(".status-tag.projet"), CSS.indexOf(".status-head-row"));
   assert.ok(!/#[0-9a-fA-F]{3,6}/.test(bloc), "pas de couleur hors palette");
