@@ -82,3 +82,18 @@ test("le tableau de bord se masque vraiment quand la fiche s'ouvre", () => {
   // tableau au lieu de le remplacer.
   assert.match(CSS, /#dashboardView\.is-hidden \{ display: none; \}/);
 });
+
+test("le fond du statut choisi reprend la geometrie du calque du design system", () => {
+  // Le design system dessine l'option choisie sur le ::before du libelle, cale sur
+  // le bloc avec ces decalages. Un fond pose sur le bloc lui-meme couvrait une
+  // autre surface et depassait en bas.
+  const calque = CSS.slice(
+    CSS.indexOf(".status-options .form-check:has(.form-check-input:checked)::before"));
+  const bloc = calque.slice(0, calque.indexOf("}") + 1);
+  for (const decalage of ["top: -.75rem", "right: -.75rem", "bottom: -.75rem", "left: -1.75rem"]) {
+    assert.ok(bloc.includes(decalage), `le calque garde ${decalage}`);
+  }
+  assert.ok(bloc.includes("background: var(--statut-fond)"));
+  assert.ok(!/\.status-options \.form-check:has\([^)]*\) \{ background/.test(CSS),
+    "plus de fond pose sur le bloc lui-meme");
+});
