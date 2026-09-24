@@ -466,12 +466,12 @@ main > .table-panel {
 }
 
 table {
-  width: 100%;
   min-width: 980px;
   border-collapse: separate;
   border-spacing: 0;
   border-radius: var(--radius-surface);
   table-layout: fixed;
+  margin-bottom: 0;
 }
 
 .col-agency { width: 15%; }
@@ -481,11 +481,8 @@ table {
 .col-finance { width: 25%; }
 .col-edit { width: 100px; }
 
-th {
-  height: var(--ft--table-th-height);
-  padding: .25rem var(--ft--table-padding-x);
+thead th {
   background: var(--ft--color-background-primary-weakest);
-  border-bottom: 1px solid var(--line);
   color: var(--accent);
   font-size: 12px;
   font-weight: 800;
@@ -493,6 +490,21 @@ th {
   text-align: left;
   text-transform: uppercase;
   font-family: var(--font-title);
+}
+
+/* La cellule qui nomme l'action est un en-tete de ligne : elle se lit comme une
+   cellule ordinaire, l'habillage ci-dessus ne valant que pour l'en-tete. */
+tbody th {
+  font-weight: inherit;
+  text-align: left;
+}
+
+/* Le design system pose un filet haut sur chaque cellule et un filet bas sous
+   l'en-tete. Nos en-tetes etant colles, le tableau garde border-collapse:
+   separate, ou les deux filets ne fusionnent pas : on retire donc celui de la
+   premiere ligne, qui doublerait celui de l'en-tete. */
+.table tbody tr:first-child > * {
+  border-top: 0;
 }
 
 /* Les entetes restent visibles pendant le defilement vertical du tableau. */
@@ -530,16 +542,14 @@ th > select option {
   font-size: 12px;
 }
 
-td {
-  padding: var(--ft--table-padding-y) var(--ft--table-padding-x);
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
+td, tbody th {
   line-height: 1.32;
 }
 
 /* Le tableau France Travail centre les cellules par défaut. Le dashboard doit
    démarrer chaque information au même niveau pour faciliter le balayage. */
-.table-panel td {
+.table-panel td,
+.table-panel tbody th {
   vertical-align: top;
 }
 
@@ -800,8 +810,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
             <div class="summary" id="summary"></div>
           </section>
 
-          <section class="table-panel">
-            <table>
+          <section class="table-responsive table-panel">
+            <table class="table">
             <caption class="sr-only">Liste des actions d'insertion par le sport</caption>
             <colgroup>
               <col class="col-agency">
@@ -1305,7 +1315,7 @@ function renderRows(actions) {
     <tr>
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
-      <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
+      <th scope="row"><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></th>
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
