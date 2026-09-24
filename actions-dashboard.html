@@ -642,12 +642,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   overflow: hidden;
 }
 
-/* Le fil d'Ariane est le chemin de retour vers la liste. */
-.edit-breadcrumb { width: 100%; max-width: 1280px; margin: 0 auto 16px; }
-.edit-breadcrumb .breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; list-style: none; font-size: 13px; }
-.edit-breadcrumb .breadcrumb-item + .breadcrumb-item::before { content: "\203A"; margin-right: 8px; color: var(--muted); }
-.edit-breadcrumb .breadcrumb-link { padding: 0; border: 0; background: transparent; color: var(--accent); font-size: inherit; cursor: pointer; }
-.edit-breadcrumb [aria-current="page"] { min-width: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
@@ -1358,12 +1352,6 @@ function renderEdit() {
   const editView = document.getElementById('editView');
   editView.innerHTML = `
   <div class="edit-panel">
-    <nav class="edit-breadcrumb" aria-label="Fil d'Ariane">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><button class="breadcrumb-link" type="button" id="backToList">Actions d'insertion par le sport</button></li>
-        <li class="breadcrumb-item" aria-current="page">${escapeHtml(action.nomComplet || 'Modifier une action')}</li>
-      </ol>
-    </nav>
     <header class="edit-header">
       <div class="edit-header-title">
       <h1 id="editHeading">${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
@@ -1443,11 +1431,6 @@ function renderEdit() {
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
-  document.getElementById('backToList').addEventListener('click', () => {
-    if (!formulaireModifie || confirm("Des modifications ne sont pas enregistrées. Quitter la fiche sans les enregistrer ?")) closeEdit();
-  });
-  document.getElementById('editForm').addEventListener('input', () => { formulaireModifie = true; });
-  document.getElementById('editForm').addEventListener('change', () => { formulaireModifie = true; });
   focusFirstField(editView);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
@@ -1612,13 +1595,11 @@ function updateFinanceSummary() {
 // bouton qui l'a ouverte. Pas de piegeage, ce n'est plus une boite de dialogue.
 let vueOuvertePour = null;
 let focusAvantFiche = null;
-let formulaireModifie = false;
 
 function focusFirstField(vue) {
   if (vueOuvertePour === state.editingId) return;
   focusAvantFiche = document.activeElement;
   vueOuvertePour = state.editingId;
-  formulaireModifie = false;
   const premier = vue.querySelector('#editTitle');
   if (premier) premier.focus();
 }
@@ -1627,7 +1608,6 @@ function closeEdit() {
   state.view = 'dashboard';
   state.editingId = null;
   vueOuvertePour = null;
-  formulaireModifie = false;
   render();
   // Le tableau vient d'etre reconstruit : on rend le focus a un element vivant.
   if (focusAvantFiche && document.body.contains(focusAvantFiche)) focusAvantFiche.focus();
@@ -1682,7 +1662,6 @@ async function saveEdit(event, action) {
     state.view = 'dashboard';
     state.editingId = null;
     vueOuvertePour = null;
-    formulaireModifie = false;
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();

@@ -510,12 +510,6 @@ function renderEdit() {
   const editView = document.getElementById('editView');
   editView.innerHTML = `
   <div class="edit-panel">
-    <nav class="edit-breadcrumb" aria-label="Fil d'Ariane">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><button class="breadcrumb-link" type="button" id="backToList">Actions d'insertion par le sport</button></li>
-        <li class="breadcrumb-item" aria-current="page">${escapeHtml(action.nomComplet || 'Modifier une action')}</li>
-      </ol>
-    </nav>
     <header class="edit-header">
       <div class="edit-header-title">
       <h1 id="editHeading">${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
@@ -595,11 +589,6 @@ function renderEdit() {
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
-  document.getElementById('backToList').addEventListener('click', () => {
-    if (!formulaireModifie || confirm("Des modifications ne sont pas enregistrées. Quitter la fiche sans les enregistrer ?")) closeEdit();
-  });
-  document.getElementById('editForm').addEventListener('input', () => { formulaireModifie = true; });
-  document.getElementById('editForm').addEventListener('change', () => { formulaireModifie = true; });
   focusFirstField(editView);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
@@ -764,13 +753,11 @@ function updateFinanceSummary() {
 // bouton qui l'a ouverte. Pas de piegeage, ce n'est plus une boite de dialogue.
 let vueOuvertePour = null;
 let focusAvantFiche = null;
-let formulaireModifie = false;
 
 function focusFirstField(vue) {
   if (vueOuvertePour === state.editingId) return;
   focusAvantFiche = document.activeElement;
   vueOuvertePour = state.editingId;
-  formulaireModifie = false;
   const premier = vue.querySelector('#editTitle');
   if (premier) premier.focus();
 }
@@ -779,7 +766,6 @@ function closeEdit() {
   state.view = 'dashboard';
   state.editingId = null;
   vueOuvertePour = null;
-  formulaireModifie = false;
   render();
   // Le tableau vient d'etre reconstruit : on rend le focus a un element vivant.
   if (focusAvantFiche && document.body.contains(focusAvantFiche)) focusAvantFiche.focus();
@@ -834,7 +820,6 @@ async function saveEdit(event, action) {
     state.view = 'dashboard';
     state.editingId = null;
     vueOuvertePour = null;
-    formulaireModifie = false;
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();

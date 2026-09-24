@@ -171,10 +171,10 @@ test("la fiche de detail est une page, pas une boite de dialogue", () => {
   // une vingtaine de champs : elle remplace la liste au lieu de la recouvrir.
   assert.equal(vue.attributes.role, undefined, "plus de role dialog");
   assert.equal(vue.attributes["aria-modal"], undefined, "plus d'aria-modal");
-  assert.match(html, /<nav class="edit-breadcrumb" aria-label="Fil d'Ariane">/);
-  assert.match(html, /<button class="breadcrumb-link" type="button" id="backToList">Actions d'insertion par le sport<\/button>/);
-  assert.match(html, /<li class="breadcrumb-item" aria-current="page">ANS-26-0055-3 Créneaux<\/li>/);
   assert.match(html, /<h1 id="editHeading">/);
+  // Pas de fil d'Ariane : Annuler ramene deja a la liste, et un troisieme chemin
+  // de sortie est exactement ce que le metier avait fait retirer.
+  assert.ok(!html.includes("breadcrumb"), "pas de chemin de retour redondant");
   // Annuler et Enregistrer restent en haut, comme le metier l'a demande.
   assert.match(html, /id="cancelEdit"/);
   assert.match(html, /id="saveEdit"/);

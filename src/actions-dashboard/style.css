@@ -632,12 +632,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   overflow: hidden;
 }
 
-/* Le fil d'Ariane est le chemin de retour vers la liste. */
-.edit-breadcrumb { width: 100%; max-width: 1280px; margin: 0 auto 16px; }
-.edit-breadcrumb .breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; list-style: none; font-size: 13px; }
-.edit-breadcrumb .breadcrumb-item + .breadcrumb-item::before { content: "\203A"; margin-right: 8px; color: var(--muted); }
-.edit-breadcrumb .breadcrumb-link { padding: 0; border: 0; background: transparent; color: var(--accent); font-size: inherit; cursor: pointer; }
-.edit-breadcrumb [aria-current="page"] { min-width: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
