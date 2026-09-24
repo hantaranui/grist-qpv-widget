@@ -43,11 +43,17 @@
 
 * { box-sizing: border-box; }
 
+/* Hauteur imposee plutot que minimale : le tableau ne peut defiler a l'interieur
+   de son panneau que si la page est bornee. Avec min-height, elle grandissait avec
+   les lignes, le panneau n'etait jamais plafonne, et l'en-tete colle n'avait aucun
+   conteneur de defilement auquel se tenir. */
+html { height: 100%; }
+
 body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
@@ -465,7 +471,6 @@ main > .table-panel {
      droite sans avoir deroule toute la liste au prealable. La hauteur vient de
      la place libre dans la page ; le plafond n'est qu'un garde-fou pour le cas
      ou la colonne des filtres depasserait l'ecran. */
-  max-height: 100vh;
   min-height: 260px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -1124,7 +1129,6 @@ function renderResults() {
   const actions = filteredActions();
   renderSummary(actions);
   renderRows(actions);
-  requestResize();
 }
 
 function render() {
@@ -1135,16 +1139,8 @@ function render() {
   const editing = state.view === 'edit';
   document.getElementById('editView').classList.toggle('is-hidden', !editing);
   if (editing) renderEdit();
-  requestResize();
 }
 
-function requestResize() {
-  requestAnimationFrame(() => {
-    if (window.grist && typeof grist.setHeight === 'function') {
-      grist.setHeight(document.documentElement.scrollHeight);
-    }
-  });
-}
 
 function renderFilters() {
   const container = document.getElementById('filters');
@@ -1309,7 +1305,6 @@ function renderSummary(actions) {
   document.getElementById('toggleFederationOthers')?.addEventListener('click', () => {
     state.federationOthersOpen = !state.federationOthersOpen;
     renderSummary(actions);
-    requestResize();
   });
 }
 
