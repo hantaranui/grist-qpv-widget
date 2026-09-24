@@ -84,3 +84,10 @@ test("le conteneur de defilement reste le notre", () => {
     "table-responsive vise une autre forme de tableau que la nôtre");
   assert.match(html, /<table class="table">/, "la table porte bien la classe du design system");
 });
+
+test("le tableau de bord se masque vraiment quand la fiche s'ouvre", () => {
+  // .is-hidden est une classe ; #dashboardView un identifiant, plus fort. Sans
+  // regle dediee, le display:none ne s'applique pas et la fiche s'ajoute sous le
+  // tableau au lieu de le remplacer.
+  assert.match(CSS, /#dashboardView\.is-hidden \{ display: none; \}/);
+});

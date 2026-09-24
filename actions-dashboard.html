@@ -107,6 +107,11 @@ h1 {
   min-height: 0;
 }
 
+/* Un selecteur d'identifiant l'emporte sur une classe : sans cette regle, le
+   display: none de .is-hidden ne masquait pas le tableau de bord et la fiche
+   s'ajoutait dessous au lieu de le remplacer. */
+#dashboardView.is-hidden { display: none; }
+
 .dashboard-layout {
   display: grid;
   flex: 1;
