@@ -625,25 +625,67 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-remove { width: 100%; border-color: var(--ft--icon-error); color: var(--ft--icon-error); }
 .finance-remove:hover { background: var(--ft--icon-error); border-color: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
+/* La fiche est une page a part entiere : elle remplace la liste plutot que de
+   flotter au-dessus. Elle prend donc la hauteur restante et defile elle-meme. */
 .edit-view {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 32px 16px;
-  background: rgba(15, 20, 56, .45);
+  padding: 24px;
 }
+
 .edit-view.is-hidden { display: none; }
+
 .edit-panel {
   width: 100%;
-  max-width: 1120px;
+  max-width: 1280px;
+  margin: 0 auto;
   background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: var(--radius-surface);
-  box-shadow: 0 16px 40px rgba(15, 20, 56, .3);
   overflow: hidden;
+}
+
+/* Le fil d'Ariane est le chemin de retour vers la liste : il precede le panneau,
+   comme la barre de titre du tableau de bord. */
+.edit-breadcrumb {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto 16px;
+}
+
+.edit-breadcrumb .breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  font-size: 13px;
+}
+
+.edit-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  margin-right: 8px;
+  color: var(--muted);
+}
+
+.edit-breadcrumb .breadcrumb-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.edit-breadcrumb [aria-current="page"] {
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; min-width: 0; }

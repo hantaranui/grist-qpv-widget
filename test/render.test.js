@@ -164,13 +164,20 @@ test("plus aucune classe de bouton maison dans le rendu", () => {
   }
 });
 
-test("la fiche de detail se declare comme boite de dialogue", () => {
-  editHtml();
+test("la fiche de detail est une page, pas une boite de dialogue", () => {
+  const html = editHtml();
   const vue = w.document.getElementById("editView");
-  assert.equal(vue.attributes.role, "dialog");
-  assert.equal(vue.attributes["aria-modal"], "true");
-  assert.equal(vue.attributes["aria-labelledby"], "editHeading");
-  assert.match(vue.innerHTML, /<h1 id="editHeading">/, "le titre nomme la boite de dialogue");
+  // Une modale sert a afficher un message court. La fiche porte cinq blocs et
+  // une vingtaine de champs : elle remplace la liste au lieu de la recouvrir.
+  assert.equal(vue.attributes.role, undefined, "plus de role dialog");
+  assert.equal(vue.attributes["aria-modal"], undefined, "plus d'aria-modal");
+  assert.match(html, /<nav class="edit-breadcrumb" aria-label="Fil d'Ariane">/);
+  assert.match(html, /<button class="breadcrumb-link" type="button" id="backToList">Actions d'insertion par le sport<\/button>/);
+  assert.match(html, /<li class="breadcrumb-item" aria-current="page">ANS-26-0055-3 Créneaux<\/li>/);
+  assert.match(html, /<h1 id="editHeading">/);
+  // Annuler et Enregistrer restent en haut, comme le metier l'a demande.
+  assert.match(html, /id="cancelEdit"/);
+  assert.match(html, /id="saveEdit"/);
 });
 
 test("l'echec d'un enregistrement est annonce aux lecteurs d'ecran", () => {
