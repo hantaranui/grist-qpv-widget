@@ -752,7 +752,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
-.edit-message { padding: 10px 40px 0; color: var(--brand-red); font-weight: 700; }
+/* L'alerte du design system apporte son fond, son retrait et sa couleur : il ne
+   reste qu'a l'aligner sur les marges de la fiche. */
+.edit-message { margin: 10px 40px 0; }
 
 .empty {
   padding: 28px;
@@ -788,7 +790,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .finance-row .finance-select { grid-column: 1 / -1; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
   .edit-header-actions { width: 100%; justify-content: flex-end; }
-  .edit-actions, .edit-message { padding-left: 14px; padding-right: 14px; }
+  .edit-actions { padding-left: 14px; padding-right: 14px; }
+  .edit-message { margin-left: 14px; margin-right: 14px; }
 }
 
 /* Sur un ecran de telephone, les 100px de la colonne « Modifier » figee
@@ -1378,7 +1381,7 @@ function renderEdit() {
       </div>
       <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
-    <div class="edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"></div>
+    <div class="alert alert-error edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
     <form id="editForm">
       <div class="edit-layout">
         <div class="edit-row edit-row-top">
@@ -1638,6 +1641,7 @@ function closeEdit() {
 async function saveEdit(event, action) {
   event.preventDefault();
   const message = document.getElementById('editMessage');
+  const messageTexte = message.querySelector('.alert-content');
   const submit = document.getElementById('saveEdit');
   const publicValues = [...document.querySelectorAll('.public-choice:checked')].map(input => input.value);
   const rows = [...document.querySelectorAll('.finance-row')].map(row => ({
@@ -1685,7 +1689,7 @@ async function saveEdit(event, action) {
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();
-    message.textContent = detail
+    messageTexte.textContent = detail
       ? `L'enregistrement n'a pas abouti : ${detail}`
       : "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
     message.classList.remove('is-hidden');

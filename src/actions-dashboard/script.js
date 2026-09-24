@@ -516,7 +516,7 @@ function renderEdit() {
       </div>
       <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
-    <div class="edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"></div>
+    <div class="alert alert-error edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
     <form id="editForm">
       <div class="edit-layout">
         <div class="edit-row edit-row-top">
@@ -776,6 +776,7 @@ function closeEdit() {
 async function saveEdit(event, action) {
   event.preventDefault();
   const message = document.getElementById('editMessage');
+  const messageTexte = message.querySelector('.alert-content');
   const submit = document.getElementById('saveEdit');
   const publicValues = [...document.querySelectorAll('.public-choice:checked')].map(input => input.value);
   const rows = [...document.querySelectorAll('.finance-row')].map(row => ({
@@ -823,7 +824,7 @@ async function saveEdit(event, action) {
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();
-    message.textContent = detail
+    messageTexte.textContent = detail
       ? `L'enregistrement n'a pas abouti : ${detail}`
       : "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
     message.classList.remove('is-hidden');

@@ -180,8 +180,10 @@ test("la fiche de detail est une page, pas une boite de dialogue", () => {
   assert.match(html, /id="saveEdit"/);
 });
 
-test("l'echec d'un enregistrement est annonce aux lecteurs d'ecran", () => {
-  assert.match(editHtml(), /id="editMessage" role="alert" aria-live="assertive"/);
+test("l'echec d'un enregistrement prend l'alerte du design system", () => {
+  const html = editHtml();
+  assert.match(html, /<div class="alert alert-error edit-message is-hidden" id="editMessage"/);
+  assert.match(html, /id="editMessage" role="alert" aria-live="assertive"><p class="alert-content">/);
 });
 
 test("le champ obligatoire porte le marqueur du design system", () => {
