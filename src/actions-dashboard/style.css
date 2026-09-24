@@ -692,23 +692,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
-/* Le design system dessine l'option choisie sur le ::before du libelle, positionne
-   par rapport au bloc avec ces decalages precis. Un fond pose sur le bloc lui-meme
-   ne couvre donc pas la meme surface, et depassait en bas. On reprend exactement
-   sa geometrie sur le ::before du bloc, qui a le meme conteneur de reference : les
-   deux ne peuvent plus diverger. Ce pseudo-element etant le premier enfant, il se
-   peint sous le bouton radio et le libelle sans avoir a jouer sur l'empilement. */
-.status-options .form-check:has(.form-check-input:checked)::before {
-  content: "";
-  position: absolute;
-  top: -.75rem;
-  right: -.75rem;
-  bottom: -.75rem;
-  left: -1.75rem;
-  border-radius: .5rem;
-  background: var(--statut-fond);
-  pointer-events: none;
-}
+.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
 .status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
 .status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); }
