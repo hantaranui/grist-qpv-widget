@@ -58,7 +58,10 @@ button, select, input {
   font: inherit;
 }
 
-button:not(.btn) {
+/* Le selecteur de public est un bouton qui tient lieu de champ : il porte
+   form-control et doit donc etre habille par le design system comme les autres,
+   sans quoi notre reglage de bouton lui imposait un texte plus grand. */
+button:not(.btn):not(.form-control) {
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 500;
@@ -69,7 +72,7 @@ button:disabled {
   font-style: italic;
 }
 
-button:not(.btn), select, input { border-radius: var(--radius-control); }
+button:not(.btn):not(.form-control), select, input { border-radius: var(--radius-control); }
 
 button:focus-visible,
 select:focus-visible,

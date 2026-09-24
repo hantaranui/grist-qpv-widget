@@ -97,3 +97,11 @@ test("le fond du statut choisi reprend la geometrie du calque du design system",
   assert.ok(!/\.status-options \.form-check:has\([^)]*\) \{ background/.test(CSS),
     "plus de fond pose sur le bloc lui-meme");
 });
+
+test("le selecteur de public s'habille comme les autres champs", () => {
+  // C'est un bouton qui tient lieu de champ. Notre reglage de bouton l'emportait
+  // sur form-control et lui donnait un texte plus grand que ses voisins.
+  assert.match(CSS, /button:not\(\.btn\):not\(\.form-control\) \{/);
+  assert.ok(!/^button:not\(\.btn\) \{/m.test(CSS),
+    "la regle de bouton ne doit plus atteindre les champs");
+});
