@@ -73,3 +73,14 @@ test("la couleur du statut choisi vient des jetons semantiques du design system"
   const bloc = CSS.slice(CSS.indexOf(".status-option.projet"), CSS.indexOf(".status-head-row"));
   assert.ok(!/#[0-9a-fA-F]{3,6}/.test(bloc), "pas de couleur hors palette");
 });
+
+test("le conteneur de defilement reste le notre", () => {
+  const html = require("node:fs").readFileSync(
+    require("node:path").join(__dirname, "..", "src", "actions-dashboard", "index.html"), "utf8");
+  // « table-responsive » impose height:100% et fixe la premiere ligne a 140px par
+  // cellule, ce qui ecraserait le colgroup sous table-layout:fixed et priverait
+  // l'en-tete colle de son conteneur de defilement.
+  assert.ok(!/class="[^"]*\btable-responsive\b/.test(html),
+    "table-responsive vise une autre forme de tableau que la nôtre");
+  assert.match(html, /<table class="table">/, "la table porte bien la classe du design system");
+});
