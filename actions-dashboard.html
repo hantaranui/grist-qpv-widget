@@ -587,21 +587,20 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
   border: 1px solid transparent;
 }
 
-/* Palette « Feedback » du design system. Les nuances vives (-40) sont prevues
-   pour les aplats et les icones, pas pour du texte : posees sur le fond clair de
-   la meme famille, elles tombaient entre 2,25:1 et 3,41:1, sous le seuil de
-   4,5:1. On prend donc la paire que le design system nomme pour cet usage, fond
-   le plus clair et couleur de texte, qui va de 4,69:1 a 10,06:1. */
+/* Le design system ne colore jamais le texte pose sur un fond de couleur : sa
+   regle .tag fixe l'encre par defaut, et ses variantes ne declarent qu'un fond.
+   Seuls les fonds sombres passent le texte en blanc. On suit cette convention,
+   qui donne de 11,89:1 a 12,97:1 la ou une encre coloree tombait sous 4,5:1. */
 .status-tag.projet,
-.status-tag.en_cours { background: var(--ft-color-background-info-weakest); border-color: var(--ft-color-border-info-default); color: var(--ft-color-text-info-default); }
+.status-tag.en_cours { background: var(--ft-color-background-info-weakest); }
 .status-tag.planifie,
 .status-tag.planifiee,
 .status-tag.a-confirmer,
-.status-tag.suspendu { background: var(--ft-color-background-warning-weakest); border-color: var(--ft-color-border-warning-default); color: var(--ft-color-text-warning-default); }
+.status-tag.suspendu { background: var(--ft-color-background-warning-weakest); }
 .status-tag.realise,
-.status-tag.realisee { background: var(--ft-color-background-success-weakest); border-color: var(--ft-color-border-success-default); color: var(--ft-color-text-success-default); }
+.status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
-.status-tag.annulee { background: var(--ft-color-background-error-weakest); border-color: var(--ft-color-border-error-default); color: var(--ft-color-text-error-default); }
+.status-tag.annulee { background: var(--ft-color-background-error-weakest); }
 
 .bar {
   display: flex;
@@ -697,16 +696,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
 .status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
-.status-options .form-check-input:checked + .form-check-label { color: var(--statut-encre); font-weight: 700; }
+.status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
-.status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); --statut-encre: var(--ft-color-text-info-default); }
+.status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); }
 .status-option.planifie,
 .status-option.planifiee,
-.status-option.a-confirmer { --statut-fond: var(--ft-color-background-warning-weakest); --statut-encre: var(--ft-color-text-warning-default); }
+.status-option.a-confirmer { --statut-fond: var(--ft-color-background-warning-weakest); }
 .status-option.realise,
-.status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); --statut-encre: var(--ft-color-text-success-default); }
+.status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
-.status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); --statut-encre: var(--ft-color-text-error-default); }
+.status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }

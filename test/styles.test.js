@@ -53,35 +53,29 @@ test("les classes renommees sont bien celles utilisees", () => {
   }
 });
 
-test("la couleur du statut choisi vient des jetons semantiques du design system", () => {
-  // On remplace la teinte que « with-checked-bg » applique, on ne superpose pas
-  // un second fond : le selecteur doit donc viser le meme ::before que lui.
-  // Le fond va sur le conteneur : le ::before du design system passe au-dessus du
-  // texte, donc une couleur franche posee dessus masquerait le libelle.
-  assert.match(CSS,
-    /\.status-options \.form-check:has\(\.form-check-input:checked\) \{ background-color: var\(--statut-fond\)/);
-  assert.ok(!/form-check-label::before \{ background-color/.test(CSS),
-    "ne pas peindre le calque que le design system superpose au texte");
+test("le statut se distingue par son fond, jamais par la couleur du texte", () => {
+  // La regle .tag du design system fixe l'encre par defaut et ses variantes ne
+  // declarent qu'un fond ; seuls les fonds sombres passent au texte blanc. Une
+  // encre coloree sur le fond clair de la meme famille tombait sous 4,5:1.
+  assert.ok(!/--statut-encre/.test(CSS), "plus d'encre coloree pour un statut");
+  assert.ok(!/\.status-tag\.[\w-]+[^}]*\bcolor:/.test(CSS),
+    "les variantes de pastille ne declarent pas de couleur de texte");
 
-  // Paire nommee par le design system pour cet usage : le fond le plus clair et
-  // la couleur de texte. Les nuances vives servent aux aplats et aux icones, et
-  // tombaient sous 4,5:1 des qu'on les posait en texte sur leur propre fond.
   for (const [statut, jeton] of [["planifiee", "warning"], ["realisee", "success"],
-                                 ["annulee", "error"], ["a-confirmer", "warning"]]) {
-    const regle = new RegExp(
-      `\\.status-option\\.${statut}[^}]*--statut-fond: var\\(--ft-color-background-${jeton}-weakest\\);` +
-      ` --statut-encre: var\\(--ft-color-text-${jeton}-default\\)`);
-    assert.match(CSS, regle, `${statut} prend la paire ${jeton}`);
+                                 ["annulee", "error"], ["projet", "info"]]) {
+    assert.match(CSS,
+      new RegExp(`\\.status-tag\\.${statut}[^}]*background: var\\(--ft-color-background-${jeton}-weakest\\)`),
+      `la pastille ${statut} prend le fond ${jeton}`);
+    assert.match(CSS,
+      new RegExp(`\\.status-option\\.${statut}[^}]*--statut-fond: var\\(--ft-color-background-${jeton}-weakest\\)`),
+      `le statut ${statut} du formulaire prend le meme fond`);
   }
 
-  // Les nuances vives ne doivent plus servir de couleur de texte pour un statut.
-  assert.ok(!/--statut-encre: var\(--ft--icon-/.test(CSS),
-    "les nuances -40 ne sont pas faites pour du texte");
-
   // Aucune couleur ecrite en dur : tout passe par la palette du design system.
-  const bloc = CSS.slice(CSS.indexOf(".status-option.projet"), CSS.indexOf(".status-head-row"));
+  const bloc = CSS.slice(CSS.indexOf(".status-tag.projet"), CSS.indexOf(".status-head-row"));
   assert.ok(!/#[0-9a-fA-F]{3,6}/.test(bloc), "pas de couleur hors palette");
 });
+
 test("le tableau de bord se masque vraiment quand la fiche s'ouvre", () => {
   // .is-hidden est une classe ; #dashboardView un identifiant, plus fort. Sans
   // regle dediee, le display:none ne s'applique pas et la fiche s'ajoute sous le
