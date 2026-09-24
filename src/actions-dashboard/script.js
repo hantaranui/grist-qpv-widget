@@ -507,36 +507,39 @@ function renderEdit() {
   const publicChoices = withExistingValues(state.publicChoices, state.actions.flatMap(item => item.publicChoices));
   const total = action.financeurs.reduce((sum, item) => sum + item.montant, 0);
   const editView = document.getElementById('editView');
+  editView.setAttribute('role', 'dialog');
+  editView.setAttribute('aria-modal', 'true');
+  editView.setAttribute('aria-labelledby', 'editHeading');
   editView.innerHTML = `
   <div class="edit-panel">
     <header class="edit-header">
       <div class="edit-header-title">
-      <h1>${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
+      <h1 id="editHeading">${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
       <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
-    <div class="edit-message is-hidden" id="editMessage"></div>
+    <div class="edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"></div>
     <form id="editForm">
       <div class="edit-layout">
         <div class="edit-row edit-row-top">
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields edit-fields-action">
-            <div class="edit-field edit-field-wide"><label for="editTitle">Intitulé de l'action</label><input id="editTitle" required value="${escapeAttr(action.intitule)}"></div>
-            <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
-            <div class="edit-field"><label for="editFormat">Format</label><select id="editFormat">${formatOptions(action.format)}</select></div>
-            <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" type="number" min="0" value="${action.participants}"></div>
+            <div class="edit-field edit-field-wide"><label for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+            <div class="edit-field"><label for="editDispositif">Dispositif</label><select id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
+            <div class="edit-field"><label for="editFormat">Format</label><select id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
+            <div class="edit-field"><label for="editParticipants">Nombre de participants</label><input id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
             <div class="edit-field"><label>Public</label><div class="public-picker" id="publicPicker"><button class="public-toggle" type="button" id="publicToggle" aria-expanded="false"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-d" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map(value => `<label class="public-option"><input class="public-choice" type="checkbox" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}>${escapeHtml(value)}</label>`).join('')}</div></div></div>
-            <div class="edit-field"><label for="editVille">Ville</label><input id="editVille" value="${escapeAttr(action.ville)}"></div>
-            <div class="edit-field"><label for="editLieu">Lieu</label><input id="editLieu" value="${escapeAttr(action.lieu)}"></div>
-            <div class="edit-field edit-field-wide"><label for="editCommentaire">Commentaire</label><textarea id="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
+            <div class="edit-field"><label for="editVille">Ville</label><input id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
+            <div class="edit-field"><label for="editLieu">Lieu</label><input id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
+            <div class="edit-field edit-field-wide"><label for="editCommentaire">Commentaire</label><textarea id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>
           </div>
         </section>
         <div class="edit-stack">
           <section class="edit-card">
             <div class="section-head"><span>Agence</span></div>
           <div class="edit-fields">
-            <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
+            <div class="edit-field"><label for="editAgency">Agence</label><select id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
             <div class="agency-summary">
               <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
               <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
@@ -571,8 +574,8 @@ function renderEdit() {
         <section class="edit-card finance-card">
           <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
-            <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
-            <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
+            <div class="edit-field finance-budget"><label for="editBudget">Budget total (€)</label><input id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
+            <label class="finance-open-option"><input type="checkbox" id="editOpenToFunding" name="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}>Ouvert au financement</label>
           </div>
           <div class="finance-editor">
             <div class="finance-list">
@@ -588,6 +591,7 @@ function renderEdit() {
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
+  trapFocus(editView);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -677,7 +681,7 @@ function referenceOptions(items, selectedId, labelFor, placeholder) {
   // l'action paraitrait rattachee a une agence qu'elle n'a pas, et le simple fait
   // d'enregistrer la fiche l'y rattacherait pour de bon.
   if (!selectable.some(([id]) => id === selectedId)) {
-    options.unshift(`<option value="" selected>${escapeHtml(placeholder)}</option>`);
+    options.unshift(`<option value="" selected disabled>${escapeHtml(placeholder)}</option>`);
   }
   return options.join('');
 }
@@ -747,10 +751,40 @@ function updateFinanceSummary() {
   document.getElementById('editProgress').style.width = `${Math.min(100, budget ? Math.round(total / budget * 100) : 0)}%`;
 }
 
+// aria-modal ne suffit pas : une boite de dialogue doit aussi prendre le focus a
+// l'ouverture, le retenir, et le rendre a son point de depart a la fermeture.
+let dialogOpenFor = null;
+let focusBeforeDialog = null;
+
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
+
+function trapFocus(dialog) {
+  if (dialogOpenFor !== state.editingId) {
+    focusBeforeDialog = document.activeElement;
+    dialogOpenFor = state.editingId;
+    const first = dialog.querySelector('#editTitle') || dialog.querySelector(FOCUSABLE);
+    if (first) first.focus();
+  }
+  dialog.onkeydown = event => {
+    if (event.key !== 'Tab') return;
+    const items = [...dialog.querySelectorAll(FOCUSABLE)].filter(item => item.offsetParent !== null);
+    if (!items.length) return;
+    const edge = event.shiftKey ? items[0] : items[items.length - 1];
+    if (document.activeElement !== edge) return;
+    event.preventDefault();
+    (event.shiftKey ? items[items.length - 1] : items[0]).focus();
+  };
+}
+
 function closeEdit() {
   state.view = 'dashboard';
   state.editingId = null;
+  dialogOpenFor = null;
   render();
+  // Le tableau vient d'etre reconstruit : on rend le focus a un element vivant.
+  if (focusBeforeDialog && document.body.contains(focusBeforeDialog)) focusBeforeDialog.focus();
+  else document.getElementById('exportBtn').focus();
+  focusBeforeDialog = null;
 }
 
 async function saveEdit(event, action) {
@@ -799,6 +833,7 @@ async function saveEdit(event, action) {
     await grist.docApi.applyUserActions(userActions);
     state.view = 'dashboard';
     state.editingId = null;
+    dialogOpenFor = null;
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();

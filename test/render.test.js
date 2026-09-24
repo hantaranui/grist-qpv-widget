@@ -126,7 +126,7 @@ test("la fiche de detail n'a plus de lien de retour", () => {
 
 test("une action sans agence n'en affiche aucune plutot que la premiere de la liste", () => {
   const html = editHtml({agence: 0});
-  assert.match(html, /<option value="" selected>Choisir une agence<\/option>/);
+  assert.match(html, /<option value="" selected disabled>Choisir une agence<\/option>/);
   assert.ok(!/<option value="1" selected>AUCH<\/option>/.test(html), "aucune agence n'est preselectionnee");
 });
 
@@ -137,7 +137,7 @@ test("une action rattachee a une agence n'affiche pas l'invite", () => {
 });
 
 test("le dispositif suit la meme regle que l'agence", () => {
-  assert.match(editHtml({dispositif: 0}), /<option value="" selected>Choisir un dispositif<\/option>/);
+  assert.match(editHtml({dispositif: 0}), /<option value="" selected disabled>Choisir un dispositif<\/option>/);
 });
 
 test("les boutons portent les classes du design system", () => {
@@ -161,5 +161,32 @@ test("plus aucune classe de bouton maison dans le rendu", () => {
   for (const ancienne of ["edit-button", "save-button", "cancel-button", "link-button",
                           "add-finance-button", "remove-finance-button"]) {
     assert.ok(!rendus.includes(ancienne), `${ancienne} a bien disparu`);
+  }
+});
+
+test("la fiche de detail se declare comme boite de dialogue", () => {
+  editHtml();
+  const vue = w.document.getElementById("editView");
+  assert.equal(vue.attributes.role, "dialog");
+  assert.equal(vue.attributes["aria-modal"], "true");
+  assert.equal(vue.attributes["aria-labelledby"], "editHeading");
+  assert.match(vue.innerHTML, /<h1 id="editHeading">/, "le titre nomme la boite de dialogue");
+});
+
+test("l'echec d'un enregistrement est annonce aux lecteurs d'ecran", () => {
+  assert.match(editHtml(), /id="editMessage" role="alert" aria-live="assertive"/);
+});
+
+test("le champ obligatoire porte le marqueur du design system", () => {
+  assert.match(editHtml(),
+    /<label for="editTitle">Intitulé de l'action<span class="required">&nbsp;\*<\/span><\/label>/);
+});
+
+test("chaque controle de la fiche porte un name", () => {
+  const html = editHtml();
+  for (const champ of ["editTitle", "editDispositif", "editFormat", "editParticipants",
+                       "editVille", "editLieu", "editCommentaire", "editAgency",
+                       "editBudget", "editOpenToFunding"]) {
+    assert.ok(html.includes(`name="${champ}"`), `${champ} porte un name`);
   }
 });

@@ -20,6 +20,7 @@ const EXPORTED = ["state", "FILTERS", "FINANCEMENT_STATES", "SEARCHABLE_FILTERS"
 function makeElement() {
   const classes = new Set();
   const children = new Map();
+  const attributes = {};
   return {
     innerHTML: "", textContent: "", value: "", checked: false, hidden: false, disabled: false,
     dataset: {}, style: {}, files: [],
@@ -33,7 +34,12 @@ function makeElement() {
         return on;
       },
     },
-    addEventListener() {}, removeEventListener() {}, setAttribute() {}, removeAttribute() {},
+    attributes,
+    addEventListener() {}, removeEventListener() {},
+    setAttribute(name, value) { attributes[name] = String(value); },
+    getAttribute(name) { return name in attributes ? attributes[name] : null; },
+    removeAttribute(name) { delete attributes[name]; },
+    contains: () => false,
     // Un meme selecteur renvoie toujours le meme enfant : sans cela, ecrire dans
     // un element retrouve par querySelector se perdrait dans une doublure neuve.
     querySelector(selector) {
