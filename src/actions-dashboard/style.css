@@ -680,7 +680,11 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    que la teinte, par le jeton semantique du statut : le reperage par couleur
    reste possible sans sortir de la palette du design system, et c'est la meme
    correspondance que celle de la pastille du tableau. */
-.status-option { white-space: nowrap; }
+/* Le design system dessine l'option choisie avec un calque qui epouse le contenu,
+   du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
+   aussi : sans cela il remplit toute la cellule de la grille et deborde du cadre
+   sur la droite. */
+.status-option { white-space: nowrap; justify-self: start; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
