@@ -274,6 +274,7 @@ function renderResults() {
   const actions = filteredActions();
   renderSummary(actions);
   renderRows(actions);
+  requestResize();
 }
 
 function render() {
@@ -285,8 +286,16 @@ function render() {
   document.getElementById('editView').classList.toggle('is-hidden', !editing);
   document.getElementById('dashboardView').classList.toggle('is-hidden', editing);
   if (editing) renderEdit();
+  requestResize();
 }
 
+function requestResize() {
+  requestAnimationFrame(() => {
+    if (window.grist && typeof grist.setHeight === 'function') {
+      grist.setHeight(document.documentElement.scrollHeight);
+    }
+  });
+}
 
 function renderFilters() {
   const container = document.getElementById('filters');
@@ -451,6 +460,7 @@ function renderSummary(actions) {
   document.getElementById('toggleFederationOthers')?.addEventListener('click', () => {
     state.federationOthersOpen = !state.federationOthersOpen;
     renderSummary(actions);
+    requestResize();
   });
 }
 
