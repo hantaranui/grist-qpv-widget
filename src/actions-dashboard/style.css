@@ -48,7 +48,10 @@ button, select, input {
   font: inherit;
 }
 
-button:not(.btn) {
+/* Le selecteur de public est un bouton qui tient lieu de champ : il porte
+   form-control et doit donc etre habille par le design system comme les autres,
+   sans quoi notre reglage de bouton lui imposait un texte plus grand. */
+button:not(.btn):not(.form-control) {
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 500;
@@ -59,7 +62,7 @@ button:disabled {
   font-style: italic;
 }
 
-button:not(.btn), select, input { border-radius: var(--radius-control); }
+button:not(.btn):not(.form-control), select, input { border-radius: var(--radius-control); }
 
 button:focus-visible,
 select:focus-visible,
@@ -577,16 +580,20 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
   border: 1px solid transparent;
 }
 
-.status-tag.projet { background: var(--ft--bg-info); border-color: var(--ft--border-info); color: var(--ft--icon-info); }
+/* Le design system ne colore jamais le texte pose sur un fond de couleur : sa
+   regle .tag fixe l'encre par defaut, et ses variantes ne declarent qu'un fond.
+   Seuls les fonds sombres passent le texte en blanc. On suit cette convention,
+   qui donne de 11,89:1 a 12,97:1 la ou une encre coloree tombait sous 4,5:1. */
+.status-tag.projet,
+.status-tag.en_cours { background: var(--ft-color-background-info-weakest); }
 .status-tag.planifie,
-.status-tag.planifiee { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
+.status-tag.planifiee,
+.status-tag.a-confirmer,
+.status-tag.suspendu { background: var(--ft-color-background-warning-weakest); }
 .status-tag.realise,
-.status-tag.realisee { background: var(--ft--bg-success); border-color: var(--ft--border-success); color: var(--ft--icon-success); }
+.status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
-.status-tag.annulee { background: var(--ft--bg-error); border-color: var(--ft--border-error); color: var(--ft--icon-error); }
-.status-tag.a-confirmer { background: var(--ft--bg-warning); border-color: var(--ft--border-warning); color: var(--ft--icon-warning); }
-.status-tag.en_cours { background: var(--ft--bg-info); color: var(--ft--icon-info); }
-.status-tag.suspendu { background: var(--ft--bg-warning); color: var(--ft--icon-warning); }
+.status-tag.annulee { background: var(--ft-color-background-error-weakest); }
 
 .bar {
   display: flex;
@@ -676,22 +683,26 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    que la teinte, par le jeton semantique du statut : le reperage par couleur
    reste possible sans sortir de la palette du design system, et c'est la meme
    correspondance que celle de la pastille du tableau. */
-.status-option { white-space: nowrap; }
+/* Le design system dessine l'option choisie avec un calque qui epouse le contenu,
+   du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
+   aussi : sans cela il remplit toute la cellule de la grille et deborde du cadre
+   sur la droite. */
+.status-option { white-space: nowrap; justify-self: start; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
 .status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
-.status-options .form-check-input:checked + .form-check-label { color: var(--statut-encre); font-weight: 700; }
+.status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
-.status-option.projet { --statut-fond: var(--ft--bg-info); --statut-encre: var(--ft--icon-info); }
+.status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); }
 .status-option.planifie,
-.status-option.planifiee { --statut-fond: var(--ft--bg-warning); --statut-encre: var(--ft--icon-warning); }
-.status-option.a-confirmer { --statut-fond: var(--ft--bg-warning); --statut-encre: var(--ft--icon-warning); }
+.status-option.planifiee,
+.status-option.a-confirmer { --statut-fond: var(--ft-color-background-warning-weakest); }
 .status-option.realise,
-.status-option.realisee { --statut-fond: var(--ft--bg-success); --statut-encre: var(--ft--icon-success); }
+.status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
-.status-option.annulee { --statut-fond: var(--ft--bg-error); --statut-encre: var(--ft--icon-error); }
+.status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
