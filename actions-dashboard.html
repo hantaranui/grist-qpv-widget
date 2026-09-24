@@ -594,17 +594,12 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.suspendu { background: var(--ft--bg-warning); color: var(--ft--icon-warning); }
 
 .bar {
-  height: 6px;
+  display: flex;
+  width: 100%;
   margin: 8px 0 6px;
-  background: var(--ft--progressbar-container-bg-color);
 }
 
-.bar span {
-  display: block;
-  height: 100%;
-  max-width: 100%;
-  background: var(--ft--progressbar-bg-color);
-}
+.bar .progress-bar { max-width: 100%; }
 
 .money-line {
   display: grid;
@@ -707,8 +702,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
-.finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
-.finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
+.finance-progress { width: 100px; }
+.finance-progress .progress-bar { max-width: 100%; }
 .finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
 .finance-open .finance-budget { width: 120px; }
 .finance-editor { padding: 24px; }
@@ -1314,7 +1309,7 @@ function renderRows(actions) {
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
-        <div class="bar"><span style="width:${Math.round(action.rate * 100)}%"></span></div>
+        <div class="progress bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(action.rate * 100)}" aria-label="Part du budget couverte"><span class="progress-bar" style="width:${Math.round(action.rate * 100)}%"></span></div>
         <div class="muted">Couvert à ${Math.round(action.rate * 100)}% (${formatEuro(action.financed)})</div>
         ${action.financeurs.map(item => `<div class="money-line"><span>${escapeHtml(item.label)}</span><span>${formatEuro(item.montant)}</span></div>`).join('')}
       </td>
@@ -1411,7 +1406,7 @@ function renderEdit() {
           </div>
         </section>
         <section class="edit-card finance-card">
-          <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
+          <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="progress finance-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}" aria-label="Part du budget couverte"><i class="progress-bar" id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
             <div class="edit-field finance-budget"><label class="form-label" for="editBudget">Budget total (€)</label><input class="form-control" id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="form-check with-checked-bg finance-open-option"><input class="form-check-input" type="checkbox" id="editOpenToFunding" name="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}><label class="form-check-label" for="editOpenToFunding">Ouvert au financement</label></div>

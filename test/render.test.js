@@ -259,3 +259,16 @@ test("plus aucun champ ne dessine son propre habillage", () => {
   assert.ok(!css.includes("border-bottom: 2px solid"),
     "un champ habille a la main a survecu : le design system s'en charge");
 });
+
+test("les jauges de financement utilisent la barre du design system", () => {
+  seed();
+  w.renderRows(w.state.actions);
+  const ligne = w.document.getElementById("rows").innerHTML;
+  assert.match(ligne, /<div class="progress bar" role="progressbar"/);
+  assert.match(ligne, /<span class="progress-bar" style="width:\d+%">/);
+  // La couverture n'etait qu'une largeur : sans ces attributs, rien n'etait lisible
+  // autrement qu'a l'oeil.
+  assert.match(ligne, /aria-valuenow="\d+"[^>]*aria-label="Part du budget couverte"/);
+
+  assert.match(editHtml(), /<span class="progress finance-progress" role="progressbar"/);
+});

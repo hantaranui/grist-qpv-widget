@@ -584,17 +584,12 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.suspendu { background: var(--ft--bg-warning); color: var(--ft--icon-warning); }
 
 .bar {
-  height: 6px;
+  display: flex;
+  width: 100%;
   margin: 8px 0 6px;
-  background: var(--ft--progressbar-container-bg-color);
 }
 
-.bar span {
-  display: block;
-  height: 100%;
-  max-width: 100%;
-  background: var(--ft--progressbar-bg-color);
-}
+.bar .progress-bar { max-width: 100%; }
 
 .money-line {
   display: grid;
@@ -697,8 +692,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .finance-summary strong { color: var(--ink); }
-.finance-progress { width: 100px; height: 6px; background: var(--ft--progressbar-container-bg-color); }
-.finance-progress i { display: block; height: 100%; background: var(--ft--progressbar-bg-color); }
+.finance-progress { width: 100px; }
+.finance-progress .progress-bar { max-width: 100%; }
 .finance-open { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 16px 24px 0; }
 .finance-open .finance-budget { width: 120px; }
 .finance-editor { padding: 24px; }

@@ -475,7 +475,7 @@ function renderRows(actions) {
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
       <td>
         <div class="strong">Budget : ${formatEuro(action.budget)}</div>
-        <div class="bar"><span style="width:${Math.round(action.rate * 100)}%"></span></div>
+        <div class="progress bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(action.rate * 100)}" aria-label="Part du budget couverte"><span class="progress-bar" style="width:${Math.round(action.rate * 100)}%"></span></div>
         <div class="muted">Couvert à ${Math.round(action.rate * 100)}% (${formatEuro(action.financed)})</div>
         ${action.financeurs.map(item => `<div class="money-line"><span>${escapeHtml(item.label)}</span><span>${formatEuro(item.montant)}</span></div>`).join('')}
       </td>
@@ -572,7 +572,7 @@ function renderEdit() {
           </div>
         </section>
         <section class="edit-card finance-card">
-          <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="finance-progress"><i id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
+          <div class="section-head"><span>Financement</span><div class="finance-summary"><span>Financé : <strong id="editFinanced">${formatEuro(total)}</strong></span><span class="progress finance-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}" aria-label="Part du budget couverte"><i class="progress-bar" id="editProgress" style="width:${Math.min(100, action.budget ? Math.round(total / action.budget * 100) : 0)}%"></i></span><span>Reste à financer : <strong id="editRemaining">${formatEuro(Math.max(0, action.budget - total))}</strong></span></div></div>
           <div class="finance-open">
             <div class="edit-field finance-budget"><label class="form-label" for="editBudget">Budget total (€)</label><input class="form-control" id="editBudget" name="editBudget" type="number" min="0" value="${Math.round(action.budget)}"></div>
             <div class="form-check with-checked-bg finance-open-option"><input class="form-check-input" type="checkbox" id="editOpenToFunding" name="editOpenToFunding"${action.ouvertAuFinancement ? ' checked' : ''}><label class="form-check-label" for="editOpenToFunding">Ouvert au financement</label></div>
