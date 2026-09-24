@@ -63,11 +63,20 @@ test("la couleur du statut choisi vient des jetons semantiques du design system"
   assert.ok(!/form-check-label::before \{ background-color/.test(CSS),
     "ne pas peindre le calque que le design system superpose au texte");
 
+  // Paire nommee par le design system pour cet usage : le fond le plus clair et
+  // la couleur de texte. Les nuances vives servent aux aplats et aux icones, et
+  // tombaient sous 4,5:1 des qu'on les posait en texte sur leur propre fond.
   for (const [statut, jeton] of [["planifiee", "warning"], ["realisee", "success"],
                                  ["annulee", "error"], ["a-confirmer", "warning"]]) {
-    const regle = new RegExp(`\\.status-option\\.${statut}[^}]*--statut-fond: var\\(--ft--bg-${jeton}\\)`);
-    assert.match(CSS, regle, `${statut} prend le jeton ${jeton}`);
+    const regle = new RegExp(
+      `\\.status-option\\.${statut}[^}]*--statut-fond: var\\(--ft-color-background-${jeton}-weakest\\);` +
+      ` --statut-encre: var\\(--ft-color-text-${jeton}-default\\)`);
+    assert.match(CSS, regle, `${statut} prend la paire ${jeton}`);
   }
+
+  // Les nuances vives ne doivent plus servir de couleur de texte pour un statut.
+  assert.ok(!/--statut-encre: var\(--ft--icon-/.test(CSS),
+    "les nuances -40 ne sont pas faites pour du texte");
 
   // Aucune couleur ecrite en dur : tout passe par la palette du design system.
   const bloc = CSS.slice(CSS.indexOf(".status-option.projet"), CSS.indexOf(".status-head-row"));
