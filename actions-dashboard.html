@@ -243,6 +243,19 @@ h1 {
 
 /* Le resume porte form-control : il ne reste que ce que le design system ne dit
    pas d'un <summary>, sa disposition interne et le masquage du triangle natif. */
+/* Nos deux controles qui tiennent lieu de liste deroulante portent l'indicateur
+   exact du design system : l'image et les reglages sont repris tels quels de
+   « select.form-control », car aucune classe ne les expose. Les icones de sa
+   police ne conviennent pas — « chevron-up-down » est un double chevron la ou
+   son select affiche deux triangles pleins. A rafraichir s'il change la sienne. */
+.filter-search-dropdown summary,
+.public-toggle {
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+  background-repeat: no-repeat;
+  background-position: right .5rem center;
+}
+
 .filter-search-dropdown summary {
   display: flex;
   align-items: center;
@@ -252,7 +265,6 @@ h1 {
 }
 
 .filter-search-dropdown summary::-webkit-details-marker { display: none; }
-.filter-search-dropdown summary .icon { margin-left: 12px; font-size: 16px; }
 
 .sort-menu { position: relative; }
 .sort-menu summary { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ft--table-th-height); cursor: pointer; list-style: none; }
@@ -670,7 +682,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 #editTitle { font-weight: 700; }
 .public-picker { position: relative; }
 .public-toggle { display: flex; align-items: center; justify-content: space-between; text-align: left; cursor: pointer; }
-.public-toggle .icon { font-size: 14px; }
 .public-options { display: none; position: absolute; z-index: 10; top: calc(100% + 2px); right: 0; left: 0; max-height: 210px; overflow: auto; padding: 8px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity); }
 .public-picker.is-open .public-options { display: grid; gap: 6px; }
 .readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
@@ -1171,7 +1182,7 @@ function renderFilters() {
       return `<div class="filter-field">
         <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary>
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span></summary>
           <div class="filter-search-panel">
             <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
@@ -1378,7 +1389,7 @@ function renderEdit() {
             <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select class="form-control" id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
             <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select class="form-control" id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
             <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input class="form-control" id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
-            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="form-control public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></button><div class="public-options">${publicChoices.map((value, index) => `<div class="form-check with-checked-bg public-option"><input class="form-check-input public-choice" type="checkbox" id="public-${index}" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}><label class="form-check-label" for="public-${index}">${escapeHtml(value)}</label></div>`).join('')}</div></div></div>
+            <div class="edit-field"><span class="form-label" id="publicLabel">Public</span><div class="public-picker" id="publicPicker"><button class="form-control public-toggle" type="button" id="publicToggle" aria-expanded="false" aria-labelledby="publicLabel publicToggleValue"><span id="publicToggleValue">${escapeHtml(action.publicChoices.join(', ') || 'Choisir un public')}</span></button><div class="public-options">${publicChoices.map((value, index) => `<div class="form-check with-checked-bg public-option"><input class="form-check-input public-choice" type="checkbox" id="public-${index}" value="${escapeAttr(value)}"${action.publicChoices.includes(value) ? ' checked' : ''}><label class="form-check-label" for="public-${index}">${escapeHtml(value)}</label></div>`).join('')}</div></div></div>
             <div class="edit-field"><label class="form-label" for="editVille">Ville</label><input class="form-control" id="editVille" name="editVille" value="${escapeAttr(action.ville)}"></div>
             <div class="edit-field"><label class="form-label" for="editLieu">Lieu</label><input class="form-control" id="editLieu" name="editLieu" value="${escapeAttr(action.lieu)}"></div>
             <div class="edit-field edit-field-wide"><label class="form-label" for="editCommentaire">Commentaire</label><textarea class="form-control" id="editCommentaire" name="editCommentaire" rows="3">${escapeHtml(action.commentaire)}</textarea></div>

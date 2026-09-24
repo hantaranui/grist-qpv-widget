@@ -89,3 +89,13 @@ test("le selecteur de public s'habille comme les autres champs", () => {
   assert.ok(!/^button:not\(\.btn\) \{/m.test(CSS),
     "la regle de bouton ne doit plus atteindre les champs");
 });
+
+test("l'indicateur des listes deroulantes maison est celui du design system", () => {
+  // Reprise verbatim de select.form-control : meme image, meme position, meme
+  // reserve de place a droite. Une icone de sa police donnerait une autre forme.
+  const regle = CSS.slice(CSS.indexOf(".filter-search-dropdown summary,\n.public-toggle {"));
+  const bloc = regle.slice(0, regle.indexOf("}") + 1);
+  assert.ok(bloc.includes('background-image: url("data:image/svg+xml;base64,'), "l'image est reprise");
+  assert.ok(bloc.includes("background-position: right .5rem center"), "meme position");
+  assert.ok(bloc.includes("padding-right: 1.5rem"), "meme reserve de place");
+});

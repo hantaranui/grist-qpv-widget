@@ -280,9 +280,12 @@ test("les jauges de financement utilisent la barre du design system", () => {
   assert.match(editHtml(), /<span class="progress finance-progress" role="progressbar"/);
 });
 
-test("les controles qui tiennent lieu de liste deroulante portent le meme indicateur", () => {
-  // L'icone du design system pour un select est un double triangle haut-bas, pas
-  // un chevron. Nos deux controles maison s'alignent dessus.
-  assert.match(filtersHtml({open: true}), /<summary class="form-control"[^>]*>.*?icon icon-chevron-up-down/s);
-  assert.match(editHtml(), /id="publicToggleValue"[^>]*>[^<]*<\/span><span class="icon icon-chevron-up-down"/);
+test("les controles qui tiennent lieu de liste deroulante n'ont plus d'icone a eux", () => {
+  // L'indicateur vient du fond, repris tel quel du select du design system : une
+  // icone de sa police donnerait une autre forme. Aucun element d'icone ne doit
+  // donc subsister dans ces deux controles.
+  assert.ok(!/<summary class="form-control"[^>]*>[\s\S]{0,200}?class="icon/.test(filtersHtml({open: true})),
+    "le filtre a recherche ne dessine plus son propre chevron");
+  assert.ok(!/id="publicToggleValue"[^>]*>[^<]*<\/span><span class="icon/.test(editHtml()),
+    "le selecteur de public non plus");
 });
