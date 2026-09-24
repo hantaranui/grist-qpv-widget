@@ -73,3 +73,9 @@ test("la couleur du statut choisi vient des jetons semantiques du design system"
   const bloc = CSS.slice(CSS.indexOf(".status-option.projet"), CSS.indexOf(".status-head-row"));
   assert.ok(!/#[0-9a-fA-F]{3,6}/.test(bloc), "pas de couleur hors palette");
 });
+test("le tableau de bord se masque vraiment quand la fiche s'ouvre", () => {
+  // .is-hidden est une classe ; #dashboardView un identifiant, plus fort. Sans
+  // regle dediee, le display:none ne s'applique pas et la fiche s'ajoute sous le
+  // tableau au lieu de le remplacer.
+  assert.match(CSS, /#dashboardView\.is-hidden \{ display: none; \}/);
+});

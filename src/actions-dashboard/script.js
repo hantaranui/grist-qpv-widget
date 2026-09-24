@@ -284,6 +284,7 @@ function render() {
   renderRows(actions);
   const editing = state.view === 'edit';
   document.getElementById('editView').classList.toggle('is-hidden', !editing);
+  document.getElementById('dashboardView').classList.toggle('is-hidden', editing);
   if (editing) renderEdit();
   requestResize();
 }
@@ -507,9 +508,6 @@ function renderEdit() {
   const publicChoices = withExistingValues(state.publicChoices, state.actions.flatMap(item => item.publicChoices));
   const total = action.financeurs.reduce((sum, item) => sum + item.montant, 0);
   const editView = document.getElementById('editView');
-  editView.setAttribute('role', 'dialog');
-  editView.setAttribute('aria-modal', 'true');
-  editView.setAttribute('aria-labelledby', 'editHeading');
   editView.innerHTML = `
   <div class="edit-panel">
     <header class="edit-header">
@@ -591,7 +589,7 @@ function renderEdit() {
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
-  trapFocus(editView);
+  focusFirstField(editView);
   document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -751,40 +749,28 @@ function updateFinanceSummary() {
   document.getElementById('editProgress').style.width = `${Math.min(100, budget ? Math.round(total / budget * 100) : 0)}%`;
 }
 
-// aria-modal ne suffit pas : une boite de dialogue doit aussi prendre le focus a
-// l'ouverture, le retenir, et le rendre a son point de depart a la fermeture.
-let dialogOpenFor = null;
-let focusBeforeDialog = null;
+// La fiche remplace la liste : le focus doit la suivre, puis revenir sur le
+// bouton qui l'a ouverte. Pas de piegeage, ce n'est plus une boite de dialogue.
+let vueOuvertePour = null;
+let focusAvantFiche = null;
 
-const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
-
-function trapFocus(dialog) {
-  if (dialogOpenFor !== state.editingId) {
-    focusBeforeDialog = document.activeElement;
-    dialogOpenFor = state.editingId;
-    const first = dialog.querySelector('#editTitle') || dialog.querySelector(FOCUSABLE);
-    if (first) first.focus();
-  }
-  dialog.onkeydown = event => {
-    if (event.key !== 'Tab') return;
-    const items = [...dialog.querySelectorAll(FOCUSABLE)].filter(item => item.offsetParent !== null);
-    if (!items.length) return;
-    const edge = event.shiftKey ? items[0] : items[items.length - 1];
-    if (document.activeElement !== edge) return;
-    event.preventDefault();
-    (event.shiftKey ? items[items.length - 1] : items[0]).focus();
-  };
+function focusFirstField(vue) {
+  if (vueOuvertePour === state.editingId) return;
+  focusAvantFiche = document.activeElement;
+  vueOuvertePour = state.editingId;
+  const premier = vue.querySelector('#editTitle');
+  if (premier) premier.focus();
 }
 
 function closeEdit() {
   state.view = 'dashboard';
   state.editingId = null;
-  dialogOpenFor = null;
+  vueOuvertePour = null;
   render();
   // Le tableau vient d'etre reconstruit : on rend le focus a un element vivant.
-  if (focusBeforeDialog && document.body.contains(focusBeforeDialog)) focusBeforeDialog.focus();
+  if (focusAvantFiche && document.body.contains(focusAvantFiche)) focusAvantFiche.focus();
   else document.getElementById('exportBtn').focus();
-  focusBeforeDialog = null;
+  focusAvantFiche = null;
 }
 
 async function saveEdit(event, action) {
@@ -833,7 +819,7 @@ async function saveEdit(event, action) {
     await grist.docApi.applyUserActions(userActions);
     state.view = 'dashboard';
     state.editingId = null;
-    dialogOpenFor = null;
+    vueOuvertePour = null;
     await load();
   } catch (error) {
     const detail = String(error?.message || error || '').trim();

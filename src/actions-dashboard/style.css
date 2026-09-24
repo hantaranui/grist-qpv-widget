@@ -97,6 +97,11 @@ h1 {
   min-height: 0;
 }
 
+/* Un selecteur d'identifiant l'emporte sur une classe : sans cette regle, le
+   display: none de .is-hidden ne masquait pas le tableau de bord et la fiche
+   s'ajoutait dessous au lieu de le remplacer. */
+#dashboardView.is-hidden { display: none; }
+
 .dashboard-layout {
   display: grid;
   flex: 1;
@@ -604,26 +609,29 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-remove { width: 100%; border-color: var(--ft--icon-error); color: var(--ft--icon-error); }
 .finance-remove:hover { background: var(--ft--icon-error); border-color: var(--ft--icon-error); color: var(--ft-color-background-neutral-light); }
 
+/* La fiche est une page a part entiere : elle remplace la liste plutot que de
+   flotter au-dessus. Elle prend donc la hauteur restante et defile elle-meme. */
 .edit-view {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 32px 16px;
-  background: rgba(15, 20, 56, .45);
+  padding: 24px;
 }
+
 .edit-view.is-hidden { display: none; }
+
 .edit-panel {
   width: 100%;
-  max-width: 1120px;
+  max-width: 1280px;
+  margin: 0 auto;
   background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: var(--radius-surface);
-  box-shadow: 0 16px 40px rgba(15, 20, 56, .3);
   overflow: hidden;
 }
+
 .edit-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 40px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .edit-header-title { display: grid; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
