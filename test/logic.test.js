@@ -23,14 +23,14 @@ function fixture() {
   return {
     Actions: [
       {id: 1, Intitule: "Créneaux d'aller-vers", Nom_complet: "ANS-26-0055-3 Créneaux d'aller-vers",
-       Reponse_AAP: 10, Club: 1, Agence: 1, Budget: 2000, Jauge: 20, Ville: "Auch",
+       Reponse_AAP: 10, Club: 1, Agence: 1, DD: 20, DR: 30, Budget: 2000, Jauge: 20, Ville: "Auch",
        Statut: "A confirmer", Public: ["L", "QPV", "Jeunes"]},
       {id: 2, Intitule: "Ensemble vers l'emploi", Nom_complet: "ANS-26-0409-1 Ensemble vers l'emploi",
-       Reponse_AAP: 11, Club: 1, Agence: 1, Budget: 2500, Jauge: 15, Ville: "Évreux",
+       Reponse_AAP: 11, Club: 1, Agence: 1, DD: 20, DR: 30, Budget: 2500, Jauge: 15, Ville: "Évreux",
        Statut: "Réalisée", Public: ["L", "BRSA"]},
       // Sans reponse AAP ni nom complet : le widget doit retomber sur l'intitule.
-      {id: 3, Intitule: "Action orpheline", Reponse_AAP: 0, Club: 1, Agence: 1,
-       Budget: 1000, Jauge: 5, Ville: "", Statut: "Planifiée", Public: null},
+      {id: 3, Intitule: "Action orpheline", Reponse_AAP: 0, Club: 1, Agence: 0,
+       DD: 20, DR: 30, Budget: 1000, Jauge: 5, Ville: "", Statut: "Planifiée", Public: null},
     ],
     Reponses_AAP: [
       {id: 10, Numero_Action_Osiris: "ANS-26-0055-3"},
@@ -44,7 +44,8 @@ function fixture() {
     Financeurs: [{id: 1, Nom: "France Travail"}],
     Structures: [{id: 1, Nom: "Rugby Club Auch"}],
     Agences: [{id: 1, Libelle_agence: "AUCH", DD: 0}],
-    DD: [], DR: [], Dispositifs: [], Federations: [],
+    DD: [{id: 20, Nom: "DD Gers"}], DR: [{id: 30, Nom: "Occitanie"}],
+    Dispositifs: [], Federations: [],
   };
 }
 
@@ -190,4 +191,24 @@ test("les listes de secours couvrent les colonnes a choix du formulaire", () => 
 test("le widget declare les tables dont il a besoin", () => {
   assert.ok(w.TABLES.includes("Reponses_AAP"), "necessaire au numero Osiris");
   assert.ok(!w.TABLES.includes("Communes"), "la commune du club ne sert plus");
+});
+
+test("DD et DR viennent de l'action, pas de son agence", () => {
+  const [a1, , a3] = buildState();
+  assert.equal(a1.dd, "DD Gers");
+  assert.equal(a1.dr, "Occitanie");
+  // 816 des 2 991 actions n'ont pas d'agence : les lire par elle vidait ces deux
+  // colonnes, alors que la table Actions les porte, derivees du club.
+  assert.equal(a3.agency, "", "cette action n'a pas d'agence");
+  assert.equal(a3.dd, "DD Gers", "sa DD reste renseignee");
+  assert.equal(a3.dr, "Occitanie", "sa DR aussi");
+});
+
+test("les filtres DD et DR listent les valeurs des actions sans agence", () => {
+  buildState();
+  assert.deepEqual(plain(w.optionsFor("dd")), ["DD Gers"]);
+  assert.deepEqual(plain(w.optionsFor("dr")), ["Occitanie"]);
+
+  w.state.filters = {dd: "DD Gers"};
+  assert.deepEqual(ids(w.filteredActions()), [1, 2, 3], "l'action sans agence est retenue");
 });
