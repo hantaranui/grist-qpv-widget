@@ -1364,8 +1364,6 @@ function renderEdit() {
     render();
     return;
   }
-  const dd = byId(state.raw.DD).get(action.DD) || {};
-  const dr = byId(state.raw.DR).get(action.DR) || {};
   // Une valeur déjà saisie dans Grist mais absente de la configuration de la
   // colonne doit rester sélectionnable, sinon l'action perdrait son statut.
   const statusChoices = withExistingValues(state.statusChoices, state.actions.map(item => item.statut));
@@ -1403,8 +1401,8 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="edit-field"><label class="form-label" for="editAgency">Agence</label><select class="form-control" id="editAgency" name="editAgency">${referenceOptions(state.raw.Agences, action.agencyId, item => item.Libelle_agence || item.Code_Aurore || '', 'Choisir une agence')}</select></div>
             <div class="agency-summary">
-              <div><strong>DD :</strong> <span id="editDd">${escapeHtml(dd.Nom || '')}</span></div>
-              <div><strong>DR :</strong> <span id="editDr">${escapeHtml(dr.Nom || '')}</span></div>
+              <div><strong>DD :</strong> <span id="editDd">${escapeHtml(action.dd)}</span></div>
+              <div><strong>DR :</strong> <span id="editDr">${escapeHtml(action.dr)}</span></div>
             </div>
           </div>
         </section>

@@ -14,10 +14,12 @@ const [FULLY, PARTLY, NONE] = w.FINANCEMENT_STATES;
 function seed() {
   w.state.raw = {
     Actions: [{id: 1, Intitule: "Créneaux", Nom_complet: "ANS-26-0055-3 Créneaux", Reponse_AAP: 10,
-               Club: 1, Agence: 1, Budget: 2000, Jauge: 20, Ville: "Auch", Statut: "A confirmer", Public: null}],
+               Club: 1, Agence: 1, DD: 20, DR: 30, Budget: 2000, Jauge: 20, Ville: "Auch", Statut: "A confirmer", Public: null}],
     Reponses_AAP: [{id: 10, Numero_Action_Osiris: "ANS-26-0055-3"}],
     Cofinancements: [], Financements: [], Financeurs: [], Structures: [{id: 1, Nom: "Club"}],
-    Agences: [{id: 1, Libelle_agence: "AUCH", DD: 0}], DD: [], DR: [], Dispositifs: [], Federations: [],
+    Agences: [{id: 1, Libelle_agence: "AUCH", DD: 0}],
+    DD: [{id: 20, Nom: "DD Gers"}], DR: [{id: 30, Nom: "Occitanie"}],
+    Dispositifs: [], Federations: [],
   };
   w.state.actions = w.buildActions(w.state.raw);
   w.state.filters = {};
@@ -290,4 +292,12 @@ test("les controles qui tiennent lieu de liste deroulante n'ont plus d'icone a e
     "le filtre a recherche ne dessine plus son propre chevron");
   assert.ok(!/id="publicToggleValue"[^>]*>[^<]*<\/span><span class="icon/.test(editHtml()),
     "le selecteur de public non plus");
+});
+
+test("la fiche affiche la DD et la DR de l'action", () => {
+  // L'action construite porte deja les libelles ; chercher des references sur
+  // elle renvoyait vide, et la carte Agence n'affichait rien.
+  const html = editHtml();
+  assert.match(html, /<strong>DD :<\/strong> <span id="editDd">DD Gers<\/span>/);
+  assert.match(html, /<strong>DR :<\/strong> <span id="editDr">Occitanie<\/span>/);
 });
