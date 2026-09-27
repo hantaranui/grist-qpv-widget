@@ -33,6 +33,21 @@ A chaque modification du code, editer les fichiers dans `src/`, relancer
 `npm run build`, puis commiter a la fois les sources et les fichiers generes a
 la racine (aucune CI ne fait ce build automatiquement).
 
+## Conformite au design system France Travail
+
+Le widget dashboard suit le design system France Travail. Deux regles retenues
+de l'audit de conformite, utiles a qui reprend le code :
+
+- verifier les noms de classes dans la feuille livree par le CDN, jamais dans les
+  pages de composants : celles-ci documentent `button--small` ou `ft-progressbar`
+  la ou le CSS expose `btn-sm` et `.progress` ;
+- ne jamais reprendre un nom de classe du design system, sous peine d'heriter de
+  ses regles en silence. Un test verifie ce point.
+
+Un ecart subsiste volontairement : la structure du tableau. Poser la classe
+`.table` du design system fait decrocher son entete collant, et un entete qui
+decroche coute plus a l'utilisateur que trois regles de filet non conformes.
+
 ## Tests
 
 ```text
