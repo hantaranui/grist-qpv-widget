@@ -211,8 +211,8 @@ function buildActions(raw) {
 
   return raw.Actions.map(action => {
     const agency = agencies.get(action.Agence) || {};
-    const dd = dds.get(agency.DD) || {};
-    const dr = drs.get(dd.DR) || {};
+    const dd = dds.get(action.DD) || {};
+    const dr = drs.get(action.DR) || {};
     const club = clubs.get(action.Club) || {};
     const dispositif = dispositifs.get(action.Dispositif) || {};
     const federation = federations.get(action.Federation) || {};
@@ -499,9 +499,8 @@ function renderEdit() {
     render();
     return;
   }
-  const agency = byId(state.raw.Agences).get(action.agencyId) || {};
-  const dd = byId(state.raw.DD).get(agency.DD) || {};
-  const dr = byId(state.raw.DR).get(dd.DR) || {};
+  const dd = byId(state.raw.DD).get(action.DD) || {};
+  const dr = byId(state.raw.DR).get(action.DR) || {};
   // Une valeur déjà saisie dans Grist mais absente de la configuration de la
   // colonne doit rester sélectionnable, sinon l'action perdrait son statut.
   const statusChoices = withExistingValues(state.statusChoices, state.actions.map(item => item.statut));
@@ -590,7 +589,6 @@ function renderEdit() {
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   focusFirstField(editView);
-  document.getElementById('editAgency').addEventListener('change', updateAgencyDetails);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
   bindStatusEditor();
@@ -731,14 +729,6 @@ function bindFinanceRows() {
     };
   });
   document.querySelectorAll('.finance-amount').forEach(input => input.oninput = updateFinanceSummary);
-}
-
-function updateAgencyDetails() {
-  const agency = byId(state.raw.Agences).get(Number(document.getElementById('editAgency').value)) || {};
-  const dd = byId(state.raw.DD).get(agency.DD) || {};
-  const dr = byId(state.raw.DR).get(dd.DR) || {};
-  document.getElementById('editDd').textContent = dd.Nom || '';
-  document.getElementById('editDr').textContent = dr.Nom || '';
 }
 
 function updateFinanceSummary() {
