@@ -188,3 +188,11 @@ test("le tableau defile plutot que de perdre ses colonnes sous 400 px", () => {
   assert.match(CSS, /\.table-panel \{[^}]*overflow-x: auto;/);
   assert.match(CSS, /@media \(max-width: 560px\)/);
 });
+
+test("Ville, DD et DR ont plus de place que Club, qui prenait tout le vide", () => {
+  const largeur = (classe) => Number((CSS.match(new RegExp(`\\.${classe} \\{ width: (\\d+)%; \\}`)) || [])[1]);
+  const [club, ville, dd, dr] = ["col-club", "col-ville", "col-dd", "col-dr"].map(largeur);
+  assert.ok(club && ville && dd && dr, "chaque colonne a une largeur déclarée");
+  assert.ok(ville > club / 2 && dd > club / 2 && dr > club / 2,
+    "Ville, DD et DR ne sont plus écrasées face à Club");
+});

@@ -175,6 +175,19 @@ h1 {
    federations continuent de passer a la ligne, ce qui reste lisible). */
 table { width: 100%; min-width: 760px; border-collapse: collapse; }
 
+/* Repartition en proportions, pas en pixels fixes : le nom du club prenait
+   toute la place laissee libre par les autres, au point de coincer Ville, DD et
+   DR — un nom de region un peu long (« Occitanie ») y perdait sa derniere
+   lettre a la ligne suivante. Un simple indice pour l'algorithme de largeur
+   automatique, pas une contrainte stricte : le contenu le plus long continue de
+   passer a la ligne plutot que de deborder. */
+.col-club { width: 22%; }
+.col-cp { width: 9%; }
+.col-ville { width: 13%; }
+.col-dd { width: 13%; }
+.col-dr { width: 15%; }
+.col-fed { width: 27%; }
+
 th {
   height: var(--ft--table-th-height);
   padding: .25rem var(--ft--table-padding-x);
