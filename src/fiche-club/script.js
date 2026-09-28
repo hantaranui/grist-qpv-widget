@@ -405,13 +405,13 @@ function missing(label, value) {
   return `<span class="muted-text"><span aria-hidden="true">—</span><span class="sr-only">${escapeHtml(label)}</span></span>`;
 }
 
+// Quatre colonnes, dans l'ordre de la maquette : date, statut, dispositif,
+// financement. Sans date, la periode approximative saisie tient lieu de date.
 function renderActions(actions) {
   if (!actions.length) return '<p class="empty-note">Aucune action portée par ce club.</p>';
   return `<ul class="action-list">${actions.map(action => `<li class="action-item">
-      <div class="action-when">
-        <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode || 'Date à définir')}</span>
-        ${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : ''}
-      </div>
+      <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode) || '<span class="muted-text">Date à définir</span>'}</span>
+      <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFunding(action)}
     </li>`).join('')}</ul>`;

@@ -106,6 +106,19 @@ test("le pourcentage de financement rapporte les cofinancements au budget", () =
   assert.equal(w.percent(w.coverage(1, 3)), 33, "arrondi à l'entier");
 });
 
+test("chaque action tient en quatre colonnes : date, statut, dispositif, financement", () => {
+  const w = loadFiche();
+  const html = w.renderActions(w.buildFiche(tables(w), 7).actions);
+  const premiere = html.slice(html.indexOf('<li class="action-item">'), html.indexOf("</li>"));
+  const colonnes = [...premiere.matchAll(/^      <span class="(action-[\w-]+)">/gm)].map((m) => m[1]);
+  assert.deepEqual(colonnes, ["action-date", "action-status", "action-dispositif", "action-funding"]);
+  assert.match(premiere, /<span class="action-date">01\/03\/2026<\/span>/, "le statut n'est plus dans la date");
+  assert.match(premiere, /<span class="action-status"><span class="status-tag planifiee">Planifiée<\/span><\/span>/);
+  assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "sans date, la période approximative");
+  assert.match(html, /<span class="action-date"><span class="muted-text">Date à définir<\/span><\/span>/,
+    "ni date ni période");
+});
+
 test("la barre plafonne a 100 % mais le texte dit le depassement", () => {
   const w = loadFiche();
   const html = w.renderFunding({rate: 1.2});
@@ -430,8 +443,10 @@ test("aucune couleur n'est ecrite en dur : tout vient de la palette", () => {
 test("la fiche reste lisible jusqu'a 400 px", () => {
   assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.club-header \{ grid-template-columns: minmax\(0, 1fr\);/,
     "le logo passe au-dessus du nom");
-  assert.match(CSS, /\.contact-item,\n  \.action-item \{ grid-template-columns: minmax\(0, 1fr\); \}/,
-    "contacts et actions s'empilent");
+  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-item \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    "les contacts s'empilent");
+  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.action-item \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/,
+    "les actions passent sur deux lignes de deux");
   assert.ok((CSS.match(/overflow-wrap: anywhere/g) || []).length >= 3,
     "une adresse e-mail ou un nom long ne fait pas déborder la page");
 });

@@ -193,16 +193,9 @@ a:focus-visible {
 }
 
 .contact-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); }
-.action-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr); }
+.action-item { grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 1fr); }
 
 .contact-name { font-weight: 700; }
-
-.action-when {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
 
 .action-funding {
   display: flex;
@@ -244,16 +237,18 @@ a:focus-visible {
   .club-lists { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Telephone : le logo passe au-dessus du nom, qui garde toute la largeur, et
-   chaque contact comme chaque action s'empile sur une colonne. */
+/* Telephone : le logo passe au-dessus du nom, qui garde toute la largeur ;
+   chaque contact s'empile sur une colonne, chaque action sur deux lignes de deux
+   (date et statut, puis dispositif et financement) pour garder l'ordre de
+   lecture de la maquette. */
 @media (max-width: 560px) {
   :root { --logo-size: 96px; }
   .fiche-page { padding: 8px; }
   .club-card { padding: 16px; }
   .club-header { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   h1 { font-size: 20px; padding-left: 12px; }
-  .contact-item,
-  .action-item { grid-template-columns: minmax(0, 1fr); }
+  .contact-item { grid-template-columns: minmax(0, 1fr); }
+  .action-item { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
   </head>
@@ -672,13 +667,13 @@ function missing(label, value) {
   return `<span class="muted-text"><span aria-hidden="true">—</span><span class="sr-only">${escapeHtml(label)}</span></span>`;
 }
 
+// Quatre colonnes, dans l'ordre de la maquette : date, statut, dispositif,
+// financement. Sans date, la periode approximative saisie tient lieu de date.
 function renderActions(actions) {
   if (!actions.length) return '<p class="empty-note">Aucune action portée par ce club.</p>';
   return `<ul class="action-list">${actions.map(action => `<li class="action-item">
-      <div class="action-when">
-        <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode || 'Date à définir')}</span>
-        ${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : ''}
-      </div>
+      <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode) || '<span class="muted-text">Date à définir</span>'}</span>
+      <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFunding(action)}
     </li>`).join('')}</ul>`;
