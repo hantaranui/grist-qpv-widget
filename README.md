@@ -33,6 +33,23 @@ A chaque modification du code, editer les fichiers dans `src/`, relancer
 `npm run build`, puis commiter a la fois les sources et les fichiers generes a
 la racine (aucune CI ne fait ce build automatiquement).
 
+## Tester en local dans Grist
+
+```text
+npm run dev            sert ce dossier sur le port 8000
+npm run dev -- 8001    sur un autre port
+```
+
+Le serveur affiche au demarrage l'URL de chaque widget. Coller celle du widget
+voulu dans sa configuration Grist, a la place de l'URL GitHub Pages.
+
+Il n'envoie aucun cache, donc un rechargement suffit apres `npm run build` : pas
+besoin de suffixer l'URL. Chrome traite `localhost` comme une origine sure,
+l'iframe n'est donc pas bloquee malgre le HTTPS de Grist.
+
+Le port est a changer si plusieurs arbres de travail tournent en meme temps :
+chacun sert ses propres fichiers assembles.
+
 ## Conformite au design system France Travail
 
 Le widget dashboard suit le design system France Travail. Deux regles retenues
