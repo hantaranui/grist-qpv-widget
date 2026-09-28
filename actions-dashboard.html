@@ -880,17 +880,19 @@ const COLORS = [
   '#5F6BC4',
   '#00A6A6'
 ];
+// Troisieme colonne : le libelle affiche tant qu'aucune valeur n'est choisie,
+// accorde au genre de ce que le filtre designe.
 const FILTERS = [
-  ['osiris', 'Numéro Osiris'],
-  ['dr', 'Direction régionale (DR)'],
-  ['dd', 'Direction départementale (DD)'],
-  ['agency', 'Agence'],
-  ['federation', 'Fédération'],
-  ['club', 'Club'],
-  ['dispositif', 'Dispositif'],
-  ['statut', 'Statut'],
-  ['financeur', 'Financeur'],
-  ['financement', 'Financement']
+  ['osiris', 'Numéro Osiris', ''],
+  ['dr', 'Direction régionale (DR)', 'Toutes'],
+  ['dd', 'Direction départementale (DD)', 'Toutes'],
+  ['agency', 'Agence', 'Toutes'],
+  ['federation', 'Fédération', 'Toutes'],
+  ['club', 'Club', 'Tous'],
+  ['dispositif', 'Dispositif', 'Tous'],
+  ['statut', 'Statut', 'Tous'],
+  ['financeur', 'Financeur', 'Tous'],
+  ['financement', 'Financement', 'Tous']
 ];
 // Filtres a liste deroulante avec recherche, filtres a saisie libre, et les
 // trois etats de financement, qui sont calcules et non lus dans une colonne.
@@ -1167,7 +1169,7 @@ function renderFilters() {
   document.getElementById('filtersSection').classList.toggle('is-collapsed', !state.filtersOpen);
   document.getElementById('layout').classList.toggle('filters-collapsed', !state.filtersOpen);
   buttonLabel('toggleFilters', state.filtersOpen ? 'Replier' : 'Déplier');
-  container.innerHTML = FILTERS.map(([key, label]) => {
+  container.innerHTML = FILTERS.map(([key, label, tous]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
       return `<div class="filter-field">
@@ -1185,11 +1187,11 @@ function renderFilters() {
       return `<div class="filter-field">
         <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
         <details class="filter-search-dropdown">
-          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || 'Toutes / Tous')}</span></summary>
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || tous)}</span></summary>
           <div class="filter-search-panel">
             <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
             <div class="filter-search-options">
-              <button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="">Toutes / Tous</button>
+              <button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="">${escapeHtml(tous)}</button>
               ${values.map(value => `<button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="${escapeAttr(value)}" title="${escapeAttr(value)}">${escapeHtml(value)}</button>`).join('')}
             </div>
           </div>
@@ -1199,7 +1201,7 @@ function renderFilters() {
     return `<div class="filter-field">
       <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
       <select class="form-control" id="filter-${key}" name="filter-${key}" data-filter="${key}">
-        <option value="">Toutes / Tous</option>
+        <option value="">${escapeHtml(tous)}</option>
         ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
       </select>
     </div>`;

@@ -301,3 +301,24 @@ test("la fiche affiche la DD et la DR de l'action", () => {
   assert.match(html, /<strong>DD :<\/strong> <span id="editDd">DD Gers<\/span>/);
   assert.match(html, /<strong>DR :<\/strong> <span id="editDr">Occitanie<\/span>/);
 });
+
+test("le libelle « aucun filtre » s'accorde au genre du filtre", () => {
+  const html = filtersHtml({open: true});
+  // Listes deroulantes simples. Agence, Club, Federation et DD sont des filtres a
+  // recherche, verifies plus bas.
+  const attendu = [
+    ["filter-dr", "Toutes"],
+    ["filter-dispositif", "Tous"], ["filter-statut", "Tous"],
+    ["filter-financeur", "Tous"], ["filter-financement", "Tous"],
+  ];
+  for (const [id, mot] of attendu) {
+    assert.match(html, new RegExp(`<select class="form-control" id="${id}"[^>]*>\\s*<option value="">${mot}</option>`),
+      `${id} affiche « ${mot} »`);
+  }
+  // Les filtres a recherche portent le meme accord, dans leur resume et leur
+  // premiere option.
+  assert.match(html, /<span class="form-label" id="filter-agency-label">Agence<\/span>[\s\S]{0,400}?<span>Toutes<\/span>/);
+  assert.match(html, /<span class="form-label" id="filter-club-label">Club<\/span>[\s\S]{0,400}?<span>Tous<\/span>/);
+  assert.match(html, /<span class="form-label" id="filter-dd-label">Direction départementale \(DD\)<\/span>[\s\S]{0,400}?<span>Toutes<\/span>/);
+  assert.ok(!html.includes("Toutes / Tous"), "l'ancien libelle a disparu");
+});
