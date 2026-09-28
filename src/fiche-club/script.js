@@ -836,7 +836,10 @@ async function addLogo(club, file) {
     state.upload = {busy: false, message: 'Logo enregistré.', kind: 'success'};
     await refreshData();
   } catch (error) {
-    console.error(error);
+    // La cause d'origine (avant l'etiquetage par etape dans uploadLogo) est celle
+    // qui aide a diagnostiquer : la console developpeur la garde meme quand le
+    // message affiche a l'utilisateur reste generique.
+    console.error(error, error && error.cause);
     if (!isCurrent(club)) return;
     state.upload = {busy: false, message: uploadErrorMessage(error), kind: 'error'};
     renderCurrent();
@@ -859,30 +862,72 @@ function logoFileProblem(file) {
 // l'URL et non dans un en-tete, faute de quoi Grist refuserait la requete venue
 // d'une autre origine que la sienne.
 async function uploadLogo(clubId, file) {
-  const {token, baseUrl} = await grist.docApi.getAccessToken({readOnly: false});
+  // « Acces complet » est un reglage du panneau de configuration du widget dans
+  // Grist, distinct de requiredAccess declare au chargement : sans lui, ce jeton
+  // est refuse avant tout envoi. On isole cette etape pour donner un message
+  // dedie, sans dependre du texte de l'erreur — voir errorDetail plus bas.
+  let access;
+  try {
+    access = await grist.docApi.getAccessToken({readOnly: false});
+  } catch (error) {
+    throw Object.assign(new Error("Jeton d'écriture refusé."), {step: 'access', cause: error});
+  }
+
   const form = new FormData();
   form.append('upload', file, file.name);
-  const response = await fetch(`${baseUrl}/attachments?auth=${encodeURIComponent(token)}`, {
-    method: 'POST',
-    body: form,
-    credentials: 'omit',
-  });
-  if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {status: response.status});
+  let response;
+  try {
+    response = await fetch(`${access.baseUrl}/attachments?auth=${encodeURIComponent(access.token)}`, {
+      method: 'POST',
+      body: form,
+      credentials: 'omit',
+    });
+  } catch (error) {
+    throw Object.assign(new Error("Connexion à Grist impossible."), {step: 'network', cause: error});
+  }
+  if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {step: 'upload', status: response.status});
   const ids = attachmentIds(await response.json());
-  if (!ids.length) throw new Error('Téléversement sans identifiant de pièce jointe.');
-  await grist.docApi.applyUserActions([['UpdateRecord', TABLE_CLUBS, clubId, {Logo: ['L', ...ids]}]]);
+  if (!ids.length) throw Object.assign(new Error('Téléversement sans identifiant de pièce jointe.'), {step: 'upload'});
+
+  try {
+    await grist.docApi.applyUserActions([['UpdateRecord', TABLE_CLUBS, clubId, {Logo: ['L', ...ids]}]]);
+  } catch (error) {
+    // Le fichier est deja chez Grist ; seul le rattachement au club a echoue.
+    throw Object.assign(new Error("Fichier envoyé, mais pas rattaché au club."), {step: 'update', cause: error, uploadedIds: ids});
+  }
   return ids;
 }
 
+// Error.message n'est pas une propriete enumerable (specification ECMA-262) :
+// une passerelle qui serialise l'erreur en JSON pour la faire traverser la
+// frontiere entre le widget et Grist peut la perdre en route. On lit alors
+// l'erreur elle-meme, jamais seulement sa propriete message.
+function errorDetail(error) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message) return error.message;
+  try { return JSON.stringify(error); } catch (jsonError) { return String(error); }
+}
+
 function uploadErrorMessage(error) {
-  const detail = String(error && error.message || '');
   if (error && (error.status === 401 || error.status === 403)) {
     return "Envoi refusé : votre compte n'a pas le droit de modifier ce document.";
   }
+  if (error && error.step === 'access') {
+    return "Ce widget n'a pas l'accès complet au document : ouvrez son panneau de configuration dans Grist et activez l'accès complet, puis réessayez.";
+  }
+  if (error && error.step === 'network') {
+    return 'Connexion à Grist impossible : vérifiez votre connexion, puis réessayez.';
+  }
+  const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
   if (/access|acl|blocked|permission|refus/i.test(detail)) {
     return "Enregistrement refusé : les règles d'accès du document ne vous permettent pas de modifier la fiche de ce club.";
   }
-  return "Le logo n'a pas pu être enregistré. Réessayez, ou signalez-le si le problème persiste.";
+  if (error && error.step === 'update') {
+    return "Le logo a été envoyé mais n'a pas pu être rattaché à ce club : vérifiez vos droits d'écriture sur Structures, puis réessayez.";
+  }
+  return 'Le logo n\'a pas pu être enregistré. Vérifiez que ce widget a reçu l\'accès complet (panneau de configuration du widget dans Grist), puis réessayez.'
+    + (detail ? ` (${detail})` : '');
 }
 
 function escapeHtml(value) {

@@ -407,6 +407,53 @@ test("un refus de Grist est explique a l'utilisateur", async () => {
   assert.match(w.uploadErrorMessage(acl), /règles d'accès du document ne vous permettent pas/);
 });
 
+test("sans acces complet accorde au widget, le message dit ou l'activer", async () => {
+  // « Acces complet » est un reglage du panneau de configuration du widget,
+  // distinct de requiredAccess declare au chargement : getAccessToken le refuse
+  // avant tout envoi, sans passer par le reseau.
+  const w = loadFiche({grist: {docApi: {getAccessToken: () => Promise.reject(new Error("Access not granted. Current access level none"))}}});
+  await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "access");
+    assert.match(w.uploadErrorMessage(error), /n'a pas l'accès complet au document/);
+    return true;
+  });
+  assert.equal(w.calls.fetches.length, 0, "aucun envoi tente sans jeton");
+});
+
+test("un refus qui perd son message en traversant le widget reste explique", () => {
+  // Error.message n'est pas enumerable : une passerelle qui serialise l'erreur
+  // en JSON pour la faire traverser la frontiere widget/Grist peut la perdre.
+  // Le message reste actionnable meme quand aucun texte n'a survecu.
+  const w = loadFiche({grist: {docApi: {getAccessToken: () => Promise.reject({})}}});
+  return assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "access");
+    assert.match(w.uploadErrorMessage(error), /accès complet/);
+    return true;
+  });
+});
+
+test("un echec reseau a l'envoi se distingue d'un refus de Grist", async () => {
+  const w = loadFiche({fetch: () => Promise.reject(new TypeError("Failed to fetch"))});
+  await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "network");
+    assert.match(w.uploadErrorMessage(error), /Connexion à Grist impossible/);
+    return true;
+  });
+});
+
+test("un fichier envoye mais non rattache le dit, sans faire perdre le televersement", async () => {
+  const w = loadFiche({
+    fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : Promise.reject(new Error(url))),
+    grist: {docApi: {applyUserActions: () => Promise.reject(new Error("boom"))}},
+  });
+  await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "update");
+    assert.deepEqual(plain(error.uploadedIds), [42], "l'identifiant déjà envoyé n'est pas perdu");
+    assert.match(w.uploadErrorMessage(error), /envoyé mais n'a pas pu être rattaché/);
+    return true;
+  });
+});
+
 test("seules les images raisonnables sont acceptees", () => {
   const w = loadFiche();
   assert.equal(w.logoFileProblem(fichier("image/png")), "");
@@ -440,20 +487,27 @@ test("aucune couleur n'est ecrite en dur : tout vient de la palette", () => {
   assert.ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(CSS), "couleur hors palette du design system");
 });
 
-test("les colonnes des contacts s'alignent d'une ligne a l'autre", () => {
-  // Chaque contact est sa propre grille : sans subgrid, la colonne du telephone,
-  // reglee sur son contenu, prendrait une largeur differente a chaque ligne.
-  assert.match(CSS, /\.contact-list \{\n  display: grid;\n  grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\) max-content;/);
-  assert.match(CSS, /\.contact-item \{\n  grid-column: 1 \/ -1;\n  grid-template-columns: subgrid;/);
+test("aucun champ de contact ou d'action ne s'etire pour combler l'espace", () => {
+  // Une colonne en fr (grid) ou flex-grow s'etire meme si son contenu est court,
+  // laissant un vide avant le champ suivant sur une fiche large. Chaque champ
+  // doit rester a la largeur de son contenu.
+  assert.match(CSS, /\.contact-item,\n\.action-item \{\n  display: flex;/);
+  assert.ok(!/\.contact-item[\s\S]{0,400}flex-grow|flex:\s*1[^;]*;\s*\}[\s\S]{0,0}\.contact-/.test(CSS));
+  for (const regle of [/\.contact-name \{ flex: 0 [01] auto;/, /\.action-date \{ flex: 0 [01] auto; \}/, /\.action-status \{ flex: 0 0 auto; \}/]) {
+    assert.match(CSS, regle);
+  }
+});
+
+test("un trait separe les deux listes, vertical cote a cote puis horizontal empilees", () => {
+  assert.match(CSS, /\.club-lists \.club-section \+ \.club-section \{\n  padding-left: 32px;\n  border-left: 1px solid var\(--line\);/);
+  assert.match(CSS, /@media \(max-width: 900px\)[\s\S]*?border-top: 1px solid var\(--line\);/);
 });
 
 test("la fiche reste lisible jusqu'a 400 px", () => {
   assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.club-header \{ grid-template-columns: minmax\(0, 1fr\);/,
     "le logo passe au-dessus du nom");
-  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-list \{ grid-template-columns: minmax\(0, 1fr\); \}/,
-    "les contacts s'empilent");
-  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.action-item \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/,
-    "les actions passent sur deux lignes de deux");
+  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-item,\n  \.action-item \{ flex-direction: column;/,
+    "chaque champ prend sa propre ligne");
   assert.ok((CSS.match(/overflow-wrap: anywhere/g) || []).length >= 3,
     "une adresse e-mail ou un nom long ne fait pas déborder la page");
 });

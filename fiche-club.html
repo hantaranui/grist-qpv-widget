@@ -173,6 +173,14 @@ a:focus-visible {
   border-top: 1px solid var(--line);
 }
 
+/* Un trait vertical entre les deux listes : leur nombre de lignes differe presque
+   toujours, l'espacement seul ne suffit pas a montrer ou l'une finit et l'autre
+   commence. */
+.club-lists .club-section + .club-section {
+  padding-left: 32px;
+  border-left: 1px solid var(--line);
+}
+
 .contact-list,
 .action-list {
   margin: 0;
@@ -180,46 +188,40 @@ a:focus-visible {
   list-style: none;
 }
 
-/* Une liste sans en-tete : ce sont les colonnes alignees d'une ligne a l'autre
-   qui disent quelle valeur est quoi. */
+/* Une liste, pas un tableau : chaque champ occupe la largeur de son contenu, pas
+   une colonne calculee sur toute la fiche. Avec des colonnes etirees (1fr), un
+   nom court laissait un vide avant l'e-mail suivant, large de toute la place
+   inutilisee par le nom - visible sur une fiche large. Ici les champs se suivent
+   a distance fixe et passent a la ligne s'il le faut. */
 .contact-item,
 .action-item {
-  display: grid;
-  gap: 4px 16px;
-  align-items: start;
-  padding: 8px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 24px;
+  row-gap: 4px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
 
-/* Un numero de telephone a toujours la meme longueur : sa colonne se regle sur
-   lui, et la place gagnee revient au nom et a l'e-mail, qui varient. Les
-   colonnes sont portees par la liste et partagees par chaque contact (subgrid) :
-   calculees contact par contact, elles ne s'aligneraient plus d'une ligne a
-   l'autre. */
-.contact-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
-}
+.contact-name { flex: 0 1 auto; font-weight: 700; }
+.contact-item a,
+.contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
 
-.contact-item {
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-}
-.action-item { grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 1fr); }
-
-.contact-name { font-weight: 700; }
+.action-date { flex: 0 1 auto; }
+.action-status { flex: 0 0 auto; }
+.action-dispositif { flex: 1 1 160px; min-width: 0; max-width: 320px; }
 
 .action-funding {
   display: flex;
+  flex: 0 1 200px;
   flex-direction: column;
   gap: 4px;
+  min-width: 140px;
 }
 
-.funding-bar {
-  width: 100%;
-  max-width: 160px;
-}
+.funding-bar { width: 100%; }
 
 .funding-bar .progress-bar { max-width: 100%; }
 
@@ -245,23 +247,37 @@ a:focus-visible {
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
 
 /* Contacts et actions cote a cote ne laissent plus assez de place a leurs trois
-   colonnes sous ~900 px : ils passent l'un sous l'autre. */
+   colonnes sous ~900 px : ils passent l'un sous l'autre. Le trait vertical qui
+   les separait devient horizontal, sans quoi il resterait plaque contre un bord
+   sans rien separer. */
 @media (max-width: 900px) {
   .club-lists { grid-template-columns: minmax(0, 1fr); }
+  .club-lists .club-section + .club-section {
+    padding-left: 0;
+    padding-top: 24px;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
 }
 
-/* Telephone : le logo passe au-dessus du nom, qui garde toute la largeur ;
-   chaque contact s'empile sur une colonne, chaque action sur deux lignes de deux
-   (date et statut, puis dispositif et financement) pour garder l'ordre de
-   lecture de la maquette. */
+/* Telephone : le logo passe au-dessus du nom, qui garde toute la largeur, et
+   chaque champ d'un contact ou d'une action prend sa propre ligne : sur une
+   colonne etroite, les faire courir cote a cote laisserait trop peu de place a
+   chacun. */
 @media (max-width: 560px) {
   :root { --logo-size: 96px; }
   .fiche-page { padding: 8px; }
   .club-card { padding: 16px; }
   .club-header { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   h1 { font-size: 20px; padding-left: 12px; }
-  .contact-list { grid-template-columns: minmax(0, 1fr); }
-  .action-item { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .contact-item,
+  .action-item { flex-direction: column; align-items: stretch; }
+
+  /* flex-basis vise la largeur quand les champs se suivent horizontalement ;
+     une fois la ligne passee en colonne, ce meme chiffre vise leur hauteur et
+     réservait un vide sous un texte court. Sans objet une fois empiles. */
+  .action-dispositif,
+  .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
 }
 </style>
   </head>
@@ -1111,7 +1127,10 @@ async function addLogo(club, file) {
     state.upload = {busy: false, message: 'Logo enregistré.', kind: 'success'};
     await refreshData();
   } catch (error) {
-    console.error(error);
+    // La cause d'origine (avant l'etiquetage par etape dans uploadLogo) est celle
+    // qui aide a diagnostiquer : la console developpeur la garde meme quand le
+    // message affiche a l'utilisateur reste generique.
+    console.error(error, error && error.cause);
     if (!isCurrent(club)) return;
     state.upload = {busy: false, message: uploadErrorMessage(error), kind: 'error'};
     renderCurrent();
@@ -1134,30 +1153,72 @@ function logoFileProblem(file) {
 // l'URL et non dans un en-tete, faute de quoi Grist refuserait la requete venue
 // d'une autre origine que la sienne.
 async function uploadLogo(clubId, file) {
-  const {token, baseUrl} = await grist.docApi.getAccessToken({readOnly: false});
+  // « Acces complet » est un reglage du panneau de configuration du widget dans
+  // Grist, distinct de requiredAccess declare au chargement : sans lui, ce jeton
+  // est refuse avant tout envoi. On isole cette etape pour donner un message
+  // dedie, sans dependre du texte de l'erreur — voir errorDetail plus bas.
+  let access;
+  try {
+    access = await grist.docApi.getAccessToken({readOnly: false});
+  } catch (error) {
+    throw Object.assign(new Error("Jeton d'écriture refusé."), {step: 'access', cause: error});
+  }
+
   const form = new FormData();
   form.append('upload', file, file.name);
-  const response = await fetch(`${baseUrl}/attachments?auth=${encodeURIComponent(token)}`, {
-    method: 'POST',
-    body: form,
-    credentials: 'omit',
-  });
-  if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {status: response.status});
+  let response;
+  try {
+    response = await fetch(`${access.baseUrl}/attachments?auth=${encodeURIComponent(access.token)}`, {
+      method: 'POST',
+      body: form,
+      credentials: 'omit',
+    });
+  } catch (error) {
+    throw Object.assign(new Error("Connexion à Grist impossible."), {step: 'network', cause: error});
+  }
+  if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {step: 'upload', status: response.status});
   const ids = attachmentIds(await response.json());
-  if (!ids.length) throw new Error('Téléversement sans identifiant de pièce jointe.');
-  await grist.docApi.applyUserActions([['UpdateRecord', TABLE_CLUBS, clubId, {Logo: ['L', ...ids]}]]);
+  if (!ids.length) throw Object.assign(new Error('Téléversement sans identifiant de pièce jointe.'), {step: 'upload'});
+
+  try {
+    await grist.docApi.applyUserActions([['UpdateRecord', TABLE_CLUBS, clubId, {Logo: ['L', ...ids]}]]);
+  } catch (error) {
+    // Le fichier est deja chez Grist ; seul le rattachement au club a echoue.
+    throw Object.assign(new Error("Fichier envoyé, mais pas rattaché au club."), {step: 'update', cause: error, uploadedIds: ids});
+  }
   return ids;
 }
 
+// Error.message n'est pas une propriete enumerable (specification ECMA-262) :
+// une passerelle qui serialise l'erreur en JSON pour la faire traverser la
+// frontiere entre le widget et Grist peut la perdre en route. On lit alors
+// l'erreur elle-meme, jamais seulement sa propriete message.
+function errorDetail(error) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message) return error.message;
+  try { return JSON.stringify(error); } catch (jsonError) { return String(error); }
+}
+
 function uploadErrorMessage(error) {
-  const detail = String(error && error.message || '');
   if (error && (error.status === 401 || error.status === 403)) {
     return "Envoi refusé : votre compte n'a pas le droit de modifier ce document.";
   }
+  if (error && error.step === 'access') {
+    return "Ce widget n'a pas l'accès complet au document : ouvrez son panneau de configuration dans Grist et activez l'accès complet, puis réessayez.";
+  }
+  if (error && error.step === 'network') {
+    return 'Connexion à Grist impossible : vérifiez votre connexion, puis réessayez.';
+  }
+  const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
   if (/access|acl|blocked|permission|refus/i.test(detail)) {
     return "Enregistrement refusé : les règles d'accès du document ne vous permettent pas de modifier la fiche de ce club.";
   }
-  return "Le logo n'a pas pu être enregistré. Réessayez, ou signalez-le si le problème persiste.";
+  if (error && error.step === 'update') {
+    return "Le logo a été envoyé mais n'a pas pu être rattaché à ce club : vérifiez vos droits d'écriture sur Structures, puis réessayez.";
+  }
+  return 'Le logo n\'a pas pu être enregistré. Vérifiez que ce widget a reçu l\'accès complet (panneau de configuration du widget dans Grist), puis réessayez.'
+    + (detail ? ` (${detail})` : '');
 }
 
 function escapeHtml(value) {

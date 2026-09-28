@@ -23,6 +23,10 @@ function loadFiche(overrides = {}) {
     ready() {},
     onRecord() {},
     selectedTable: {getTableId: () => Promise.resolve("Structures")},
+    ...overrides.grist,
+    // Fusion au niveau de docApi, pas seulement de grist : un test qui ne
+    // remplace que getAccessToken doit garder les autres methodes par defaut,
+    // avec leur suivi dans calls.
     docApi: {
       fetchTable: () => Promise.resolve({id: []}),
       getAccessToken(options) {
@@ -33,8 +37,8 @@ function loadFiche(overrides = {}) {
         calls.userActions.push(actions);
         return Promise.resolve({});
       },
+      ...(overrides.grist && overrides.grist.docApi),
     },
-    ...overrides.grist,
   };
 
   const sandbox = {
