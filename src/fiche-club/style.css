@@ -1,0 +1,247 @@
+:root {
+  color-scheme: light;
+  /* Memes alias que le tableau de bord des actions, tous adosses aux jetons du
+     design system France Travail (contexte .outil-agent). */
+  --font-title: Marianne, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Marianne, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --radius-control: var(--ft--button-border-radius-sm);
+  --radius-surface: var(--ft--button-border-radius);
+  --bg: var(--ft--color-background-neutral-default-weakest);
+  --panel: var(--ft-color-background-layout-body);
+  --ink: var(--ft--color-text-color);
+  /* 5,23:1 sur le panneau blanc : tous les textes secondaires y sont poses. */
+  --muted: var(--ft--color-background-neutral-default-strong);
+  --line: var(--ft--color-border-neutral-default-weaker);
+  --logo-size: 128px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.fiche-page { padding: 16px; }
+
+.fiche-message {
+  margin: 0;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.club-card {
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
+}
+
+/* En-tete du croquis : le logo a gauche, l'identite du club a droite. */
+.club-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.club-logo {
+  /* Sa propre taille, meme quand l'en-tete passe sur une colonne. */
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+}
+
+/* Un logo n'a ni les proportions ni le fond d'un autre : il tient dans le
+   cadre sans jamais etre rogne. */
+.club-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Le cadre vide doit se voir comme un emplacement a remplir. La bordure claire
+   des panneaux (1,20:1) s'y perdrait : on prend le gris des textes secondaires.
+   Il s'elargit au besoin : le bouton du design system (126 px en btn-sm) ne
+   tient pas dans les 112 px utiles du cadre, et le retrecir serait un ecart. */
+.club-logo-empty {
+  width: auto;
+  min-width: var(--logo-size);
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px dashed var(--muted);
+  text-align: center;
+}
+
+.logo-input { display: none; }
+
+.logo-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.logo-message.is-error { color: var(--ft--icon-error); }
+
+.club-identity { min-width: 0; }
+
+h1 {
+  margin: 0 0 8px;
+  padding-left: 16px;
+  border-left: 4px solid var(--ft--icon-info);
+  font-family: var(--font-title);
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-title);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.club-line {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.zonages {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+}
+
+.zonage {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.zonage dt { font-weight: 700; }
+.zonage dd { margin: 0; }
+
+.zonage-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.muted-text { color: var(--muted); }
+
+.empty-note {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Le design system ne pose pas d'anneau de focus sur les liens ; celui-ci prend
+   la couleur primaire, a 5,82:1 sur le panneau. */
+a:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 2px;
+}
+
+.club-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.contact-list,
+.action-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Une liste sans en-tete : ce sont les colonnes alignees d'une ligne a l'autre
+   qui disent quelle valeur est quoi. */
+.contact-item,
+.action-item {
+  display: grid;
+  gap: 4px 16px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.contact-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); }
+.action-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr); }
+
+.contact-name { font-weight: 700; }
+
+.action-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.action-funding {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.funding-bar {
+  width: 100%;
+  max-width: 160px;
+}
+
+.funding-bar .progress-bar { max-width: 100%; }
+
+/* Reprise de la pastille de statut du tableau de bord : le texte garde l'encre
+   par defaut (11,31:1 a 12,97:1 sur ces fonds), seul le fond change. */
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  background: var(--ft--color-background-neutral-default-weaker);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-tag.projet { background: var(--ft-color-background-info-weakest); }
+.status-tag.planifie,
+.status-tag.planifiee,
+.status-tag.a-confirmer { background: var(--ft-color-background-warning-weakest); }
+.status-tag.realise,
+.status-tag.realisee { background: var(--ft-color-background-success-weakest); }
+.status-tag.annule,
+.status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+
+/* Contacts et actions cote a cote ne laissent plus assez de place a leurs trois
+   colonnes sous ~900 px : ils passent l'un sous l'autre. */
+@media (max-width: 900px) {
+  .club-lists { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Telephone : le logo passe au-dessus du nom, qui garde toute la largeur, et
+   chaque contact comme chaque action s'empile sur une colonne. */
+@media (max-width: 560px) {
+  :root { --logo-size: 96px; }
+  .fiche-page { padding: 8px; }
+  .club-card { padding: 16px; }
+  .club-header { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  h1 { font-size: 20px; padding-left: 12px; }
+  .contact-item,
+  .action-item { grid-template-columns: minmax(0, 1fr); }
+}

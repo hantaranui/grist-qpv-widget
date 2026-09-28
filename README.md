@@ -19,11 +19,13 @@ Le code source de chaque widget est separe en HTML/CSS/JS sous `src/` :
 src/
   qpv-widget/index.html, style.css, script.js
   actions-dashboard/index.html, style.css, script.js
+  fiche-club/index.html, style.css, script.js
 ```
 
 Grist et GitHub Pages ont besoin d'un seul fichier HTML par widget. Le script
 `build.js` reassemble donc chaque dossier `src/<widget>/` en un unique fichier
-`<widget>.html` a la racine du depot (`qpv-widget.html`, `actions-dashboard.html`) :
+`<widget>.html` a la racine du depot (`qpv-widget.html`, `actions-dashboard.html`,
+`fiche-club.html`) :
 
 ```text
 npm run build
@@ -73,8 +75,9 @@ npm test
 
 Les tests s'executent avec le lanceur integre de Node, sans dependance. Ils
 couvrent la logique pure du tableau de bord (construction des actions a partir
-des tables Grist, filtres, tri, listes de choix) et verifient que les fichiers
-HTML assembles a la racine correspondent bien aux sources de `src/`.
+des tables Grist, filtres, tri, listes de choix) et de la fiche club (fiche,
+tri, taux de financement, zonages, televersement du logo), et verifient que les
+fichiers HTML assembles a la racine correspondent bien aux sources de `src/`.
 
 `src/actions-dashboard/script.js` etant un script de page et non un module, il
 est evalue dans un bac a sable muni de doublures du DOM et de l'API Grist :
@@ -106,6 +109,63 @@ URL a utiliser dans Grist :
 ```text
 https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html
 ```
+
+## Widget fiche club
+
+`fiche-club.html` affiche la fiche du club selectionne dans la table `Structures`,
+en lecture seule sauf le logo :
+
+- en-tete : logo, nom, SIRET, adresse, zonages QPV et FRR ;
+- contacts du club (table `Contacts`) : prenom, nom, e-mail, telephone ;
+- actions portees par le club (table `Actions`) : date, statut, dispositif et part
+  du budget couverte par les `Cofinancements`, des plus recentes aux plus
+  anciennes, les actions sans date en dernier.
+
+URL a utiliser dans Grist :
+
+```text
+https://hantaranui.github.io/grist-qpv-widget/fiche-club.html
+```
+
+Configuration : choisir `Structures` comme table du widget et lui donner l'acces
+complet. Il en a besoin pour lire les autres tables et pour televerser un logo.
+
+### Zonages
+
+- **QPV** : la liste des QPV de l'ANCT (data.gouv.fr) dit d'abord si la commune
+  du club compte un quartier prioritaire. Si ce n'est pas le cas, le club est
+  hors QPV sans autre calcul. Sinon, l'adresse est geocodee par la Base Adresse
+  Nationale, restreinte a la commune du club, puis testee contre les contours,
+  avec la meme logique que `qpv-widget` (un test verifie qu'elle n'a pas
+  diverge). Sans adresse, ou si la BAN ne trouve ni numero ni rue, le resultat
+  reste « a determiner » : un point au centre de la commune donnerait un QPV
+  faux.
+- **FRR** (France Ruralites Revitalisation, qui remplace les ZRR depuis le
+  1er juillet 2024) : classement de la commune entiere, lu par son code INSEE
+  dans `donnees/frr-communes.json`. Paris, Lyon et Marseille sont lus sur la
+  commune, pas sur l'arrondissement.
+
+La liste FRR est une copie versionnee. La liste nationale n'est pas publiee sur
+data.gouv.fr, et l'Observatoire des territoires, qui la diffuse, ne l'autorise
+pas a etre lue depuis une autre origine (pas d'en-tete CORS). Apres chaque nouvel
+arrete de classement :
+
+```text
+npm run maj-frr
+```
+
+Les codes 2 et 3 de l'Observatoire (quelques communes nouvelles, La Reunion)
+n'ont pas de libelle publie : la fiche renvoie alors vers l'Observatoire plutot
+que de supposer un classement.
+
+### Logo
+
+Le logo existant s'affiche par l'URL de telechargement de la piece jointe,
+signee d'un jeton en lecture seule. Sans logo, le bouton « Ajouter un logo »
+televerse l'image vers l'API de Grist avec un jeton d'ecriture, puis ecrit la
+piece jointe dans `Structures.Logo`. Ce jeton porte les droits de l'utilisateur,
+jamais plus : si les regles d'acces du document ne l'autorisent pas a modifier
+`Structures`, l'enregistrement est refuse et la fiche le dit.
 
 ## Installation dans Grist
 
