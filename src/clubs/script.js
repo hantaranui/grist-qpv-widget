@@ -4,7 +4,7 @@
 // pas de fiche modifiable, pas de synthese, pas de tri de colonnes.
 grist.ready({requiredAccess: 'full', allowSelectBy: false});
 
-const TABLES = ['Structures', 'Communes', 'DD', 'DR', 'Federations', 'Contacts', 'Actions', 'Cofinancements'];
+const TABLES = ['Structures', 'Communes', 'DD', 'DR', 'Federations', 'Contacts', 'Actions', 'Cofinancements', 'Dispositifs'];
 const TABLE_CLUBS = 'Structures';
 
 // --- Zonages, logo : reprises de src/fiche-club/script.js -------------------
@@ -75,11 +75,19 @@ const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 
 const state = {
   raw: {}, clubs: [], filters: {}, view: 'list', currentId: null,
-  // Jeton en lecture seule pour l'URL du logo, et etat du televersement en
-  // cours pour la fiche actuellement ouverte.
+  // Jeton en lecture seule pour l'URL du logo, l'etat du televersement en
+  // cours, les tables refusees par les regles d'acces (Contacts/Actions le
+  // disent alors plutot que d'afficher une liste vide a tort), et l'action
+  // dont le detail est ouvert dans la carte Actions.
   readAccess: null,
   upload: {busy: false, message: '', kind: ''},
+  unreadable: [],
+  actionId: null,
 };
+
+// Element a rendre le focus en quittant le detail d'une action, pour la meme
+// raison que focusAvantFiche.
+let focusAvantAction = null;
 
 // Element a rendre focus en quittant la fiche : le bouton « Voir » qui l'a
 // ouverte, pour que la navigation au clavier ou au lecteur d'ecran revienne
@@ -100,22 +108,16 @@ load();
 
 async function load() {
   try {
-    const [data, readAccess] = await Promise.all([
-      Promise.all(TABLES.map(async table => {
-        try {
-          return [table, rows(await grist.docApi.fetchTable(table))];
-        } catch (error) {
-          console.warn(`Accès refusé ou table introuvable : ${table}`, error);
-          return [table, []];
-        }
-      })),
+    const [{raw, unreadable}, readAccess] = await Promise.all([
+      loadTables(),
       // Jeton en lecture seule pour l'URL du logo : construit une fois, reutilise
       // pour toute fiche ouverte ensuite (voir logoUrl). Un rechargement (par
       // exemple apres un ajout de logo) en redemande un, le premier expirant au
       // bout de quelques minutes.
       grist.docApi.getAccessToken({readOnly: true}).catch(() => null),
     ]);
-    state.raw = Object.fromEntries(data);
+    state.raw = raw;
+    state.unreadable = unreadable;
     state.clubs = buildClubs(state.raw);
     state.readAccess = readAccess;
     render();
@@ -125,6 +127,24 @@ async function load() {
     document.getElementById('empty').textContent = "Impossible de lire les tables Grist. Vérifiez que le widget a l'accès complet.";
     console.error(error);
   }
+}
+
+// Structures est indispensable (c'est la liste elle-meme) ; les autres tables
+// restent optionnelles, chacune manquante se contentant de vider sa part de la
+// fiche plutot que le widget entier.
+async function loadTables() {
+  const unreadable = [];
+  const entries = await Promise.all(TABLES.map(async table => {
+    try {
+      return [table, rows(await grist.docApi.fetchTable(table))];
+    } catch (error) {
+      if (table === 'Structures') throw error;
+      console.warn(`Table illisible : ${table}`, error);
+      unreadable.push(table);
+      return [table, []];
+    }
+  }));
+  return {raw: Object.fromEntries(entries), unreadable};
 }
 
 function rows(table) {
@@ -315,11 +335,11 @@ function renderRows(clubs) {
   tbody.innerHTML = clubs.map(club => `
     <tr>
       <td class="club-name">${escapeHtml(club.nom || 'Club sans nom')}</td>
-      <td>${escapeHtml(club.codePostal) || missing()}</td>
-      <td>${escapeHtml(club.ville) || missing()}</td>
-      <td>${escapeHtml(club.dd) || missing()}</td>
-      <td>${escapeHtml(club.dr) || missing()}</td>
-      <td>${club.federations.length ? escapeHtml(club.federations.join(', ')) : missing()}</td>
+      <td>${escapeHtml(club.codePostal) || missingCell()}</td>
+      <td>${escapeHtml(club.ville) || missingCell()}</td>
+      <td>${escapeHtml(club.dd) || missingCell()}</td>
+      <td>${escapeHtml(club.dr) || missingCell()}</td>
+      <td>${club.federations.length ? escapeHtml(club.federations.join(', ')) : missingCell()}</td>
       <td><button class="btn btn-secondary btn-sm" type="button" data-open-club="${club.id}"><span class="btn-content">Voir</span></button></td>
     </tr>
   `).join('');
@@ -332,6 +352,7 @@ function renderRows(clubs) {
       state.currentId = Number(button.dataset.openClub);
       state.view = 'fiche';
       state.upload = {busy: false, message: '', kind: ''};
+      state.actionId = null;
       render();
     });
   });
@@ -339,13 +360,14 @@ function renderRows(clubs) {
 
 // Une valeur non renseignee reste distinguable d'une cellule vide par erreur,
 // pour un lecteur d'ecran comme a l'oeil.
-function missing() {
+function missingCell() {
   return '<span class="muted-text"><span aria-hidden="true">—</span><span class="sr-only">Non renseigné</span></span>';
 }
 
 function closeFiche() {
   state.view = 'list';
   state.currentId = null;
+  state.actionId = null;
   render();
   if (focusAvantFiche && document.body.contains(focusAvantFiche)) focusAvantFiche.focus();
   focusAvantFiche = null;
@@ -368,6 +390,10 @@ function renderFiche() {
     render();
     return;
   }
+  const detail = buildFicheDetail(state.raw, club.id);
+  const actionOuverte = state.actionId !== null ? detail.actions.find(item => item.id === state.actionId) : null;
+  if (state.actionId !== null && !actionOuverte) state.actionId = null;
+
   ficheView.innerHTML = `
     <div class="edit-panel">
       <header class="edit-header">
@@ -377,7 +403,7 @@ function renderFiche() {
       <div class="edit-layout">
         <section class="edit-card">
           <div class="section-head"><span>Club</span></div>
-          <div class="club-summary-body">
+          <div class="card-body">
             <div class="club-summary-header">
               ${renderLogo(club, logoUrl(club.logoIds, state.readAccess), state.upload)}
               <div class="club-identity">
@@ -392,14 +418,259 @@ function renderFiche() {
             </div>
           </div>
         </section>
+        <div class="edit-row-lists">
+          <section class="edit-card" aria-labelledby="contactsTitle">
+            <div class="section-head"><span id="contactsTitle">Contacts</span></div>
+            <div class="card-body">
+              ${state.unreadable.includes('Contacts')
+                ? '<p class="empty-note">Vos droits ne permettent pas de lire les contacts.</p>'
+                : renderContacts(detail.contacts)}
+            </div>
+          </section>
+          <section class="edit-card" aria-labelledby="actionsTitle">
+            <div class="section-head"><span id="actionsTitle">Actions</span></div>
+            <div class="card-body">
+              ${actionOuverte
+                ? renderActionDetail(actionOuverte)
+                : (state.unreadable.includes('Actions')
+                  ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
+                  : renderActionsList(detail.actions))}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   `;
   document.getElementById('backToList').addEventListener('click', closeFiche);
-  document.getElementById('clubName').focus();
   bindLogo(club);
   fillCommune(club);
   fillZonages(club);
+
+  if (actionOuverte) {
+    document.getElementById('backToActions').addEventListener('click', closeActionDetail);
+    document.getElementById('actionDetailTitle').focus();
+  } else {
+    document.getElementById('clubName').focus();
+    bindActionButtons();
+  }
+}
+
+function bindActionButtons() {
+  document.querySelectorAll('[data-open-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      focusAvantAction = button;
+      state.actionId = Number(button.dataset.openAction);
+      render();
+    });
+  });
+}
+
+function closeActionDetail() {
+  state.actionId = null;
+  render();
+  if (focusAvantAction && document.body.contains(focusAvantAction)) focusAvantAction.focus();
+  focusAvantAction = null;
+}
+
+// ---------------------------------------------------------------------------
+// Contacts et actions : construction et rendu. Meme calcul, mêmes libelles que
+// fiche-club (voir la note en tete de fichier) ; « Voir » ouvre ici le detail
+// d'une action dans la meme carte, en lecture seule — c'est le contournement
+// convenu tant que le tableau de bord (sur une autre page, une autre branche)
+// n'ecoute pas de navigation entrante.
+// ---------------------------------------------------------------------------
+
+function buildFicheDetail(raw, clubId) {
+  const contacts = (raw.Contacts || [])
+    .filter(contact => contact.Club === clubId)
+    .map(contact => ({
+      id: contact.id,
+      prenom: text(contact.Prenom),
+      nom: text(contact.Nom),
+      email: text(contact.Email),
+      telephone: text(contact.Telephone),
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.prenom.localeCompare(b.prenom, 'fr') || a.id - b.id);
+
+  const dispositifs = byId(raw.Dispositifs || []);
+  const financed = new Map();
+  (raw.Cofinancements || []).forEach(cof => {
+    if (cof.Action) financed.set(cof.Action, (financed.get(cof.Action) || 0) + Number(cof.Montant || 0));
+  });
+
+  const actions = sortActions((raw.Actions || [])
+    .filter(action => action.Club === clubId)
+    .map(action => {
+      const dispositif = dispositifs.get(action.Dispositif) || {};
+      const budget = Number(action.Budget || 0);
+      const montant = financed.get(action.id) || 0;
+      return {
+        id: action.id,
+        intitule: text(action.Intitule),
+        date: dateSeconds(action.Date),
+        periode: text(action.Periode_approx),
+        statut: text(action.Statut),
+        dispositif: text(dispositif.Dispositif || dispositif.Code),
+        format: text(action.Format),
+        public: formatChoiceList(action.Public),
+        participants: Number(action.Jauge || 0),
+        ville: text(action.Ville),
+        lieu: text(action.Lieu),
+        commentaire: text(action.Commentaire),
+        budget,
+        financed: montant,
+        rate: coverage(montant, budget),
+      };
+    }));
+
+  return {contacts, actions};
+}
+
+// Meme calcul que la colonne Financement du tableau de bord des actions : somme
+// des cofinancements rapportee au budget. Sans budget, le taux n'a pas de sens :
+// on renvoie null plutot que 0, qui laisserait croire que rien n'est finance.
+function coverage(financed, budget) {
+  return budget > 0 ? financed / budget : null;
+}
+
+function percent(rate) {
+  return Math.round(rate * 100);
+}
+
+// Plus recentes d'abord. Les actions sans date (souvent « A confirmer », datees
+// d'une periode approximative) passent en fin de liste, les plus recemment
+// saisies en tete.
+function sortActions(actions) {
+  return [...actions].sort((a, b) => {
+    if (a.date !== null && b.date !== null && a.date !== b.date) return b.date - a.date;
+    if ((a.date === null) !== (b.date === null)) return a.date === null ? 1 : -1;
+    return b.id - a.id;
+  });
+}
+
+// fetchTable livre les dates en secondes depuis l'epoque ; on accepte aussi un
+// objet Date ou une chaine ISO, que renvoient d'autres chemins de l'API.
+function dateSeconds(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const time = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(time) ? time / 1000 : null;
+}
+
+function formatDate(seconds) {
+  // Grist range une date seule a minuit UTC : l'afficher dans le fuseau du
+  // navigateur la ferait reculer d'un jour a l'ouest de Greenwich.
+  return new Date(seconds * 1000).toLocaleDateString('fr-FR', {timeZone: 'UTC'});
+}
+
+function formatEuro(value) {
+  return `${Math.round(Number(value || 0)).toLocaleString('fr-FR')} €`;
+}
+
+// Une colonne ChoiceList arrive encodee ['L', 'BRSA', 'QPV'] par fetchTable.
+function choiceValues(value) {
+  if (!Array.isArray(value)) return value ? [String(value)] : [];
+  return value[0] === 'L' ? value.slice(1) : value;
+}
+
+function formatChoiceList(value) {
+  return choiceValues(value).join(', ');
+}
+
+// Numero francais a dix chiffres converti au format international, que tous les
+// telephones et logiciels de telephonie savent composer.
+function telHref(value) {
+  const digits = value.replace(/[^\d+]/g, '');
+  if (!digits) return null;
+  return 'tel:' + (/^0\d{9}$/.test(digits) ? '+33' + digits.slice(1) : digits);
+}
+
+function mailHref(value) {
+  return /^[^\s@]+@[^\s@]+$/.test(value) ? 'mailto:' + value : null;
+}
+
+function renderContacts(contacts) {
+  if (!contacts.length) return '<p class="empty-note">Aucun contact enregistré pour ce club.</p>';
+  return `<ul class="contact-list">${contacts.map(contact => {
+    const nom = [contact.prenom, contact.nom].filter(Boolean).join(' ') || 'Contact sans nom';
+    const mail = mailHref(contact.email);
+    const tel = telHref(contact.telephone);
+    return `<li class="contact-item">
+      <span class="contact-name">${escapeHtml(nom)}</span>
+      ${mail ? `<a class="contact-mail" href="${escapeAttr(mail)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
+      ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+// Une valeur saisie mais inexploitable comme lien reste affichee telle quelle.
+function missing(label, value) {
+  if (value) return `<span>${escapeHtml(value)}</span>`;
+  return `<span class="muted-text"><span aria-hidden="true">—</span><span class="sr-only">${escapeHtml(label)}</span></span>`;
+}
+
+// Quatre colonnes, dans l'ordre de la maquette : date, statut, dispositif,
+// financement. Sans date, la periode approximative saisie tient lieu de date.
+// Un bouton « Voir » de plus qu'a fiche-club : ouvre le detail complet de
+// l'action, dans cette meme carte.
+function renderActionsList(actions) {
+  if (!actions.length) return '<p class="empty-note">Aucune action portée par ce club.</p>';
+  return `<ul class="action-list">${actions.map(action => `<li class="action-item">
+      <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode) || '<span class="muted-text">Date à définir</span>'}</span>
+      <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
+      <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
+      ${renderFunding(action)}
+      <button class="btn btn-secondary btn-sm" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
+    </li>`).join('')}</ul>`;
+}
+
+function renderFunding(action) {
+  if (action.rate === null) {
+    return '<span class="action-funding"><span class="muted-text">Budget non renseigné</span></span>';
+  }
+  const value = percent(action.rate);
+  // La barre plafonne a 100 % ; le texte, lui, dit le depassement eventuel.
+  const bar = Math.min(value, 100);
+  return `<span class="action-funding">
+      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
+      <span class="funding-rate">${value} % financé</span>
+    </span>`;
+}
+
+function statusClass(status) {
+  return String(status)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Le detail complet d'une action, en lecture seule : c'est « la fiche de
+// l'action » demandee, faute de pouvoir ouvrir celle, modifiable, du tableau de
+// bord depuis une autre page (voir la note en tete de section).
+function renderActionDetail(action) {
+  const participants = action.participants > 0 ? String(action.participants) : missing('Nombre de participants non renseigné', '');
+  return `
+    <div class="action-detail">
+      <button class="btn btn-secondary btn-sm" type="button" id="backToActions"><span class="btn-content">&larr; Retour aux actions</span></button>
+      <h3 id="actionDetailTitle" tabindex="-1">${escapeHtml(action.intitule || action.dispositif || 'Action sans intitulé')}</h3>
+      <p class="club-line">
+        ${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}
+        · ${action.date !== null ? escapeHtml(formatDate(action.date)) : (action.periode ? escapeHtml(action.periode) : '<span class="muted-text">Date à définir</span>')}
+      </p>
+      <dl class="action-fields">
+        <div><dt>Dispositif</dt><dd>${action.dispositif ? escapeHtml(action.dispositif) : missing('Dispositif non renseigné', '')}</dd></div>
+        <div><dt>Format</dt><dd>${action.format ? escapeHtml(action.format) : missing('Format non renseigné', '')}</dd></div>
+        <div><dt>Public</dt><dd>${action.public ? escapeHtml(action.public) : missing('Public non renseigné', '')}</dd></div>
+        <div><dt>Participants</dt><dd>${participants}</dd></div>
+        <div><dt>Ville</dt><dd>${action.ville ? escapeHtml(action.ville) : missing('Ville non renseignée', '')}</dd></div>
+        <div><dt>Lieu</dt><dd>${action.lieu ? escapeHtml(action.lieu) : missing('Lieu non renseigné', '')}</dd></div>
+      </dl>
+      ${action.commentaire ? `<p class="club-line"><strong>Commentaire</strong><br>${escapeHtml(action.commentaire)}</p>` : ''}
+      <p class="club-line">Budget : <strong>${formatEuro(action.budget)}</strong></p>
+      ${renderFunding(action)}
+    </div>`;
 }
 
 function renderAddress(club, communeName) {

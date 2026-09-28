@@ -32,14 +32,25 @@ function tables(w) {
     DR: [{id: 100, Nom: "Hauts-de-France"}, {id: 200, Nom: "Île-de-France"}],
     Communes: [{id: 1, Code_Insee: "60057", Libelle_Commune: "Beauvais"}],
     Federations: [{id: 1, Nom: "Fédération Foot"}, {id: 2, Nom: "Fédération Rugby"}],
-    Contacts: [],
+    Dispositifs: [{id: 1, Dispositif: "Aller vers", Code: "AV"}],
+    Contacts: [
+      {id: 1, Prenom: "Zoé", Nom: "Martin", Email: "zoe.martin@example.org", Telephone: "06 12 34 56 78", Club: 1},
+      {id: 2, Prenom: "Alex", Nom: "Bernard", Email: "", Telephone: "", Club: 1},
+      {id: 3, Prenom: "Autre", Nom: "Club", Email: "autre@example.org", Telephone: "", Club: 99},
+    ],
     Actions: [
-      {id: 1, Club: 1, Federation: 1},
+      {
+        id: 1, Club: 1, Federation: 1, Dispositif: 1, Intitule: "Tournoi inter-quartiers",
+        Date: Date.UTC(2026, 2, 1) / 1000, Statut: "Planifiée", Format: "Journée",
+        Public: ["L", "Jeunes", "QPV"], Jauge: 24, Ville: "Beauvais", Lieu: "Stade municipal",
+        Commentaire: "Prévoir des maillots.", Budget: 2000,
+      },
       {id: 2, Club: 3, Federation: 1},
       {id: 3, Club: 3, Federation: 2},
       {id: 4, Club: 2, Federation: null},
+      {id: 5, Club: 1, Date: null, Periode_approx: "Automne 2026", Statut: "A confirmer", Budget: 0},
     ],
-    Cofinancements: [],
+    Cofinancements: [{id: 1, Action: 1, Montant: 1200}],
   };
   return Object.fromEntries(Object.entries(raw).map(([name, records]) => [name, w.rows(columns(records))]));
 }
@@ -227,6 +238,103 @@ test("le logo se comporte comme dans fiche-club : affiche, ou bouton d'ajout", (
   assert.ok(!w.renderLogo(avecLogo, url, {}).includes("addLogo"), "un logo existant ne propose pas d'en ajouter un autre");
 });
 
+// --- Contacts et actions dans la fiche -------------------------------------------
+
+test("buildFicheDetail reunit les contacts et les actions du seul club demande", () => {
+  const w = loadClubs();
+  const detail = plain(w.buildFicheDetail(tables(w), 1));
+
+  assert.deepEqual(detail.contacts.map((contact) => contact.prenom), ["Alex", "Zoé"],
+    "triés par nom, le contact d'un autre club (Club 99) est écarté");
+  assert.equal(detail.actions.length, 2, "les deux actions du club 1, celles des autres clubs sont écartées");
+
+  const tournoi = detail.actions.find((action) => action.intitule === "Tournoi inter-quartiers");
+  assert.equal(tournoi.dispositif, "Aller vers");
+  assert.equal(tournoi.public, "Jeunes, QPV", "la ChoiceList est décodée et jointe");
+  assert.equal(tournoi.financed, 1200);
+  assert.equal(w.percent(tournoi.rate), 60, "1 200 € sur 2 000 €");
+});
+
+test("les actions sont triees par date decroissante, sans date en dernier", () => {
+  const w = loadClubs();
+  const ids = w.buildFicheDetail(tables(w), 1).actions.map((action) => action.id);
+  assert.deepEqual(plain(ids), [1, 5], "01/03/2026 avant l'action sans date");
+});
+
+test("sans contact ni action, chaque carte le dit plutot que d'afficher une liste vide", () => {
+  const w = loadClubs();
+  assert.match(w.renderContacts([]), /Aucun contact enregistré pour ce club\./);
+  assert.match(w.renderActionsList([]), /Aucune action portée par ce club\./);
+});
+
+test("la carte Actions liste quatre colonnes et un bouton Voir par action", () => {
+  const w = loadClubs();
+  w.state.raw = tables(w);
+  w.state.clubs = w.buildClubs(w.state.raw);
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /<span class="action-date">01\/03\/2026<\/span>/);
+  assert.match(html, /<span class="status-tag planifiee">Planifiée<\/span>/);
+  assert.match(html, /<span class="action-dispositif">Aller vers<\/span>/);
+  assert.match(html, /60 % financé/);
+  assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" data-open-action="1">/);
+  assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "l'action sans date affiche sa période");
+});
+
+test("« Voir » ouvre le detail complet de l'action, dans la meme carte", () => {
+  const w = loadClubs();
+  w.state.raw = tables(w);
+  w.state.clubs = w.buildClubs(w.state.raw);
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.state.actionId = 1;
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /<h3 id="actionDetailTitle"[^>]*>Tournoi inter-quartiers<\/h3>/);
+  assert.match(html, /<dt>Format<\/dt><dd>Journée<\/dd>/);
+  assert.match(html, /<dt>Public<\/dt><dd>Jeunes, QPV<\/dd>/);
+  assert.match(html, /<dt>Participants<\/dt><dd>24<\/dd>/);
+  assert.match(html, /<dt>Ville<\/dt><dd>Beauvais<\/dd>/);
+  assert.match(html, /<dt>Lieu<\/dt><dd>Stade municipal<\/dd>/);
+  assert.match(html, /Prévoir des maillots\./);
+  // toLocaleString("fr-FR") separe les milliers par une espace fine insecable
+  // (U+202F), pas une espace ordinaire.
+  assert.match(html, /Budget : <strong>2 000 €<\/strong>/);
+  assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" id="backToActions">/);
+  assert.ok(!html.includes("action-list"), "la liste des actions n'est plus affichée pendant que le détail l'est");
+});
+
+test("un identifiant d'action introuvable (action supprimee entre-temps) revient a la liste", () => {
+  const w = loadClubs();
+  w.state.raw = tables(w);
+  w.state.clubs = w.buildClubs(w.state.raw);
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.state.actionId = 404;
+  w.render();
+
+  assert.equal(w.state.actionId, null);
+  assert.match(w.elements.get("ficheView").innerHTML, /class="action-list"/);
+});
+
+test("des droits insuffisants sur Contacts ou Actions se disent, plutot qu'une liste vide a tort", () => {
+  const w = loadClubs();
+  w.state.raw = tables(w);
+  w.state.clubs = w.buildClubs(w.state.raw);
+  w.state.unreadable = ["Contacts", "Actions"];
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /Vos droits ne permettent pas de lire les contacts\./);
+  assert.match(html, /Vos droits ne permettent pas de lire les actions\./);
+});
+
 test("isCurrent suit state.currentId, pas state.clubId (fiche-club utilise l'autre nom)", () => {
   const w = loadClubs();
   w.state.currentId = 5;
@@ -234,13 +342,15 @@ test("isCurrent suit state.currentId, pas state.clubId (fiche-club utilise l'aut
   assert.equal(w.isCurrent({id: 6}), false);
 });
 
-test("les fonctions de zonages et de logo n'ont pas diverge de fiche-club", () => {
+test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas diverge de fiche-club", () => {
   // Dupliquees faute de module partage entre widgets (voir la note en tete de
   // src/clubs/script.js) : ce test echoue si l'une des deux copies est modifiee
-  // sans repercuter le changement sur l'autre. Trois fonctions sont exclues
-  // volontairement : isCurrent (nom de propriété d'état différent), fillCommune
-  // (ici, la ville est déjà connue via la table Communes, inutile dans
-  // fiche-club) et addLogo (recharge la fiche différemment selon le widget).
+  // sans repercuter le changement sur l'autre. Exclues volontairement :
+  // isCurrent (nom de propriété d'état différent), fillCommune (ici, la ville
+  // est déjà connue via la table Communes, inutile dans fiche-club), addLogo
+  // (recharge la fiche différemment selon le widget), buildFiche/buildFicheDetail
+  // (le premier construit aussi l'identité du club, déjà faite dans buildClubs
+  // ici) et renderActionsList (un bouton « Voir » de plus qu'à fiche-club).
   const source = (fichier, nom) => {
     const code = fs.readFileSync(fichier, "utf8");
     const debut = code.indexOf(`function ${nom}(`);
@@ -261,6 +371,8 @@ test("les fonctions de zonages et de logo n'ont pas diverge de fiche-club", () =
     "parseQpvList", "parseCsvLine", "loadQpvContours", "fetchJson", "readCache", "writeCache",
     "selectGeojsonResource", "chooseGeojsonFile", "geometryContainsPoint", "polygonContainsPoint",
     "ringContainsPoint", "bindLogo", "logoFileProblem", "uploadLogo", "errorDetail", "uploadErrorMessage",
+    "coverage", "percent", "sortActions", "dateSeconds", "formatDate", "statusClass", "missing",
+    "renderContacts", "renderFunding", "telHref", "mailHref",
   ];
   for (const nom of noms) {
     assert.equal(source(path.join(SRC, "script.js"), nom), source(ficheClub, nom), `${nom} a divergé de fiche-club`);

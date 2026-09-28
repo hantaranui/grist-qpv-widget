@@ -299,7 +299,9 @@ td:last-child {
   border-top-right-radius: calc(var(--radius-surface) - 1px);
 }
 
-.club-summary-body { padding: 24px; }
+/* Partagee par les trois cartes (Club, Contacts, Actions) : meme respiration
+   interne partout, une seule regle a ajuster sur petit ecran. */
+.card-body { padding: 24px; }
 
 .club-summary-header {
   display: grid;
@@ -309,6 +311,108 @@ td:last-child {
 }
 
 .club-identity { min-width: 0; }
+
+/* Contacts et actions cote a cote, sous la carte Club : deux cartes distinctes,
+   pas une troisieme colonne dans le meme edit-row que le club (leur contenu —
+   des listes qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
+.edit-row-lists {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.empty-note {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.contact-list,
+.action-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Une liste, pas un tableau : chaque champ occupe la largeur de son contenu, pas
+   une colonne calculee sur toute la carte. Voir fiche-club pour le detail du
+   raisonnement (meme regle, copiee a l'identique). */
+.contact-item,
+.action-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 24px;
+  row-gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.contact-name { flex: 0 1 auto; font-weight: 700; }
+.contact-item a,
+.contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
+
+.action-date { flex: 0 1 auto; }
+.action-status { flex: 0 0 auto; }
+.action-dispositif { flex: 1 1 160px; min-width: 0; max-width: 320px; }
+
+.action-funding {
+  display: flex;
+  flex: 0 1 200px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.funding-bar { width: 100%; }
+
+.funding-bar .progress-bar { max-width: 100%; }
+
+/* Reprise de la pastille de statut du tableau de bord : le texte garde l'encre
+   par defaut (11,31:1 a 12,97:1 sur ces fonds), seul le fond change. */
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  background: var(--ft--color-background-neutral-default-weaker);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-tag.projet { background: var(--ft-color-background-info-weakest); }
+.status-tag.planifie,
+.status-tag.planifiee,
+.status-tag.a-confirmer { background: var(--ft-color-background-warning-weakest); }
+.status-tag.realise,
+.status-tag.realisee { background: var(--ft-color-background-success-weakest); }
+.status-tag.annule,
+.status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+
+/* Detail d'une action, ouvert par « Voir » dans la carte Actions elle-meme. */
+.action-detail dt { font-weight: 700; }
+
+.action-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 16px 0;
+}
+
+.action-fields dd { margin: 0; overflow-wrap: anywhere; }
+
+.action-detail h3 {
+  margin: 12px 0 8px;
+  font-family: var(--font-title);
+  font-size: 17px;
+}
+
+.action-detail h3:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 4px;
+}
 
 .club-line {
   margin: 0 0 4px;
@@ -379,6 +483,12 @@ td:last-child {
 
 .logo-message.is-error { color: var(--ft--icon-error); }
 
+/* Contacts et actions cote a cote ne laissent plus assez de place a leurs
+   colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
+@media (max-width: 900px) {
+  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 560px) {
   .topbar { padding: 16px; }
   .filters-bar { padding: 16px; }
@@ -390,6 +500,14 @@ td:last-child {
      coupait en deux mots. Empiler regle les deux a la fois. */
   .edit-header { flex-direction: column; align-items: flex-start; padding: 16px; }
   .edit-layout { padding: 16px; gap: 16px; }
-  .club-summary-body { padding: 16px; }
+  .card-body { padding: 16px; }
   .club-summary-header { grid-template-columns: minmax(0, 1fr); }
+  /* Meme raisonnement que pour Contacts/Actions dans fiche-club : chaque champ
+     d'un contact ou d'une action prend sa propre ligne, sans quoi il ne reste
+     presque plus de place a chacun. */
+  .contact-item,
+  .action-item { flex-direction: column; align-items: stretch; }
+  .action-dispositif,
+  .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
+  .action-fields { grid-template-columns: minmax(0, 1fr); }
 }
