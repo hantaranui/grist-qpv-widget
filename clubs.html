@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clubs</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
+    <style>
+:root {
+  color-scheme: light;
+  /* Memes alias que les autres widgets, adosses aux jetons du design system
+     France Travail (contexte .outil-agent). */
+  --font-title: Marianne, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Marianne, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --radius-control: var(--ft--button-border-radius-sm);
+  --radius-surface: var(--ft--button-border-radius);
+  --bg: var(--ft--color-background-neutral-default-weakest);
+  --panel: var(--ft-color-background-layout-body);
+  --ink: var(--ft--color-text-color);
+  --muted: var(--ft--color-background-neutral-default-strong);
+  --line: var(--ft--color-border-neutral-default-weaker);
+  --accent: var(--ft--color-primary);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+button, select, input {
+  font: inherit;
+}
+
+button:not(.btn):not(.form-control), select, input { border-radius: var(--radius-control); }
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--ft--color-primary-20);
+  outline-offset: 2px;
+}
+
+.topbar {
+  padding: 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 4px solid var(--ft--icon-info);
+  font-family: var(--font-title);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.is-hidden { display: none; }
+
+.muted-text { color: var(--muted); }
+
+/* Filtres en bandeau horizontal, pas dans une colonne repliable : la liste des
+   clubs n'a que quatre filtres, une barre au-dessus du tableau suffit. */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px 24px;
+  padding: 20px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.filters-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  flex: 1 1 auto;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  width: 220px;
+}
+
+.filter-search-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+/* Nos deux controles qui tiennent lieu de liste deroulante portent l'indicateur
+   exact du design system, repris tel quel de « select.form-control » puisque
+   aucune classe ne l'expose ailleurs. */
+.filter-search-dropdown summary {
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+  background-repeat: no-repeat;
+  background-position: right .5rem center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-search-dropdown summary::-webkit-details-marker { display: none; }
+
+.filter-search-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
+}
+
+.filter-search-options {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.filter-search-option {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-search-option:hover,
+.filter-search-option:focus-visible {
+  background: var(--ft--color-background-primary-weakest);
+}
+
+.filters-body select,
+.filters-body select option {
+  font-family: var(--font-body);
+  font-weight: 400 !important;
+}
+
+/* Le tableau ne se transforme pas en liste de cartes sous 400 px : il defile
+   horizontalement dans son panneau plutot que de perdre ses colonnes, comme
+   celui du tableau de bord des actions. */
+.table-panel {
+  margin: 24px;
+  overflow-x: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
+}
+
+/* Sans largeur minimale, le navigateur comprime chaque colonne pour tenir dans
+   le panneau au lieu de faire defiler le tableau : sur un ecran etroit, le nom
+   du club finissait ecrase a quelques caracteres par ligne. Cette largeur est
+   celle qui laisse a chaque colonne assez de place pour son contenu le plus
+   courant, sans etre la largeur du contenu le plus long (les longues listes de
+   federations continuent de passer a la ligne, ce qui reste lisible). */
+table { width: 100%; min-width: 760px; border-collapse: collapse; }
+
+th {
+  height: var(--ft--table-th-height);
+  padding: .25rem var(--ft--table-padding-x);
+  background: var(--ft--color-background-primary-weakest);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  padding: var(--ft--table-padding-y) var(--ft--table-padding-x);
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
+
+/* Sans cette regle, la colonne « Voir » se retrouve pressee par les colonnes
+   voisines (une fedeation peut faire une ligne tres longue) et son bouton
+   finit par retrecir jusqu'a faire tenir « Voir » lettre par lettre a la
+   verticale. width sur <col> ne suffit pas a l'empecher, il faut l'interdire
+   sur la cellule elle-meme. */
+th:last-child,
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 28px;
+  color: var(--muted);
+}
+
+/* Etape suivante : la fiche prendra le motif carte du tableau de bord
+   (edit-card / section-head). Pour l'instant, juste de quoi verifier
+   l'aller-retour avec la liste. */
+.fiche-view {
+  padding: 24px;
+}
+
+.fiche-header {
+  margin-bottom: 16px;
+}
+
+.fiche-placeholder {
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 16px; }
+  .filters-bar { padding: 16px; }
+  .filter-field { width: 100%; }
+  .table-panel { margin: 16px; }
+}
+</style>
+  </head>
+  <body class="outil-agent">
+    <div id="listView">
+      <div class="topbar">
+        <h1>Clubs</h1>
+      </div>
+
+      <section class="filters-bar">
+        <div class="filters-body" id="filters"></div>
+        <button class="btn btn-link btn-sm" type="button" id="resetBtn"><span class="btn-content">Réinitialiser les filtres</span></button>
+      </section>
+
+      <section class="table-panel">
+        <table>
+          <caption class="sr-only">Liste des clubs</caption>
+          <colgroup>
+            <col class="col-club">
+            <col class="col-cp">
+            <col class="col-ville">
+            <col class="col-dd">
+            <col class="col-dr">
+            <col class="col-fed">
+            <col class="col-voir">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Club</th>
+              <th scope="col">Code postal</th>
+              <th scope="col">Ville</th>
+              <th scope="col">DD</th>
+              <th scope="col">DR</th>
+              <th scope="col">Fédération</th>
+              <th aria-label="Voir la fiche"></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty is-hidden" id="empty">Aucun club ne correspond aux filtres.</div>
+      </section>
+    </div>
+
+    <section class="fiche-view is-hidden" id="ficheView"></section>
+
+    <script>
+// Widget « Clubs » : une liste filtrable de la table Structures, et la fiche
+// d'un club qui remplace la liste quand on clique sur « Voir ». Meme motif que
+// src/actions-dashboard/ (state.view bascule entre deux vues), en plus simple :
+// pas de fiche modifiable, pas de synthese, pas de tri de colonnes.
+grist.ready({requiredAccess: 'full', allowSelectBy: false});
+
+const TABLES = ['Structures', 'Communes', 'DD', 'DR', 'Federations', 'Contacts', 'Actions', 'Cofinancements'];
+
+// Quatre filtres demandes, dans cet ordre. Le quatrieme element est la
+// propriete du club correspondante (voir buildClubs) ; « federation » est un
+// tableau, les autres des chaines.
+const FILTERS = [
+  ['dr', 'Région', 'Toutes', 'dr'],
+  ['dd', 'Département', 'Tous', 'dd'],
+  ['federation', 'Fédération', 'Toutes', 'federation'],
+  ['nom', 'Club', 'Tous', 'nom'],
+];
+// Filtres a liste deroulante avec recherche : au-dela d'une vingtaine de
+// valeurs (102 DD, 78 federations, 1569 clubs), un <select> se parcourt mal.
+// Region (18 valeurs) reste un select ordinaire, comme le fait deja le
+// tableau de bord pour ses filtres de faible cardinalite.
+const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
+
+const state = {raw: {}, clubs: [], filters: {}, view: 'list', currentId: null};
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.filters = {};
+  render();
+});
+
+document.addEventListener('pointerdown', event => {
+  if (event.target.closest('.filter-search-dropdown')) return;
+  document.querySelectorAll('.filter-search-dropdown[open]').forEach(dropdown => dropdown.removeAttribute('open'));
+});
+
+load();
+
+async function load() {
+  try {
+    const data = await Promise.all(TABLES.map(async table => {
+      try {
+        return [table, rows(await grist.docApi.fetchTable(table))];
+      } catch (error) {
+        console.warn(`Accès refusé ou table introuvable : ${table}`, error);
+        return [table, []];
+      }
+    }));
+    state.raw = Object.fromEntries(data);
+    state.clubs = buildClubs(state.raw);
+    render();
+  } catch (error) {
+    document.getElementById('rows').innerHTML = '';
+    document.getElementById('empty').classList.remove('is-hidden');
+    document.getElementById('empty').textContent = "Impossible de lire les tables Grist. Vérifiez que le widget a l'accès complet.";
+    console.error(error);
+  }
+}
+
+function rows(table) {
+  const ids = table.id || [];
+  return ids.map((id, index) => {
+    const row = {id};
+    Object.keys(table).forEach(key => {
+      if (key !== 'id') row[key] = table[key][index];
+    });
+    return row;
+  });
+}
+
+function byId(items) {
+  return new Map(items.map(item => [item.id, item]));
+}
+
+function text(value) {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function attachmentIds(value) {
+  if (Array.isArray(value)) return value.filter(item => Number.isInteger(item) && item > 0);
+  if (Number.isInteger(value) && value > 0) return [value];
+  if (typeof value === 'string') return value.split(',').map(Number).filter(item => Number.isInteger(item) && item > 0);
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// Construction de la liste
+// ---------------------------------------------------------------------------
+
+function buildClubs(raw) {
+  const dds = byId(raw.DD || []);
+  const drs = byId(raw.DR || []);
+  const federations = byId(raw.Federations || []);
+  const communesParInsee = new Map((raw.Communes || []).map(commune => [text(commune.Code_Insee), commune]));
+
+  // La fedeation d'un club n'est portee par aucune colonne : on la deduit de
+  // ses actions. Un ensemble, pas une valeur unique — 10 clubs sur 1569
+  // portent des actions de plusieurs federations, et rien ne dit laquelle
+  // retenir a leur place (voir README).
+  const federationIdsParClub = new Map();
+  (raw.Actions || []).forEach(action => {
+    if (!action.Club || !action.Federation) return;
+    if (!federationIdsParClub.has(action.Club)) federationIdsParClub.set(action.Club, new Set());
+    federationIdsParClub.get(action.Club).add(action.Federation);
+  });
+
+  return (raw.Structures || [])
+    .map(structure => {
+      const dd = dds.get(structure.DD) || {};
+      const dr = drs.get(dd.DR) || {};
+      const commune = communesParInsee.get(text(structure.Code_Insee)) || {};
+      const federationNoms = [...(federationIdsParClub.get(structure.id) || [])]
+        .map(id => text((federations.get(id) || {}).Nom))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'fr'));
+
+      return {
+        id: structure.id,
+        nom: text(structure.Nom),
+        siret: text(structure.SIRET),
+        adresse: text(structure.Adresse),
+        codePostal: text(structure.Code_postal),
+        codeInsee: text(structure.Code_Insee),
+        ville: text(commune.Libelle_Commune),
+        dd: text(dd.Nom),
+        dr: text(dr.Nom),
+        federations: federationNoms,
+        logoIds: attachmentIds(structure.Logo),
+      };
+    })
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+}
+
+function filteredClubs() {
+  return state.clubs.filter(club => Object.entries(state.filters).every(([key, value]) => {
+    if (key === 'federation') return club.federations.includes(value);
+    return club[key] === value;
+  }));
+}
+
+function optionsFor(key) {
+  const values = new Set();
+  state.clubs.forEach(club => {
+    if (key === 'federation') club.federations.forEach(value => values.add(value));
+    else if (club[key]) values.add(club[key]);
+  });
+  return [...values].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+// ---------------------------------------------------------------------------
+// Rendu de la liste
+// ---------------------------------------------------------------------------
+
+function render() {
+  renderFilters();
+  const clubs = filteredClubs();
+  renderRows(clubs);
+  const ficheOuverte = state.view === 'fiche';
+  document.getElementById('ficheView').classList.toggle('is-hidden', !ficheOuverte);
+  document.getElementById('listView').classList.toggle('is-hidden', ficheOuverte);
+  if (ficheOuverte) renderFiche();
+  requestResize();
+}
+
+function requestResize() {
+  requestAnimationFrame(() => {
+    if (window.grist && typeof grist.setHeight === 'function') {
+      grist.setHeight(document.documentElement.scrollHeight);
+    }
+  });
+}
+
+function renderFilters() {
+  const container = document.getElementById('filters');
+  container.innerHTML = FILTERS.map(([key, label, tous]) => {
+    const selected = state.filters[key] || '';
+    const values = optionsFor(key);
+
+    if (SEARCHABLE_FILTERS.has(key)) {
+      return `<div class="filter-field">
+        <span class="form-label" id="filter-${key}-label">${escapeHtml(label)}</span>
+        <details class="filter-search-dropdown">
+          <summary class="form-control" aria-labelledby="filter-${key}-label"><span>${escapeHtml(selected || tous)}</span></summary>
+          <div class="filter-search-panel">
+            <input class="form-control filter-search-input" type="search" data-filter-search="${key}" placeholder="Rechercher" aria-label="Rechercher ${escapeAttr(label)}">
+            <div class="filter-search-options">
+              <button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="">${escapeHtml(tous)}</button>
+              ${values.map(value => `<button class="filter-search-option" type="button" data-filter-key="${key}" data-filter-value="${escapeAttr(value)}" title="${escapeAttr(value)}">${escapeHtml(value)}</button>`).join('')}
+            </div>
+          </div>
+        </details>
+      </div>`;
+    }
+
+    return `<div class="filter-field">
+      <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
+      <select class="form-control" id="filter-${key}" name="filter-${key}" data-filter="${key}">
+        <option value="">${escapeHtml(tous)}</option>
+        ${values.map(value => `<option value="${escapeAttr(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('select').forEach(select => {
+    select.addEventListener('change', event => {
+      const key = event.target.dataset.filter;
+      state.filters[key] = event.target.value;
+      if (!state.filters[key]) delete state.filters[key];
+      render();
+    });
+  });
+
+  container.querySelectorAll('[data-filter-search]').forEach(input => {
+    input.addEventListener('input', event => {
+      const query = normalizeText(event.target.value);
+      const key = event.target.dataset.filterSearch;
+      container.querySelectorAll(`[data-filter-key="${key}"]`).forEach(option => {
+        option.hidden = query && !normalizeText(option.dataset.filterValue).includes(query);
+      });
+    });
+  });
+
+  container.querySelectorAll('[data-filter-key]').forEach(option => {
+    option.addEventListener('click', event => {
+      const key = event.currentTarget.dataset.filterKey;
+      const value = event.currentTarget.dataset.filterValue;
+      if (value) state.filters[key] = value;
+      else delete state.filters[key];
+      render();
+    });
+  });
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLocaleLowerCase('fr');
+}
+
+function renderRows(clubs) {
+  const tbody = document.getElementById('rows');
+  const empty = document.getElementById('empty');
+  empty.classList.toggle('is-hidden', clubs.length > 0);
+  tbody.innerHTML = clubs.map(club => `
+    <tr>
+      <td>${escapeHtml(club.nom || 'Club sans nom')}</td>
+      <td>${escapeHtml(club.codePostal) || missing()}</td>
+      <td>${escapeHtml(club.ville) || missing()}</td>
+      <td>${escapeHtml(club.dd) || missing()}</td>
+      <td>${escapeHtml(club.dr) || missing()}</td>
+      <td>${club.federations.length ? escapeHtml(club.federations.join(', ')) : missing()}</td>
+      <td><button class="btn btn-secondary btn-sm" type="button" data-open-club="${club.id}"><span class="btn-content">Voir</span></button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('[data-open-club]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.currentId = Number(button.dataset.openClub);
+      state.view = 'fiche';
+      render();
+    });
+  });
+}
+
+// Une valeur non renseignee reste distinguable d'une cellule vide par erreur,
+// pour un lecteur d'ecran comme a l'oeil.
+function missing() {
+  return '<span class="muted-text"><span aria-hidden="true">—</span><span class="sr-only">Non renseigné</span></span>';
+}
+
+// ---------------------------------------------------------------------------
+// Fiche (etape suivante : pour l'instant, juste l'identite et le retour, pour
+// valider l'aller-retour avec la liste avant d'y ajouter contacts, actions,
+// zonages et logo)
+// ---------------------------------------------------------------------------
+
+function renderFiche() {
+  const club = state.clubs.find(item => item.id === state.currentId);
+  const ficheView = document.getElementById('ficheView');
+  if (!club) {
+    state.view = 'list';
+    render();
+    return;
+  }
+  ficheView.innerHTML = `
+    <div class="fiche-header">
+      <button class="btn btn-secondary btn-sm" type="button" id="backToList"><span class="btn-content">&larr; Retour à la liste</span></button>
+    </div>
+    <p class="fiche-placeholder">Fiche de ${escapeHtml(club.nom || 'ce club')} — à compléter.</p>
+  `;
+  document.getElementById('backToList').addEventListener('click', () => {
+    state.view = 'list';
+    state.currentId = null;
+    render();
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, '&#96;');
+}
+</script>
+  </body>
+</html>

@@ -1,0 +1,236 @@
+:root {
+  color-scheme: light;
+  /* Memes alias que les autres widgets, adosses aux jetons du design system
+     France Travail (contexte .outil-agent). */
+  --font-title: Marianne, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Marianne, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --radius-control: var(--ft--button-border-radius-sm);
+  --radius-surface: var(--ft--button-border-radius);
+  --bg: var(--ft--color-background-neutral-default-weakest);
+  --panel: var(--ft-color-background-layout-body);
+  --ink: var(--ft--color-text-color);
+  --muted: var(--ft--color-background-neutral-default-strong);
+  --line: var(--ft--color-border-neutral-default-weaker);
+  --accent: var(--ft--color-primary);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+button, select, input {
+  font: inherit;
+}
+
+button:not(.btn):not(.form-control), select, input { border-radius: var(--radius-control); }
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--ft--color-primary-20);
+  outline-offset: 2px;
+}
+
+.topbar {
+  padding: 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 4px solid var(--ft--icon-info);
+  font-family: var(--font-title);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.is-hidden { display: none; }
+
+.muted-text { color: var(--muted); }
+
+/* Filtres en bandeau horizontal, pas dans une colonne repliable : la liste des
+   clubs n'a que quatre filtres, une barre au-dessus du tableau suffit. */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px 24px;
+  padding: 20px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.filters-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  flex: 1 1 auto;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  width: 220px;
+}
+
+.filter-search-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+/* Nos deux controles qui tiennent lieu de liste deroulante portent l'indicateur
+   exact du design system, repris tel quel de « select.form-control » puisque
+   aucune classe ne l'expose ailleurs. */
+.filter-search-dropdown summary {
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+  background-repeat: no-repeat;
+  background-position: right .5rem center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-search-dropdown summary::-webkit-details-marker { display: none; }
+
+.filter-search-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
+}
+
+.filter-search-options {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.filter-search-option {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-search-option:hover,
+.filter-search-option:focus-visible {
+  background: var(--ft--color-background-primary-weakest);
+}
+
+.filters-body select,
+.filters-body select option {
+  font-family: var(--font-body);
+  font-weight: 400 !important;
+}
+
+/* Le tableau ne se transforme pas en liste de cartes sous 400 px : il defile
+   horizontalement dans son panneau plutot que de perdre ses colonnes, comme
+   celui du tableau de bord des actions. */
+.table-panel {
+  margin: 24px;
+  overflow-x: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
+}
+
+/* Sans largeur minimale, le navigateur comprime chaque colonne pour tenir dans
+   le panneau au lieu de faire defiler le tableau : sur un ecran etroit, le nom
+   du club finissait ecrase a quelques caracteres par ligne. Cette largeur est
+   celle qui laisse a chaque colonne assez de place pour son contenu le plus
+   courant, sans etre la largeur du contenu le plus long (les longues listes de
+   federations continuent de passer a la ligne, ce qui reste lisible). */
+table { width: 100%; min-width: 760px; border-collapse: collapse; }
+
+th {
+  height: var(--ft--table-th-height);
+  padding: .25rem var(--ft--table-padding-x);
+  background: var(--ft--color-background-primary-weakest);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  padding: var(--ft--table-padding-y) var(--ft--table-padding-x);
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
+
+/* Sans cette regle, la colonne « Voir » se retrouve pressee par les colonnes
+   voisines (une fedeation peut faire une ligne tres longue) et son bouton
+   finit par retrecir jusqu'a faire tenir « Voir » lettre par lettre a la
+   verticale. width sur <col> ne suffit pas a l'empecher, il faut l'interdire
+   sur la cellule elle-meme. */
+th:last-child,
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 28px;
+  color: var(--muted);
+}
+
+/* Etape suivante : la fiche prendra le motif carte du tableau de bord
+   (edit-card / section-head). Pour l'instant, juste de quoi verifier
+   l'aller-retour avec la liste. */
+.fiche-view {
+  padding: 24px;
+}
+
+.fiche-header {
+  margin-bottom: 16px;
+}
+
+.fiche-placeholder {
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 16px; }
+  .filters-bar { padding: 16px; }
+  .filter-field { width: 100%; }
+  .table-panel { margin: 16px; }
+}
