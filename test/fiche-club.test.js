@@ -440,10 +440,17 @@ test("aucune couleur n'est ecrite en dur : tout vient de la palette", () => {
   assert.ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(CSS), "couleur hors palette du design system");
 });
 
+test("les colonnes des contacts s'alignent d'une ligne a l'autre", () => {
+  // Chaque contact est sa propre grille : sans subgrid, la colonne du telephone,
+  // reglee sur son contenu, prendrait une largeur differente a chaque ligne.
+  assert.match(CSS, /\.contact-list \{\n  display: grid;\n  grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\) max-content;/);
+  assert.match(CSS, /\.contact-item \{\n  grid-column: 1 \/ -1;\n  grid-template-columns: subgrid;/);
+});
+
 test("la fiche reste lisible jusqu'a 400 px", () => {
   assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.club-header \{ grid-template-columns: minmax\(0, 1fr\);/,
     "le logo passe au-dessus du nom");
-  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-item \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-list \{ grid-template-columns: minmax\(0, 1fr\); \}/,
     "les contacts s'empilent");
   assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.action-item \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/,
     "les actions passent sur deux lignes de deux");

@@ -192,7 +192,20 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.contact-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); }
+/* Un numero de telephone a toujours la meme longueur : sa colonne se regle sur
+   lui, et la place gagnee revient au nom et a l'e-mail, qui varient. Les
+   colonnes sont portees par la liste et partagees par chaque contact (subgrid) :
+   calculees contact par contact, elles ne s'aligneraient plus d'une ligne a
+   l'autre. */
+.contact-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content;
+}
+
+.contact-item {
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
 .action-item { grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 1fr); }
 
 .contact-name { font-weight: 700; }
@@ -247,7 +260,7 @@ a:focus-visible {
   .club-card { padding: 16px; }
   .club-header { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   h1 { font-size: 20px; padding-left: 12px; }
-  .contact-item { grid-template-columns: minmax(0, 1fr); }
+  .contact-list { grid-template-columns: minmax(0, 1fr); }
   .action-item { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
