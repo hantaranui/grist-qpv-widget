@@ -159,6 +159,114 @@ test("un identifiant de club introuvable revient a la liste plutot que d'affiche
   assert.equal(w.elements.get("listView").classList.contains("is-hidden"), false);
 });
 
+// --- Fiche : identite, zonages, logo ---------------------------------------------
+
+test("la fiche est une carte « Club », comme le motif du tableau de bord", () => {
+  const w = loadClubs();
+  w.state.clubs = w.buildClubs(tables(w));
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /<div class="edit-panel">/);
+  assert.match(html, /<header class="edit-header">/);
+  assert.match(html, /<button class="btn btn-secondary" type="button" id="backToList">/);
+  assert.match(html, /<section class="edit-card">\s*<div class="section-head"><span>Club<\/span><\/div>/);
+});
+
+test("SIRET non renseigne et ville deja connue s'affichent sans attendre le reseau", () => {
+  const w = loadClubs();
+  w.state.clubs = w.buildClubs(tables(w));
+  w.state.view = "fiche";
+  w.state.currentId = 1; // Club Alpha : SIRET vide, ville "Beauvais" déjà résolue via Communes.
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /SIRET : <span class="muted-text">non renseigné<\/span>/);
+  assert.match(html, /id="clubAddress">.*Beauvais/);
+  assert.match(html, /id="qpvResult">Vérification en cours…/, "code INSEE connu : la vérification QPV est lancée");
+  assert.match(html, /id="frrResult">Vérification en cours…/);
+});
+
+test("sans code INSEE, les zonages sont tranches immediatement, pas de verification en cours", () => {
+  const w = loadClubs();
+  w.state.clubs = w.buildClubs(tables(w));
+  w.state.view = "fiche";
+  w.state.currentId = 3; // Club Multi : pas de code INSEE, mais un logo.
+  w.render();
+
+  const html = w.elements.get("ficheView").innerHTML;
+  assert.match(html, /id="qpvResult">.*code INSEE du club non renseigné/s);
+  assert.match(html, /id="frrResult">.*code INSEE du club non renseigné/s);
+});
+
+test("fillCommune n'interroge le reseau que si la ville n'est pas deja connue", async () => {
+  const w = loadClubs();
+  const clubs = w.buildClubs(tables(w));
+  const clubAlpha = clubs.find((club) => club.nom === "Club Alpha"); // ville déjà "Beauvais"
+  w.state.currentId = clubAlpha.id;
+  await w.fillCommune(clubAlpha);
+  assert.equal(w.calls.fetches.length, 0, "la ville vient déjà de la table Communes, inutile de la redemander");
+
+  const clubMulti = clubs.find((club) => club.nom === "Club Multi");
+  clubMulti.codeInsee = "99999"; // code présent mais absent de Communes, comme un cas réel non couvert
+  w.state.currentId = clubMulti.id;
+  await w.fillCommune(clubMulti);
+  assert.equal(w.calls.fetches.length, 1, "sans ville connue, le nom de commune est demandé à geo.api.gouv.fr");
+});
+
+test("le logo se comporte comme dans fiche-club : affiche, ou bouton d'ajout", () => {
+  const w = loadClubs();
+  const sansLogo = {id: 1, nom: "Club Alpha", logoIds: []};
+  const avecLogo = {id: 3, nom: "Club Multi", logoIds: [9]};
+
+  assert.match(w.renderLogo(sansLogo, null, {}), /<button class="btn btn-secondary btn-sm" type="button" id="addLogo">/);
+  const url = w.logoUrl(avecLogo.logoIds, {token: "jeton", baseUrl: "https://grist.example/api/docs/DOC"});
+  assert.match(w.renderLogo(avecLogo, url, {}), /<img src="https:\/\/grist\.example\/api\/docs\/DOC\/attachments\/9\/download\?auth=jeton" alt="Logo de Club Multi">/);
+  assert.ok(!w.renderLogo(avecLogo, url, {}).includes("addLogo"), "un logo existant ne propose pas d'en ajouter un autre");
+});
+
+test("isCurrent suit state.currentId, pas state.clubId (fiche-club utilise l'autre nom)", () => {
+  const w = loadClubs();
+  w.state.currentId = 5;
+  assert.equal(w.isCurrent({id: 5}), true);
+  assert.equal(w.isCurrent({id: 6}), false);
+});
+
+test("les fonctions de zonages et de logo n'ont pas diverge de fiche-club", () => {
+  // Dupliquees faute de module partage entre widgets (voir la note en tete de
+  // src/clubs/script.js) : ce test echoue si l'une des deux copies est modifiee
+  // sans repercuter le changement sur l'autre. Trois fonctions sont exclues
+  // volontairement : isCurrent (nom de propriété d'état différent), fillCommune
+  // (ici, la ville est déjà connue via la table Communes, inutile dans
+  // fiche-club) et addLogo (recharge la fiche différemment selon le widget).
+  const source = (fichier, nom) => {
+    const code = fs.readFileSync(fichier, "utf8");
+    const debut = code.indexOf(`function ${nom}(`);
+    assert.ok(debut >= 0, `${nom} introuvable dans ${path.relative(ROOT, fichier)}`);
+    let profondeur = 0;
+    for (let i = code.indexOf("{", debut); i < code.length; i += 1) {
+      if (code[i] === "{") profondeur += 1;
+      if (code[i] === "}" && --profondeur === 0) return code.slice(debut, i + 1).replace(/\s+/g, " ");
+    }
+    throw new Error(`fin de ${nom} introuvable`);
+  };
+  const ficheClub = path.join(ROOT, "src", "fiche-club", "script.js");
+  const noms = [
+    "once", "formatSiret", "logoUrl", "addressLine", "parentCommune", "communeCodes",
+    "renderAddress", "renderLogo", "renderQpv", "renderFrr", "writeInto", "communeName",
+    "fillZonages", "frrFor", "loadFrr", "indexFrr", "frrStatus", "qpvFor",
+    "hasUsableStreetAddress", "geocode", "banResult", "loadQpvList", "selectQpvListResource",
+    "parseQpvList", "parseCsvLine", "loadQpvContours", "fetchJson", "readCache", "writeCache",
+    "selectGeojsonResource", "chooseGeojsonFile", "geometryContainsPoint", "polygonContainsPoint",
+    "ringContainsPoint", "bindLogo", "logoFileProblem", "uploadLogo", "errorDetail", "uploadErrorMessage",
+  ];
+  for (const nom of noms) {
+    assert.equal(source(path.join(SRC, "script.js"), nom), source(ficheClub, nom), `${nom} a divergé de fiche-club`);
+  }
+});
+
 // --- Feuille de style -------------------------------------------------------------
 
 const CSS = fs.readFileSync(path.join(SRC, "style.css"), "utf8");
@@ -187,6 +295,11 @@ test("aucune couleur n'est ecrite en dur : tout vient de la palette", () => {
 test("le tableau defile plutot que de perdre ses colonnes sous 400 px", () => {
   assert.match(CSS, /\.table-panel \{[^}]*overflow-x: auto;/);
   assert.match(CSS, /@media \(max-width: 560px\)/);
+});
+
+test("l'en-tete de la fiche s'empile sous 400 px plutot que d'ecraser le bouton retour", () => {
+  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.edit-header \{ flex-direction: column;/,
+    "un titre de club sur deux lignes ne laisse presque plus de place au bouton, cote a cote");
 });
 
 test("Ville, DD et DR ont plus de place que Club, qui prenait tout le vide", () => {

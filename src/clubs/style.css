@@ -12,6 +12,7 @@
   --muted: var(--ft--color-background-neutral-default-strong);
   --line: var(--ft--color-border-neutral-default-weaker);
   --accent: var(--ft--color-primary);
+  --logo-size: 128px;
 }
 
 * { box-sizing: border-box; }
@@ -34,6 +35,14 @@ button:focus-visible,
 select:focus-visible,
 input:focus-visible {
   outline: 3px solid var(--ft--color-primary-20);
+  outline-offset: 2px;
+}
+
+/* Le design system ne pose pas d'anneau de focus sur les liens ; celui-ci prend
+   la couleur primaire, a 5,82:1 sur le panneau (lien vers l'Observatoire des
+   territoires quand un classement FRR n'est pas dans la liste connue). */
+a:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
   outline-offset: 2px;
 }
 
@@ -210,6 +219,8 @@ td {
 
 tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 
+.club-name { font-weight: 700; }
+
 /* Sans cette regle, la colonne « Voir » se retrouve pressee par les colonnes
    voisines (une fedeation peut faire une ligne tres longue) et son bouton
    finit par retrecir jusqu'a faire tenir « Voir » lettre par lettre a la
@@ -226,24 +237,159 @@ td:last-child {
   color: var(--muted);
 }
 
-/* Etape suivante : la fiche prendra le motif carte du tableau de bord
-   (edit-card / section-head). Pour l'instant, juste de quoi verifier
-   l'aller-retour avec la liste. */
-.fiche-view {
+/* ---------------------------------------------------------------------------
+   Fiche : motif carte repris du tableau de bord des actions (edit-panel /
+   edit-header / edit-card / section-head), pour la meme raison qui l'y a fait
+   choisir — separer visiblement chaque bloc d'information, ici « Club », et
+   bientot « Contacts » et « Actions » en dessous.
+   --------------------------------------------------------------------------- */
+
+.edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.edit-header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+/* Le focus programmatique n'affiche pas d'anneau par defaut sur un titre : sans
+   outline, rien ne montre a l'oeil que la page a change quand on arrive depuis
+   la liste. */
+.edit-header h1:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 4px;
+}
+
+.edit-layout {
+  display: grid;
+  gap: 24px;
   padding: 24px;
 }
 
-.fiche-header {
-  margin-bottom: 16px;
+.edit-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
 }
 
-.fiche-placeholder {
-  color: var(--muted);
+.section-head {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  background: var(--ft--color-background-primary-weakest);
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-family: var(--font-title);
 }
+
+.edit-card > .section-head {
+  border-top-left-radius: calc(var(--radius-surface) - 1px);
+  border-top-right-radius: calc(var(--radius-surface) - 1px);
+}
+
+.club-summary-body { padding: 24px; }
+
+.club-summary-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.club-identity { min-width: 0; }
+
+.club-line {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.zonages {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+}
+
+.zonage {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.zonage dt { font-weight: 700; }
+.zonage dd { margin: 0; }
+
+.zonage-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.club-logo {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+}
+
+.club-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Meme raisonnement que la bordure du cadre vide : la bordure claire des
+   panneaux s'y perdrait, le gris des textes secondaires se voit. Le cadre
+   s'elargit au besoin, le bouton du design system (126 px en btn-sm) ne
+   tenant pas dans les 112 px utiles d'un cadre a la taille du logo. */
+.club-logo-empty {
+  width: auto;
+  min-width: var(--logo-size);
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px dashed var(--muted);
+  text-align: center;
+}
+
+.logo-input { display: none; }
+
+.logo-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.logo-message.is-error { color: var(--ft--icon-error); }
 
 @media (max-width: 560px) {
   .topbar { padding: 16px; }
   .filters-bar { padding: 16px; }
   .filter-field { width: 100%; }
   .table-panel { margin: 16px; }
+  :root { --logo-size: 96px; }
+  /* Le titre du club peut prendre deux lignes ; cote a cote avec le bouton, il
+     ne lui laissait qu'une poignee de pixels et « Retour a la liste » se
+     coupait en deux mots. Empiler regle les deux a la fois. */
+  .edit-header { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .edit-layout { padding: 16px; gap: 16px; }
+  .club-summary-body { padding: 16px; }
+  .club-summary-header { grid-template-columns: minmax(0, 1fr); }
 }
