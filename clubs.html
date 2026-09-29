@@ -1707,6 +1707,21 @@ function logoFileProblem(file) {
   return '';
 }
 
+// Meme requete que l'envoi (meme URL, meme jeton, memes en-tetes CORS cote
+// Grist), mais une lecture GET sans corps : si elle passe alors que l'envoi
+// echoue, la cause tient a l'envoi lui-meme (methode, corps multipart, une
+// passerelle qui filtre l'un et pas l'autre), pas a Grist injoignable en
+// general. Ne remonte jamais d'erreur : un doute sur la sonde elle-meme ne
+// doit pas empecher d'afficher le message principal.
+async function probeAttachmentsReadable(access) {
+  try {
+    const reponse = await fetch(`${access.baseUrl}/attachments?auth=${encodeURIComponent(access.token)}`, {credentials: 'omit'});
+    return reponse.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
 // Deux temps, car une piece jointe ne s'ecrit pas directement dans une cellule :
 //   1. televerser le fichier par l'API REST, qui renvoie l'identifiant de la
 //      piece jointe creee ;
@@ -1738,7 +1753,17 @@ async function uploadLogo(clubId, file) {
       credentials: 'omit',
     });
   } catch (error) {
-    throw Object.assign(new Error("Connexion à Grist impossible."), {step: 'network', cause: error});
+    // fetch echoue avant toute reponse : impossible de savoir, depuis ce seul
+    // echec, si Grist est injoignable ou si seul l'envoi (methode POST, corps
+    // multipart) est en cause — une passerelle intermediaire peut filtrer l'un
+    // sans l'autre. Une lecture, sans corps ni methode inhabituelle, tranche.
+    const lectureAussi = await probeAttachmentsReadable(access);
+    throw Object.assign(
+      new Error(lectureAussi
+        ? "Connexion à Grist impossible pour l'envoi du fichier ; une simple lecture, elle, fonctionne."
+        : "Connexion à Grist impossible, y compris pour une simple lecture : le problème n'est pas propre à l'envoi."),
+      {step: 'network', cause: error},
+    );
   }
   if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {step: 'upload', status: response.status});
   const ids = attachmentIds(await response.json());
@@ -1772,7 +1797,11 @@ function uploadErrorMessage(error) {
     return "Ce widget n'a pas l'accès complet au document : ouvrez son panneau de configuration dans Grist et activez l'accès complet, puis réessayez.";
   }
   if (error && error.step === 'network') {
-    return 'Connexion à Grist impossible : vérifiez votre connexion, puis réessayez.';
+    // Le message porte deja le diagnostic (l'envoi seul echoue, ou meme la
+    // lecture) : fetch ne dit rien de plus precis en JavaScript. La console du
+    // navigateur, elle, affiche la vraie raison (refus CORS, connexion
+    // refusee...), invisible autrement.
+    return `${error.message} Ouvrez la console du navigateur (touche F12, onglet Console) : la ligne sous ce message donne la cause exacte.`;
   }
   const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
   if (/access|acl|blocked|permission|refus/i.test(detail)) {

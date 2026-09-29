@@ -432,11 +432,25 @@ test("un refus qui perd son message en traversant le widget reste explique", () 
   });
 });
 
-test("un echec reseau a l'envoi se distingue d'un refus de Grist", async () => {
+test("un echec reseau general (meme la lecture) se distingue d'un echec propre a l'envoi", async () => {
+  // Le POST et la sonde GET echouent toutes les deux : rien ne dit que c'est
+  // l'envoi en particulier qui pose probleme.
   const w = loadFiche({fetch: () => Promise.reject(new TypeError("Failed to fetch"))});
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "network");
-    assert.match(w.uploadErrorMessage(error), /Connexion à Grist impossible/);
+    assert.match(w.uploadErrorMessage(error), /y compris pour une simple lecture/);
+    assert.match(w.uploadErrorMessage(error), /console du navigateur/);
+    return true;
+  });
+});
+
+test("un echec reseau propre a l'envoi se distingue d'un echec general", async () => {
+  // La sonde (GET, sans methode ni corps inhabituels) reussit ; seul le POST
+  // multipart echoue — le message doit dire que ce n'est pas Grist en general.
+  const w = loadFiche({fetch: (url, options) => (options && options.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : reponse({}))});
+  await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "network");
+    assert.match(w.uploadErrorMessage(error), /une simple lecture, elle, fonctionne/);
     return true;
   });
 });

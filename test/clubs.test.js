@@ -370,7 +370,7 @@ test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas dive
     "hasUsableStreetAddress", "geocode", "banResult", "loadQpvList", "selectQpvListResource",
     "parseQpvList", "parseCsvLine", "loadQpvContours", "fetchJson", "readCache", "writeCache",
     "selectGeojsonResource", "chooseGeojsonFile", "geometryContainsPoint", "polygonContainsPoint",
-    "ringContainsPoint", "bindLogo", "logoFileProblem", "uploadLogo", "errorDetail", "uploadErrorMessage",
+    "ringContainsPoint", "bindLogo", "logoFileProblem", "probeAttachmentsReadable", "uploadLogo", "errorDetail", "uploadErrorMessage",
     "coverage", "percent", "sortActions", "dateSeconds", "formatDate", "statusClass", "missing",
     "renderContacts", "renderFunding", "telHref", "mailHref",
   ];
