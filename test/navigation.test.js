@@ -77,7 +77,7 @@ test("sans adresse renseignee, la fiche propose de la saisir plutot qu'un lien m
 
   const html = w.elements.get("ficheView").innerHTML;
   assert.ok(!html.includes("id=\"openInDashboard\""), "pas de lien tant que l'adresse manque");
-  assert.match(html, /<input class="form-control" type="url" id="dashboardUrlInput"/);
+  assert.match(html, /<input class="form-control" type="text" id="dashboardUrlInput"/);
   assert.match(html, /<button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl">/);
 });
 
@@ -114,6 +114,54 @@ test("une valeur vide n'ecrase pas une adresse deja enregistree", () => {
 
   assert.equal(w.localStorage.getItem("clubs-dashboard-url-v1"), "https://grist.example/p/7");
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/7");
+});
+
+// --- Domaine de Grist deduit du referent, chemin enregistre a part --------------
+
+test("origineGrist ne garde que l'origine du referent, jamais le chemin", () => {
+  const w = loadClubs({referrer: "https://grist.example.org/o/asso/docId/NomDuDoc/p/5?x=1"});
+  assert.equal(w.origineGrist(), "https://grist.example.org");
+});
+
+test("sans referent exploitable, origineGrist ne casse rien", () => {
+  assert.equal(loadClubs({referrer: ""}).origineGrist(), "");
+  assert.equal(loadClubs({referrer: "pas une url"}).origineGrist(), "");
+});
+
+test("un chemin enregistre se complete avec l'origine du referent", () => {
+  const w = loadClubs({referrer: "https://grist.example.org/o/asso/docId/NomDuDoc/p/5"});
+  w.state.dashboardUrl = "/o/asso/docId/NomDuDoc/p/7";
+  assert.equal(w.adresseDashboardComplete(), "https://grist.example.org/o/asso/docId/NomDuDoc/p/7");
+});
+
+test("une adresse deja complete est gardee telle quelle, meme sans referent", () => {
+  const w = loadClubs({referrer: ""});
+  w.state.dashboardUrl = "https://grist.example.org/o/asso/docId/NomDuDoc/p/7";
+  assert.equal(w.adresseDashboardComplete(), "https://grist.example.org/o/asso/docId/NomDuDoc/p/7");
+});
+
+test("un chemin enregistre sans referent exploitable reste incomplet", () => {
+  const w = loadClubs({referrer: ""});
+  w.state.dashboardUrl = "/o/asso/docId/NomDuDoc/p/7";
+  assert.equal(w.adresseDashboardComplete(), "");
+});
+
+test("enregistrerAdresseDashboard ajoute le / manquant d'un chemin colle sans lui", () => {
+  const w = loadClubs();
+  ouvrirFicheEtAction(w, 42);
+  w.document.getElementById("dashboardUrlInput").value = "o/asso/docId/NomDuDoc/p/7";
+  w.enregistrerAdresseDashboard();
+  assert.equal(w.state.dashboardUrl, "/o/asso/docId/NomDuDoc/p/7");
+});
+
+test("un chemin enregistre mais incomplet (sans referent) invite a coller l'adresse complete", () => {
+  const w = loadClubs({referrer: "", localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "/o/asso/docId/NomDuDoc/p/7"})});
+  return w.load().then(() => {
+    ouvrirFicheEtAction(w, 42);
+    const html = w.elements.get("ficheView").innerHTML;
+    assert.ok(!html.includes('id="openInDashboard"'), "pas de lien avec une adresse incomplete");
+    assert.match(html, /Adresse incomplète/);
+  });
 });
 
 // --- Chargement de l'adresse au demarrage ----------------------------------------

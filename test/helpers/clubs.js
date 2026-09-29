@@ -70,6 +70,9 @@ function loadClubs(overrides = {}) {
       return overrides.fetch ? overrides.fetch(String(url), options) : Promise.reject(new Error("réseau indisponible en test"));
     },
     document: {
+      // Vide par defaut, comme un essai hors de toute page Grist parente :
+      // un test qui veut une origine doit la fournir explicitement.
+      referrer: overrides.referrer ?? '',
       getElementById: (id) => elements.get(id) || elements.set(id, makeElement()).get(id),
       querySelector: () => makeElement(),
       querySelectorAll: () => [],

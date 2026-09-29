@@ -73,10 +73,11 @@ const FILTERS = [
 // tableau de bord pour ses filtres de faible cardinalite.
 const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 
-// Adresse de la page Grist qui porte le tableau de bord des actions. Ne peut
-// pas etre codee en dur (le depot est public, cette adresse est propre a
-// chaque document), donc saisie une fois par qui l'utilise, dans la carte
-// Actions elle-meme.
+// Chemin de la page Grist qui porte le tableau de bord des actions (pas
+// l'adresse complete : voir origineGrist plus bas, qui fournit le domaine tout
+// seul). Ne peut pas etre code en dur (le depot est public, ce chemin est
+// propre a chaque document), donc saisi une fois par qui l'utilise, dans la
+// carte Actions elle-meme.
 //
 // Dans le stockage du navigateur, pas via grist.setOption : celui-ci semble
 // fait pour cet usage (une option propre a cette pose du widget), mais son
@@ -710,21 +711,52 @@ function renderActionDetail(action) {
 // widget, autre page Grist). Pas de canal direct entre les deux tant que cette
 // page n'est pas affichee : un vrai lien (target="_top") l'ouvre, et une note
 // deposee juste avant dans le stockage du navigateur (partage entre les pages
-// d'un meme document) lui dit quelle action ouvrir des son chargement. Sans
-// l'adresse de cette page — propre a chaque document, donc non codee en dur —
-// on ne peut proposer qu'un champ pour la renseigner une fois.
+// d'un meme document) lui dit quelle action ouvrir des son chargement.
+//
+// L'adresse de cette page a deux parties : le domaine du Grist qui l'heberge
+// (deja change plusieurs fois pendant ce projet — jamais a coder en dur), et
+// le chemin propre a ce document (organisation, identifiant, page). Le
+// domaine se deduit de document.referrer : une iframe cross-origin n'en
+// recoit, par la politique de referent par defaut des navigateurs
+// (strict-origin-when-cross-origin), que l'origine — jamais le chemin, retire
+// par confidentialite. Il ne reste donc que le chemin a demander, une fois,
+// et a garder dans le navigateur.
+function origineGrist() {
+  try {
+    return new URL(document.referrer).origin;
+  } catch (error) {
+    return '';
+  }
+}
+
+// Assemble l'adresse completee : une valeur deja complete (http.../https...)
+// est gardee telle quelle (repli si le referent est indisponible, par exemple
+// lors d'un essai hors de Grist) ; un chemin est complete par l'origine.
+function adresseDashboardComplete() {
+  const valeur = state.dashboardUrl;
+  if (!valeur) return '';
+  if (/^https?:\/\//i.test(valeur)) return valeur;
+  const origine = origineGrist();
+  return origine ? origine + valeur : '';
+}
+
 function renderDashboardLink(action) {
-  if (!state.dashboardUrl) {
+  const complete = adresseDashboardComplete();
+  if (!complete) {
+    const incomplete = state.dashboardUrl
+      ? '<p class="club-line" role="alert"><span class="muted-text">Adresse incomplète : ce widget n\'a pas retrouvé tout seul celle de Grist ici — collez l\'adresse complète (avec https://) plutôt qu\'un chemin.</span></p>'
+      : '';
     return `<details class="dashboard-setting">
       <summary>Ouvrir cette action dans le tableau de bord</summary>
-      <p class="club-line muted-text">Collez l'adresse de la page Grist du tableau de bord des actions (copiée depuis la barre d'adresse) : une seule fois sur cet ordinateur, gardée par ce navigateur.</p>
+      ${incomplete}
+      <p class="club-line muted-text">Collez le chemin de la page Grist du tableau de bord des actions — la partie après le nom de domaine, par exemple <code>/o/asso/docId/NomDuDocument/p/7</code> — une seule fois sur cet ordinateur, gardé par ce navigateur. Une adresse complète (avec https://) fonctionne aussi.</p>
       <div class="dashboard-setting-row">
-        <input class="form-control" type="url" id="dashboardUrlInput" placeholder="https://...">
+        <input class="form-control" type="text" id="dashboardUrlInput" placeholder="/o/.../p/7">
         <button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl"><span class="btn-content">Enregistrer</span></button>
       </div>
     </details>`;
   }
-  return `<a class="btn btn-secondary btn-sm" id="openInDashboard" href="${escapeAttr(state.dashboardUrl)}" target="_top" data-action-id="${action.id}"><span class="btn-content">Ouvrir dans le tableau de bord</span></a>`;
+  return `<a class="btn btn-secondary btn-sm" id="openInDashboard" href="${escapeAttr(complete)}" target="_top" data-action-id="${action.id}"><span class="btn-content">Ouvrir dans le tableau de bord</span></a>`;
 }
 
 // Ecrit la note que le tableau de bord lira a son prochain chargement. Isolee
@@ -758,8 +790,12 @@ function bindDashboardLink() {
 // reglage journalise mais pas bloquant pour l'utilisateur).
 function enregistrerAdresseDashboard() {
   const input = document.getElementById('dashboardUrlInput');
-  const valeur = input.value.trim();
+  let valeur = input.value.trim();
   if (!valeur) return;
+  // Un chemin colle sans son / initial (oubli facile en copiant depuis la
+  // barre d'adresse un peu trop court) casserait la concatenation avec
+  // l'origine plutot que de donner une simple adresse incomplete detectee.
+  if (!/^https?:\/\//i.test(valeur) && !valeur.startsWith('/')) valeur = '/' + valeur;
   try {
     localStorage.setItem(DASHBOARD_URL_STOCKAGE, valeur);
   } catch (error) {

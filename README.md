@@ -225,17 +225,30 @@ peuvent pas se signaler directement tant que cette page n'est pas ouverte.
 
 Le detail d'une action propose donc, sous son detail en lecture seule, soit un
 lien reel vers cette page (si son adresse a ete renseignee), soit un champ pour
-la renseigner une fois, jamais codee en dur (le depot est public, cette adresse
-est propre a chaque document).
+la renseigner une fois.
 
-Cette adresse est gardee dans le stockage du navigateur
-(`clubs-dashboard-url-v1`), pas via `grist.setOption`/`getOption` : l'API existe
-et semble faite pour cela, mais son implementation cote Grist
-(`WidgetAPIImpl.setOption`, dans grist-core) ne fait que modifier une valeur en
-memoire, jamais sauvegardee dans le document — perdue au premier rechargement
-complet de la page, constate le 2026-09-29 des le retour depuis la page
-Dashboard. Consequence du choix : l'adresse est a coller une fois **par
-navigateur**, pas une fois pour tout le monde.
+Cette adresse a deux parties, traitees differemment :
+
+- **le domaine du Grist qui l'heberge** — deja change plusieurs fois pendant ce
+  projet, jamais a coder en dur — se deduit de `document.referrer` : une iframe
+  cross-origin (notre widget, servi depuis GitHub Pages, dans une page Grist)
+  n'en recoit, par la politique de referent par defaut des navigateurs
+  (`strict-origin-when-cross-origin`), que l'origine de cette page — jamais son
+  chemin, retire par confidentialite ;
+- **le chemin propre a ce document** (organisation, identifiant, page) ne peut
+  pas se deduire de la meme facon, faute justement de ce chemin dans le
+  referent : c'est la seule chose que le champ demande, par exemple
+  `/o/asso/docId/NomDuDocument/p/7`. Une adresse complete (avec `https://`)
+  fonctionne aussi, gardee telle quelle plutot que recomposee.
+
+Le chemin est garde dans le stockage du navigateur (`clubs-dashboard-url-v1`),
+pas via `grist.setOption`/`getOption` : l'API existe et semble faite pour cela,
+mais son implementation cote Grist (`WidgetAPIImpl.setOption`, dans grist-core)
+ne fait que modifier une valeur en memoire, jamais sauvegardee dans le document
+— perdue au premier rechargement complet de la page, constate le 2026-09-29 des
+le retour depuis la page Dashboard. Consequence du choix : le chemin est a
+coller une fois **par navigateur**, pas une fois pour tout le monde — et le
+domaine, lui, s'ajuste tout seul si ce Grist demenage encore.
 
 Au clic sur ce lien, juste avant que le navigateur ne suive `target="_top"`
 (verifie le 2026-09-29 : l'iframe du widget n'est pas cantonnee par un
