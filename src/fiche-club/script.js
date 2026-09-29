@@ -888,6 +888,17 @@ async function uploadLogo(clubId, file) {
     throw Object.assign(new Error("Jeton d'écriture refusé."), {step: 'access', cause: error});
   }
 
+  // Le jeton est valable quelques minutes : de quoi rejouer l'envoi hors
+  // navigateur (curl, Postman...) pendant qu'il est encore frais, si celui-ci
+  // echoue juste apres. Un essai qui reussit la ou le navigateur bloque
+  // designerait un souci propre a la reponse CORS (reparable cote serveur) ;
+  // un echec identique designerait un refus du serveur lui-meme, quel que
+  // soit le client.
+  console.info(
+    "Pour rejouer cet envoi hors navigateur (isole un blocage propre au CORS) :\n" +
+    `curl -i -X POST "${access.baseUrl}/attachments?auth=${access.token}" -F "upload=@/chemin/vers/une/image.png"`
+  );
+
   const form = new FormData();
   form.append('upload', file, file.name);
   let response;
