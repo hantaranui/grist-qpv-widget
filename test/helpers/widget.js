@@ -60,8 +60,19 @@ function loadWidget() {
 
   const elements = new Map();
 
+  // Le stockage local du navigateur, reduit a ce dont le widget se sert. Les
+  // tests y deposent la note laissee par le widget « fiche club ».
+  const store = new Map();
+  const localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => { store.set(key, String(value)); },
+    removeItem: (key) => { store.delete(key); },
+    clear: () => store.clear(),
+  };
+
   const sandbox = {
     console: quiet,
+    localStorage,
     setTimeout,
     requestAnimationFrame: () => {},
     fetch: () => Promise.reject(new Error("réseau indisponible en test")),
@@ -93,7 +104,7 @@ function loadWidget() {
 
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, {filename: "script.js"});
-  return Object.assign(Object.create(null), sandbox, sandbox.__widget, {elements});
+  return Object.assign(Object.create(null), sandbox, sandbox.__widget, {elements, localStorage});
 }
 
 module.exports = {loadWidget, makeElement};

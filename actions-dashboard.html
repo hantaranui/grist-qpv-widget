@@ -951,6 +951,7 @@ async function load() {
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
     state.actions = buildActions(state.raw);
+    ouvrirActionDemandee();
     render();
   } catch (error) {
     document.getElementById('rows').innerHTML = '';
@@ -958,6 +959,56 @@ async function load() {
     document.getElementById('empty').textContent = "Impossible de lire les tables Grist. Vérifiez que le widget a l'accès complet.";
     console.error(error);
   }
+}
+
+// Passage de relais depuis le widget « fiche club ». Celui-ci depose dans le
+// localStorage l'identifiant de l'action a ouvrir, puis fait naviguer la page
+// vers le tableau de bord. Les deux widgets sont servis par la meme origine :
+// ils partagent donc le meme stockage. La note est volontairement perissable,
+// sans quoi un retour ulterieur sur le tableau de bord rouvrirait une fiche que
+// plus personne n'a demandee.
+const NOTE_OUVERTURE = 'clubs-ouvrir-action-v1';
+const NOTE_VALIDITE_MS = 20000;
+
+function lireNoteOuverture() {
+  let brut = null;
+  try {
+    brut = window.localStorage.getItem(NOTE_OUVERTURE);
+    // Lue une fois, jetee — y compris quand elle est illisible ou perimee, pour
+    // qu'une note abimee ne reste pas coincee dans le stockage.
+    window.localStorage.removeItem(NOTE_OUVERTURE);
+  } catch (error) {
+    // Navigation privee, stockage bloque, ou pas de localStorage du tout.
+    return null;
+  }
+  if (!brut) return null;
+  let note;
+  try {
+    note = JSON.parse(brut);
+  } catch (error) {
+    return null;
+  }
+  if (!note || typeof note !== 'object') return null;
+  const id = Number(note.actionId);
+  const ts = Number(note.ts);
+  if (!Number.isFinite(id) || !Number.isFinite(ts)) return null;
+  const age = Date.now() - ts;
+  // Une note datee du futur ne peut venir que d'une horloge qui a bouge : on la
+  // traite comme perimee plutot que de la laisser valable indefiniment.
+  if (age < 0 || age > NOTE_VALIDITE_MS) return null;
+  return id;
+}
+
+// Appelee juste avant le premier rendu : elle ne fait que preparer l'etat, le
+// rendu qui suit se charge d'afficher la fiche.
+function ouvrirActionDemandee() {
+  const id = lireNoteOuverture();
+  if (id === null) return;
+  // Un identifiant inconnu ici n'a rien d'anormal : les regles d'acces peuvent
+  // masquer a ce lecteur une action que le widget club lui montrait.
+  if (!state.actions.some(action => action.id === id)) return;
+  state.editingId = id;
+  state.view = 'edit';
 }
 
 // Les listes de choix vivent dans la configuration des colonnes Grist. Trois

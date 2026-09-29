@@ -107,6 +107,31 @@ URL a utiliser dans Grist :
 https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html
 ```
 
+## Ouverture d'une action depuis un autre widget
+
+Un widget voisin peut demander au dashboard d'ouvrir directement la fiche d'une
+action. Comme tous les widgets sont servis par la meme origine GitHub Pages, ils
+partagent le meme `localStorage` : le widget appelant y depose une note, puis
+fait naviguer la page vers celle du dashboard.
+
+```text
+cle   : clubs-ouvrir-action-v1
+valeur: {"actionId": <numero de ligne Grist>, "ts": <Date.now() a l'ecriture>}
+```
+
+Au chargement, le dashboard lit cette note, l'efface aussitot, et ouvre la fiche
+si elle a moins de 20 secondes et que l'action lui est visible. Toute autre
+situation le laisse afficher le tableau normalement.
+
+L'effacement immediat et la peremption vont ensemble : sans eux, un simple
+retour au dashboard par l'historique rouvrirait une fiche que plus personne n'a
+demandee.
+
+La navigation elle-meme se fait par un lien `target="_top"`. Grist ne pose pas
+d'attribut `sandbox` sur l'iframe du widget, un clic reel sort donc bien du
+cadre — verifie le 2026-09-29 sur `docs.getgrist.com`. A reverifier si Grist
+change sa facon d'inserer les widgets.
+
 ## Installation dans Grist
 
 1. Dans Grist, ajouter un widget personnalise.
