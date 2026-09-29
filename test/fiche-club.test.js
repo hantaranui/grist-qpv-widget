@@ -391,6 +391,8 @@ test("le logo est televerse avec un jeton d'ecriture puis ecrit dans Structures.
   assert.equal(envoi.url, "https://grist.example/api/docs/DOC/attachments?auth=jeton");
   assert.equal(envoi.options.method, "POST");
   assert.equal(envoi.options.credentials, "omit", "sans cookie, sans quoi Grist refuse l'origine étrangère");
+  assert.equal(envoi.options.headers["X-Requested-With"], "XMLHttpRequest",
+    "sans cet en-tête, Grist rejette l'envoi avant même de répondre avec ses en-têtes CORS");
   assert.ok(envoi.options.body.get("upload"), "fichier dans le champ attendu par Grist");
   assert.deepEqual(plain(w.calls.userActions), [[["UpdateRecord", "Structures", 7, {Logo: ["L", 42]}]]]);
 });

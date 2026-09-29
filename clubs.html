@@ -1762,6 +1762,15 @@ async function uploadLogo(clubId, file) {
       method: 'POST',
       body: form,
       credentials: 'omit',
+      // Sans cet en-tete, Grist semble rejeter l'envoi avant meme de repondre
+      // avec les en-tetes CORS habituels (constate : la lecture reussit
+      // toujours, l'envoi echoue toujours, quel que soit le role). Present
+      // dans les deux exemples fonctionnels trouves independamment (forum
+      // Grist, widget de l'incubateur ANCT), et explicitement autorise par
+      // Grist dans sa reponse CORS (Access-Control-Allow-Headers cite
+      // "X-Requested-With") : signale au serveur que l'appel vient d'un vrai
+      // script, pas d'un formulaire HTML pose par un tiers.
+      headers: {'X-Requested-With': 'XMLHttpRequest'},
     });
   } catch (error) {
     // fetch echoue avant toute reponse : impossible de savoir, depuis ce seul
