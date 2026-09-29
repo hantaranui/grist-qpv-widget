@@ -1237,7 +1237,16 @@ function uploadErrorMessage(error) {
     // lecture) : fetch ne dit rien de plus precis en JavaScript. La console du
     // navigateur, elle, affiche la vraie raison (refus CORS, connexion
     // refusee...), invisible autrement.
-    return `${error.message} Ouvrez la console du navigateur (touche F12, onglet Console) : la ligne sous ce message donne la cause exacte.`;
+    //
+    // Piste la plus probable, confirmee par la communaute Grist (forum
+    // community.getgrist.com, sujet « Upload attachment from custom widget ») :
+    // un bug connu et toujours ouvert de Grist (gristlabs/grist-core#1614,
+    // recoupe par #1512 et #1853) fait traiter comme anonyme le jeton d'un
+    // widget des qu'une regle d'acces existe sur la table visee — l'envoi
+    // echoue alors pour tout role sauf Proprietaire du document. Coherent avec
+    // les regles d'acces de Structures, qui ne donnent que la lecture aux
+    // profils autres que proprietaire (voir le README).
+    return `${error.message} Cause probable : un bug connu de Grist, non corrigé à ce jour, bloque l'envoi de pièce jointe depuis un widget dès que des règles d'accès existent sur la table — l'envoi ne marche alors que pour un compte propriétaire du document. Réessayez connectée comme propriétaire pour confirmer. Sinon, la console du navigateur (F12, onglet Console) affiche la cause exacte.`;
   }
   const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
   if (/access|acl|blocked|permission|refus/i.test(detail)) {
