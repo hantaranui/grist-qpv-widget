@@ -644,9 +644,17 @@ function renderActionsList(actions) {
       <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode) || '<span class="muted-text">Date à définir</span>'}</span>
       <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
-      ${renderFunding(action)}
+      ${renderFundingPercent(action)}
       <button class="btn btn-secondary btn-sm" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
     </li>`).join('')}</ul>`;
+}
+
+// La liste ne montre que le pourcentage, sans la barre : la barre existe deja
+// dans le detail d'une action (« Voir »), redondante ici ou elle prendrait de
+// la place sur chaque ligne pour la meme information.
+function renderFundingPercent(action) {
+  if (action.rate === null) return '<span class="action-funding muted-text">Budget non renseigné</span>';
+  return `<span class="action-funding">${percent(action.rate)} % financé</span>`;
 }
 
 function renderFunding(action) {
@@ -691,11 +699,10 @@ function renderActionDetail(action) {
         <div><dt>Participants</dt><dd>${participants}</dd></div>
         <div><dt>Ville</dt><dd>${action.ville ? escapeHtml(action.ville) : missing('Ville non renseignée', '')}</dd></div>
         <div><dt>Lieu</dt><dd>${action.lieu ? escapeHtml(action.lieu) : missing('Lieu non renseigné', '')}</dd></div>
+        <div class="action-field-financement"><dt>Financement</dt><dd>Budget : <strong>${formatEuro(action.budget)}</strong><br>${renderFunding(action)}</dd></div>
       </dl>
       ${action.commentaire ? `<p class="club-line"><strong>Commentaire</strong><br>${escapeHtml(action.commentaire)}</p>` : ''}
-      <p class="club-line">Budget : <strong>${formatEuro(action.budget)}</strong></p>
-      ${renderFunding(action)}
-      ${renderDashboardLink(action)}
+      <div class="action-dashboard-link">${renderDashboardLink(action)}</div>
     </div>`;
 }
 

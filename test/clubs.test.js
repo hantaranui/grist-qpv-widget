@@ -282,6 +282,7 @@ test("la carte Actions liste quatre colonnes et un bouton Voir par action", () =
   assert.match(html, /60 % financé/);
   assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" data-open-action="1">/);
   assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "l'action sans date affiche sa période");
+  assert.ok(!html.includes("funding-bar"), "la liste montre le pourcentage, pas la barre (elle vit dans le détail)");
 });
 
 test("« Voir » ouvre le detail complet de l'action, dans la meme carte", () => {
@@ -303,7 +304,10 @@ test("« Voir » ouvre le detail complet de l'action, dans la meme carte", () =>
   assert.match(html, /Prévoir des maillots\./);
   // toLocaleString("fr-FR") separe les milliers par une espace fine insecable
   // (U+202F), pas une espace ordinaire.
-  assert.match(html, /Budget : <strong>2 000 €<\/strong>/);
+  assert.match(html, /<dt>Financement<\/dt><dd>Budget : <strong>2 000 €<\/strong><br>/,
+    "le financement est un champ de la grille, pas un bloc a part qui deborde");
+  assert.match(html, /role="progressbar"/, "la barre, elle, reste dans le detail");
+  assert.match(html, /<div class="action-dashboard-link">/, "un peu d'air avant le lien vers le tableau de bord");
   assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" id="backToActions">/);
   assert.ok(!html.includes("action-list"), "la liste des actions n'est plus affichée pendant que le détail l'est");
 });

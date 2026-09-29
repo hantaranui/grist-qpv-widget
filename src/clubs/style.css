@@ -407,6 +407,14 @@ td:last-child {
 
 .action-fields dd { margin: 0; overflow-wrap: anywhere; }
 
+/* Sans ceci, .action-funding (display:flex) n'a pas de parent flex pour lui
+   donner une largeur : bloc bord a bord, elle s'etirait sur toute la largeur
+   de la fiche au lieu de rester dans sa colonne. La grille du champ, elle,
+   la contient deja correctement — juste un peu d'air au-dessus du texte. */
+.action-field-financement .action-funding { margin-top: 8px; }
+
+.action-dashboard-link { margin-top: 16px; }
+
 .action-detail h3 {
   margin: 12px 0 8px;
   font-family: var(--font-title);
