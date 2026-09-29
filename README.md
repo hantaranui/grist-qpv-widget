@@ -225,16 +225,24 @@ peuvent pas se signaler directement tant que cette page n'est pas ouverte.
 
 Le detail d'une action propose donc, sous son detail en lecture seule, soit un
 lien reel vers cette page (si son adresse a ete renseignee), soit un champ pour
-la renseigner une fois — reglage propre a cette pose du widget
-(`grist.setOption`/`getOption`), jamais code en dur (le depot est public,
-cette adresse est propre a chaque document).
+la renseigner une fois, jamais codee en dur (le depot est public, cette adresse
+est propre a chaque document).
+
+Cette adresse est gardee dans le stockage du navigateur
+(`clubs-dashboard-url-v1`), pas via `grist.setOption`/`getOption` : l'API existe
+et semble faite pour cela, mais son implementation cote Grist
+(`WidgetAPIImpl.setOption`, dans grist-core) ne fait que modifier une valeur en
+memoire, jamais sauvegardee dans le document — perdue au premier rechargement
+complet de la page, constate le 2026-09-29 des le retour depuis la page
+Dashboard. Consequence du choix : l'adresse est a coller une fois **par
+navigateur**, pas une fois pour tout le monde.
 
 Au clic sur ce lien, juste avant que le navigateur ne suive `target="_top"`
 (verifie le 2026-09-29 : l'iframe du widget n'est pas cantonnee par un
 `sandbox`, un clic reel navigue bien hors d'elle — a revalider si Grist change
-sa facon de poser les widgets), une note est deposee dans le stockage du
-navigateur, partage entre les pages d'un meme document puisque tous les
-widgets d'un document viennent de la meme adresse :
+sa facon de poser les widgets), une autre note est deposee dans le meme
+stockage, partage entre les pages d'un meme document puisque tous les widgets
+d'un document viennent de la meme adresse **en production** (GitHub Pages) :
 
 ```text
 cle   : clubs-ouvrir-action-v1
@@ -247,6 +255,13 @@ abimee ne reste pas coincee — et ouvre la fiche de l'action si la note a moins
 de 20 secondes et que l'action lui est visible ; sinon il affiche son tableau
 normalement, sans erreur. Cle et forme a ne changer que dans les deux widgets a
 la fois.
+
+**En local, les deux widgets doivent etre servis depuis le meme port** pour que
+ce mecanisme fonctionne : `http://localhost:8001/clubs.html` et
+`http://localhost:8000/actions-dashboard.html` sont deux origines differentes
+aux yeux du navigateur (le port compte), qui ne partagent donc aucun stockage.
+Servir les deux fichiers assembles depuis un seul `npm run dev` (un seul
+dossier, un seul port) le temps du test regle ca.
 
 ## Installation dans Grist
 

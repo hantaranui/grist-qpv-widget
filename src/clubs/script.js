@@ -73,12 +73,20 @@ const FILTERS = [
 // tableau de bord pour ses filtres de faible cardinalite.
 const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 
-// Reglage propre a cette pose du widget (grist.getOption/setOption, pas une
-// colonne ni une donnee du document) : l'adresse de la page Grist qui porte le
-// tableau de bord des actions. Ne peut pas etre codee en dur (le depot est
-// public, cette adresse est propre a chaque document), donc saisie une fois
-// par qui installe le widget, dans la carte Actions elle-meme.
-const DASHBOARD_URL_OPTION = 'dashboardPageUrl';
+// Adresse de la page Grist qui porte le tableau de bord des actions. Ne peut
+// pas etre codee en dur (le depot est public, cette adresse est propre a
+// chaque document), donc saisie une fois par qui l'utilise, dans la carte
+// Actions elle-meme.
+//
+// Dans le stockage du navigateur, pas via grist.setOption : celui-ci semble
+// fait pour cet usage (une option propre a cette pose du widget), mais son
+// implementation cote Grist (WidgetAPIImpl.setOption, dans grist-core) ne fait
+// que modifier une valeur en memoire, jamais sauvegardee dans le document —
+// perdue au premier rechargement complet de la page, constate le 2026-09-29
+// des le retour de la page Dashboard. Le stockage du navigateur, lui,
+// persiste reellement, au prix de devoir etre saisi une fois par navigateur
+// plutot qu'une fois pour tout le monde.
+const DASHBOARD_URL_STOCKAGE = 'clubs-dashboard-url-v1';
 
 // Contrat partage avec src/actions-dashboard/ (branche main, tableau de bord) :
 // avant de suivre le lien vers sa page, on depose ici l'action a ouvrir. Le
@@ -123,22 +131,19 @@ load();
 
 async function load() {
   try {
-    const [{raw, unreadable}, readAccess, dashboardUrl] = await Promise.all([
+    const [{raw, unreadable}, readAccess] = await Promise.all([
       loadTables(),
       // Jeton en lecture seule pour l'URL du logo : construit une fois, reutilise
       // pour toute fiche ouverte ensuite (voir logoUrl). Un rechargement (par
       // exemple apres un ajout de logo) en redemande un, le premier expirant au
       // bout de quelques minutes.
       grist.docApi.getAccessToken({readOnly: true}).catch(() => null),
-      // Reglage propre a cette pose du widget, pas une donnee du document :
-      // voir DASHBOARD_URL_OPTION.
-      grist.getOption(DASHBOARD_URL_OPTION).catch(() => null),
     ]);
     state.raw = raw;
     state.unreadable = unreadable;
     state.clubs = buildClubs(state.raw);
     state.readAccess = readAccess;
-    state.dashboardUrl = dashboardUrl || '';
+    state.dashboardUrl = lireAdresseDashboard();
     render();
   } catch (error) {
     document.getElementById('rows').innerHTML = '';
@@ -705,7 +710,7 @@ function renderDashboardLink(action) {
   if (!state.dashboardUrl) {
     return `<details class="dashboard-setting">
       <summary>Ouvrir cette action dans le tableau de bord</summary>
-      <p class="club-line muted-text">Collez l'adresse de la page Grist du tableau de bord des actions (copiée depuis la barre d'adresse), une seule fois pour ce widget.</p>
+      <p class="club-line muted-text">Collez l'adresse de la page Grist du tableau de bord des actions (copiée depuis la barre d'adresse) : une seule fois sur cet ordinateur, gardée par ce navigateur.</p>
       <div class="dashboard-setting-row">
         <input class="form-control" type="url" id="dashboardUrlInput" placeholder="https://...">
         <button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl"><span class="btn-content">Enregistrer</span></button>
@@ -744,17 +749,28 @@ function bindDashboardLink() {
 // Isolee du clic qui l'appelle, comme noterOuvertureAction : testable sans DOM
 // reel, et c'est elle qui porte la logique (valeur vide ignoree, echec du
 // reglage journalise mais pas bloquant pour l'utilisateur).
-async function enregistrerAdresseDashboard() {
+function enregistrerAdresseDashboard() {
   const input = document.getElementById('dashboardUrlInput');
   const valeur = input.value.trim();
   if (!valeur) return;
   try {
-    await grist.setOption(DASHBOARD_URL_OPTION, valeur);
+    localStorage.setItem(DASHBOARD_URL_STOCKAGE, valeur);
   } catch (error) {
-    console.warn("Réglage de l'adresse du tableau de bord non enregistré", error);
+    // Stockage plein ou interdit (navigation privee) : la valeur reste active
+    // pour cette session (state.dashboardUrl), simplement pas retrouvee au
+    // prochain chargement.
+    console.warn("Adresse du tableau de bord non conservée pour la prochaine fois", error);
   }
   state.dashboardUrl = valeur;
   render();
+}
+
+function lireAdresseDashboard() {
+  try {
+    return localStorage.getItem(DASHBOARD_URL_STOCKAGE) || '';
+  } catch (error) {
+    return '';
+  }
 }
 
 function renderAddress(club, communeName) {

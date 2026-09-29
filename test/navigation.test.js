@@ -1,13 +1,13 @@
 "use strict";
 
 // Le contrat de navigation entrante vers le tableau de bord : voir la note en
-// tete de src/clubs/script.js (DASHBOARD_URL_OPTION, OUVRIR_ACTION_CLE). Ce
+// tete de src/clubs/script.js (DASHBOARD_URL_STOCKAGE, OUVRIR_ACTION_CLE). Ce
 // fichier ne couvre que ce contrat ; la construction de la fiche elle-meme est
 // testee dans clubs.test.js.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {loadClubs} = require("./helpers/clubs");
+const {loadClubs, makeLocalStorage} = require("./helpers/clubs");
 
 // Un objet construit dans le bac a sable n'est pas, aux yeux de assert, de la
 // meme "classe" qu'un litteral ecrit ici : le passage par JSON les ramene tous
@@ -82,7 +82,7 @@ test("sans adresse renseignee, la fiche propose de la saisir plutot qu'un lien m
 });
 
 test("l'adresse enregistree, la fiche montre un vrai lien target=\"_top\"", () => {
-  const w = loadClubs({options: {dashboardPageUrl: "https://grist.example/o/asso/docs/DOC/p/7"}});
+  const w = loadClubs({localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "https://grist.example/o/asso/docs/DOC/p/7"})});
   return w.load().then(() => {
     ouvrirFicheEtAction(w, 42);
     const html = w.elements.get("ficheView").innerHTML;
@@ -90,43 +90,48 @@ test("l'adresse enregistree, la fiche montre un vrai lien target=\"_top\"", () =
   });
 });
 
-test("enregistrerAdresseDashboard sauvegarde le reglage du widget, pas une donnee du document", async () => {
+test("enregistrerAdresseDashboard la conserve dans le navigateur, pas dans une option du widget", () => {
+  // grist.setOption existe et semble fait pour cela, mais son implementation
+  // cote Grist ne fait que modifier une valeur en memoire, jamais sauvegardee
+  // dans le document (constate le 2026-09-29 : perdue au moindre rechargement
+  // complet — exactement ce qu'un lien target="_top" declenche). D'ou le
+  // stockage du navigateur a la place, qui persiste reellement.
   const w = loadClubs();
   ouvrirFicheEtAction(w, 42); // affiche le champ de saisie
 
   w.document.getElementById("dashboardUrlInput").value = "  https://grist.example/p/7  ";
-  await w.enregistrerAdresseDashboard();
+  w.enregistrerAdresseDashboard();
 
-  assert.deepEqual(w.calls.setOptions, [{key: "dashboardPageUrl", value: "https://grist.example/p/7"}]);
+  assert.equal(w.localStorage.getItem("clubs-dashboard-url-v1"), "https://grist.example/p/7");
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/7", "repris immediatement, sans attendre un rechargement");
 });
 
-test("une valeur vide n'ecrase pas un reglage deja enregistre", async () => {
-  const w = loadClubs();
+test("une valeur vide n'ecrase pas une adresse deja enregistree", () => {
+  const w = loadClubs({localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "https://grist.example/p/7"})});
   w.state.dashboardUrl = "https://grist.example/p/7";
   w.document.getElementById("dashboardUrlInput").value = "   ";
-  await w.enregistrerAdresseDashboard();
+  w.enregistrerAdresseDashboard();
 
-  assert.deepEqual(w.calls.setOptions, []);
+  assert.equal(w.localStorage.getItem("clubs-dashboard-url-v1"), "https://grist.example/p/7");
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/7");
 });
 
-// --- Chargement du reglage au demarrage ------------------------------------------
+// --- Chargement de l'adresse au demarrage ----------------------------------------
 
-test("load() reprend l'adresse deja enregistree pour ce widget", async () => {
-  const w = loadClubs({options: {dashboardPageUrl: "https://grist.example/p/9"}});
+test("load() reprend l'adresse deja enregistree sur ce navigateur", async () => {
+  const w = loadClubs({localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "https://grist.example/p/9"})});
   await w.load();
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/9");
 });
 
-test("sans reglage enregistre, l'adresse reste vide plutot qu'indefinie", async () => {
+test("sans adresse enregistree, elle reste vide plutot qu'indefinie", async () => {
   const w = loadClubs();
   await w.load();
   assert.equal(w.state.dashboardUrl, "");
 });
 
-test("un widget qui refuse getOption laisse quand meme le reste du chargement aboutir", async () => {
-  const w = loadClubs({grist: {getOption: () => Promise.reject(new Error("option indisponible"))}});
+test("un stockage indisponible a la lecture laisse quand meme le reste du chargement aboutir", async () => {
+  const w = loadClubs({localStorage: {getItem() { throw new Error("navigation privée"); }, setItem() {}}});
   await w.load();
   assert.equal(w.state.dashboardUrl, "");
   assert.deepEqual(plain(w.state.unreadable), [], "le chargement des tables a bien abouti");
