@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clubs</title>
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body class="outil-agent">
+    <div id="listView">
+      <div class="topbar">
+        <h1>Clubs</h1>
+      </div>
+
+      <section class="filters-bar">
+        <div class="filters-body" id="filters"></div>
+        <button class="btn btn-link btn-sm" type="button" id="resetBtn"><span class="btn-content">Réinitialiser les filtres</span></button>
+      </section>
+
+      <section class="table-panel">
+        <table>
+          <caption class="sr-only">Liste des clubs</caption>
+          <colgroup>
+            <col class="col-club">
+            <col class="col-cp">
+            <col class="col-ville">
+            <col class="col-dd">
+            <col class="col-dr">
+            <col class="col-fed">
+            <col class="col-voir">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Club</th>
+              <th scope="col">Code postal</th>
+              <th scope="col">Ville</th>
+              <th scope="col">DD</th>
+              <th scope="col">DR</th>
+              <th scope="col">Fédération</th>
+              <th aria-label="Voir la fiche"></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty is-hidden" id="empty">Aucun club ne correspond aux filtres.</div>
+      </section>
+    </div>
+
+    <section class="fiche-view is-hidden" id="ficheView"></section>
+
+    <script src="script.js"></script>
+  </body>
+</html>

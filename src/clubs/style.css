@@ -1,0 +1,557 @@
+:root {
+  color-scheme: light;
+  /* Memes alias que les autres widgets, adosses aux jetons du design system
+     France Travail (contexte .outil-agent). */
+  --font-title: Marianne, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Marianne, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --radius-control: var(--ft--button-border-radius-sm);
+  --radius-surface: var(--ft--button-border-radius);
+  --bg: var(--ft--color-background-neutral-default-weakest);
+  --panel: var(--ft-color-background-layout-body);
+  --ink: var(--ft--color-text-color);
+  --muted: var(--ft--color-background-neutral-default-strong);
+  --line: var(--ft--color-border-neutral-default-weaker);
+  --accent: var(--ft--color-primary);
+  --logo-size: 128px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+button, select, input {
+  font: inherit;
+}
+
+button:not(.btn):not(.form-control), select, input { border-radius: var(--radius-control); }
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--ft--color-primary-20);
+  outline-offset: 2px;
+}
+
+/* Le design system ne pose pas d'anneau de focus sur les liens ; celui-ci prend
+   la couleur primaire, a 5,82:1 sur le panneau (lien vers l'Observatoire des
+   territoires quand un classement FRR n'est pas dans la liste connue). */
+a:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 2px;
+}
+
+.topbar {
+  padding: 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 4px solid var(--ft--icon-info);
+  font-family: var(--font-title);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.is-hidden { display: none; }
+
+.muted-text { color: var(--muted); }
+
+/* Filtres en bandeau horizontal, pas dans une colonne repliable : la liste des
+   clubs n'a que quatre filtres, une barre au-dessus du tableau suffit. */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px 24px;
+  padding: 20px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.filters-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  flex: 1 1 auto;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  width: 220px;
+}
+
+.filter-search-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+/* Nos deux controles qui tiennent lieu de liste deroulante portent l'indicateur
+   exact du design system, repris tel quel de « select.form-control » puisque
+   aucune classe ne l'expose ailleurs. */
+.filter-search-dropdown summary {
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01LjM1MTMyIDcuMTI2NDVDNS4yMTcxMyA2Ljg5NTIxIDUuMjE2MTcgNi42MTAwMiA1LjM0ODgyIDYuMzc3OUw3LjM0ODgyIDIuODc3OUM3LjQ4MjM1IDIuNjQ0MjEgNy43MzA4NiAyLjUgOCAyLjVDOC4yNjkxNCAyLjUgOC41MTc2NSAyLjY0NDIxIDguNjUxMTggMi44Nzc5TDEwLjY1MTIgNi4zNzc5QzEwLjc4MzggNi42MTAwMiAxMC43ODI5IDYuODk1MjEgMTAuNjQ4NyA3LjEyNjQ1QzEwLjUxNDUgNy4zNTc2OCAxMC4yNjc0IDcuNSAxMCA3LjVINkM1LjczMjY1IDcuNSA1LjQ4NTUxIDcuMzU3NjggNS4zNTEzMiA3LjEyNjQ1WiIgZmlsbD0iIzJFMkUzMSIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTEwLjY0ODcgOS4zNzM1NUMxMC43ODI5IDkuNjA0NzkgMTAuNzgzOCA5Ljg4OTk4IDEwLjY1MTIgMTAuMTIyMUw4LjY1MTE4IDEzLjYyMjFDOC41MTc2NSAxMy44NTU4IDguMjY5MTQgMTQgOCAxNEM3LjczMDg2IDE0IDcuNDgyMzUgMTMuODU1OCA3LjM0ODgyIDEzLjYyMjFMNS4zNDg4MiAxMC4xMjIxQzUuMjE2MTcgOS44ODk5OCA1LjIxNzEzIDkuNjA0NzkgNS4zNTEzMiA5LjM3MzU1QzUuNDg1NTEgOS4xNDIzMiA1LjczMjY1IDkgNiA5SDEwQzEwLjI2NzQgOSAxMC41MTQ1IDkuMTQyMzIgMTAuNjQ4NyA5LjM3MzU1WiIgZmlsbD0iIzJFMkUzMSIvPgo8L3N2Zz4K");
+  background-repeat: no-repeat;
+  background-position: right .5rem center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-search-dropdown summary::-webkit-details-marker { display: none; }
+
+.filter-search-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: 0 4px 12px var(--ft-color-background-opacity-dark-opacity);
+}
+
+.filter-search-options {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.filter-search-option {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-search-option:hover,
+.filter-search-option:focus-visible {
+  background: var(--ft--color-background-primary-weakest);
+}
+
+.filters-body select,
+.filters-body select option {
+  font-family: var(--font-body);
+  font-weight: 400 !important;
+}
+
+/* Le tableau ne se transforme pas en liste de cartes sous 400 px : il defile
+   horizontalement dans son panneau plutot que de perdre ses colonnes, comme
+   celui du tableau de bord des actions. */
+.table-panel {
+  margin: 24px;
+  overflow-x: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
+}
+
+/* Sans largeur minimale, le navigateur comprime chaque colonne pour tenir dans
+   le panneau au lieu de faire defiler le tableau : sur un ecran etroit, le nom
+   du club finissait ecrase a quelques caracteres par ligne. Cette largeur est
+   celle qui laisse a chaque colonne assez de place pour son contenu le plus
+   courant, sans etre la largeur du contenu le plus long (les longues listes de
+   federations continuent de passer a la ligne, ce qui reste lisible). */
+table { width: 100%; min-width: 760px; border-collapse: collapse; }
+
+/* Repartition en proportions, pas en pixels fixes : le nom du club prenait
+   toute la place laissee libre par les autres, au point de coincer Ville, DD et
+   DR — un nom de region un peu long (« Occitanie ») y perdait sa derniere
+   lettre a la ligne suivante. Un simple indice pour l'algorithme de largeur
+   automatique, pas une contrainte stricte : le contenu le plus long continue de
+   passer a la ligne plutot que de deborder. */
+.col-club { width: 22%; }
+.col-cp { width: 9%; }
+.col-ville { width: 13%; }
+.col-dd { width: 13%; }
+.col-dr { width: 15%; }
+.col-fed { width: 27%; }
+
+th {
+  height: var(--ft--table-th-height);
+  padding: .25rem var(--ft--table-padding-x);
+  background: var(--ft--color-background-primary-weakest);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  padding: var(--ft--table-padding-y) var(--ft--table-padding-x);
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
+
+.club-name { font-weight: 700; }
+
+/* Sans cette regle, la colonne « Voir » se retrouve pressee par les colonnes
+   voisines (une fedeation peut faire une ligne tres longue) et son bouton
+   finit par retrecir jusqu'a faire tenir « Voir » lettre par lettre a la
+   verticale. width sur <col> ne suffit pas a l'empecher, il faut l'interdire
+   sur la cellule elle-meme. */
+th:last-child,
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 28px;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Fiche : motif carte repris du tableau de bord des actions (edit-panel /
+   edit-header / edit-card / section-head), pour la meme raison qui l'y a fait
+   choisir — separer visiblement chaque bloc d'information, ici « Club », et
+   bientot « Contacts » et « Actions » en dessous.
+   --------------------------------------------------------------------------- */
+
+.edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.edit-header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+/* Le focus programmatique n'affiche pas d'anneau par defaut sur un titre : sans
+   outline, rien ne montre a l'oeil que la page a change quand on arrive depuis
+   la liste. */
+.edit-header h1:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 4px;
+}
+
+.edit-layout {
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+}
+
+.edit-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-surface);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  background: var(--ft--color-background-primary-weakest);
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-family: var(--font-title);
+}
+
+.edit-card > .section-head {
+  border-top-left-radius: calc(var(--radius-surface) - 1px);
+  border-top-right-radius: calc(var(--radius-surface) - 1px);
+}
+
+/* Partagee par les trois cartes (Club, Contacts, Actions) : meme respiration
+   interne partout, une seule regle a ajuster sur petit ecran. */
+.card-body { padding: 24px; }
+
+.club-summary-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.club-identity { min-width: 0; }
+
+/* Contacts et actions cote a cote, sous la carte Club : deux cartes distinctes,
+   pas une troisieme colonne dans le meme edit-row que le club (leur contenu —
+   des listes qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
+.edit-row-lists {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.empty-note {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.contact-list,
+.action-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Une liste, pas un tableau : chaque champ occupe la largeur de son contenu, pas
+   une colonne calculee sur toute la carte. Voir fiche-club pour le detail du
+   raisonnement (meme regle, copiee a l'identique). */
+.contact-item,
+.action-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 24px;
+  row-gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.contact-name { flex: 0 1 auto; font-weight: 700; }
+.contact-item a,
+.contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
+
+.action-date { flex: 0 1 auto; }
+.action-status { flex: 0 0 auto; }
+.action-dispositif { flex: 1 1 160px; min-width: 0; max-width: 320px; }
+
+.action-funding {
+  display: flex;
+  flex: 0 1 200px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+/* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,
+   une colonne flex n'a pas besoin d'autre chose) et cale a droite. */
+.funding-rate { align-self: flex-end; }
+
+.funding-bar { width: 100%; }
+
+.funding-bar .progress-bar { max-width: 100%; }
+
+/* Reprise de la pastille de statut du tableau de bord : le texte garde l'encre
+   par defaut (11,31:1 a 12,97:1 sur ces fonds), seul le fond change. */
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  background: var(--ft--color-background-neutral-default-weaker);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-tag.projet { background: var(--ft-color-background-info-weakest); }
+.status-tag.planifie,
+.status-tag.planifiee,
+.status-tag.a-confirmer { background: var(--ft-color-background-warning-weakest); }
+.status-tag.realise,
+.status-tag.realisee { background: var(--ft-color-background-success-weakest); }
+.status-tag.annule,
+.status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+
+/* Detail d'une action, ouvert par « Voir » dans la carte Actions elle-meme. */
+.action-detail dt { font-weight: 700; }
+
+.action-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 16px 0;
+}
+
+.action-fields dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Sans ceci, .action-funding (display:flex) n'a pas de parent flex pour lui
+   donner une largeur : bloc bord a bord, elle s'etirait sur toute la largeur
+   de la fiche au lieu de rester dans sa colonne. La grille du champ, elle,
+   la contient deja correctement — juste un peu d'air au-dessus du texte. */
+.action-field-financement .action-funding { margin-top: 8px; }
+
+.action-dashboard-link { margin-top: 16px; }
+
+.action-detail h3 {
+  margin: 12px 0 8px;
+  font-family: var(--font-title);
+  font-size: 17px;
+}
+
+.action-detail h3:focus-visible {
+  outline: 2px solid var(--ft--color-primary);
+  outline-offset: 4px;
+}
+
+/* Repli propose tant que l'adresse de la page Dashboard n'est pas renseignee :
+   un simple <details>, pas la liste deroulante des filtres (une seule ligne,
+   pas de recherche a faire). */
+.dashboard-setting {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.dashboard-setting summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dashboard-setting-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dashboard-setting-row .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sans ceci, le bouton se retrecit avec le champ jusqu'a rogner son propre
+   texte (« Enregistrer » perdait son dernier « r ») : seul le champ doit
+   ceder de la place. */
+.dashboard-setting-row .btn {
+  flex: 0 0 auto;
+}
+
+.club-line {
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.zonages {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+}
+
+.zonage {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.zonage dt { font-weight: 700; }
+.zonage dd { margin: 0; }
+
+.zonage-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.club-logo {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+}
+
+.club-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Meme raisonnement que la bordure du cadre vide : la bordure claire des
+   panneaux s'y perdrait, le gris des textes secondaires se voit. Le cadre
+   s'elargit au besoin, le bouton du design system (126 px en btn-sm) ne
+   tenant pas dans les 112 px utiles d'un cadre a la taille du logo. */
+.club-logo-empty {
+  width: auto;
+  min-width: var(--logo-size);
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px dashed var(--muted);
+  text-align: center;
+}
+
+.logo-input { display: none; }
+
+.logo-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.logo-message.is-error { color: var(--ft--icon-error); }
+
+/* Contacts et actions cote a cote ne laissent plus assez de place a leurs
+   colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
+@media (max-width: 900px) {
+  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 16px; }
+  .filters-bar { padding: 16px; }
+  .filter-field { width: 100%; }
+  .table-panel { margin: 16px; }
+  :root { --logo-size: 96px; }
+  /* Le titre du club peut prendre deux lignes ; cote a cote avec le bouton, il
+     ne lui laissait qu'une poignee de pixels et « Retour a la liste » se
+     coupait en deux mots. Empiler regle les deux a la fois. */
+  .edit-header { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .edit-layout { padding: 16px; gap: 16px; }
+  .card-body { padding: 16px; }
+  .club-summary-header { grid-template-columns: minmax(0, 1fr); }
+  /* Meme raisonnement que pour Contacts/Actions dans fiche-club : chaque champ
+     d'un contact ou d'une action prend sa propre ligne, sans quoi il ne reste
+     presque plus de place a chacun. */
+  .contact-item,
+  .action-item { flex-direction: column; align-items: stretch; }
+  .action-dispositif,
+  .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
+  .action-fields { grid-template-columns: minmax(0, 1fr); }
+}
