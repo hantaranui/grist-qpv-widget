@@ -20,12 +20,13 @@ src/
   qpv-widget/index.html, style.css, script.js
   actions-dashboard/index.html, style.css, script.js
   fiche-club/index.html, style.css, script.js
+  clubs/index.html, style.css, script.js
 ```
 
 Grist et GitHub Pages ont besoin d'un seul fichier HTML par widget. Le script
 `build.js` reassemble donc chaque dossier `src/<widget>/` en un unique fichier
 `<widget>.html` a la racine du depot (`qpv-widget.html`, `actions-dashboard.html`,
-`fiche-club.html`) :
+`fiche-club.html`, `clubs.html`) :
 
 ```text
 npm run build
@@ -75,9 +76,10 @@ npm test
 
 Les tests s'executent avec le lanceur integre de Node, sans dependance. Ils
 couvrent la logique pure du tableau de bord (construction des actions a partir
-des tables Grist, filtres, tri, listes de choix) et de la fiche club (fiche,
-tri, taux de financement, zonages, televersement du logo), et verifient que les
-fichiers HTML assembles a la racine correspondent bien aux sources de `src/`.
+des tables Grist, filtres, tri, listes de choix), de la fiche club et du widget
+clubs (fiche, tri, taux de financement, zonages, televersement du logo, contrat
+de navigation vers le tableau de bord), et verifient que les fichiers HTML
+assembles a la racine correspondent bien aux sources de `src/`.
 
 `src/actions-dashboard/script.js` etant un script de page et non un module, il
 est evalue dans un bac a sable muni de doublures du DOM et de l'API Grist :
@@ -166,6 +168,85 @@ televerse l'image vers l'API de Grist avec un jeton d'ecriture, puis ecrit la
 piece jointe dans `Structures.Logo`. Ce jeton porte les droits de l'utilisateur,
 jamais plus : si les regles d'acces du document ne l'autorisent pas a modifier
 `Structures`, l'enregistrement est refuse et la fiche le dit.
+
+La requete d'envoi doit porter l'en-tete `X-Requested-With: XMLHttpRequest`.
+Sans lui, Grist rejette l'envoi avant meme de repondre avec ses en-tetes CORS
+habituels : le navigateur ne voit alors qu'un echec reseau (« Failed to
+fetch »), sans aucun detail. Constate le 2026-09-29, confirme par deux
+implementations independantes (un tutoriel de la communaute Grist, un widget
+deja en service sur une autre instance) qui posent toutes les deux cet
+en-tete. La lecture (telechargement), elle, n'en a pas besoin.
+
+## Widget clubs
+
+`clubs.html` est le point d'entree habituel : une liste de clubs, filtrable,
+d'ou s'ouvre la fiche d'un club. Meme motif que `actions-dashboard`
+(`state.view` bascule entre liste et fiche), meme contenu de fiche que
+`fiche-club` ci-dessus (identite, zonages, contacts, actions), mais atteint
+depuis une liste plutot qu'en associant directement une ligne au widget.
+
+URL a utiliser dans Grist :
+
+```text
+https://hantaranui.github.io/grist-qpv-widget/clubs.html
+```
+
+Configuration : `Structures` comme table du widget, acces complet — memes
+raisons que `fiche-club`.
+
+### Liste
+
+Quatre filtres (Region, Departement, Federation, Club) au-dessus d'un tableau
+sans en-tete de tri : Club, Code postal, Ville, DD, DR, Federation, puis un
+bouton **Voir** par ligne. La federation d'un club n'est portee par aucune
+colonne : elle est deduite des `Actions` qu'il porte. Dix clubs, au 28/09/2026,
+en portent de plusieurs federations differentes — la liste et le filtre les
+affichent toutes plutot que d'en choisir une a la place du metier.
+
+### Fiche
+
+Trois cartes, dans le style du tableau de bord des actions (bandeau
+`ACTION`/`AGENCE`/`CLUB` de son propre formulaire) :
+
+- **Club** : logo, SIRET, adresse, zonages QPV et FRR — voir la section
+  « Widget fiche club » ci-dessus, le code est partage a l'identique.
+- **Contacts** : prenom, nom, e-mail, telephone.
+- **Actions** : date, statut, dispositif, part du budget couverte, et un
+  bouton **Voir** qui ouvre le detail complet de l'action (intitule, format,
+  public, participants, ville, lieu, commentaire, financement) dans la meme
+  carte, en lecture seule.
+
+### Ouvrir une action dans le tableau de bord
+
+Le detail d'une action, dans ce widget, reste en lecture seule : la fiche
+modifiable de l'action vit dans `actions-dashboard`, sur une autre page Grist.
+Comme Grist ne charge que les widgets de la page affichee, les deux widgets ne
+peuvent pas se signaler directement tant que cette page n'est pas ouverte.
+
+Le detail d'une action propose donc, sous son detail en lecture seule, soit un
+lien reel vers cette page (si son adresse a ete renseignee), soit un champ pour
+la renseigner une fois — reglage propre a cette pose du widget
+(`grist.setOption`/`getOption`), jamais code en dur (le depot est public,
+cette adresse est propre a chaque document).
+
+Au clic sur ce lien, juste avant que le navigateur ne suive `target="_top"`
+(verifie le 2026-09-29 : l'iframe du widget n'est pas cantonnee par un
+`sandbox`, un clic reel navigue bien hors d'elle — a revalider si Grist change
+sa facon de poser les widgets), une note est deposee dans le stockage du
+navigateur, partage entre les pages d'un meme document puisque tous les
+widgets d'un document viennent de la meme adresse :
+
+```text
+cle   : clubs-ouvrir-action-v1
+valeur: {"actionId": <identifiant de la ligne Grist>, "ts": <Date.now()>}
+```
+
+Le tableau de bord (branche `main`, `src/actions-dashboard/`) la lit a son
+chargement, l'efface aussitot — meme illisible ou perimee, pour qu'une note
+abimee ne reste pas coincee — et ouvre la fiche de l'action si la note a moins
+de 20 secondes et que l'action lui est visible ; sinon il affiche son tableau
+normalement, sans erreur. Cle et forme a ne changer que dans les deux widgets a
+la fois.
 
 ## Installation dans Grist
 

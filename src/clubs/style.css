@@ -414,6 +414,38 @@ td:last-child {
   outline-offset: 4px;
 }
 
+/* Repli propose tant que l'adresse de la page Dashboard n'est pas renseignee :
+   un simple <details>, pas la liste deroulante des filtres (une seule ligne,
+   pas de recherche a faire). */
+.dashboard-setting {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.dashboard-setting summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dashboard-setting-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dashboard-setting-row .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sans ceci, le bouton se retrecit avec le champ jusqu'a rogner son propre
+   texte (« Enregistrer » perdait son dernier « r ») : seul le champ doit
+   ceder de la place. */
+.dashboard-setting-row .btn {
+  flex: 0 0 auto;
+}
+
 .club-line {
   margin: 0 0 4px;
   overflow-wrap: anywhere;

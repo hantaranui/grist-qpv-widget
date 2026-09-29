@@ -425,6 +425,38 @@ td:last-child {
   outline-offset: 4px;
 }
 
+/* Repli propose tant que l'adresse de la page Dashboard n'est pas renseignee :
+   un simple <details>, pas la liste deroulante des filtres (une seule ligne,
+   pas de recherche a faire). */
+.dashboard-setting {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.dashboard-setting summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dashboard-setting-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dashboard-setting-row .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sans ceci, le bouton se retrecit avec le champ jusqu'a rogner son propre
+   texte (« Enregistrer » perdait son dernier « r ») : seul le champ doit
+   ceder de la place. */
+.dashboard-setting-row .btn {
+  flex: 0 0 auto;
+}
+
 .club-line {
   margin: 0 0 4px;
   overflow-wrap: anywhere;
@@ -642,16 +674,31 @@ const FILTERS = [
 // tableau de bord pour ses filtres de faible cardinalite.
 const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 
+// Reglage propre a cette pose du widget (grist.getOption/setOption, pas une
+// colonne ni une donnee du document) : l'adresse de la page Grist qui porte le
+// tableau de bord des actions. Ne peut pas etre codee en dur (le depot est
+// public, cette adresse est propre a chaque document), donc saisie une fois
+// par qui installe le widget, dans la carte Actions elle-meme.
+const DASHBOARD_URL_OPTION = 'dashboardPageUrl';
+
+// Contrat partage avec src/actions-dashboard/ (branche main, tableau de bord) :
+// avant de suivre le lien vers sa page, on depose ici l'action a ouvrir. Le
+// tableau de bord la lit a son chargement et l'efface aussitot. Meme cle,
+// meme forme des deux cotes — a ne changer qu'en accord avec l'autre widget.
+const OUVRIR_ACTION_CLE = 'clubs-ouvrir-action-v1';
+
 const state = {
   raw: {}, clubs: [], filters: {}, view: 'list', currentId: null,
   // Jeton en lecture seule pour l'URL du logo, l'etat du televersement en
   // cours, les tables refusees par les regles d'acces (Contacts/Actions le
-  // disent alors plutot que d'afficher une liste vide a tort), et l'action
-  // dont le detail est ouvert dans la carte Actions.
+  // disent alors plutot que d'afficher une liste vide a tort), l'action dont
+  // le detail est ouvert dans la carte Actions, et l'adresse (eventuelle) de
+  // la page Dashboard.
   readAccess: null,
   upload: {busy: false, message: '', kind: ''},
   unreadable: [],
   actionId: null,
+  dashboardUrl: '',
 };
 
 // Element a rendre le focus en quittant le detail d'une action, pour la meme
@@ -677,18 +724,22 @@ load();
 
 async function load() {
   try {
-    const [{raw, unreadable}, readAccess] = await Promise.all([
+    const [{raw, unreadable}, readAccess, dashboardUrl] = await Promise.all([
       loadTables(),
       // Jeton en lecture seule pour l'URL du logo : construit une fois, reutilise
       // pour toute fiche ouverte ensuite (voir logoUrl). Un rechargement (par
       // exemple apres un ajout de logo) en redemande un, le premier expirant au
       // bout de quelques minutes.
       grist.docApi.getAccessToken({readOnly: true}).catch(() => null),
+      // Reglage propre a cette pose du widget, pas une donnee du document :
+      // voir DASHBOARD_URL_OPTION.
+      grist.getOption(DASHBOARD_URL_OPTION).catch(() => null),
     ]);
     state.raw = raw;
     state.unreadable = unreadable;
     state.clubs = buildClubs(state.raw);
     state.readAccess = readAccess;
+    state.dashboardUrl = dashboardUrl || '';
     render();
   } catch (error) {
     document.getElementById('rows').innerHTML = '';
@@ -1018,6 +1069,7 @@ function renderFiche() {
   if (actionOuverte) {
     document.getElementById('backToActions').addEventListener('click', closeActionDetail);
     document.getElementById('actionDetailTitle').focus();
+    bindDashboardLink();
   } else {
     document.getElementById('clubName').focus();
     bindActionButtons();
@@ -1239,7 +1291,71 @@ function renderActionDetail(action) {
       ${action.commentaire ? `<p class="club-line"><strong>Commentaire</strong><br>${escapeHtml(action.commentaire)}</p>` : ''}
       <p class="club-line">Budget : <strong>${formatEuro(action.budget)}</strong></p>
       ${renderFunding(action)}
+      ${renderDashboardLink(action)}
     </div>`;
+}
+
+// Lien vers la fiche modifiable de l'action, dans le tableau de bord (autre
+// widget, autre page Grist). Pas de canal direct entre les deux tant que cette
+// page n'est pas affichee : un vrai lien (target="_top") l'ouvre, et une note
+// deposee juste avant dans le stockage du navigateur (partage entre les pages
+// d'un meme document) lui dit quelle action ouvrir des son chargement. Sans
+// l'adresse de cette page — propre a chaque document, donc non codee en dur —
+// on ne peut proposer qu'un champ pour la renseigner une fois.
+function renderDashboardLink(action) {
+  if (!state.dashboardUrl) {
+    return `<details class="dashboard-setting">
+      <summary>Ouvrir cette action dans le tableau de bord</summary>
+      <p class="club-line muted-text">Collez l'adresse de la page Grist du tableau de bord des actions (copiée depuis la barre d'adresse), une seule fois pour ce widget.</p>
+      <div class="dashboard-setting-row">
+        <input class="form-control" type="url" id="dashboardUrlInput" placeholder="https://...">
+        <button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl"><span class="btn-content">Enregistrer</span></button>
+      </div>
+    </details>`;
+  }
+  return `<a class="btn btn-secondary btn-sm" id="openInDashboard" href="${escapeAttr(state.dashboardUrl)}" target="_top" data-action-id="${action.id}"><span class="btn-content">Ouvrir dans le tableau de bord</span></a>`;
+}
+
+// Ecrit la note que le tableau de bord lira a son prochain chargement. Isolee
+// dans sa propre fonction, testable sans DOM ni navigation reelle : c'est elle
+// qui porte le contrat partage avec src/actions-dashboard/ (meme cle, meme
+// forme), pas l'evenement de clic qui l'appelle.
+function noterOuvertureAction(actionId) {
+  try {
+    localStorage.setItem(OUVRIR_ACTION_CLE, JSON.stringify({actionId, ts: Date.now()}));
+  } catch (error) {
+    // Stockage plein ou interdit (navigation privee) : la navigation suit son
+    // cours, le tableau de bord affichera simplement sa liste, pas d'erreur
+    // visible pour l'utilisateur d'une fonctionnalite qui reste secondaire.
+  }
+}
+
+function bindDashboardLink() {
+  const lien = document.getElementById('openInDashboard');
+  if (lien) {
+    // Sans preventDefault : la note est ecrite de facon synchrone, puis le
+    // lien suit son cours normalement, comme n'importe quel lien.
+    lien.addEventListener('click', () => noterOuvertureAction(Number(lien.dataset.actionId)));
+    return;
+  }
+  const bouton = document.getElementById('saveDashboardUrl');
+  if (bouton) bouton.addEventListener('click', enregistrerAdresseDashboard);
+}
+
+// Isolee du clic qui l'appelle, comme noterOuvertureAction : testable sans DOM
+// reel, et c'est elle qui porte la logique (valeur vide ignoree, echec du
+// reglage journalise mais pas bloquant pour l'utilisateur).
+async function enregistrerAdresseDashboard() {
+  const input = document.getElementById('dashboardUrlInput');
+  const valeur = input.value.trim();
+  if (!valeur) return;
+  try {
+    await grist.setOption(DASHBOARD_URL_OPTION, valeur);
+  } catch (error) {
+    console.warn("Réglage de l'adresse du tableau de bord non enregistré", error);
+  }
+  state.dashboardUrl = valeur;
+  render();
 }
 
 function renderAddress(club, communeName) {
