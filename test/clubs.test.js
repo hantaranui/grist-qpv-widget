@@ -383,6 +383,13 @@ test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas dive
 
 const CSS = fs.readFileSync(path.join(SRC, "style.css"), "utf8");
 
+test("le pourcentage de financement se cale a droite, au-dessus de la barre", () => {
+  assert.match(CSS, /\.funding-rate \{ align-self: flex-end; \}/);
+  const html = loadClubs().renderFunding({rate: 0.6});
+  assert.ok(html.indexOf("funding-rate") < html.indexOf("funding-bar"),
+    "le pourcentage precede la barre, pour s'afficher au-dessus d'elle");
+});
+
 test("la feuille ne reprend aucun nom de classe du design system", () => {
   const reserves = ["table", "layout", "tag", "section", "btn", "badge", "card", "alert", "modal",
     "dropdown", "form-control", "form-label", "form-check", "container", "row", "col",

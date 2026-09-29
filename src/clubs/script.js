@@ -652,8 +652,8 @@ function renderFunding(action) {
   // La barre plafonne a 100 % ; le texte, lui, dit le depassement eventuel.
   const bar = Math.min(value, 100);
   return `<span class="action-funding">
-      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
       <span class="funding-rate">${value} % financé</span>
+      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
     </span>`;
 }
 

@@ -366,6 +366,10 @@ td:last-child {
   min-width: 140px;
 }
 
+/* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,
+   une colonne flex n'a pas besoin d'autre chose) et cale a droite. */
+.funding-rate { align-self: flex-end; }
+
 .funding-bar { width: 100%; }
 
 .funding-bar .progress-bar { max-width: 100%; }

@@ -221,6 +221,10 @@ a:focus-visible {
   min-width: 140px;
 }
 
+/* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,
+   une colonne flex n'a pas besoin d'autre chose) et cale a droite. */
+.funding-rate { align-self: flex-end; }
+
 .funding-bar { width: 100%; }
 
 .funding-bar .progress-bar { max-width: 100%; }
@@ -716,8 +720,8 @@ function renderFunding(action) {
   // La barre plafonne a 100 % ; le texte, lui, dit le depassement eventuel.
   const bar = Math.min(value, 100);
   return `<span class="action-funding">
-      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
       <span class="funding-rate">${value} % financé</span>
+      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
     </span>`;
 }
 

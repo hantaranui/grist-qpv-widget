@@ -126,6 +126,8 @@ test("la barre plafonne a 100 % mais le texte dit le depassement", () => {
   assert.match(html, /aria-valuetext="120 % du budget financé"/);
   assert.match(html, /width:100%/);
   assert.match(html, /120 % financé/);
+  assert.ok(html.indexOf("funding-rate") < html.indexOf("funding-bar"),
+    "le pourcentage precede la barre, pour s'afficher au-dessus d'elle");
   assert.match(w.renderFunding({rate: null}), /Budget non renseigné/);
 });
 
@@ -480,6 +482,10 @@ test("seules les images raisonnables sont acceptees", () => {
 // --- Feuille de style ----------------------------------------------------------
 
 const CSS = fs.readFileSync(path.join(SRC, "style.css"), "utf8");
+
+test("le pourcentage de financement se cale a droite, au-dessus de la barre", () => {
+  assert.match(CSS, /\.funding-rate \{ align-self: flex-end; \}/);
+});
 
 test("la feuille ne reprend aucun nom de classe du design system", () => {
   // Meme liste que test/styles.test.js : une classe redefinie sous un nom du
