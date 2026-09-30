@@ -176,5 +176,5 @@ test("le style de la fenetre ne redefinit aucune classe du design system", () =>
   // La fenetre n'a que des classes locales (add-action-*) et un selecteur
   // d'identifiant pour l'afficher : .modal et ses parts restent au design system.
   assert.ok(!/^\.modal/m.test(css), "aucune regle locale ne commence par .modal");
-  assert.match(css, /#addActionModal \.modal \{ display: block; overflow-y: auto; \}/);
+  assert.match(css, /#addActionModal \.modal, #deleteActionModal \.modal \{ display: block; overflow-y: auto; \}/);
 });

@@ -467,7 +467,7 @@ function buildFiche(raw, clubId) {
   });
 
   const actions = sortActions((raw.Actions || [])
-    .filter(action => action.Club === clubId)
+    .filter(action => action.Club === clubId && !enCorbeille(action))
     .map(action => {
       const dispositif = dispositifs.get(action.Dispositif) || {};
       const budget = Number(action.Budget || 0);
@@ -513,6 +513,12 @@ function percent(rate) {
 // Plus recentes d'abord. Les actions sans date (souvent « A confirmer », datees
 // d'une periode approximative) passent en fin de liste, les plus recemment
 // saisies en tete.
+// Une action supprimee reste dans Grist : sa colonne Corbeille (booleen) vaut vrai ; « Oui » est aussi reconnu.
+function enCorbeille(action) {
+  const valeur = action.Corbeille;
+  return valeur === true || String(valeur || '').trim().toLowerCase() === 'oui';
+}
+
 function sortActions(actions) {
   return [...actions].sort((a, b) => {
     if (a.date !== null && b.date !== null && a.date !== b.date) return b.date - a.date;

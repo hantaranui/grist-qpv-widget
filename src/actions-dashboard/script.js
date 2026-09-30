@@ -35,7 +35,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -238,12 +238,20 @@ function rows(table) {
   });
 }
 
+// Une action supprimee reste dans Grist : sa colonne Corbeille (booleen) passe a
+// vrai. Le texte « Oui » est aussi reconnu, au cas ou une colonne serait restee
+// de type texte.
+function enCorbeille(action) {
+  const valeur = action.Corbeille;
+  return valeur === true || String(valeur || '').trim().toLowerCase() === 'oui';
+}
+
 function byId(items) {
   return new Map(items.map(item => [item.id, item]));
 }
 
 function buildActions(raw) {
-  const actions = byId(raw.Actions);
+  const actions = byId(raw.Actions.filter(action => !enCorbeille(action)));
   const agencies = byId(raw.Agences);
   const dds = byId(raw.DD);
   const drs = byId(raw.DR);
@@ -263,7 +271,7 @@ function buildActions(raw) {
     return acc;
   }, {});
 
-  return raw.Actions.map(action => {
+  return raw.Actions.filter(action => !enCorbeille(action)).map(action => {
     const agency = agencies.get(action.Agence) || {};
     const dd = dds.get(action.DD) || {};
     const dr = drs.get(action.DR) || {};
@@ -565,7 +573,7 @@ function renderEdit() {
       <div class="edit-header-title">
       <h1 id="editHeading">${escapeHtml(action.nomComplet || 'Modifier une action')}</h1>
       </div>
-      <div class="edit-header-actions"><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
+      <div class="edit-header-actions"><button type="button" class="btn btn-primary btn-supprimer" id="deleteAction"><span class="btn-content">Supprimer</span></button><button type="button" class="btn btn-secondary" id="cancelEdit"><span class="btn-content">Annuler</span></button><button class="btn btn-primary" type="submit" form="editForm" id="saveEdit"><span class="btn-content">Enregistrer</span></button></div>
     </header>
     <div class="alert alert-error edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
     <form id="editForm">
@@ -640,6 +648,7 @@ function renderEdit() {
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
+  document.getElementById('deleteAction').addEventListener('click', () => openDeleteAction(action));
   focusFirstField(editView);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -871,6 +880,112 @@ async function saveEdit(event, action) {
       : "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
     message.classList.remove('is-hidden');
     submit.disabled = false;
+    console.error(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Suppression d'une action. La ligne n'est jamais retiree de Grist : on passe sa
+// colonne Corbeille (booleen) a vrai, et tous les ecrans ignorent les actions en corbeille.
+// Deux fenetres possibles : un refus (l'action porte des financements, il faut
+// d'abord les retirer) ou une confirmation.
+// ---------------------------------------------------------------------------
+
+let focusAvantSuppression = null;
+
+function deleteDialogHtml(action) {
+  const bloquee = action.financeurs.length > 0;
+  const titre = bloquee ? 'Suppression impossible' : "Suppression d'une action";
+  const texte = bloquee
+    ? 'Vous ne pouvez pas supprimer une action qui comporte des financements. Merci d\'abord de supprimer les financements de cette action ?'
+    : `Êtes-vous sûr de vouloir supprimer l'action <strong>${escapeHtml(action.nomComplet || action.intitule)}</strong> ?`;
+  const boutons = bloquee
+    ? '<button type="button" class="btn btn-primary" id="deleteOk"><span class="btn-content">OK</span></button>'
+    : '<button type="button" class="btn btn-secondary" id="cancelDelete"><span class="btn-content">Annuler</span></button><button type="button" class="btn btn-primary btn-supprimer" id="confirmDelete"><span class="btn-content">Valider</span></button>';
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="deleteActionDialog" role="alertdialog" aria-modal="true" aria-labelledby="deleteActionTitle" aria-describedby="deleteActionText" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header"><h2 class="modal-title" id="deleteActionTitle">${titre}</h2></div>
+        <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="deleteActionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <p id="deleteActionText">${texte}</p>
+        </div>
+        <div class="modal-footer">${boutons}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openDeleteAction(action) {
+  const host = document.getElementById('deleteActionModal');
+  focusAvantSuppression = document.activeElement;
+  state.deleteOpen = true;
+  host.innerHTML = deleteDialogHtml(action);
+  document.body.classList.add('modal-open');
+  const ok = document.getElementById('deleteOk');
+  if (ok) ok.addEventListener('click', closeDeleteAction);
+  else {
+    document.getElementById('cancelDelete').addEventListener('click', closeDeleteAction);
+    document.getElementById('confirmDelete').addEventListener('click', () => confirmDeleteAction(action));
+  }
+  host.addEventListener('keydown', keepFocusInDelete);
+  (ok || document.getElementById('cancelDelete')).focus();
+  requestResize();
+}
+
+function closeDeleteAction() {
+  const host = document.getElementById('deleteActionModal');
+  host.removeEventListener('keydown', keepFocusInDelete);
+  host.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  state.deleteOpen = false;
+  if (focusAvantSuppression && document.body.contains(focusAvantSuppression)) focusAvantSuppression.focus();
+  focusAvantSuppression = null;
+  requestResize();
+}
+
+function keepFocusInDelete(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeDeleteAction();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = [...document.querySelectorAll('#deleteActionDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+async function confirmDeleteAction(action) {
+  const confirmer = document.getElementById('confirmDelete');
+  const message = document.getElementById('deleteActionMessage');
+  try {
+    confirmer.disabled = true;
+    message.classList.add('is-hidden');
+    await grist.docApi.applyUserActions([['UpdateRecord', 'Actions', action.id, {Corbeille: true}]]);
+    closeDeleteAction();
+    state.view = 'dashboard';
+    state.editingId = null;
+    vueOuvertePour = null;
+    focusAvantFiche = null;
+    await load();
+    document.getElementById('exportBtn').focus();
+  } catch (error) {
+    const detail = String(error?.message || error || '').trim();
+    message.querySelector('.alert-content').textContent = detail
+      ? `La suppression n'a pas abouti : ${detail}`
+      : "La suppression n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
+    message.classList.remove('is-hidden');
+    confirmer.disabled = false;
     console.error(error);
   }
 }
