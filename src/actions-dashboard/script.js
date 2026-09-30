@@ -759,11 +759,13 @@ function financeLabel(financement, financeurs) {
 }
 
 function financeRow(item) {
+  // Un financement deja verse ne se modifie plus et ne se retire plus.
+  const verse = item.statutVersement === 'Versé';
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="form-control finance-select"><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
-    <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}">
+    <select class="form-control finance-select"${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}"${verse ? ' readonly' : ''}>
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
-    <button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>
+    ${verse ? '<span aria-hidden="true"></span>' : '<button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>'}
   </div>`;
 }
 
