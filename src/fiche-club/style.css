@@ -201,14 +201,14 @@ a:focus-visible {
 
 .action-date { flex: 0 1 auto; }
 .action-status { flex: 0 0 auto; }
-.action-dispositif { flex: 1 1 160px; min-width: 0; max-width: 320px; }
+.action-dispositif { flex: 0 1 auto; min-width: 0; max-width: 320px; }
 
 .action-funding {
   display: flex;
-  flex: 0 1 200px;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 4px;
-  min-width: 140px;
+  min-width: 0;
 }
 
 /* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,

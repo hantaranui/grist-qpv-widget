@@ -367,15 +367,20 @@ td:last-child {
 
 .action-date { flex: 0 1 auto; }
 .action-status { flex: 0 0 auto; }
-.action-dispositif { flex: 1 1 160px; min-width: 0; max-width: 320px; }
+.action-dispositif { flex: 0 1 auto; min-width: 0; max-width: 320px; }
 
 .action-funding {
   display: flex;
-  flex: 0 1 200px;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 4px;
-  min-width: 140px;
+  min-width: 0;
 }
+
+/* Seul champ propre a clubs (pas a fiche-club, qui n'a pas ce bouton) : les
+   autres champs restent groupes a gauche, « Voir » seul part a l'extremite
+   droite de la ligne. */
+.action-open { margin-left: auto; }
 
 /* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,
    une colonne flex n'a pas besoin d'autre chose) et cale a droite. */
@@ -1260,7 +1265,7 @@ function renderActionsList(actions) {
       <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFundingPercent(action)}
-      <button class="btn btn-secondary btn-sm" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
+      <button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
     </li>`).join('')}</ul>`;
 }
 

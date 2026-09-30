@@ -647,7 +647,7 @@ function renderActionsList(actions) {
       <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFundingPercent(action)}
-      <button class="btn btn-secondary btn-sm" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
+      <button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
     </li>`).join('')}</ul>`;
 }
 
