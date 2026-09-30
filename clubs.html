@@ -1045,6 +1045,7 @@ function renderFiche() {
             <div class="club-summary-header">
               ${renderLogo(club, logoUrl(club.logoIds, state.readAccess), state.upload)}
               <div class="club-identity">
+                <p class="club-line"><span class="club-name">${escapeHtml(club.nom || 'Club sans nom')}</span></p>
                 <p class="club-line">SIRET : ${club.siret ? escapeHtml(formatSiret(club.siret)) : '<span class="muted-text">non renseigné</span>'}</p>
                 <p class="club-line" id="clubAddress">${renderAddress(club, club.ville)}</p>
                 <dl class="zonages">

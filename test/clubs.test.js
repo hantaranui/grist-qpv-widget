@@ -184,6 +184,8 @@ test("la fiche est une carte « Club », comme le motif du tableau de bord", () 
   assert.match(html, /<header class="edit-header">/);
   assert.match(html, /<button class="btn btn-secondary" type="button" id="backToList">/);
   assert.match(html, /<section class="edit-card">\s*<div class="section-head"><span>Club<\/span><\/div>/);
+  assert.match(html, /<p class="club-line"><span class="club-name">Club Alpha<\/span><\/p>\s*<p class="club-line">SIRET/,
+    "le nom du club est repris au-dessus du SIRET dans la carte, pas seulement dans l'en-tête de page");
 });
 
 test("SIRET non renseigne et ville deja connue s'affichent sans attendre le reseau", () => {
