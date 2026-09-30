@@ -457,7 +457,7 @@ function renderFiche() {
             <div class="section-head"><span id="actionsTitle">Actions</span></div>
             <div class="card-body">
               ${actionOuverte
-                ? renderActionDetail(actionOuverte)
+                ? renderDashboardSetup()
                 : (state.unreadable.includes('Actions')
                   ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
                   : renderActionsList(detail.actions))}
@@ -475,7 +475,7 @@ function renderFiche() {
   if (actionOuverte) {
     document.getElementById('backToActions').addEventListener('click', closeActionDetail);
     document.getElementById('actionDetailTitle').focus();
-    bindDashboardLink();
+    bindDashboardSetup(actionOuverte.id);
   } else {
     document.getElementById('clubName').focus();
     bindActionButtons();
@@ -483,10 +483,17 @@ function renderFiche() {
 }
 
 function bindActionButtons() {
-  document.querySelectorAll('[data-open-action]').forEach(button => {
+  // Lien reel (adresse du tableau de bord deja connue) : la note est ecrite
+  // de facon synchrone, puis le lien suit son cours normalement.
+  document.querySelectorAll('[data-action-id]').forEach(lien => {
+    lien.addEventListener('click', () => noterOuvertureAction(Number(lien.dataset.actionId)));
+  });
+  // Adresse pas encore connue sur cet ordinateur : Voir ouvre le reglage,
+  // qui enchainera lui-meme vers l'action une fois l'adresse enregistree.
+  document.querySelectorAll('[data-configure-action]').forEach(button => {
     button.addEventListener('click', () => {
       focusAvantAction = button;
-      state.actionId = Number(button.dataset.openAction);
+      state.actionId = Number(button.dataset.configureAction);
       render();
     });
   });
@@ -501,10 +508,10 @@ function closeActionDetail() {
 
 // ---------------------------------------------------------------------------
 // Contacts et actions : construction et rendu. Meme calcul, mêmes libelles que
-// fiche-club (voir la note en tete de fichier) ; « Voir » ouvre ici le detail
-// d'une action dans la meme carte, en lecture seule — c'est le contournement
-// convenu tant que le tableau de bord (sur une autre page, une autre branche)
-// n'ecoute pas de navigation entrante.
+// fiche-club (voir la note en tete de fichier) ; « Voir » ouvre directement la
+// fiche modifiable de l'action dans le tableau de bord (autre widget, autre
+// page Grist) plutot qu'un apercu dans cette carte — plus simple maintenant
+// que le tableau de bord ecoute une navigation entrante.
 // ---------------------------------------------------------------------------
 
 function buildFicheDetail(raw, clubId) {
@@ -590,10 +597,6 @@ function formatDate(seconds) {
   return new Date(seconds * 1000).toLocaleDateString('fr-FR', {timeZone: 'UTC'});
 }
 
-function formatEuro(value) {
-  return `${Math.round(Number(value || 0)).toLocaleString('fr-FR')} €`;
-}
-
 // Une colonne ChoiceList arrive encodee ['L', 'BRSA', 'QPV'] par fetchTable.
 function choiceValues(value) {
   if (!Array.isArray(value)) return value ? [String(value)] : [];
@@ -638,38 +641,31 @@ function missing(label, value) {
 
 // Quatre colonnes, dans l'ordre de la maquette : date, statut, dispositif,
 // financement. Sans date, la periode approximative saisie tient lieu de date.
-// Un bouton « Voir » de plus qu'a fiche-club : ouvre le detail complet de
-// l'action, dans cette meme carte.
+// Un bouton « Voir » de plus qu'a fiche-club : un vrai lien vers la fiche de
+// l'action dans le tableau de bord, des que son adresse est connue sur cet
+// ordinateur (adresseDashboardComplete) ; sinon un bouton qui ouvre le
+// reglage (renderDashboardSetup), qui enchainera lui-meme vers l'action une
+// fois l'adresse enregistree.
 function renderActionsList(actions) {
   if (!actions.length) return '<p class="empty-note">Aucune action portée par ce club.</p>';
+  const complete = adresseDashboardComplete();
   return `<ul class="action-list">${actions.map(action => `<li class="action-item">
       <span class="action-date">${action.date !== null ? escapeHtml(formatDate(action.date)) : escapeHtml(action.periode) || '<span class="muted-text">Date à définir</span>'}</span>
       <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFundingPercent(action)}
-      <button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
+      ${complete
+        ? `<a class="btn btn-secondary btn-sm action-open" href="${escapeAttr(complete)}" target="_top" data-action-id="${action.id}"><span class="btn-content">Voir</span></a>`
+        : `<button class="btn btn-secondary btn-sm action-open" type="button" data-configure-action="${action.id}"><span class="btn-content">Voir</span></button>`}
     </li>`).join('')}</ul>`;
 }
 
-// La liste ne montre que le pourcentage, sans la barre : la barre existe deja
-// dans le detail d'une action (« Voir »), redondante ici ou elle prendrait de
-// la place sur chaque ligne pour la meme information.
+// La liste ne montre que le pourcentage : la barre, elle, n'a plus sa place
+// depuis que « Voir » quitte directement ce widget au lieu d'ouvrir un
+// apercu sur place.
 function renderFundingPercent(action) {
   if (action.rate === null) return '<span class="action-funding muted-text">Budget non renseigné</span>';
   return `<span class="action-funding">${percent(action.rate)} % financé</span>`;
-}
-
-function renderFunding(action) {
-  if (action.rate === null) {
-    return '<span class="action-funding"><span class="muted-text">Budget non renseigné</span></span>';
-  }
-  const value = percent(action.rate);
-  // La barre plafonne a 100 % ; le texte, lui, dit le depassement eventuel.
-  const bar = Math.min(value, 100);
-  return `<span class="action-funding">
-      <span class="funding-rate">${value} % financé</span>
-      <span class="progress funding-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${bar}" aria-valuetext="${value} % du budget financé" aria-label="Part du budget financée"><span class="progress-bar" style="width:${bar}%"></span></span>
-    </span>`;
 }
 
 function statusClass(status) {
@@ -679,33 +675,6 @@ function statusClass(status) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-}
-
-// Le detail complet d'une action, en lecture seule : c'est « la fiche de
-// l'action » demandee, faute de pouvoir ouvrir celle, modifiable, du tableau de
-// bord depuis une autre page (voir la note en tete de section).
-function renderActionDetail(action) {
-  const participants = action.participants > 0 ? String(action.participants) : missing('Nombre de participants non renseigné', '');
-  return `
-    <div class="action-detail">
-      <button class="btn btn-secondary btn-sm" type="button" id="backToActions"><span class="btn-content">&larr; Retour aux actions</span></button>
-      <h3 id="actionDetailTitle" tabindex="-1">${escapeHtml(action.intitule || action.dispositif || 'Action sans intitulé')}</h3>
-      <p class="club-line">
-        ${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}
-        · ${action.date !== null ? escapeHtml(formatDate(action.date)) : (action.periode ? escapeHtml(action.periode) : '<span class="muted-text">Date à définir</span>')}
-      </p>
-      <dl class="action-fields">
-        <div><dt>Dispositif</dt><dd>${action.dispositif ? escapeHtml(action.dispositif) : missing('Dispositif non renseigné', '')}</dd></div>
-        <div><dt>Format</dt><dd>${action.format ? escapeHtml(action.format) : missing('Format non renseigné', '')}</dd></div>
-        <div><dt>Public</dt><dd>${action.public ? escapeHtml(action.public) : missing('Public non renseigné', '')}</dd></div>
-        <div><dt>Participants</dt><dd>${participants}</dd></div>
-        <div><dt>Ville</dt><dd>${action.ville ? escapeHtml(action.ville) : missing('Ville non renseignée', '')}</dd></div>
-        <div><dt>Lieu</dt><dd>${action.lieu ? escapeHtml(action.lieu) : missing('Lieu non renseigné', '')}</dd></div>
-        <div class="action-field-financement"><dt>Financement</dt><dd>Budget : <strong>${formatEuro(action.budget)}</strong><br>${renderFunding(action)}</dd></div>
-      </dl>
-      ${action.commentaire ? `<p class="club-line"><strong>Commentaire</strong><br>${escapeHtml(action.commentaire)}</p>` : ''}
-      <div class="action-dashboard-link">${renderDashboardLink(action)}</div>
-    </div>`;
 }
 
 // Lien vers la fiche modifiable de l'action, dans le tableau de bord (autre
@@ -741,23 +710,26 @@ function adresseDashboardComplete() {
   return origine ? origine + valeur : '';
 }
 
-function renderDashboardLink(action) {
-  const complete = adresseDashboardComplete();
-  if (!complete) {
-    const incomplete = state.dashboardUrl
-      ? '<p class="club-line" role="alert"><span class="muted-text">Adresse incomplète : ce widget n\'a pas retrouvé tout seul celle de Grist ici — collez l\'adresse complète (avec https://) plutôt qu\'un chemin.</span></p>'
-      : '';
-    return `<details class="dashboard-setting">
-      <summary>Ouvrir cette action dans le tableau de bord</summary>
+// Ecran de reglage, affiche a la place de la liste des actions quand
+// l'adresse du tableau de bord n'est pas encore connue sur cet ordinateur —
+// atteint en cliquant « Voir » sur une action qui, faute d'adresse, ne peut
+// pas encore etre un lien direct. Une fois l'adresse enregistree,
+// enregistrerAdresseDashboard() enchaine directement vers cette action.
+function renderDashboardSetup() {
+  const incomplete = state.dashboardUrl
+    ? '<p class="club-line" role="alert"><span class="muted-text">Adresse incomplète : ce widget n\'a pas retrouvé tout seul celle de Grist ici — collez l\'adresse complète (avec https://) plutôt qu\'un chemin.</span></p>'
+    : '';
+  return `
+    <div class="action-detail">
+      <button class="btn btn-secondary btn-sm" type="button" id="backToActions"><span class="btn-content">&larr; Retour aux actions</span></button>
+      <h3 id="actionDetailTitle" tabindex="-1">Ouvrir cette action dans le tableau de bord</h3>
       ${incomplete}
       <p class="club-line muted-text">Collez le chemin de la page Grist du tableau de bord des actions — la partie après le nom de domaine, par exemple <code>/o/asso/docId/NomDuDocument/p/7</code> — une seule fois sur cet ordinateur, gardé par ce navigateur. Une adresse complète (avec https://) fonctionne aussi.</p>
       <div class="dashboard-setting-row">
         <input class="form-control" type="text" id="dashboardUrlInput" placeholder="/o/.../p/7">
-        <button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl"><span class="btn-content">Enregistrer</span></button>
+        <button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl"><span class="btn-content">Enregistrer et ouvrir</span></button>
       </div>
-    </details>`;
-  }
-  return `<a class="btn btn-secondary btn-sm" id="openInDashboard" href="${escapeAttr(complete)}" target="_top" data-action-id="${action.id}"><span class="btn-content">Ouvrir dans le tableau de bord</span></a>`;
+    </div>`;
 }
 
 // Ecrit la note que le tableau de bord lira a son prochain chargement. Isolee
@@ -774,22 +746,17 @@ function noterOuvertureAction(actionId) {
   }
 }
 
-function bindDashboardLink() {
-  const lien = document.getElementById('openInDashboard');
-  if (lien) {
-    // Sans preventDefault : la note est ecrite de facon synchrone, puis le
-    // lien suit son cours normalement, comme n'importe quel lien.
-    lien.addEventListener('click', () => noterOuvertureAction(Number(lien.dataset.actionId)));
-    return;
-  }
+function bindDashboardSetup(actionId) {
   const bouton = document.getElementById('saveDashboardUrl');
-  if (bouton) bouton.addEventListener('click', enregistrerAdresseDashboard);
+  if (bouton) bouton.addEventListener('click', () => enregistrerAdresseDashboard(actionId));
 }
 
 // Isolee du clic qui l'appelle, comme noterOuvertureAction : testable sans DOM
 // reel, et c'est elle qui porte la logique (valeur vide ignoree, echec du
-// reglage journalise mais pas bloquant pour l'utilisateur).
-function enregistrerAdresseDashboard() {
+// reglage journalise mais pas bloquant pour l'utilisateur). Une fois
+// l'adresse enregistree et complete, enchaine directement vers l'action
+// visee plutot que de rester sur cet ecran de reglage.
+function enregistrerAdresseDashboard(actionId) {
   const input = document.getElementById('dashboardUrlInput');
   let valeur = input.value.trim();
   if (!valeur) return;
@@ -806,6 +773,12 @@ function enregistrerAdresseDashboard() {
     console.warn("Adresse du tableau de bord non conservée pour la prochaine fois", error);
   }
   state.dashboardUrl = valeur;
+  const complete = adresseDashboardComplete();
+  if (complete) {
+    noterOuvertureAction(actionId);
+    window.top.location.href = complete;
+    return;
+  }
   render();
 }
 

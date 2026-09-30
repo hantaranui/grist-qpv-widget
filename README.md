@@ -212,20 +212,21 @@ Trois cartes, dans le style du tableau de bord des actions (bandeau
   « Widget fiche club » ci-dessus, le code est partage a l'identique.
 - **Contacts** : prenom, nom, e-mail, telephone.
 - **Actions** : date, statut, dispositif, part du budget couverte, et un
-  bouton **Voir** qui ouvre le detail complet de l'action (intitule, format,
-  public, participants, ville, lieu, commentaire, financement) dans la meme
-  carte, en lecture seule.
+  bouton **Voir** qui ouvre directement la fiche modifiable de l'action dans
+  `actions-dashboard`, sur une autre page Grist.
 
 ### Ouvrir une action dans le tableau de bord
 
-Le detail d'une action, dans ce widget, reste en lecture seule : la fiche
-modifiable de l'action vit dans `actions-dashboard`, sur une autre page Grist.
-Comme Grist ne charge que les widgets de la page affichee, les deux widgets ne
-peuvent pas se signaler directement tant que cette page n'est pas ouverte.
+La fiche modifiable d'une action vit dans `actions-dashboard`, sur une autre
+page Grist. Comme Grist ne charge que les widgets de la page affichee, les
+deux widgets ne peuvent pas se signaler directement tant que cette page n'est
+pas ouverte.
 
-Le detail d'une action propose donc, sous son detail en lecture seule, soit un
-lien reel vers cette page (si son adresse a ete renseignee), soit un champ pour
-la renseigner une fois.
+Des que l'adresse de cette page est connue sur cet ordinateur, **Voir** est un
+vrai lien qui y mene directement. Tant qu'elle ne l'est pas, le premier clic
+sur **Voir** ouvre a la place un court ecran pour la renseigner ; une fois
+enregistree, ce meme ecran enchaine tout seul vers l'action visee, sans autre
+clic. Les **Voir** suivants sont ensuite des liens directs.
 
 Cette adresse a deux parties, traitees differemment :
 

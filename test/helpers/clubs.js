@@ -64,6 +64,11 @@ function loadClubs(overrides = {}) {
     setTimeout,
     requestAnimationFrame: () => {},
     URL,
+    // La vraie fenetre sommet (target="_top" ou window.top.location) : dans le
+    // widget, c'est la page Grist parente, cross-origin donc jamais lisible,
+    // seulement navigable. Un objet mutable suffit pour verifier ou le code a
+    // essaye d'aller, sans naviguer pour de vrai.
+    top: {location: {href: ''}},
     localStorage: overrides.localStorage || makeLocalStorage(),
     fetch(url, options) {
       calls.fetches.push({url: String(url), options});
