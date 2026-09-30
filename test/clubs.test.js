@@ -184,6 +184,8 @@ test("la fiche est une carte « Club », comme le motif du tableau de bord", () 
   assert.match(html, /<header class="edit-header">/);
   assert.match(html, /<button class="btn btn-secondary" type="button" id="backToList">/);
   assert.match(html, /<section class="edit-card">\s*<div class="section-head"><span>Club<\/span><\/div>/);
+  assert.match(html, /<p class="club-line"><span class="club-name">Club Alpha<\/span><\/p>\s*<p class="club-line">SIRET/,
+    "le nom du club est repris au-dessus du SIRET dans la carte, pas seulement dans l'en-tête de page");
 });
 
 test("SIRET non renseigne et ville deja connue s'affichent sans attendre le reseau", () => {
@@ -280,7 +282,7 @@ test("la carte Actions liste quatre colonnes et un bouton Voir par action", () =
   assert.match(html, /<span class="status-tag planifiee">Planifiée<\/span>/);
   assert.match(html, /<span class="action-dispositif">Aller vers<\/span>/);
   assert.match(html, /60 % financé/);
-  assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" data-open-action="1">/);
+  assert.match(html, /<button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="1">/);
   assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "l'action sans date affiche sa période");
   assert.ok(!html.includes("funding-bar"), "la liste montre le pourcentage, pas la barre (elle vit dans le détail)");
 });
@@ -392,6 +394,10 @@ test("le pourcentage de financement se cale a droite, au-dessus de la barre", ()
   const html = loadClubs().renderFunding({rate: 0.6});
   assert.ok(html.indexOf("funding-rate") < html.indexOf("funding-bar"),
     "le pourcentage precede la barre, pour s'afficher au-dessus d'elle");
+});
+
+test("le bouton Voir d'une action part a l'extremite droite de la ligne", () => {
+  assert.match(CSS, /\.action-open \{ margin-left: auto; \}/);
 });
 
 test("la feuille ne reprend aucun nom de classe du design system", () => {

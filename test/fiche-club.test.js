@@ -383,8 +383,10 @@ function fichier(type = "image/png", size = 1000) {
   return new File([Buffer.alloc(size)], "logo.png", {type});
 }
 
-test("le logo est televerse avec un jeton d'ecriture puis ecrit dans Structures.Logo", async () => {
-  const w = loadFiche({fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : Promise.reject(new Error(url)))});
+test("le logo est televerse avec un jeton d'ecriture puis rattache par la meme API REST", async () => {
+  const w = loadFiche({
+    fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({}) : Promise.reject(new Error(url))),
+  });
   const ids = await w.uploadLogo(7, fichier());
 
   assert.deepEqual(plain(ids), [42]);
@@ -396,7 +398,14 @@ test("le logo est televerse avec un jeton d'ecriture puis ecrit dans Structures.
   assert.equal(envoi.options.headers["X-Requested-With"], "XMLHttpRequest",
     "sans cet en-tête, Grist rejette l'envoi avant même de répondre avec ses en-têtes CORS");
   assert.ok(envoi.options.body.get("upload"), "fichier dans le champ attendu par Grist");
-  assert.deepEqual(plain(w.calls.userActions), [[["UpdateRecord", "Structures", 7, {Logo: ["L", 42]}]]]);
+
+  const rattachement = w.calls.fetches[1];
+  assert.equal(rattachement.url, "https://grist.example/api/docs/DOC/tables/Structures/records?auth=jeton");
+  assert.equal(rattachement.options.method, "PATCH",
+    "le meme jeton que l'envoi, pas grist.docApi.applyUserActions : Grist ne reconnaît un rattachement de pièce jointe neuve que venant du même canal que l'envoi");
+  assert.equal(rattachement.options.credentials, "omit");
+  assert.deepEqual(plain(JSON.parse(rattachement.options.body)), {records: [{id: 7, fields: {Logo: ["L", 42]}}]});
+  assert.equal(w.calls.userActions.length, 0, "plus d'appel à applyUserActions pour le rattachement");
 });
 
 test("un refus de Grist est explique a l'utilisateur", async () => {
@@ -461,13 +470,26 @@ test("un echec reseau propre a l'envoi se distingue d'un echec general", async (
 
 test("un fichier envoye mais non rattache le dit, sans faire perdre le televersement", async () => {
   const w = loadFiche({
-    fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : Promise.reject(new Error(url))),
-    grist: {docApi: {applyUserActions: () => Promise.reject(new Error("boom"))}},
+    fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({error: "boom"}, {status: 500}) : Promise.reject(new Error(url))),
   });
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "update");
     assert.deepEqual(plain(error.uploadedIds), [42], "l'identifiant déjà envoyé n'est pas perdu");
     assert.match(w.uploadErrorMessage(error), /envoyé mais n'a pas pu être rattaché/);
+    return true;
+  });
+});
+
+test("un rattachement refuse par Grist (piece jointe neuve, hors proprietaire) l'explique comme un refus d'acces", async () => {
+  // Cas reel constate : l'envoi reussit, mais Grist refuse le rattachement
+  // pour qui n'est pas proprietaire du document — voir le commentaire
+  // au-dessus de uploadLogo.
+  const w = loadFiche({
+    fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({error: "Cannot access attachment"}, {status: 403}) : Promise.reject(new Error(url))),
+  });
+  await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
+    assert.equal(error.step, "update");
+    assert.match(w.uploadErrorMessage(error), /règles d'accès du document ne vous permettent pas/);
     return true;
   });
 });

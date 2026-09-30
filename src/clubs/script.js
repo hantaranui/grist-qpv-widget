@@ -432,6 +432,7 @@ function renderFiche() {
             <div class="club-summary-header">
               ${renderLogo(club, logoUrl(club.logoIds, state.readAccess), state.upload)}
               <div class="club-identity">
+                <p class="club-line"><span class="club-name">${escapeHtml(club.nom || 'Club sans nom')}</span></p>
                 <p class="club-line">SIRET : ${club.siret ? escapeHtml(formatSiret(club.siret)) : '<span class="muted-text">non renseigné</span>'}</p>
                 <p class="club-line" id="clubAddress">${renderAddress(club, club.ville)}</p>
                 <dl class="zonages">
@@ -646,7 +647,7 @@ function renderActionsList(actions) {
       <span class="action-status">${action.statut ? `<span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span>` : missing('Statut non renseigné', '')}</span>
       <span class="action-dispositif">${action.dispositif ? escapeHtml(action.dispositif) : '<span class="muted-text">Dispositif non renseigné</span>'}</span>
       ${renderFundingPercent(action)}
-      <button class="btn btn-secondary btn-sm" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
+      <button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="${action.id}"><span class="btn-content">Voir</span></button>
     </li>`).join('')}</ul>`;
 }
 
@@ -1299,8 +1300,15 @@ async function probeAttachmentsReadable(access) {
 // Deux temps, car une piece jointe ne s'ecrit pas directement dans une cellule :
 //   1. televerser le fichier par l'API REST, qui renvoie l'identifiant de la
 //      piece jointe creee ;
-//   2. ecrire cet identifiant dans Structures.Logo par l'API du widget, soumise
-//      aux regles d'acces du document comme toute saisie.
+//   2. l'attacher a Structures.Logo, par la meme API REST et le meme jeton —
+//      jamais par grist.docApi.applyUserActions, qui passe par un tout autre
+//      canal (la messagerie du widget). Un non-proprietaire n'est autorise a
+//      referencer une piece jointe toute neuve que si Grist reconnait le
+//      rattachement comme venant du meme utilisateur que l'envoi ; deux
+//      canaux d'authentification differents risquent de ne pas etre reconnus
+//      comme un seul et meme utilisateur, d'ou un refus (« Cannot access
+//      attachment ») pour tout role hors Proprietaire, qui echappe a cette
+//      verification.
 // Le jeton est demande sans readOnly : il porte alors les droits de
 // l'utilisateur, plafonnes a ceux de son role sur le document. Il passe dans
 // l'URL et non dans un en-tete, faute de quoi Grist refuserait la requete venue
@@ -1364,7 +1372,19 @@ async function uploadLogo(clubId, file) {
   if (!ids.length) throw Object.assign(new Error('Téléversement sans identifiant de pièce jointe.'), {step: 'upload'});
 
   try {
-    await grist.docApi.applyUserActions([['UpdateRecord', TABLE_CLUBS, clubId, {Logo: ['L', ...ids]}]]);
+    const rattachement = await fetch(`${access.baseUrl}/tables/${TABLE_CLUBS}/records?auth=${encodeURIComponent(access.token)}`, {
+      method: 'PATCH',
+      credentials: 'omit',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+      body: JSON.stringify({records: [{id: clubId, fields: {Logo: ['L', ...ids]}}]}),
+    });
+    if (!rattachement.ok) {
+      // Le texte de la reponse (pas un message generique invente ici) doit
+      // porter le mot de Grist ("access", "permission"...) pour que
+      // uploadErrorMessage distingue un refus d'acces d'un autre echec.
+      const detail = await rattachement.text().catch(() => '');
+      throw Object.assign(new Error(detail || `HTTP ${rattachement.status}`), {status: rattachement.status});
+    }
   } catch (error) {
     // Le fichier est deja chez Grist ; seul le rattachement au club a echoue.
     throw Object.assign(new Error("Fichier envoyé, mais pas rattaché au club."), {step: 'update', cause: error, uploadedIds: ids});
@@ -1395,16 +1415,7 @@ function uploadErrorMessage(error) {
     // lecture) : fetch ne dit rien de plus precis en JavaScript. La console du
     // navigateur, elle, affiche la vraie raison (refus CORS, connexion
     // refusee...), invisible autrement.
-    //
-    // Piste la plus probable, confirmee par la communaute Grist (forum
-    // community.getgrist.com, sujet « Upload attachment from custom widget ») :
-    // un bug connu et toujours ouvert de Grist (gristlabs/grist-core#1614,
-    // recoupe par #1512 et #1853) fait traiter comme anonyme le jeton d'un
-    // widget des qu'une regle d'acces existe sur la table visee — l'envoi
-    // echoue alors pour tout role sauf Proprietaire du document. Coherent avec
-    // les regles d'acces de Structures, qui ne donnent que la lecture aux
-    // profils autres que proprietaire (voir le README).
-    return `${error.message} Cause probable : un bug connu de Grist, non corrigé à ce jour, bloque l'envoi de pièce jointe depuis un widget dès que des règles d'accès existent sur la table — l'envoi ne marche alors que pour un compte propriétaire du document. Réessayez connectée comme propriétaire pour confirmer. Sinon, la console du navigateur (F12, onglet Console) affiche la cause exacte.`;
+    return `${error.message} La console du navigateur (F12, onglet Console) affiche la cause exacte.`;
   }
   const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
   if (/access|acl|blocked|permission|refus/i.test(detail)) {
