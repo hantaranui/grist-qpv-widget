@@ -371,14 +371,6 @@ td:last-child {
    droite de la ligne. */
 .action-open { margin-left: auto; }
 
-/* Pourcentage au-dessus de la barre (il precede simplement dans le balisage,
-   une colonne flex n'a pas besoin d'autre chose) et cale a droite. */
-.funding-rate { align-self: flex-end; }
-
-.funding-bar { width: 100%; }
-
-.funding-bar .progress-bar { max-width: 100%; }
-
 /* Reprise de la pastille de statut du tableau de bord : le texte garde l'encre
    par defaut (11,31:1 a 12,97:1 sur ces fonds), seul le fond change. */
 .status-tag {
@@ -400,26 +392,8 @@ td:last-child {
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
 
-/* Detail d'une action, ouvert par « Voir » dans la carte Actions elle-meme. */
-.action-detail dt { font-weight: 700; }
-
-.action-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 24px;
-  margin: 16px 0;
-}
-
-.action-fields dd { margin: 0; overflow-wrap: anywhere; }
-
-/* Sans ceci, .action-funding (display:flex) n'a pas de parent flex pour lui
-   donner une largeur : bloc bord a bord, elle s'etirait sur toute la largeur
-   de la fiche au lieu de rester dans sa colonne. La grille du champ, elle,
-   la contient deja correctement — juste un peu d'air au-dessus du texte. */
-.action-field-financement .action-funding { margin-top: 8px; }
-
-.action-dashboard-link { margin-top: 16px; }
-
+/* Ecran de reglage de l'adresse du tableau de bord, affiche a la place de la
+   liste des actions (« Voir » sur une action sans adresse encore connue). */
 .action-detail h3 {
   margin: 12px 0 8px;
   font-family: var(--font-title);
@@ -429,20 +403,6 @@ td:last-child {
 .action-detail h3:focus-visible {
   outline: 2px solid var(--ft--color-primary);
   outline-offset: 4px;
-}
-
-/* Repli propose tant que l'adresse de la page Dashboard n'est pas renseignee :
-   un simple <details>, pas la liste deroulante des filtres (une seule ligne,
-   pas de recherche a faire). */
-.dashboard-setting {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
-
-.dashboard-setting summary {
-  cursor: pointer;
-  font-weight: 700;
 }
 
 .dashboard-setting-row {
@@ -558,5 +518,4 @@ td:last-child {
   .action-item { flex-direction: column; align-items: stretch; }
   .action-dispositif,
   .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
-  .action-fields { grid-template-columns: minmax(0, 1fr); }
 }

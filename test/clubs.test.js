@@ -282,12 +282,16 @@ test("la carte Actions liste quatre colonnes et un bouton Voir par action", () =
   assert.match(html, /<span class="status-tag planifiee">Planifiée<\/span>/);
   assert.match(html, /<span class="action-dispositif">Aller vers<\/span>/);
   assert.match(html, /60 % financé/);
-  assert.match(html, /<button class="btn btn-secondary btn-sm action-open" type="button" data-open-action="1">/);
-  assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "l'action sans date affiche sa période");
-  assert.ok(!html.includes("funding-bar"), "la liste montre le pourcentage, pas la barre (elle vit dans le détail)");
+  assert.match(html, /<button class="btn btn-secondary btn-sm action-open" type="button" data-configure-action="1">/,
+    "sans adresse de tableau de bord connue, Voir ouvre le reglage plutot qu'un lien mort");
+  assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "l'action sans date affiche sa periode");
+  assert.ok(!html.includes("funding-bar"), "la liste montre le pourcentage, pas la barre");
 });
 
-test("« Voir » ouvre le detail complet de l'action, dans la meme carte", () => {
+test("« Voir » ouvre l'ecran de reglage a la place de la liste, tant que l'adresse manque", () => {
+  // Le contrat complet (lien reel une fois l'adresse connue, navigation
+  // directe apres enregistrement...) est teste dans navigation.test.js ; ici,
+  // seulement que la carte Actions bascule bien vers cet ecran.
   const w = loadClubs();
   w.state.raw = tables(w);
   w.state.clubs = w.buildClubs(w.state.raw);
@@ -297,21 +301,9 @@ test("« Voir » ouvre le detail complet de l'action, dans la meme carte", () =>
   w.render();
 
   const html = w.elements.get("ficheView").innerHTML;
-  assert.match(html, /<h3 id="actionDetailTitle"[^>]*>Tournoi inter-quartiers<\/h3>/);
-  assert.match(html, /<dt>Format<\/dt><dd>Journée<\/dd>/);
-  assert.match(html, /<dt>Public<\/dt><dd>Jeunes, QPV<\/dd>/);
-  assert.match(html, /<dt>Participants<\/dt><dd>24<\/dd>/);
-  assert.match(html, /<dt>Ville<\/dt><dd>Beauvais<\/dd>/);
-  assert.match(html, /<dt>Lieu<\/dt><dd>Stade municipal<\/dd>/);
-  assert.match(html, /Prévoir des maillots\./);
-  // toLocaleString("fr-FR") separe les milliers par une espace fine insecable
-  // (U+202F), pas une espace ordinaire.
-  assert.match(html, /<dt>Financement<\/dt><dd>Budget : <strong>2 000 €<\/strong><br>/,
-    "le financement est un champ de la grille, pas un bloc a part qui deborde");
-  assert.match(html, /role="progressbar"/, "la barre, elle, reste dans le detail");
-  assert.match(html, /<div class="action-dashboard-link">/, "un peu d'air avant le lien vers le tableau de bord");
+  assert.match(html, /<h3 id="actionDetailTitle"[^>]*>Ouvrir cette action dans le tableau de bord<\/h3>/);
   assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" id="backToActions">/);
-  assert.ok(!html.includes("action-list"), "la liste des actions n'est plus affichée pendant que le détail l'est");
+  assert.ok(!html.includes("action-list"), "la liste des actions n'est plus affichee pendant que le reglage l'est");
 });
 
 test("un identifiant d'action introuvable (action supprimee entre-temps) revient a la liste", () => {
@@ -378,7 +370,7 @@ test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas dive
     "selectGeojsonResource", "chooseGeojsonFile", "geometryContainsPoint", "polygonContainsPoint",
     "ringContainsPoint", "bindLogo", "logoFileProblem", "probeAttachmentsReadable", "uploadLogo", "errorDetail", "uploadErrorMessage",
     "coverage", "percent", "sortActions", "dateSeconds", "formatDate", "statusClass", "missing",
-    "renderContacts", "renderFunding", "telHref", "mailHref",
+    "renderContacts", "telHref", "mailHref",
   ];
   for (const nom of noms) {
     assert.equal(source(path.join(SRC, "script.js"), nom), source(ficheClub, nom), `${nom} a divergé de fiche-club`);
@@ -388,13 +380,6 @@ test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas dive
 // --- Feuille de style -------------------------------------------------------------
 
 const CSS = fs.readFileSync(path.join(SRC, "style.css"), "utf8");
-
-test("le pourcentage de financement se cale a droite, au-dessus de la barre", () => {
-  assert.match(CSS, /\.funding-rate \{ align-self: flex-end; \}/);
-  const html = loadClubs().renderFunding({rate: 0.6});
-  assert.ok(html.indexOf("funding-rate") < html.indexOf("funding-bar"),
-    "le pourcentage precede la barre, pour s'afficher au-dessus d'elle");
-});
 
 test("le bouton Voir d'une action part a l'extremite droite de la ligne", () => {
   assert.match(CSS, /\.action-open \{ margin-left: auto; \}/);

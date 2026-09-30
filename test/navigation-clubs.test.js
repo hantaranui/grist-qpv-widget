@@ -71,22 +71,34 @@ test("un stockage indisponible n'empeche pas la fonction de rendre la main", () 
 
 // --- Lien vers le tableau de bord, ou reglage a defaut --------------------------
 
-test("sans adresse renseignee, la fiche propose de la saisir plutot qu'un lien mort", () => {
+test("sans adresse renseignee, Voir ouvre le reglage plutot qu'un lien mort", () => {
   const w = loadClubs();
-  ouvrirFicheEtAction(w, 42);
+  w.state.raw = tables(w);
+  w.state.clubs = w.buildClubs(w.state.raw);
+  w.state.view = "fiche";
+  w.state.currentId = 1;
+  w.render();
 
+  const liste = w.elements.get("ficheView").innerHTML;
+  assert.match(liste, /<button class="btn btn-secondary btn-sm action-open" type="button" data-configure-action="42">/);
+  assert.ok(!liste.includes("data-action-id"), "pas de lien tant que l'adresse manque");
+
+  ouvrirFicheEtAction(w, 42);
   const html = w.elements.get("ficheView").innerHTML;
-  assert.ok(!html.includes("id=\"openInDashboard\""), "pas de lien tant que l'adresse manque");
   assert.match(html, /<input class="form-control" type="text" id="dashboardUrlInput"/);
   assert.match(html, /<button class="btn btn-primary btn-sm" type="button" id="saveDashboardUrl">/);
 });
 
-test("l'adresse enregistree, la fiche montre un vrai lien target=\"_top\"", () => {
+test("l'adresse enregistree, Voir est un vrai lien target=\"_top\", sans detour", () => {
   const w = loadClubs({localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "https://grist.example/o/asso/docs/DOC/p/7"})});
   return w.load().then(() => {
-    ouvrirFicheEtAction(w, 42);
+    w.state.raw = tables(w);
+    w.state.clubs = w.buildClubs(w.state.raw);
+    w.state.view = "fiche";
+    w.state.currentId = 1;
+    w.render();
     const html = w.elements.get("ficheView").innerHTML;
-    assert.match(html, /<a class="btn btn-secondary btn-sm" id="openInDashboard" href="https:\/\/grist\.example\/o\/asso\/docs\/DOC\/p\/7" target="_top" data-action-id="42">/);
+    assert.match(html, /<a class="btn btn-secondary btn-sm action-open" href="https:\/\/grist\.example\/o\/asso\/docs\/DOC\/p\/7" target="_top" data-action-id="42">/);
   });
 });
 
@@ -96,24 +108,37 @@ test("enregistrerAdresseDashboard la conserve dans le navigateur, pas dans une o
   // dans le document (constate le 2026-09-29 : perdue au moindre rechargement
   // complet — exactement ce qu'un lien target="_top" declenche). D'ou le
   // stockage du navigateur a la place, qui persiste reellement.
-  const w = loadClubs();
+  const w = loadClubs({referrer: ""});
   ouvrirFicheEtAction(w, 42); // affiche le champ de saisie
 
   w.document.getElementById("dashboardUrlInput").value = "  https://grist.example/p/7  ";
-  w.enregistrerAdresseDashboard();
+  w.enregistrerAdresseDashboard(42);
 
   assert.equal(w.localStorage.getItem("clubs-dashboard-url-v1"), "https://grist.example/p/7");
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/7", "repris immediatement, sans attendre un rechargement");
+});
+
+test("une adresse complete enregistree enchaine directement vers l'action visee", () => {
+  const w = loadClubs({referrer: ""});
+  ouvrirFicheEtAction(w, 42);
+
+  w.document.getElementById("dashboardUrlInput").value = "https://grist.example/p/7";
+  w.enregistrerAdresseDashboard(42);
+
+  assert.equal(w.top.location.href, "https://grist.example/p/7", "navigue directement, sans repasser par l'ecran de reglage");
+  const note = JSON.parse(w.localStorage.getItem("clubs-ouvrir-action-v1"));
+  assert.equal(note.actionId, 42, "le tableau de bord sait quelle action ouvrir a son chargement");
 });
 
 test("une valeur vide n'ecrase pas une adresse deja enregistree", () => {
   const w = loadClubs({localStorage: makeLocalStorage({"clubs-dashboard-url-v1": "https://grist.example/p/7"})});
   w.state.dashboardUrl = "https://grist.example/p/7";
   w.document.getElementById("dashboardUrlInput").value = "   ";
-  w.enregistrerAdresseDashboard();
+  w.enregistrerAdresseDashboard(42);
 
   assert.equal(w.localStorage.getItem("clubs-dashboard-url-v1"), "https://grist.example/p/7");
   assert.equal(w.state.dashboardUrl, "https://grist.example/p/7");
+  assert.equal(w.top.location.href, "", "une valeur vide ne declenche aucune navigation");
 });
 
 // --- Domaine de Grist deduit du referent, chemin enregistre a part --------------
@@ -147,10 +172,10 @@ test("un chemin enregistre sans referent exploitable reste incomplet", () => {
 });
 
 test("enregistrerAdresseDashboard ajoute le / manquant d'un chemin colle sans lui", () => {
-  const w = loadClubs();
+  const w = loadClubs({referrer: ""}); // sans referent, le chemin seul reste incomplet : pas de navigation a verifier ici
   ouvrirFicheEtAction(w, 42);
   w.document.getElementById("dashboardUrlInput").value = "o/asso/docId/NomDuDoc/p/7";
-  w.enregistrerAdresseDashboard();
+  w.enregistrerAdresseDashboard(42);
   assert.equal(w.state.dashboardUrl, "/o/asso/docId/NomDuDoc/p/7");
 });
 
@@ -159,7 +184,7 @@ test("un chemin enregistre mais incomplet (sans referent) invite a coller l'adre
   return w.load().then(() => {
     ouvrirFicheEtAction(w, 42);
     const html = w.elements.get("ficheView").innerHTML;
-    assert.ok(!html.includes('id="openInDashboard"'), "pas de lien avec une adresse incomplete");
+    assert.ok(!html.includes('data-action-id'), "pas de lien avec une adresse incomplete");
     assert.match(html, /Adresse incomplète/);
   });
 });
