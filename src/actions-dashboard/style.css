@@ -81,6 +81,8 @@ input:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+
 h1 {
   margin: 0;
   padding-left: 16px;
@@ -794,3 +796,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
     position: static;
   }
 }
+
+/* Fenetre « Ajout d'une action » : la structure (.modal, .modal-dialog,
+   .modal-content, .modal-header, .modal-body, .modal-footer) et son habillage
+   viennent du design system. Sa feuille masque .modal par defaut, en attendant
+   le script du design system qui l'affiche : nous l'affichons nous-memes en
+   ne la creant que pendant qu'elle est ouverte. */
+#addActionModal .modal { display: block; overflow-y: auto; }
+.add-action-fields { display: grid; gap: 16px; }
+.add-action-hint { margin: 16px 0 0; color: var(--muted); }

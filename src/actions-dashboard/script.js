@@ -35,7 +35,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -53,6 +53,7 @@ document.getElementById('toggleFilters').addEventListener('click', () => {
 });
 
 document.getElementById('exportBtn').addEventListener('click', () => exportCsv(filteredActions()));
+document.getElementById('addActionBtn').addEventListener('click', openAddAction);
 
 document.addEventListener('pointerdown', event => {
   if (event.target.closest('.filter-search-dropdown, .sort-menu')) return;
@@ -869,6 +870,177 @@ async function saveEdit(event, action) {
       ? `L'enregistrement n'a pas abouti : ${detail}`
       : "L'enregistrement n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.";
     message.classList.remove('is-hidden');
+    submit.disabled = false;
+    console.error(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ajout d'une action : trois champs obligatoires (nom, dispositif, club) dans une
+// fenetre du design system. Tout le reste se saisit ensuite dans la fiche de
+// l'action, que l'on ouvre des la creation. Une fenetre convient ici, contrairement
+// a la fiche complete : c'est un formulaire court, qui ne demande qu'une decision.
+// ---------------------------------------------------------------------------
+
+const ADD_ACTION_FIELDS = [
+  {key: 'nom', id: 'addActionName', message: "Saisissez le nom de l'action."},
+  {key: 'dispositif', id: 'addActionDispositif', message: 'Choisissez un dispositif.'},
+  {key: 'club', id: 'addActionClub', message: 'Choisissez un club.'}
+];
+
+let focusAvantAjout = null;
+
+function addActionField(field, label, control) {
+  return `<div class="edit-field"><label class="form-label" for="${field.id}">${label}<span class="required">&nbsp;*</span></label>${control}<div class="invalid-feedback" id="${field.id}Error">${escapeHtml(field.message)}</div></div>`;
+}
+
+function addActionModalHtml() {
+  const [nom, dispositif, club] = ADD_ACTION_FIELDS;
+  const dispositifs = referenceOptions(state.raw.Dispositifs || [], 0, item => item.Dispositif || item.Code || '', 'Choisir un dispositif');
+  const clubs = referenceOptions(state.raw.Structures || [], 0, item => item.Nom || '', 'Choisir un club');
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="addActionDialog" role="dialog" aria-modal="true" aria-labelledby="addActionTitle" tabindex="-1">
+    <div class="modal-dialog">
+      <form class="modal-content" id="addActionForm" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="addActionTitle">Ajout d'une action</h2></div>
+        <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="addActionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <div class="add-action-fields">
+            ${addActionField(nom, "Nom de l'action", `<input class="form-control" id="${nom.id}" name="${nom.id}" required aria-describedby="${nom.id}Error" autocomplete="off">`)}
+            ${addActionField(dispositif, 'Dispositif', `<select class="form-control" id="${dispositif.id}" name="${dispositif.id}" required aria-describedby="${dispositif.id}Error">${dispositifs}</select>`)}
+            ${addActionField(club, 'Club', `<select class="form-control" id="${club.id}" name="${club.id}" required aria-describedby="${club.id}Error">${clubs}</select>`)}
+          </div>
+          <p class="add-action-hint">Les autres informations se saisissent dans la fiche de l'action.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelAddAction"><span class="btn-content">Annuler</span></button>
+          <button type="submit" class="btn btn-primary" id="submitAddAction"><span class="btn-content">Valider</span></button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+// Les valeurs saisies, sans toucher au DOM : c'est ce que les tests fournissent.
+function readAddActionForm() {
+  return {
+    nom: document.getElementById('addActionName').value,
+    dispositif: document.getElementById('addActionDispositif').value,
+    club: document.getElementById('addActionClub').value
+  };
+}
+
+// Les champs a refaire, dans l'ordre de la fenetre. Un nom fait d'espaces ne
+// compte pas : Grist l'accepterait, et l'action apparaitrait sans intitule.
+function addActionProblems(values) {
+  return ADD_ACTION_FIELDS.filter(field => {
+    const value = String(values[field.key] || '').trim();
+    return field.key === 'nom' ? !value : !Number(value);
+  });
+}
+
+function newActionFields(values) {
+  return {
+    Intitule: String(values.nom).trim(),
+    Dispositif: Number(values.dispositif),
+    Club: Number(values.club)
+  };
+}
+
+function markAddActionProblems(problems) {
+  ADD_ACTION_FIELDS.forEach(field => {
+    const control = document.getElementById(field.id);
+    const invalid = problems.includes(field);
+    control.classList.toggle('is-invalid', invalid);
+    if (invalid) control.setAttribute('aria-invalid', 'true');
+    else control.removeAttribute('aria-invalid');
+  });
+}
+
+function showAddActionMessage(text) {
+  const message = document.getElementById('addActionMessage');
+  message.querySelector('.alert-content').textContent = text;
+  message.classList.remove('is-hidden');
+}
+
+function openAddAction() {
+  const host = document.getElementById('addActionModal');
+  focusAvantAjout = document.activeElement;
+  state.addActionOpen = true;
+  host.innerHTML = addActionModalHtml();
+  document.body.classList.add('modal-open');
+  document.getElementById('addActionForm').addEventListener('submit', submitAddAction);
+  document.getElementById('cancelAddAction').addEventListener('click', closeAddAction);
+  host.addEventListener('keydown', keepFocusInAddAction);
+  document.getElementById('addActionName').focus();
+  requestResize();
+}
+
+function closeAddAction() {
+  const host = document.getElementById('addActionModal');
+  host.removeEventListener('keydown', keepFocusInAddAction);
+  host.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  state.addActionOpen = false;
+  // Le bouton qui a ouvert la fenetre reprend le focus, comme pour la fiche.
+  if (focusAvantAjout && document.body.contains(focusAvantAjout)) focusAvantAjout.focus();
+  focusAvantAjout = null;
+  requestResize();
+}
+
+// Une boite de dialogue garde le focus : Tab et Maj+Tab tournent entre ses
+// controles, Echap la ferme. Trois champs seulement sont en jeu, contrairement a la
+// fiche complete : fermer sans confirmer ne perd presque rien.
+function keepFocusInAddAction(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeAddAction();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = [...document.querySelectorAll('#addActionDialog input, #addActionDialog select, #addActionDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+async function submitAddAction(event) {
+  event.preventDefault();
+  const values = readAddActionForm();
+  const problems = addActionProblems(values);
+  markAddActionProblems(problems);
+  if (problems.length) {
+    document.getElementById(problems[0].id).focus();
+    return;
+  }
+  const submit = document.getElementById('submitAddAction');
+  const message = document.getElementById('addActionMessage');
+  try {
+    submit.disabled = true;
+    message.classList.add('is-hidden');
+    const result = await grist.docApi.applyUserActions([['AddRecord', 'Actions', null, newActionFields(values)]]);
+    const newId = Number(result && result.retValues && result.retValues[0]);
+    closeAddAction();
+    await load();
+    // Le reste de l'action se saisit dans sa fiche : on l'ouvre. Si elle n'est pas
+    // visible pour cet utilisateur (regles d'acces), le tableau de bord reste affiche.
+    if (newId && state.actions.some(action => action.id === newId)) {
+      state.editingId = newId;
+      state.view = 'edit';
+      render();
+    }
+  } catch (error) {
+    const detail = String(error?.message || error || '').trim();
+    showAddActionMessage(detail
+      ? `L'ajout n'a pas abouti : ${detail}`
+      : "L'ajout n'a pas abouti. Vérifiez l'accès complet du widget puis réessayez.");
     submit.disabled = false;
     console.error(error);
   }
