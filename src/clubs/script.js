@@ -202,6 +202,12 @@ function attachmentIds(value) {
 // Construction de la liste
 // ---------------------------------------------------------------------------
 
+// Une action supprimee reste dans Grist : sa colonne Corbeille (booleen) vaut vrai ; « Oui » est aussi reconnu.
+function enCorbeille(action) {
+  const valeur = action.Corbeille;
+  return valeur === true || String(valeur || '').trim().toLowerCase() === 'oui';
+}
+
 function buildClubs(raw) {
   const dds = byId(raw.DD || []);
   const drs = byId(raw.DR || []);
@@ -213,7 +219,7 @@ function buildClubs(raw) {
   // portent des actions de plusieurs federations, et rien ne dit laquelle
   // retenir a leur place (voir README).
   const federationIdsParClub = new Map();
-  (raw.Actions || []).forEach(action => {
+  (raw.Actions || []).filter(action => !enCorbeille(action)).forEach(action => {
     if (!action.Club || !action.Federation) return;
     if (!federationIdsParClub.has(action.Club)) federationIdsParClub.set(action.Club, new Set());
     federationIdsParClub.get(action.Club).add(action.Federation);
@@ -533,7 +539,7 @@ function buildFicheDetail(raw, clubId) {
   });
 
   const actions = sortActions((raw.Actions || [])
-    .filter(action => action.Club === clubId)
+    .filter(action => action.Club === clubId && !enCorbeille(action))
     .map(action => {
       const dispositif = dispositifs.get(action.Dispositif) || {};
       const budget = Number(action.Budget || 0);

@@ -656,6 +656,10 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-header-title { display: grid; min-width: 0; }
 .edit-header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
 .edit-header h1 { margin: 0; }
+/* Le design system n'a pas de bouton destructeur : on reprend le bouton primaire
+   avec les jetons de couleur d'erreur du design system. */
+.btn-supprimer { background-color: var(--ft-color-background-error-default); border-color: var(--ft-color-background-error-default); }
+.btn-supprimer:hover, .btn-supprimer:focus-visible { background-color: var(--ft-color-background-error-strong); border-color: var(--ft-color-background-error-strong); }
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
@@ -802,6 +806,6 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    viennent du design system. Sa feuille masque .modal par defaut, en attendant
    le script du design system qui l'affiche : nous l'affichons nous-memes en
    ne la creant que pendant qu'elle est ouverte. */
-#addActionModal .modal { display: block; overflow-y: auto; }
+#addActionModal .modal, #deleteActionModal .modal { display: block; overflow-y: auto; }
 .add-action-fields { display: grid; gap: 16px; }
 .add-action-hint { margin: 16px 0 0; color: var(--muted); }
