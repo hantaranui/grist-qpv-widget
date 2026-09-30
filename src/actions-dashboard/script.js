@@ -284,6 +284,7 @@ function buildActions(raw) {
     return {
       id: action.id,
       intitule: action.Intitule || '',
+      codeMee: action.Code_MEE || '',
       // Formule Grist : numero Osiris suivi de l'intitule, ou l'intitule seul.
       nomComplet: action.Nom_complet || action.Intitule || '',
       osiris: reponse.Numero_Action_Osiris || '',
@@ -582,7 +583,8 @@ function renderEdit() {
         <section class="edit-card">
           <div class="section-head"><span>Action</span></div>
           <div class="edit-fields edit-fields-action">
-            <div class="edit-field edit-field-wide"><label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input class="form-control" id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+            <div class="edit-field"><label class="form-label" for="editTitle">Intitulé de l'action<span class="required">&nbsp;*</span></label><input class="form-control" id="editTitle" name="editTitle" required value="${escapeAttr(action.intitule)}"></div>
+            ${hasCodeMee() ? `<div class="edit-field"><label class="form-label" for="editCodeMee">Code MEE</label><input class="form-control" id="editCodeMee" name="editCodeMee" value="${escapeAttr(action.codeMee)}"></div>` : ''}
             <div class="edit-field"><label class="form-label" for="editDispositif">Dispositif</label><select class="form-control" id="editDispositif" name="editDispositif">${referenceOptions(state.raw.Dispositifs, action.dispositifId, item => item.Dispositif || item.Code || '', 'Choisir un dispositif')}</select></div>
             <div class="edit-field"><label class="form-label" for="editFormat">Format</label><select class="form-control" id="editFormat" name="editFormat">${formatOptions(action.format)}</select></div>
             <div class="edit-field"><label class="form-label" for="editParticipants">Nombre de participants</label><input class="form-control" id="editParticipants" name="editParticipants" type="number" min="0" value="${action.participants}"></div>
@@ -758,6 +760,12 @@ function financeLabel(financement, financeurs) {
   return financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom || '';
 }
 
+// La colonne Code_MEE est optionnelle : sans elle, le champ n'est pas propose et
+// rien n'est ecrit (Grist refuserait toute la mise a jour).
+function hasCodeMee() {
+  return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
+}
+
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
@@ -858,6 +866,7 @@ async function saveEdit(event, action) {
     Budget: Number(document.getElementById('editBudget').value || 0),
     Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
+  if (hasCodeMee()) actionUpdate.Code_MEE = document.getElementById('editCodeMee').value.trim();
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
