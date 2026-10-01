@@ -808,4 +808,3 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    ne la creant que pendant qu'elle est ouverte. */
 #addActionModal .modal, #deleteActionModal .modal { display: block; overflow-y: auto; }
 .add-action-fields { display: grid; gap: 16px; }
-.add-action-hint { margin: 16px 0 0; color: var(--muted); }

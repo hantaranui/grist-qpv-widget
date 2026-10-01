@@ -98,9 +98,9 @@ test("un champ vide ou un nom d'espaces est refuse, dans l'ordre de la fenetre",
   assert.deepEqual(ids({nom: "Job dating", dispositif: "3", club: "11"}), []);
 });
 
-test("l'enregistrement ne porte que les trois champs saisis, nettoyes", () => {
+test("l'enregistrement porte les trois champs saisis, nettoyes, et le statut A confirmer", () => {
   assert.deepEqual(contenu(w.newActionFields({nom: "  Job dating  ", dispositif: "3", club: "11"})),
-    {Intitule: "Job dating", Dispositif: 3, Club: 11});
+    {Intitule: "Job dating", Dispositif: 3, Club: 11, Statut: "A confirmer"});
 });
 
 test("valider avec un champ manquant n'envoie rien et signale le champ", async () => {
@@ -133,7 +133,7 @@ test("valider cree l'action, ferme la fenetre et ouvre la fiche de la nouvelle a
 
   await w.submitAddAction(evenement);
 
-  assert.deepEqual(contenu(appels), [[["AddRecord", "Actions", null, {Intitule: "Job dating", Dispositif: 3, Club: 11}]]]);
+  assert.deepEqual(contenu(appels), [[["AddRecord", "Actions", null, {Intitule: "Job dating", Dispositif: 3, Club: 11, Statut: "A confirmer"}]]]);
   assert.equal(w.state.addActionOpen, false, "la fenetre est fermee");
   assert.equal(w.document.getElementById("addActionModal").innerHTML, "");
   assert.equal(w.state.view, "edit");
