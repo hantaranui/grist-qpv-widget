@@ -1036,7 +1036,6 @@ function addActionModalHtml() {
             ${addActionField(dispositif, 'Dispositif', `<select class="form-control" id="${dispositif.id}" name="${dispositif.id}" required aria-describedby="${dispositif.id}Error">${dispositifs}</select>`)}
             ${addActionField(club, 'Club', `<select class="form-control" id="${club.id}" name="${club.id}" required aria-describedby="${club.id}Error">${clubs}</select>`)}
           </div>
-          <p class="add-action-hint">Les autres informations se saisissent dans la fiche de l'action.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancelAddAction"><span class="btn-content">Annuler</span></button>
@@ -1069,7 +1068,8 @@ function newActionFields(values) {
   return {
     Intitule: String(values.nom).trim(),
     Dispositif: Number(values.dispositif),
-    Club: Number(values.club)
+    Club: Number(values.club),
+    Statut: 'A confirmer'
   };
 }
 
