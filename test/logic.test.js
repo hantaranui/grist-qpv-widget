@@ -40,7 +40,7 @@ function fixture() {
       {id: 100, Action: 2, Financement: 1, Montant: 2500, Statut_Versement: "En cours"},
       {id: 101, Action: 3, Financement: 1, Montant: 400, Statut_Versement: ""},
     ],
-    Financements: [{id: 1, Financeur: 1, Enveloppe: "Appel à projet 2026"}],
+    Financements: [{id: 1, Financeur: 1, Enveloppe: "Appel à projet 2026", Nom_complet: "France Travail - Appel à projet 2026"}],
     Financeurs: [{id: 1, Nom: "France Travail"}],
     Structures: [{id: 1, Nom: "Rugby Club Auch"}],
     Agences: [{id: 1, Libelle_agence: "AUCH", DD: 0}],
@@ -128,7 +128,7 @@ test("optionsFor propose toujours les trois etats de financement, dans l'ordre",
 test("optionsFor liste les valeurs presentes pour les autres filtres", () => {
   buildState();
   assert.deepEqual(plain(w.optionsFor("statut")), ["A confirmer", "Planifiée", "Réalisée"]);
-  assert.deepEqual(plain(w.optionsFor("financeur")), ["Appel à projet 2026"]);
+  assert.deepEqual(plain(w.optionsFor("financeur")), ["France Travail - Appel à projet 2026"]);
 });
 
 test("le filtre Numero Osiris accepte une partie du numero", () => {
@@ -157,13 +157,13 @@ test("le filtre Financement selectionne les actions du bon etat", () => {
 
 test("le filtre Financeur porte sur les lignes de cofinancement", () => {
   buildState();
-  w.state.filters = {financeur: "Appel à projet 2026"};
+  w.state.filters = {financeur: "France Travail - Appel à projet 2026"};
   assert.deepEqual(ids(w.filteredActions()), [2, 3]);
 });
 
 test("les filtres se cumulent", () => {
   buildState();
-  w.state.filters = {financeur: "Appel à projet 2026", financement: PARTLY};
+  w.state.filters = {financeur: "France Travail - Appel à projet 2026", financement: PARTLY};
   assert.deepEqual(ids(w.filteredActions()), [3]);
 
   w.state.filters = {osiris: "ANS-26", financement: NONE};
@@ -211,4 +211,46 @@ test("les filtres DD et DR listent les valeurs des actions sans agence", () => {
 
   w.state.filters = {dd: "DD Gers"};
   assert.deepEqual(ids(w.filteredActions()), [1, 2, 3], "l'action sans agence est retenue");
+});
+
+test("le financeur s'affiche avec le Nom complet du financement, enveloppe comprise", () => {
+  const raw = fixture();
+  raw.Financements = [
+    {id: 1, Financeur: 1, Enveloppe: "Appel à projet 2026", Nom_complet: "France Travail - Appel à projet 2026"},
+    {id: 2, Financeur: 2, Enveloppe: "Enveloppe 2026", Nom_complet: "CD de l'Eure - Enveloppe 2026"},
+  ];
+  raw.Financeurs = [{id: 1, Nom: "France Travail"}, {id: 2, Nom: "CD de l'Eure"}];
+  raw.Cofinancements = [{id: 100, Action: 2, Financement: 2, Montant: 100, Statut_Versement: ""}];
+  const [, action] = plain(w.buildActions(raw));
+  assert.deepEqual(action.financeurs.map(item => item.label), ["CD de l'Eure - Enveloppe 2026"]);
+});
+
+test("sans colonne Nom complet, l'ancien libelle sert de repli", () => {
+  const raw = fixture();
+  raw.Financements = [
+    {id: 1, Financeur: 1, Enveloppe: "Appel à projet 2026"},
+    {id: 2, Financeur: 2, Enveloppe: "Enveloppe 2026"},
+  ];
+  raw.Financeurs = [{id: 1, Nom: "France Travail"}, {id: 2, Nom: "CD de l'Eure"}];
+  raw.Cofinancements = [
+    {id: 100, Action: 2, Financement: 1, Montant: 10, Statut_Versement: ""},
+    {id: 101, Action: 3, Financement: 2, Montant: 20, Statut_Versement: ""},
+  ];
+  const actions = plain(w.buildActions(raw));
+  assert.equal(actions.find(a => a.id === 2).financeurs[0].label, "Appel à projet 2026");
+  assert.equal(actions.find(a => a.id === 3).financeurs[0].label, "CD de l'Eure");
+});
+
+test("la liste déroulante des financeurs propose les Noms complets, triés", () => {
+  const raw = fixture();
+  raw.Financements = [
+    {id: 1, Financeur: 1, Enveloppe: "Appel à projet 2026", Nom_complet: "France Travail - Appel à projet 2026"},
+    {id: 2, Financeur: 2, Enveloppe: "5%", Nom_complet: "DR Occitanie - 5%"},
+  ];
+  raw.Financeurs = [{id: 1, Nom: "France Travail"}, {id: 2, Nom: "DR Occitanie"}];
+  w.state.raw = raw;
+  const html = w.financeOptions(2);
+  const libelles = [...html.matchAll(/<option[^>]*>([^<]*)<\/option>/g)].map(match => match[1]);
+  assert.deepEqual(libelles, ["DR Occitanie - 5%", "France Travail - Appel à projet 2026"]);
+  assert.match(html, /<option value="2" selected>DR Occitanie - 5%<\/option>/);
 });

@@ -264,9 +264,7 @@ function buildActions(raw) {
   const cofs = raw.Cofinancements.reduce((acc, cof) => {
     const actionId = cof.Action;
     if (!actionId || !actions.has(actionId)) return acc;
-    const financement = financements.get(cof.Financement) || {};
-    const financeur = financeurs.get(financement.Financeur) || {};
-    const label = financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom;
+    const label = financeLabel(financements.get(cof.Financement) || {}, financeurs);
     (acc[actionId] ||= []).push({...cof, label: label || 'Financeur', montant: Number(cof.Montant || 0), statutVersement: cof.Statut_Versement || ''});
     return acc;
   }, {});
@@ -755,7 +753,12 @@ function financeOptions(selectedId) {
     .join('');
 }
 
+// Le libelle d'un financement est son « Nom complet » (financeur et enveloppe),
+// partout : fiche, liste, filtre, synthese, export. Sans cette colonne (document
+// plus ancien) ou si elle est vide, on retombe sur l'ancien calcul.
 function financeLabel(financement, financeurs) {
+  const nomComplet = String(financement.Nom_complet || '').trim();
+  if (nomComplet) return nomComplet;
   const financeur = financeurs.get(financement.Financeur) || {};
   return financeur.Nom === 'France Travail' ? financement.Enveloppe : financeur.Nom || '';
 }
