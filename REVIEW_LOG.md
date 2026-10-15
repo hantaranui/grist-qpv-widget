@@ -26,3 +26,18 @@ Tests : aucun lancé (note seulement)
 Fichiers modifiés : docs/ux/bandeau-commun.md (créé)
 Build refait : pas nécessaire
 Commit : sur feature/bandeau-commun
+
+
+## Tâche 2 — Ajout du bandeau commun au tableau de bord
+
+Date : 2026-10-16
+Agent : @dev-interface
+Prompt : ajouter la ligne du bandeau dans le  de src/actions-dashboard/index.html, après l'API Grist, selon docs/ux/bandeau-commun.md
+
+Note /5 :
+Ce qui allait : une seule ligne ajoutée au bon endroit, rien d'autre touché ; l'agent n'a pas contourné le refus de Claude Code et l'a signalé clairement.
+Ce que j'ai fait corriger : rien. Build, tests et git status lancés à la main (commande refusée à l'agent à cause du script externe).
+Tests : 172 lancés, 172 réussis
+Fichiers modifiés : src/actions-dashboard/index.html, actions-dashboard.html
+Build refait : oui
+Commit : sur feature/bandeau-commun
