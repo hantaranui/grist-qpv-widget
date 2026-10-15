@@ -19,7 +19,7 @@ Date : 2026-10-16
 Agent : @designer-ux
 Prompt : écrire docs/ux/bandeau-commun.md (emplacement de la ligne du bandeau, sort du h1, valeur de data-titre, vérifications visuelles)
 
-Note /5 :
+Note /5 : 4
 Ce qui allait : une seule tâche, un seul fichier créé ; h1 conservé pour l'accessibilité ; data-titre « Dashboard » conservé ; 13 vérifications visuelles, dont la hauteur du tableau (100vh) et l'en-tête collant.
 Ce que j'ai fait corriger : rien.
 Tests : aucun lancé (note seulement)
