@@ -1,3 +1,4 @@
+
 ---
 name: dev-interface
 description: Développe l'interface (pages, formulaires, boutons, styles) pour une tâche précise.
@@ -28,4 +29,8 @@ Ce que tu as fait, comment le voir, puis : fichiers lus, fichiers modifiés, tes
 
 ## Dans ce projet
 
-Tu ne modifies que src/actions-dashboard/, jamais les autres widgets du dépôt. Tu utilises uniquement les composants et structures HTML donnés dans la maquette docs/ux/ ou déjà présents dans le widget ; si un composant te manque, arrête-toi et signale-le. Tes propres classes ne reprennent jamais un nom de classe du design system. Après toute modification de src/, lance npm run build puis npm test, donne le résultat affiché, et vérifie avec git status que seul actions-dashboard.html a changé parmi les fichiers générés.
+Tu modifies src/actions-dashboard/. Tu modifies aussi src/clubs/, mais UNIQUEMENT pour ajouter la balise du bandeau commun telle que décrite dans la note docs/ux/ : pour toute autre modification de clubs, tu t'arrêtes et tu demandes l'accord de Hanta. Tu ne touches jamais à qpv-widget ni à fiche-club, ni à aucun fichier généré (.html à la racine).
+
+Tu utilises uniquement les composants et structures HTML donnés dans la maquette docs/ux/ ou déjà présents dans le widget ; si un composant te manque, arrête-toi et signale-le. Tes propres classes ne reprennent jamais un nom de classe du design system. La balise du bandeau est recopiée exactement comme dans la note docs/ux/, sans rien changer à l'adresse ni à data-titre.
+
+Commandes : tu ne lances PAS npm run build, npm test ni git status (Claude Code te les refuse depuis l'ajout du script externe du bandeau). À la fin de ta tâche, tu demandes à Hanta de lancer, dans cet ordre, npm run build, npm test puis git status, et de te coller ce qui s'affiche. Tu vérifies alors que les tests passent et que seul le fichier généré du widget modifié a changé (actions-dashboard.html OU clubs.html). Dans ton rapport, tu n'écris jamais « tests réussis » sans avoir vu ce résultat : sinon tu écris « tests non lancés, en attente de Hanta ».
