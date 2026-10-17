@@ -1,6 +1,6 @@
 # Bandeau commun : ajout au tableau de bord
 
-Public : dev-interface. Changement minimal, pour la démonstration. Aucun composant du design system n'est ajouté : pas de lien ni de structure HTML à recopier.
+Public : dev-interface. Changement minimal. Aucun composant du design system n'est ajouté : pas de lien ni de structure HTML à recopier.
 
 Sources : CLAUDE.md, `src/actions-dashboard/index.html`, `src/actions-dashboard/style.css`, `build.js`, description du bandeau fournie par Hanta.
 
@@ -19,7 +19,7 @@ Après (la ligne ajoutée est la seconde) :
 
 ```html
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-    <script src="https://nicolasschena-aucarre.github.io/Bandeau_France-Travail/bandeau.js" data-titre="Dashboard"></script>
+    <script src="https://hantaranui.github.io/Bandeau_France-Travail/bandeau.js" data-titre="Liste des actions"></script>
     <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
 ```
 
@@ -32,14 +32,14 @@ Rien d'autre à changer dans les sources. `build.js` ne remplace que `<script sr
 
 Raisons :
 - Le bandeau ne contient pas de h1. Si on retire celui du tableau de bord, la page n'a plus de titre de niveau 1 : c'est une régression d'accessibilité (les lecteurs d'écran s'appuient sur le h1 pour nommer la page).
-- Pas de vrai doublon : le bandeau affiche « [titre du menu] - Dashboard » (c'est un libellé de navigation, pas un titre de section), le h1 dit ce que contient la page : « Actions d'insertion par le sport ». Les deux ont des rôles différents.
-- Retirer ou modifier le h1 touche aussi la mise en page de `.topbar` (les boutons « Exporter (CSV) » et « Ajouter une action » y sont alignés avec lui) : risque inutile la veille d'une démonstration.
+- Pas de vrai doublon : le bandeau affiche « [titre du menu] - Liste des actions » (c'est un libellé de navigation, pas un titre de section), le h1 dit ce que contient la page : « Actions d'insertion par le sport ». Les deux ont des rôles différents.
+- Retirer ou modifier le h1 touche aussi la mise en page de `.topbar` (les boutons « Exporter (CSV) » et « Ajouter une action » y sont alignés avec lui) : risque inutile pour un changement qui ne porte que sur l'ajout du bandeau.
 
-À signaler à Hanta, sans le corriger : visuellement, la page affichera deux titres l'un sous l'autre. C'est acceptable pour la démonstration. Si le collègue ajoute un jour un h1 dans le bandeau, il faudra revoir ce point.
+À signaler à Hanta, sans le corriger : visuellement, la page affichera deux titres l'un sous l'autre. C'est acceptable en l'état. Si le collègue ajoute un jour un h1 dans le bandeau, il faudra revoir ce point.
 
 ## 3. Valeur de data-titre
 
-**Garder « Dashboard »**, telle que donnée par le configurateur.
+**Garder « Liste des actions »**, telle que donnée par le configurateur.
 
 Raisons :
 - C'est la valeur générée par l'outil du collègue : la changer à la main éloigne le widget de ce que le configurateur produit.
@@ -52,7 +52,7 @@ Raisons :
 
 Bandeau
 1. Le bandeau apparaît tout en haut de la page, au-dessus de la zone « Actions d'insertion par le sport ».
-2. Son titre se lit « [titre du menu] - Dashboard ».
+2. Son titre se lit « [titre du menu] - Liste des actions ».
 3. Les logos s'affichent, la personne connectée est la bonne, le menu de liens est présent et ses liens fonctionnent.
 4. Le bandeau ne casse pas : pas de texte coupé, pas de barre de défilement horizontale sur la page.
 

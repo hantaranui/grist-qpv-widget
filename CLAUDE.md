@@ -3,7 +3,7 @@
 
 ## Avec qui tu travailles
 
-Hanta, développeuse no-code (Grist, Ksaar), débutante en code. Réponds en français simple, étape par étape, et explique chaque terme technique.
+Hanta, développeuse no-code (Grist). Réponds en français simple, étape par étape, et explique chaque terme technique.
 
 ## Le projet
 
@@ -41,9 +41,9 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 
 ## Bandeau commun
 
-- Bandeau de navigation commun, fait par un collègue (dépôt NicolasSchena-aucarre/Bandeau_France-Travail). Un configurateur dans le document Grist décide quels widgets l'affichent.
+- Bandeau de navigation commun, fait par un collègue (dépôt d'origine du bandeau (Au Carré) : Bandeau_France-Travail). Un configurateur dans le document Grist décide quels widgets l'affichent.
 - Il s'ajoute par UNE balise script dans le , après le chargement de l'API Grist. La balise est copiée telle quelle depuis le configurateur (onglet « Widgets du document »). La valeur de data-titre doit être exactement celle du configurateur.
-- Pour clubs : data-titre="Liste des Clubs".
+- Pour clubs : data-titre="Liste des clubs sportifs".
 - La note UX de chaque widget est dans docs/ux/ et passe AVANT la modification du HTML.
 - On ne modifie pas le script du bandeau, on ne le copie pas dans le dépôt.
 

@@ -1,4 +1,4 @@
-# Backlog — <nom du projet>
+# Backlog — Widgets Grist — Partenariat simplifié
 
 | Priorité | Tâche | Agent | Statut |
 |---|---|---|---|

@@ -32,7 +32,7 @@ Après (la ligne ajoutée est la troisième) :
 ```html
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="https://nicolasschena-aucarre.github.io/Bandeau_France-Travail/bandeau.js" data-titre="Liste des Clubs"></script>
+    <script src="https://hantaranui.github.io/Bandeau_France-Travail/bandeau.js" data-titre="Liste des clubs sportifs"></script>
     <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
 ```
 
@@ -41,14 +41,14 @@ Rien d'autre à changer dans `src/clubs/index.html`. `build.js` ne remplace que 
 
 ## 2. Valeur de data-titre
 
-**`data-titre="Liste des Clubs"`**, reprise exactement de la balise fournie par le configurateur Grist pour la page des clubs. Ne pas la raccourcir ni la reformuler : c'est la valeur générée par l'outil du collègue.
+**`data-titre="Liste des clubs sportifs"`**, reprise exactement de la balise fournie par le configurateur Grist pour la page des clubs. Ne pas la raccourcir ni la reformuler : c'est la valeur générée par l'outil du collègue.
 
 ## 3. Titre actuel (h1 « Clubs » dans .topbar)
 
 **Recommandation : le garder, sans aucun changement.** Même choix que pour le tableau de bord, pour les mêmes raisons :
 
 - Le bandeau ne contient pas de h1. Le retirer laisserait la page sans titre de niveau 1, une régression d'accessibilité (les lecteurs d'écran s'appuient sur le h1 pour nommer la page).
-- Pas de vrai doublon : le bandeau affichera « [titre du menu] - Liste des Clubs » (un libellé de navigation), le h1 dit ce que contient la page : « Clubs ». Les deux ont des rôles différents. Le tableau liste déjà « Liste des clubs » comme légende `sr-only` de son tableau (ligne 26 de `index.html`), ce qui ne crée pas non plus de doublon visible : cette légende n'est pas affichée à l'écran.
+- Pas de vrai doublon : le bandeau affichera « [titre du menu] - Liste des clubs sportifs » (un libellé de navigation), le h1 dit ce que contient la page : « Clubs ». Les deux ont des rôles différents. Le tableau liste déjà « Liste des clubs » comme légende `sr-only` de son tableau (ligne 26 de `index.html`), ce qui ne crée pas non plus de doublon visible : cette légende n'est pas affichée à l'écran.
 - Retirer ou modifier le h1 touche la mise en page de `.topbar` : risque inutile pour un changement qui ne porte que sur l'ajout du bandeau.
 
 Pas de raison propre à clubs de s'écarter de ce choix.
@@ -71,7 +71,7 @@ Pas de raison propre à clubs de s'écarter de ce choix.
 
 Bandeau
 1. Le bandeau apparaît tout en haut de la page, au-dessus de la liste des clubs.
-2. Son titre se lit « [titre du menu] - Liste des Clubs ».
+2. Son titre se lit « [titre du menu] - Liste des clubs sportifs ».
 3. Les logos s'affichent, la personne connectée est la bonne, le menu de liens est présent et ses liens fonctionnent.
 4. Le bandeau ne casse pas : pas de texte coupé, pas de barre de défilement horizontale sur la page.
 
