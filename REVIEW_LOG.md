@@ -1,3 +1,4 @@
+
 # Journal de revue — Tableau de bord « Actions d'insertion par le sport » (grist-qpv-widget)
 
 ## Tâche 0 — Sprint 0 : installation de la squad
@@ -24,21 +25,21 @@ Ce que j'ai fait corriger : rien.
 Tests : aucun lancé (note seulement)
 Fichiers modifiés : docs/ux/bandeau-commun.md (créé)
 Build refait : pas nécessaire
-Commit : sur feature/bandeau-commun
+Commit : 0ffcc8d sur feature/bandeau-commun
 
 ## Tâche 2 — Ajout du bandeau commun au tableau de bord
 
 Date : 2026-10-16
 Agent : @dev-interface
-Prompt : ajouter la ligne du bandeau dans le  de src/actions-dashboard/index.html, après l'API Grist, selon docs/ux/bandeau-commun.md
+Prompt : ajouter la ligne du bandeau dans le head de src/actions-dashboard/index.html, après l'API Grist, selon docs/ux/bandeau-commun.md
 
-Note /5 :
+Note /5 : 4
 Ce qui allait : une seule ligne ajoutée au bon endroit, rien d'autre touché ; l'agent n'a pas contourné le refus de Claude Code et l'a signalé clairement.
 Ce que j'ai fait corriger : rien. Build, tests et git status lancés à la main (commande refusée à l'agent à cause du script externe).
 Tests : 172 lancés, 172 réussis
 Fichiers modifiés : src/actions-dashboard/index.html, actions-dashboard.html
 Build refait : oui
-Commit : sur feature/bandeau-commun
+Commit : 67bb166 sur feature/bandeau-commun
 
 ## Tâche 3 — Réunion des branches et publication du bandeau commun (manuel)
 
@@ -52,7 +53,7 @@ Ce que j'ai fait corriger : sans objet
 Tests : 172 lancés, 172 réussis (npm test)
 Fichiers modifiés : src/actions-dashboard/index.html, src/clubs/index.html, actions-dashboard.html, clubs.html
 Build refait : oui
-Commit : feat: charger le bandeau publié (hantaranui) et aligner les titres sur le menu
+Commit : c3a414d (feat: charger le bandeau publié (hantaranui) et aligner les titres sur le menu)
 
 ## Tâche 4 — Audit avant publication dans main
 
@@ -80,8 +81,7 @@ Ce que j'ai fait corriger : rien. Reste à faire après lundi : « GitHub Pages 
 Tests : 0 lancés, 0 réussis (documentation)
 Fichiers modifiés : CLAUDE.md, docs/ux/bandeau-commun.md, docs/ux/bandeau-commun-clubs.md, docs/backlog.md
 Build refait : pas nécessaire
-Commit : docs: mettre à jour les notes du bandeau commun (adresse, titres)
-
+Commit : 4511603 (docs: mettre à jour les notes du bandeau commun (adresse, titres))
 
 ## Tâche 6 — Filtres géographiques dépendants (DR → DD → agence)
 
@@ -95,8 +95,7 @@ Ce que j'ai fait corriger : rien.
 Tests : 172 lancés, 172 réussis (tests existants, les nouvelles règles ne sont pas encore testées)
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
-Commit : sur feature/filtres-geographiques-dependants
-
+Commit : 66aa94b sur feature/filtres-geographiques-dependants
 
 ## Tâche 7 — Tests des filtres géographiques dépendants
 
@@ -110,4 +109,4 @@ Ce que j'ai fait corriger : rien. Limites notées : les clics sur les filtres ne
 Tests : 184 lancés, 184 réussis
 Fichiers modifiés : test/filtres-geographiques.test.js (créé)
 Build refait : pas nécessaire
-Commit : sur feature/filtres-geographiques-dependants
+Commit : 0c3cf11 sur feature/filtres-geographiques-dependants
