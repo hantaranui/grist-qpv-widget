@@ -110,3 +110,18 @@ Tests : 184 lancés, 184 réussis
 Fichiers modifiés : test/filtres-geographiques.test.js (créé)
 Build refait : pas nécessaire
 Commit : 0c3cf11 sur feature/filtres-geographiques-dependants
+
+
+## Tâche 8 — Carnet de tests humains des filtres géographiques dépendants
+
+Date : 2026-10-18
+Agent : @recetteur (la correction a peut-être été faite par Claude sans l'agent : il n'avait pas été rappelé avec @)
+Prompt : écrire la section « Filtres géographiques dépendants » de docs/tests/carnet-tableau-de-bord.md (parties A et B, dans DEV avec données fictives), puis la raccourcir à 10 tests en A et 5 en B
+
+Note /5 : 5
+Ce qui allait : 8 règles couvertes ; partie A (développeuse) et partie B (collègue testeur) séparées ; 5 tests de fumée (A01, A02, A04, A07, B05) ; rien présenté comme déjà testé ; points à confirmer clairement marqués.
+Ce que j'ai fait corriger : premier brouillon trop long (25 tests) ramené à 15 ; test Échap retiré ; profil FT Régional reporté ; A09 et A10 à jouer seulement si une DD sans DR (ou une DR sans DD) existe dans DEV ; statut « Planifiée » ; commit à tester 66aa94b. À faire plus tard : copier le protocole de test et le guide testeur depuis le dépôt de la page d'accueil.
+Tests : 0 lancés, 0 réussis (rédaction du carnet)
+Fichiers modifiés : docs/tests/carnet-tableau-de-bord.md (créé)
+Build refait : pas nécessaire
+Commit : f12921f sur feature/filtres-geographiques-dependants
