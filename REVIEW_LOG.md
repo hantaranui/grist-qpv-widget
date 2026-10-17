@@ -96,3 +96,18 @@ Tests : 172 lancés, 172 réussis (tests existants, les nouvelles règles ne son
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : sur feature/filtres-geographiques-dependants
+
+
+## Tâche 7 — Tests des filtres géographiques dépendants
+
+Date : 2026-10-18
+Agent : @testeur
+Prompt : écrire dans test/filtres-geographiques.test.js les tests des 8 règles des filtres DR, DD et agence, puis lancer tous les tests
+
+Note /5 : 4
+Ce qui allait : 12 tests avec données fictives (2 DR, 3 DD, 4 agences), les 8 règles couvertes, plus la liste des DR inchangée et le nettoyage sans effet sans filtre géographique ; aucun bug trouvé ; un seul fichier créé.
+Ce que j'ai fait corriger : rien. Limites notées : les clics sur les filtres ne sont pas testés (couverts par le carnet du recetteur) ; deux DD de même nom dans deux DR seraient fusionnées (cas non testé).
+Tests : 184 lancés, 184 réussis
+Fichiers modifiés : test/filtres-geographiques.test.js (créé)
+Build refait : pas nécessaire
+Commit : sur feature/filtres-geographiques-dependants
