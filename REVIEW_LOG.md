@@ -81,3 +81,18 @@ Tests : 0 lancés, 0 réussis (documentation)
 Fichiers modifiés : CLAUDE.md, docs/ux/bandeau-commun.md, docs/ux/bandeau-commun-clubs.md, docs/backlog.md
 Build refait : pas nécessaire
 Commit : docs: mettre à jour les notes du bandeau commun (adresse, titres)
+
+
+## Tâche 6 — Filtres géographiques dépendants (DR → DD → agence)
+
+Date : 2026-10-18
+Agent : @dev-backend
+Prompt : rendre dépendants les filtres DR, DD et Agence du tableau de bord (5 règles : DD limitées à la DR, agences limitées à la DD ou à la DR, nettoyage des choix devenus impossibles, listes construites à partir des actions, autres filtres inchangés)
+
+Note /5 : 5
+Ce qui allait : seuls script.js et le fichier généré modifiés ; optionsFor filtre les actions avant de construire les listes ; nouvelle fonction pruneGeoFilters appelée à chaque changement de filtre ; rendu HTML inchangé ; l'agent a signalé qu'aucun test ne couvre encore les règles.
+Ce que j'ai fait corriger : rien.
+Tests : 172 lancés, 172 réussis (tests existants, les nouvelles règles ne sont pas encore testées)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : sur feature/filtres-geographiques-dependants

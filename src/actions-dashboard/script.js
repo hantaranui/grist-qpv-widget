@@ -406,6 +406,7 @@ function renderFilters() {
       const key = event.target.dataset.filter;
       state.filters[key] = event.target.value;
       if (!state.filters[key]) delete state.filters[key];
+      pruneGeoFilters();
       render();
     });
   });
@@ -453,8 +454,18 @@ function renderFilters() {
       const value = event.currentTarget.dataset.filterValue;
       if (value) state.filters[key] = value;
       else delete state.filters[key];
+      pruneGeoFilters();
       render();
     });
+  });
+}
+
+// Retire de state.filters la DD et l'agence qui ne sont plus proposees apres un
+// changement de DR ou de DD. La DD est verifiee avant l'agence, car l'agence
+// depend de la DD.
+function pruneGeoFilters() {
+  ['dd', 'agency'].forEach(key => {
+    if (state.filters[key] && !optionsFor(key).includes(state.filters[key])) delete state.filters[key];
   });
 }
 
@@ -463,7 +474,11 @@ function optionsFor(key) {
   // si aucune action de la selection courante ne s'y trouve.
   if (key === 'financement') return [...FINANCEMENT_STATES];
   const values = new Set();
-  state.actions.forEach(action => {
+  // DR, DD et agence sont dependantes : la DD ne propose que celles de la DR
+  // choisie, l'agence que celles de la DD (ou, a defaut, de la DR) choisie.
+  const parents = key === 'dd' ? ['dr'] : key === 'agency' ? ['dr', 'dd'] : [];
+  const actions = state.actions.filter(action => parents.every(parent => !state.filters[parent] || action[parent] === state.filters[parent]));
+  actions.forEach(action => {
     if (key === 'financeur') action.financeurs.forEach(item => item.label && values.add(item.label));
     else if (action[key]) values.add(action[key]);
   });
