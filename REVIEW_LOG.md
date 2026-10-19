@@ -1,3 +1,4 @@
+
 # Journal de revue — Tableau de bord « Actions d'insertion par le sport » (grist-qpv-widget)
 
 ## Tâche 0 — Sprint 0 : installation de la squad
@@ -24,21 +25,21 @@ Ce que j'ai fait corriger : rien.
 Tests : aucun lancé (note seulement)
 Fichiers modifiés : docs/ux/bandeau-commun.md (créé)
 Build refait : pas nécessaire
-Commit : sur feature/bandeau-commun
+Commit : 0ffcc8d sur feature/bandeau-commun
 
 ## Tâche 2 — Ajout du bandeau commun au tableau de bord
 
 Date : 2026-10-16
 Agent : @dev-interface
-Prompt : ajouter la ligne du bandeau dans le  de src/actions-dashboard/index.html, après l'API Grist, selon docs/ux/bandeau-commun.md
+Prompt : ajouter la ligne du bandeau dans le head de src/actions-dashboard/index.html, après l'API Grist, selon docs/ux/bandeau-commun.md
 
-Note /5 :
+Note /5 : 4
 Ce qui allait : une seule ligne ajoutée au bon endroit, rien d'autre touché ; l'agent n'a pas contourné le refus de Claude Code et l'a signalé clairement.
 Ce que j'ai fait corriger : rien. Build, tests et git status lancés à la main (commande refusée à l'agent à cause du script externe).
 Tests : 172 lancés, 172 réussis
 Fichiers modifiés : src/actions-dashboard/index.html, actions-dashboard.html
 Build refait : oui
-Commit : sur feature/bandeau-commun
+Commit : 67bb166 sur feature/bandeau-commun
 
 ## Tâche 3 — Réunion des branches et publication du bandeau commun (manuel)
 
@@ -52,7 +53,7 @@ Ce que j'ai fait corriger : sans objet
 Tests : 172 lancés, 172 réussis (npm test)
 Fichiers modifiés : src/actions-dashboard/index.html, src/clubs/index.html, actions-dashboard.html, clubs.html
 Build refait : oui
-Commit : feat: charger le bandeau publié (hantaranui) et aligner les titres sur le menu
+Commit : c3a414d (feat: charger le bandeau publié (hantaranui) et aligner les titres sur le menu)
 
 ## Tâche 4 — Audit avant publication dans main
 
@@ -80,4 +81,47 @@ Ce que j'ai fait corriger : rien. Reste à faire après lundi : « GitHub Pages 
 Tests : 0 lancés, 0 réussis (documentation)
 Fichiers modifiés : CLAUDE.md, docs/ux/bandeau-commun.md, docs/ux/bandeau-commun-clubs.md, docs/backlog.md
 Build refait : pas nécessaire
-Commit : docs: mettre à jour les notes du bandeau commun (adresse, titres)
+Commit : 4511603 (docs: mettre à jour les notes du bandeau commun (adresse, titres))
+
+## Tâche 6 — Filtres géographiques dépendants (DR → DD → agence)
+
+Date : 2026-10-18
+Agent : @dev-backend
+Prompt : rendre dépendants les filtres DR, DD et Agence du tableau de bord (5 règles : DD limitées à la DR, agences limitées à la DD ou à la DR, nettoyage des choix devenus impossibles, listes construites à partir des actions, autres filtres inchangés)
+
+Note /5 : 5
+Ce qui allait : seuls script.js et le fichier généré modifiés ; optionsFor filtre les actions avant de construire les listes ; nouvelle fonction pruneGeoFilters appelée à chaque changement de filtre ; rendu HTML inchangé ; l'agent a signalé qu'aucun test ne couvre encore les règles.
+Ce que j'ai fait corriger : rien.
+Tests : 172 lancés, 172 réussis (tests existants, les nouvelles règles ne sont pas encore testées)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 66aa94b sur feature/filtres-geographiques-dependants
+
+## Tâche 7 — Tests des filtres géographiques dépendants
+
+Date : 2026-10-18
+Agent : @testeur
+Prompt : écrire dans test/filtres-geographiques.test.js les tests des 8 règles des filtres DR, DD et agence, puis lancer tous les tests
+
+Note /5 : 4
+Ce qui allait : 12 tests avec données fictives (2 DR, 3 DD, 4 agences), les 8 règles couvertes, plus la liste des DR inchangée et le nettoyage sans effet sans filtre géographique ; aucun bug trouvé ; un seul fichier créé.
+Ce que j'ai fait corriger : rien. Limites notées : les clics sur les filtres ne sont pas testés (couverts par le carnet du recetteur) ; deux DD de même nom dans deux DR seraient fusionnées (cas non testé).
+Tests : 184 lancés, 184 réussis
+Fichiers modifiés : test/filtres-geographiques.test.js (créé)
+Build refait : pas nécessaire
+Commit : 0c3cf11 sur feature/filtres-geographiques-dependants
+
+
+## Tâche 8 — Carnet de tests humains des filtres géographiques dépendants
+
+Date : 2026-10-18
+Agent : @recetteur (la correction a peut-être été faite par Claude sans l'agent : il n'avait pas été rappelé avec @)
+Prompt : écrire la section « Filtres géographiques dépendants » de docs/tests/carnet-tableau-de-bord.md (parties A et B, dans DEV avec données fictives), puis la raccourcir à 10 tests en A et 5 en B
+
+Note /5 : 5
+Ce qui allait : 8 règles couvertes ; partie A (développeuse) et partie B (collègue testeur) séparées ; 5 tests de fumée (A01, A02, A04, A07, B05) ; rien présenté comme déjà testé ; points à confirmer clairement marqués.
+Ce que j'ai fait corriger : premier brouillon trop long (25 tests) ramené à 15 ; test Échap retiré ; profil FT Régional reporté ; A09 et A10 à jouer seulement si une DD sans DR (ou une DR sans DD) existe dans DEV ; statut « Planifiée » ; commit à tester 66aa94b. À faire plus tard : copier le protocole de test et le guide testeur depuis le dépôt de la page d'accueil.
+Tests : 0 lancés, 0 réussis (rédaction du carnet)
+Fichiers modifiés : docs/tests/carnet-tableau-de-bord.md (créé)
+Build refait : pas nécessaire
+Commit : f12921f sur feature/filtres-geographiques-dependants
