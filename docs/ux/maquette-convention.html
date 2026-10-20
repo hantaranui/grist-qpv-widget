@@ -50,7 +50,6 @@
         .maquette-modal-xl { zoom: .8; }
         .maquette-modal-xl .modal-dialog { min-width: 1164px; max-width: 1164px; }
         .maquette-modal-xl .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .maquette-modal-petite { zoom: .9; }
         .edit-field, .convention-part, .modal-header, .modal-footer { break-inside: avoid; page-break-inside: avoid; }
         .edit-field input, .edit-field .form-control { min-width: 0; overflow: visible; text-overflow: clip; }
         .maquette-carte, .edit-card { break-inside: avoid; page-break-inside: avoid; overflow: visible; }
@@ -63,7 +62,7 @@
 
     <!-- ================= PARTIE A ================= -->
     <section class="maquette-bloc" aria-labelledby="mq-a">
-      <h2 id="mq-a">A. Bas de la fiche d'action : bloc « Convention » (4 états + 1 cas)</h2>
+      <h2 id="mq-a">A. Bas de la fiche d'action : bloc « Convention » (4 états + 2 messages)</h2>
       <div class="edit-row edit-row-bottom">
         <section class="edit-card"><div class="section-head"><span>Statut</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
         <section class="edit-card"><div class="section-head"><span>Financement</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
@@ -97,12 +96,12 @@
           <p>Convention générée le 12/09/2026.</p>
           <div class="convention-actions">
             <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
-            <button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Déposer la convention signée</span></button>
+            <button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Re-générer</span></button>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Déposer la convention signée</span></button>
           </div>
-          <div><button class="btn btn-link" type="button" aria-haspopup="dialog"><span class="btn-content">Modifier et régénérer</span></button></div>
         </div>
       </div>
-      <p class="help-block maquette-note"><em>[À CONFIRMER] : le lien « Modifier et régénérer » est une proposition (corriger une erreur avant la signature). Il rouvrirait la fenêtre B et remplacerait le PDF. Le chef n'a pas tranché.</em></p>
+      <p class="help-block maquette-note"><em>« Re-générer » rouvre la fenêtre de la partie B, préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF (sans historique). « Déposer la convention signée » ouvre directement le choix du fichier (pas de fenêtre).</em></p>
 
       <h3>A3. Signée</h3>
       <div class="edit-card maquette-carte">
@@ -112,10 +111,10 @@
           <div class="convention-actions">
             <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention signée<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
           </div>
-          <div><button class="btn btn-link" type="button" aria-haspopup="dialog"><span class="btn-content">Remplacer le fichier signé</span></button></div>
+          <div><button class="btn btn-link" type="button"><span class="btn-content">Remplacer le fichier signé</span></button></div>
         </div>
       </div>
-      <p class="help-block maquette-note"><em>Plus de régénération, ni d'accès au PDF généré. Le lien « Remplacer le fichier signé » ouvre la petite fenêtre C2.</em></p>
+      <p class="help-block maquette-note"><em>Plus de régénération, ni d'accès au PDF généré (il reste gardé dans Grist, mais n'est plus montré). Le lien « Remplacer le fichier signé » ouvre directement le choix du fichier (partie C).</em></p>
 
       <h3>A4. Dispositif sans modèle</h3>
       <div class="edit-card maquette-carte">
@@ -134,17 +133,32 @@
           <p>Convention générée le 12/09/2026.</p>
           <div class="convention-actions">
             <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
-            <button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Déposer la convention signée</span></button>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Re-générer</span></button>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Déposer la convention signée</span></button>
           </div>
         </div>
       </div>
       <p class="help-block maquette-note"><em>Le message apparaît dans le bloc, au-dessus de l'état, et rien n'est enregistré. Le même message s'applique à « Remplacer le fichier signé ». L'état et la date ne changent pas.</em></p>
+
+      <h3>A6. Confirmation après le dépôt du fichier signé</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <div class="alert alert-success" role="status"><p class="alert-content">Convention signée enregistrée.</p></div>
+          <p>Convention signée, déposée le 03/10/2026.</p>
+          <div class="convention-actions">
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention signée<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
+          </div>
+          <div><button class="btn btn-link" type="button"><span class="btn-content">Remplacer le fichier signé</span></button></div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Le fichier est enregistré dès qu'il est choisi, sans autre fenêtre. Le message de confirmation s'affiche au-dessus de l'état, qui passe (ou reste) à « Signée » avec la date de dépôt du jour.</em></p>
     </section>
 
     <!-- ================= PARTIE B ================= -->
     <section class="maquette-bloc" aria-labelledby="mq-b">
       <h2 id="mq-b">B. Fenêtre « Convention », modèle « Du stade vers l'emploi » (état À générer uniquement), large, sans défilement</h2>
-      <p class="maquette-note"><em>Fenêtre de taille modal-xl :1164 px de large à partir de 1200 px d'écran, trois colonnes. En dessous de 1200 px elle passe en une colonne et défile. Ici le formulaire « Ajouter un contact » est fermé. Pas de « Nombre d'opérations » (toujours une opération) ni de « Date de fin » (31 décembre de l'année, fixe) : une phrase les rappelle. Le siège du club s'affiche en entier, sur plusieurs lignes.</em></p>
+      <p class="maquette-note"><em>Cette fenêtre s'ouvre aussi depuis « Re-générer » (état Générée), préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF. Fenêtre de taille modal-xl :1164 px de large à partir de 1200 px d'écran, trois colonnes. En dessous de 1200 px elle passe en une colonne et défile. Ici le formulaire « Ajouter un contact » est fermé. Pas de « Nombre d'opérations » (toujours une opération) ni de « Date de fin » (31 décembre de l'année, fixe) : une phrase les rappelle. Le siège du club s'affiche en entier, sur plusieurs lignes.</em></p>
       <div class="maquette-modal maquette-modal-xl">
         <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
           <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -553,70 +567,33 @@
 
     <!-- ================= PARTIE C ================= -->
     <section class="maquette-bloc" aria-labelledby="mq-c">
-      <h2 id="mq-c">C. Petites fenêtres : dépôt du fichier signé</h2>
+      <h2 id="mq-c">C. Dépôt et remplacement du fichier signé : pas de fenêtre</h2>
+      <p class="maquette-note"><em>Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le sélecteur de fichiers du navigateur. Le fichier choisi est enregistré tout de suite, sans vérification ni fenêtre intermédiaire. Seuls les PDF sont acceptés.</em></p>
 
-      <h3>C1. Dépôt de la convention signée (après le choix du fichier)</h3>
-      <div class="maquette-modal maquette-modal-petite">
-        <div class="modal fade show" id="depotDialog" role="dialog" aria-modal="true" aria-labelledby="depotTitle" tabindex="-1">
-          <div class="modal-dialog">
-            <form class="modal-content" id="depotForm" novalidate>
-              <div class="modal-header"><h2 class="modal-title" id="depotTitle">Déposer la convention signée</h2></div>
-              <div class="modal-body">
-                <p>Fichier choisi : <strong>convention-signee-exemple.pdf</strong></p>
-                <p><a class="btn btn-link" href="#" target="_blank" rel="noopener"><span class="btn-content">Ouvrir le fichier pour le relire<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a></p>
-                <div class="form-check with-checked-bg">
-                  <input class="form-check-input" id="depotVerifie" name="depotVerifie" required type="checkbox" value="ok">
-                  <label class="form-check-label" for="depotVerifie">J'ai vérifié qu'il s'agit de la convention signée par les deux parties<span class="required">&nbsp;*</span></label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-secondary" type="button"><span class="btn-content">Annuler</span></button>
-                <button class="btn btn-primary" type="submit" aria-disabled="true" aria-describedby="depotAide"><span class="btn-content">Valider le dépôt</span></button>
-                <p class="help-block" id="depotAide" style="flex-basis:100%;margin:0">Cochez la case pour valider le dépôt.</p>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <p class="help-block maquette-note"><em>Ici la case est décochée : le bouton est grisé (aria-disabled), avec son message visible. Une fois cochée, le message disparaît et le bouton devient actif.</em></p>
-
-      <h3>C2. Remplacement du fichier signé</h3>
-      <div class="maquette-modal maquette-modal-petite">
-        <div class="modal fade show" id="remplaceDialog" role="dialog" aria-modal="true" aria-labelledby="remplaceTitle" tabindex="-1">
-          <div class="modal-dialog">
-            <form class="modal-content" id="remplaceForm" novalidate>
-              <div class="modal-header"><h2 class="modal-title" id="remplaceTitle">Remplacer le fichier signé</h2></div>
-              <div class="modal-body">
-                <p>Fichier choisi : <strong>convention-signee-corrigee-exemple.pdf</strong></p>
-                <p><a class="btn btn-link" href="#" target="_blank" rel="noopener"><span class="btn-content">Ouvrir le fichier pour le relire<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a></p>
-                <p>L'ancien fichier signé sera supprimé.</p>
-                <div class="form-check with-checked-bg">
-                  <input class="form-check-input" id="remplaceVerifie" name="remplaceVerifie" required type="checkbox" value="ok" checked>
-                  <label class="form-check-label" for="remplaceVerifie">J'ai vérifié qu'il s'agit de la convention signée par les deux parties<span class="required">&nbsp;*</span></label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-secondary" type="button"><span class="btn-content">Annuler</span></button>
-                <button class="btn btn-primary" type="submit"><span class="btn-content">Valider le dépôt</span></button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <p class="help-block maquette-note"><em>Ici la case est cochée : le bouton est actif. Après validation, la date affichée dans le bloc est mise à jour.</em></p>
-
-      <h3>C3. Choix du fichier (comment la fenêtre s'ouvre)</h3>
+      <h3>C1. Choix du fichier (comment le dépôt démarre)</h3>
       <div class="edit-card maquette-carte">
         <div class="section-head"><span>Convention</span></div>
         <div class="edit-fields">
           <p>Convention générée le 12/09/2026.</p>
           <div class="convention-actions">
-            <button class="btn btn-secondary" type="button" id="depotChoisir" aria-haspopup="dialog"><span class="btn-content">Déposer la convention signée</span></button>
+            <button class="btn btn-secondary" type="button" id="depotChoisir"><span class="btn-content">Déposer la convention signée</span></button>
             <input class="convention-file" type="file" id="depotFichier" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
           </div>
         </div>
       </div>
-      <p class="help-block maquette-note"><em>Le bouton ouvre le sélecteur de fichiers du navigateur (champ fichier caché, comme le bouton « Ajouter un logo » de la fiche du club). Dès qu'un PDF est choisi, la fenêtre C1 s'ouvre. Autre type de fichier : message A5.</em></p>
+      <p class="help-block maquette-note"><em>Le bouton ouvre le sélecteur de fichiers (champ fichier caché, comme « Ajouter un logo » de la fiche du club). Le lien « Remplacer le fichier signé » (A3) fait la même chose. Un PDF choisi est enregistré aussitôt, en remplaçant l'ancien fichier signé s'il y en a un (sans historique), et la date de dépôt est mise à jour : message A6. Autre type de fichier : message A5, rien n'est enregistré.</em></p>
+
+      <h3>C2. Envoi en cours</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Convention générée le 12/09/2026.</p>
+          <div class="convention-actions">
+            <button class="btn btn-secondary" type="button" aria-disabled="true"><span class="btn-content">Envoi en cours…</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Pendant l'envoi, le bouton (ou le lien) qui a lancé le dépôt affiche « Envoi en cours… » et reste en place. En cas d'échec : alerte « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. » (même style que A5), et l'état ne change pas.</em></p>
     </section>
   </body>
 </html>

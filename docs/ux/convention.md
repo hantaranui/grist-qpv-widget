@@ -3,7 +3,7 @@
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
-Cette version intègre les décisions du chef sur la première maquette, puis ses corrections : formulaire « Ajouter un contact » dans le bloc (plus de seconde fenêtre), champs de la fenêtre selon le modèle de convention, correspondance dispositif / modèle, siège du club affiché en entier.
+Cette version intègre les décisions du chef sur la première maquette, puis ses corrections : formulaire « Ajouter un contact » dans le bloc (plus de seconde fenêtre), champs de la fenêtre selon le modèle de convention, correspondance dispositif / modèle, siège du club affiché en entier, bouton « Re-générer », PDF généré gardé mais non montré après la signature, dépôt du fichier signé sans fenêtre de vérification.
 
 Les points qui attendent la réponse du chef sont marqués **[À CONFIRMER]** ; la liste complète est à la fin (§10).
 
@@ -22,21 +22,25 @@ Parcours 1, générer (état « À générer ») :
 
 Parcours 2, relire (état « Générée ») : « Voir la convention » ouvre directement le PDF, sans fenêtre : 1 clic.
 
-Parcours 3, déposer la version signée (états « Générée » puis « Signée ») :
+Parcours 3, re-générer (état « Générée ») :
 
-1. Clic sur « Déposer la convention signée » : le sélecteur de fichiers du navigateur s'ouvre.
+1. Clic sur « Re-générer » : la fenêtre Convention s'ouvre, préremplie avec les informations enregistrées.
+2. Corriger ce qui doit l'être.
+3. « Générer la convention » : le nouveau PDF remplace l'ancien (sans historique), la fenêtre se ferme, la date du bloc est mise à jour.
+
+Parcours 4, déposer la version signée (états « Générée » puis « Signée ») :
+
+1. Clic sur « Déposer la convention signée » : le sélecteur de fichiers du navigateur s'ouvre directement, sans fenêtre.
 2. Choix d'un fichier PDF. Si ce n'est pas un PDF : message dans le bloc, rien n'est enregistré, fin.
-3. La petite fenêtre de dépôt s'ouvre : nom du fichier, lien pour l'ouvrir et le relire, case à cocher.
-4. Cocher « J'ai vérifié qu'il s'agit de la convention signée par les deux parties », puis « Valider le dépôt ».
-5. Le bloc passe à l'état « Signée ».
+3. Le fichier est enregistré tout de suite, la date de dépôt est mise à jour, un message de confirmation s'affiche, le bloc passe à l'état « Signée ».
 
-Parcours 4, remplacer le fichier signé (état « Signée ») : lien « Remplacer le fichier signé », puis les étapes 1 à 5 ci-dessus, avec en plus la phrase « L'ancien fichier signé sera supprimé. ». Le nouveau fichier remplace l'ancien, sans historique, et la date de dépôt est mise à jour.
+Parcours 5, remplacer le fichier signé (état « Signée ») : lien « Remplacer le fichier signé », puis les étapes 1 à 3 ci-dessus. Le nouveau fichier remplace l'ancien, sans historique, et la date de dépôt est mise à jour. Aucune vérification n'est demandée.
 
-Le bouton qui ouvre la fenêtre est dans le bloc Convention, **pas** à côté de Supprimer, Annuler et Enregistrer. Ces trois boutons gardent leur place et leur sens. « Enregistrer les informations » n'enregistre pas la fiche (Intitulé, Statut, etc.), seulement les informations de convention.
+Les boutons qui ouvrent la fenêtre (« Générer la convention », « Re-générer ») sont dans le bloc Convention, **pas** à côté de Supprimer, Annuler et Enregistrer. Ces trois boutons gardent leur place et leur sens. « Enregistrer les informations » n'enregistre pas la fiche (Intitulé, Statut, etc.), seulement les informations de convention.
 
 ## 2. Écran A : bloc « Convention » dans la fiche
 
-Place : sous Statut et Financement, pleine largeur, même style (`edit-card`, `section-head`, `edit-fields`). Voir la maquette, partie A (A1 à A5).
+Place : sous Statut et Financement, pleine largeur, même style (`edit-card`, `section-head`, `edit-fields`). Voir la maquette, partie A (A1 à A6).
 
 Contenu : en-tête « Convention » (même `section-head` que les autres blocs), une phrase d'état (le texte porte l'information, pas la couleur), puis les boutons de l'état.
 
@@ -44,11 +48,13 @@ Contenu : en-tête « Convention » (même `section-head` que les autres blocs),
 |---|---|---|
 | **À générer** (A1) | « Aucune convention générée. » | « Générer la convention » (`btn btn-secondary`, `aria-haspopup="dialog"`) : ouvre la fenêtre B |
 | **À générer, action sans fédération** (A1 bis) | « Aucune convention générée. » puis « Renseignez la fédération de l'action avant de générer la convention. » | aucun : le message remplace le bouton |
-| **Générée** (A2) | « Convention générée le [date]. » | « Voir la convention » (lien, ouvre le PDF directement dans un nouvel onglet, sans fenêtre) ; « Déposer la convention signée » ; **[À CONFIRMER]** lien « Modifier et régénérer » |
-| **Signée** (A3) | « Convention signée, déposée le [date]. » | « Voir la convention signée » (lien, nouvel onglet) ; en dessous, lien « Remplacer le fichier signé ». Plus de régénération, ni d'accès au PDF généré. |
+| **Générée** (A2) | « Convention générée le [date]. » | « Voir la convention » (lien, ouvre le PDF directement dans un nouvel onglet, sans fenêtre) ; « Re-générer » (`btn btn-secondary`, `aria-haspopup="dialog"`) : rouvre la fenêtre B préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF, sans historique ; « Déposer la convention signée » : ouvre directement le choix du fichier |
+| **Signée** (A3) | « Convention signée, déposée le [date]. » | « Voir la convention signée » (lien, nouvel onglet) ; en dessous, lien « Remplacer le fichier signé » (ouvre directement le choix du fichier). Plus de régénération, ni d'accès au PDF généré : il reste gardé dans Grist mais n'est plus montré. |
 | **Dispositif sans modèle** (A4) | « Pas encore de modèle de convention pour ce dispositif. » | aucun (dispositifs concernés : Aller vers, Parcours complet d'insertion par le sport) |
 
 Messages d'erreur du bloc (A5) : si le fichier choisi n'est pas un PDF, une alerte (`alert alert-error`, `role="alert"`) s'affiche en haut du bloc : « Le fichier n'a pas été enregistré : seuls les fichiers PDF sont acceptés. » L'état et la date ne changent pas.
+
+Confirmation (A6) : après un dépôt réussi, une alerte de succès (`alert alert-success`, `role="status"`) « Convention signée enregistrée. » s'affiche en haut du bloc.
 
 Règle d'ordre des états : un dispositif sans modèle n'a jamais de bouton. L'état « Signée » l'emporte sur « Générée ». Le cas « sans fédération » ne concerne que l'état « À générer » (le modèle « Du stade vers l'emploi » cite la fédération du club ; la fédération se lit sur l'action).
 
@@ -58,9 +64,9 @@ Qui voit et modifie : les règles d'accès du document décident ; le widget ne 
 
 Mobile : le bloc passe sous les autres, déjà le cas dans la fiche. Les boutons gardent leur taille normale et passent à la ligne.
 
-## 3. Écran B : fenêtre « Convention » (état À générer uniquement)
+## 3. Écran B : fenêtre « Convention » (générer ou re-générer)
 
-La fenêtre n'existe plus que pour générer. Les anciens états « générée » et « sans modèle » de la fenêtre sont supprimés : ils sont dans le bloc (écran A).
+La fenêtre sert à générer, et à re-générer depuis « Re-générer » (état Générée) : dans ce cas, elle est préremplie avec les informations enregistrées et « Générer la convention » remplace l'ancien PDF, sans historique. Les anciens états « générée » et « sans modèle » de la fenêtre sont supprimés : ils sont dans le bloc (écran A).
 
 Structure et comportement repris de la fenêtre « Ajout d'une action » (script.js, `addActionModalHtml`) : `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `tabindex="-1"`, `modal fade show`, formulaire dans `modal-content`.
 
@@ -180,35 +186,30 @@ Par décision du chef : « SIRET de l'agence » (aucun modèle ne l'utilise) et 
 
 `modal-footer`, de gauche à droite : « Fermer » (secondaire), « Enregistrer les informations » (secondaire), « Générer la convention » (principal, un seul bouton principal).
 
-## 4. Écran C : petites fenêtres de dépôt (maquette C1 à C3)
+## 4. Écran C : dépôt et remplacement du fichier signé (sans fenêtre, maquette C1 et C2)
 
-Les deux fenêtres (dépôt et remplacement) sont la même fenêtre, avec une phrase de plus pour le remplacement. Taille par défaut du design system (pas de `modal-lg`).
+Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à cocher, pas de bouton « Valider le dépôt », pas de message « L'ancien fichier signé sera supprimé »).
 
-**Choix du fichier (C3)** : le bouton « Déposer la convention signée » (ou le lien « Remplacer le fichier signé ») déclenche un champ fichier caché, `accept="application/pdf,.pdf"`, comme le bouton « Ajouter un logo » de la fiche du club. Le design system n'a pas de composant de dépôt de fichier : voir §8.
+**Choix du fichier (C1)** : le bouton « Déposer la convention signée » (état Générée) ou le lien « Remplacer le fichier signé » (état Signée) déclenche directement un champ fichier caché, `accept="application/pdf,.pdf"`, comme le bouton « Ajouter un logo » de la fiche du club. Ces deux commandes n'ouvrent pas de fenêtre : pas d'`aria-haspopup`. Le design system n'a pas de composant de dépôt de fichier : voir §8.
 
-**Fenêtre de dépôt (C1)**, titre « Déposer la convention signée » :
+**Enregistrement immédiat** : dès qu'un PDF est choisi, il est enregistré, en remplaçant l'ancien fichier signé s'il y en a un (sans historique). La date de dépôt est mise à jour et le bloc passe (ou reste) à l'état « Signée ».
 
-1. « Fichier choisi : [nom du fichier] ».
-2. Lien « Ouvrir le fichier pour le relire » (`btn btn-link`, nouvel onglet, `sr-only` « (s'ouvre dans un nouvel onglet) »).
-3. Case à cocher obligatoire : « J'ai vérifié qu'il s'agit de la convention signée par les deux parties ».
-4. Pied : « Annuler » (secondaire), « Valider le dépôt » (principal). Tant que la case n'est pas cochée, « Valider le dépôt » est grisé avec `aria-disabled="true"` et `aria-describedby` vers un message visible : « Cochez la case pour valider le dépôt. » Le message disparaît quand la case est cochée.
+**Fichier invalide** : seuls les PDF sont acceptés. Si le fichier n'est pas un PDF, un message le dit dans le bloc (A5) et rien n'est enregistré. Le contrôle regarde le type du fichier et son extension.
 
-**Fenêtre de remplacement (C2)**, titre « Remplacer le fichier signé » : identique, avec, avant la case, la phrase « L'ancien fichier signé sera supprimé. ».
+**Envoi en cours (C2)** : le bouton ou le lien qui a lancé le dépôt affiche « Envoi en cours… » et reste en place (`aria-disabled="true"`).
 
-**Fichier invalide** : seuls les PDF sont acceptés. Si le fichier n'est pas un PDF, la fenêtre ne s'ouvre pas ; le bloc affiche l'alerte du §2 (A5) et rien n'est enregistré. Le contrôle regarde le type du fichier et son extension.
-
-Succès : fenêtre fermée, le bloc passe (ou reste) à « Convention signée, déposée le [date]. », message de succès (`alert alert-success`, `role="status"`) : « Convention signée enregistrée. » Échec d'envoi : « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. » La méthode technique d'envoi de la pièce jointe est décrite dans CLAUDE.md (section Pièges connus) : jeton d'écriture, `credentials 'omit'`, en-tête `X-Requested-With`.
+**Succès (A6)** : alerte `alert alert-success`, `role="status"` : « Convention signée enregistrée. ». **Échec d'envoi** : alerte `alert alert-error`, `role="alert"` : « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. » L'état ne change pas. La méthode technique d'envoi de la pièce jointe est décrite dans CLAUDE.md (section Pièges connus) : jeton d'écriture, `credentials 'omit'`, en-tête `X-Requested-With`.
 
 ## 5. Textes affichés (tous, pour dev-interface)
 
 - Bloc : « Convention » ; « Aucune convention générée. » ; « Convention générée le [date]. » ; « Convention signée, déposée le [date]. » ; « Pas encore de modèle de convention pour ce dispositif. » ; « Renseignez la fédération de l'action avant de générer la convention. »
-- Boutons du bloc : « Générer la convention », « Voir la convention », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé », [À CONFIRMER] « Modifier et régénérer ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir ».
+- Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir ».
 - Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires. » ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; « Date et lieu » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Aucun contact enregistré pour ce club. » ; « Ajouter un contact » (avec `sr-only` « (le signataire n'est pas dans la liste) »). Rappels de valeurs fixes (Du stade vers l'emploi) : « Une seule opération. » ; « Date de fin : 31 décembre [année]. ». Libellés propres à Parcours de remobilisation : « Fait à (club) », « Date (club) », « Fait à (France Travail) », « Date (France Travail) ».
-- Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention ».
+- Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération).
 - Formulaire contact (dans le bloc) : « Nouveau contact » (légende) ; « Nom » ; « Prénom » ; « Fonction » ; « Annuler » ; « Ajouter ce contact ».
-- Fenêtres de dépôt : « Déposer la convention signée » ; « Remplacer le fichier signé » ; « Fichier choisi : … » ; « Ouvrir le fichier pour le relire » ; « L'ancien fichier signé sera supprimé. » ; « J'ai vérifié qu'il s'agit de la convention signée par les deux parties » ; « Annuler » ; « Valider le dépôt » ; « Cochez la case pour valider le dépôt. »
 - Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Code postal : « Le code postal doit comporter 5 chiffres. » Date de fin (Parcours de remobilisation) : « La date de fin doit être postérieure à la date de la convention. » [règle à confirmer avec le chef : par rapport à laquelle des deux dates de signature ?].
 - Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
+- Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
 - Chargement : sur le bouton, pendant la génération, « Génération en cours… » (le bouton reste en place, `aria-disabled="true"`) ; pendant l'envoi du fichier, « Envoi en cours… ».
 - Format : « Le fichier n'a pas été enregistré : seuls les fichiers PDF sont acceptés. »
@@ -223,24 +224,25 @@ Succès : fenêtre fermée, le bloc passe (ou reste) à « Convention signée, d
 | Formulaire « Ajouter un contact » ouvert | Formulaire sous la liste, focus sur « Nom », bouton en `aria-expanded="true"`. |
 | Contact ajouté | Formulaire refermé, contact sélectionné dans la liste, sa fonction affichée, focus sur la liste. |
 | Ajout de contact annulé | Formulaire refermé et vidé, focus sur le bouton « Ajouter un contact ». |
-| Fichier choisi, case décochée | « Valider le dépôt » grisé, message visible. |
+| Re-génération | Fenêtre B préremplie ; à la génération réussie, elle se ferme et l'ancien PDF est remplacé. |
+| Fichier PDF choisi | Envoi aussitôt, « Envoi en cours… », puis confirmation (A6). |
 | Fichier non PDF | Alerte dans le bloc, rien enregistré. |
 | Droits insuffisants en écriture | Message d'erreur à l'enregistrement, à la génération, au dépôt ; les liens « Voir » restent utilisables. |
 
 ## 7. Accessibilité (RGAA), mode sombre, données personnelles
 
-- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les quatre blocs sont des `legend` de `fieldset`. Le titre des petites fenêtres est aussi un h2.
+- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les quatre blocs sont des `legend` de `fieldset`.
 - Chaque champ a un `label` lié (`for` / `id`). Obligatoire : astérisque dans `span.required` **et** attribut `required` ; la phrase d'introduction explique l'astérisque.
 - Champ en lecture seule : `readonly` (il reste atteignable au clavier et lu par les lecteurs d'écran).
 - Liste de choix : `label` lié, option d'invite désactivée « Veuillez sélectionner » ; erreur : `is-invalid`, `aria-invalid="true"`, `aria-describedby`.
 - Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`).
-- Focus : à l'ouverture d'une fenêtre, sur le premier champ (ou le premier élément utile : la case pour le dépôt) ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; dans le formulaire de contact du bloc 2, Échap ne le referme pas séparément ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Si des informations non enregistrées existent, Échap demande confirmation [à valider avec le chef].
+- Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; dans le formulaire de contact du bloc 2, Échap ne le referme pas séparément ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Si des informations non enregistrées existent, Échap demande confirmation [à valider avec le chef].
 - Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, puis 4, boutons du pied. Les trois colonnes se lisent de gauche à droite, puis la ligne du bas.
 - Liens qui ouvrent un nouvel onglet : le dire dans le texte (`sr-only`).
 - Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`.
 - Mode clair / sombre : n'utiliser que des variables `--ft-…` ou des classes du design system, aucune couleur écrite en dur. **Constat** : style.css déclare `color-scheme: light` ; le tableau de bord n'est donc pas conçu pour le mode sombre aujourd'hui. Je n'ai pas pu vérifier le rendu en mode sombre : à tester par Hanta. La maquette n'ajoute aucune couleur.
 - Zoom 200 % : la fenêtre défile (`modal-dialog-scrollable`), rien n'est coupé ; sous 1200 px d'écran (ce qui arrive à 200 % de zoom sur un écran courant) elle passe en une colonne.
-- Données personnelles : seules données de personnes : **nom, prénom et fonction** du représentant de l'agence et du signataire du club (et du contact ajouté), strictement nécessaires pour désigner qui signe. Pas de téléphone ni d'adresse personnelle demandés dans ce formulaire. Le champ Commentaire de la fiche reste interdit pour noter des données de personnes. Les PDF contiennent ces noms et les signatures : durée et lieu de conservation à décider (§10, question 2). Données de la maquette : fictives.
+- Données personnelles : seules données de personnes : **nom, prénom et fonction** du représentant de l'agence et du signataire du club (et du contact ajouté), strictement nécessaires pour désigner qui signe. Pas de téléphone ni d'adresse personnelle demandés dans ce formulaire. Le champ Commentaire de la fiche reste interdit pour noter des données de personnes. Les PDF contiennent ces noms et les signatures : le PDF généré reste dans Grist après la signature mais n'est plus montré ; la durée de conservation reste à décider (§10). Données de la maquette : fictives.
 
 ## 8. Composants du design system utilisés
 
@@ -348,24 +350,12 @@ Page : https://designsystem.francetravail.io/components/detail/select--default.h
 
 La page ne mentionne aucun script associé. Le composant existe : rien à signaler.
 
-### Case à cocher (vérification du fichier signé)
-Page : https://designsystem.francetravail.io/components/detail/checkbox--default.html
-
-```html
-<div class="form-check with-checked-bg">
-  <input class="form-check-input" id="form-checkbox_387533136" name="form-checkbox_387533136" required type="checkbox" value="checkbox-value_802578381">
-  <label class="form-check-label" for="form-checkbox_387533136">
-    Libellé de l'élément<span class="required">&nbsp;*</span>
-  </label>
-</div>
-```
-
 ### Dépôt de fichier : composant manquant
 J'ai cherché sur le site : aucune page « input fichier », « upload » ou « téléversement » (adresses essayées : input--file, upload--default, file--default, fileupload--default, input-file--default, upload-file--default : toutes en erreur 404). Le seul composant voisin du site est « Drag & drop » (drag-and-drop--card.html, --line.html…), mais sa page ne dit pas qu'il sert à envoyer des fichiers : je ne l'ai pas retenu, sans le fabriquer ni le deviner. La feuille contient des classes `custom-file-input`, `custom-file-label` et `form-control-file`, mais aucune page de composant ne les décrit : je ne les propose pas.
 **Le plus proche, déjà employé dans le dépôt** : un bouton du design system qui ouvre un champ fichier caché, comme « Ajouter un logo » dans src/fiche-club/script.js (ligne 389) :
 
 ```html
-<button class="btn btn-secondary" type="button" id="depotChoisir" aria-haspopup="dialog"><span class="btn-content">Déposer la convention signée</span></button>
+<button class="btn btn-secondary" type="button" id="depotChoisir"><span class="btn-content">Déposer la convention signée</span></button>
 <input class="logo-input" type="file" id="depotFichier" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
 ```
 
@@ -380,7 +370,7 @@ Page : https://designsystem.francetravail.io/components/detail/button--primary.h
 </button>
 ```
 
-Secondaire : `btn btn-secondary` (employé dans script.js). Petit : `btn-sm`. Lien d'apparence « lien » : `btn btn-link` (classe de la feuille : fond transparent, texte souligné ; vérifié dans la feuille, page du site non lue). Désactivé (page button--disabled.html) :
+Secondaire : `btn btn-secondary` (employé dans script.js). Petit : `btn-sm`. Lien d'apparence « lien » : `btn btn-link` (utilisé pour « Remplacer le fichier signé » ; classe de la feuille : fond transparent, texte souligné ; vérifié dans la feuille, page du site non lue). Désactivé (page button--disabled.html) :
 
 ```html
 <button aria-disabled="true" class="btn btn-secondary" id="button_743220664" type="button"
@@ -417,15 +407,21 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Où stocker le PDF généré, le PDF signé et les informations (nouvelle table ou colonnes dans Grist) : le modèle de données est partagé par plusieurs widgets, rien ne doit être renommé et toute nouvelle colonne est à faire valider. Non décidé ici.
 - Générer un PDF demande probablement une bibliothèque ou un service : « aucune dépendance sans l'accord de Hanta » (CLAUDE.md). À proposer avec avantages, risques et effort avant tout code.
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
-- La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation en plus de la case à cocher et du message « L'ancien fichier signé sera supprimé. ».
+- La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation ni de vérification avant l'enregistrement : le fichier choisi est enregistré tout de suite.
 
 ## 10. Liste des [À CONFIRMER]
 
 Tranchés par le chef et retirés : modèle des états de la fenêtre, contact protection des données, SIRET de l'agence, bouton sans modèle (masqué), régénération depuis la fenêtre, formulaire de contact dans le bloc (sans seconde fenêtre), champs selon le modèle (dont la date de fin : fixe ou libre selon le modèle), correspondance dispositif / modèle, origine du représentant et de sa fonction (saisis dans la fenêtre, voir §3 bloc 3).
 
-1. **Corriger une erreur à l'état Générée**, avant signature. Proposition : un lien « Modifier et régénérer » dans le bloc, qui rouvre la fenêtre B et remplace le PDF.
-2. **Quand la convention signée est déposée** : le PDF généré (non signé) est-il effacé de Grist, ou gardé sans être montré ? (Concerne aussi la durée de conservation des noms de signataires.)
-3. **Une convention pour une seule action, ou pour plusieurs actions d'un club** ? (Change le point de départ : fiche d'action ou fiche du club.) **[À CONFIRMER]** : si une convention couvre plusieurs actions d'un club, le nombre d'opérations pourrait être calculé à partir des actions rattachées au lieu d'être saisi (champ « Nombre d'opérations » des modèles Match des Métiers et Parcours de remobilisation).
-4. **Qui peut modifier** les informations de l'agence reprises de la table Agences (adresse, complément, code postal, ville) ?
-5. **Champs du formulaire « Ajouter un contact »** : nom, prénom et fonction suffisent-ils ?
-6. **Règle de contrôle de la date de fin** (Parcours de remobilisation) : par rapport à quelle date de signature (club ou France Travail) ?
+Points tranchés (dernière série de décisions du chef) :
+
+- **Corriger une erreur à l'état Générée** : bouton « Re-générer » à côté de « Voir la convention ». Il rouvre la fenêtre Convention préremplie avec les informations enregistrées ; « Générer la convention » remplace l'ancien PDF, sans historique. Le lien « Modifier et régénérer » est retiré.
+- **PDF généré après la signature** : quand la convention signée est déposée, le PDF généré (non signé) est gardé dans Grist, mais n'est plus montré. (La durée de conservation des noms de signataires reste à décider.)
+- **Dépôt et remplacement du fichier signé** : pas de système de vérification. Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le choix du fichier ; le fichier est enregistré tout de suite (en remplaçant l'ancien, sans historique) et la date de dépôt est mise à jour. Seuls les PDF sont acceptés, sinon un message le dit et rien n'est enregistré. Un message confirme le dépôt.
+
+À confirmer :
+
+1. **Une convention pour une seule action, ou pour plusieurs actions d'un club** ? (Change le point de départ : fiche d'action ou fiche du club.) **[À CONFIRMER]** : si une convention couvre plusieurs actions d'un club, le nombre d'opérations pourrait être calculé à partir des actions rattachées au lieu d'être saisi (champ « Nombre d'opérations » des modèles Match des Métiers et Parcours de remobilisation).
+2. **Qui peut modifier** les informations de l'agence reprises de la table Agences (adresse, complément, code postal, ville) ?
+3. **Champs du formulaire « Ajouter un contact »** : nom, prénom et fonction suffisent-ils ?
+4. **Règle de contrôle de la date de fin** (Parcours de remobilisation) : par rapport à quelle date de signature (club ou France Travail) ?
