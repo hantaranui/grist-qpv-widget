@@ -1,4 +1,3 @@
-
 # Journal de revue — Tableau de bord « Actions d'insertion par le sport » (grist-qpv-widget)
 
 ## Tâche 0 — Sprint 0 : installation de la squad
@@ -111,7 +110,6 @@ Fichiers modifiés : test/filtres-geographiques.test.js (créé)
 Build refait : pas nécessaire
 Commit : 0c3cf11 sur feature/filtres-geographiques-dependants
 
-
 ## Tâche 8 — Carnet de tests humains des filtres géographiques dépendants
 
 Date : 2026-10-18
@@ -125,3 +123,18 @@ Tests : 0 lancés, 0 réussis (rédaction du carnet)
 Fichiers modifiés : docs/tests/carnet-tableau-de-bord.md (créé)
 Build refait : pas nécessaire
 Commit : f12921f sur feature/filtres-geographiques-dependants
+
+
+## Tâche 9 — Maquette de la convention de partenariat
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : préparer docs/ux/convention.md (parcours, textes, états, accessibilité, données personnelles) et docs/ux/maquette-convention.html (bloc « Convention » dans la fiche d'action, fenêtre Convention, 3 états de la zone PDF), puis corriger la maquette pour l'impression en PDF
+
+Note /5 : 4
+Ce qui allait : bloc « Convention » séparé des boutons Supprimer, Annuler et Enregistrer ; fenêtre en trois parties (France Travail, Club, Convention) ; 3 états de la zone PDF ; feuille du design system chargée par CDN ; données fictives ; liens et HTML des composants recopiés ; points à confirmer listés ; impression corrigée (4 pages, une par partie, rien de coupé).
+Ce que j'ai fait corriger : première impression illisible (fenêtres coupées, texte tronqué) ; ajout de règles d'impression. À valider : 3 classes convention-* créées faute de composant dans le design system ; texte réduit à 66 % à l'impression.
+Tests : 0 lancés, 0 réussis (maquette) ; PDF de contrôle généré par l'agent : 4 pages
+Fichiers modifiés : docs/ux/convention.md (créé), docs/ux/maquette-convention.html (créé)
+Build refait : pas nécessaire
+Commit : 78ebd82 sur feature/convention
