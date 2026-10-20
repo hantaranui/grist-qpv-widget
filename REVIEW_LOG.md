@@ -168,3 +168,18 @@ Tests : 0 lancés, 0 réussis (maquette) ; fenêtre vérifiée à l'écran
 Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
 Build refait : pas nécessaire
 Commit : 9409f5b sur feature/convention
+
+
+## Tâche 12 — Maquette de la convention : re-générer et dépôt direct du fichier signé
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : intégrer les trois dernières décisions du chef dans docs/ux/convention.md et maquette-convention.html : bouton « Re-générer » à l'état Générée ; PDF généré gardé sans être montré après le dépôt du signé ; dépôt et remplacement du fichier signé sans vérification
+
+Note /5 :
+Ce qui allait : les trois décisions appliquées ; fenêtres de vérification retirées ; message de confirmation en alert-success ; points tranchés déplacés dans convention.md ; seuls les fichiers de docs/ux/ modifiés.
+Ce que j'ai fait corriger : rien. Choix de l'agent acceptés : « Re-générer » seulement à l'état Générée ; aria-haspopup retiré des boutons de dépôt.
+Tests : 0 lancés, 0 réussis (maquette)
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 1ea1315 sur feature/convention
