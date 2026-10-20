@@ -153,3 +153,18 @@ Tests : 184 lancés, 184 réussis (npm test, page d'essai présente) ; essai man
 Fichiers modifiés : aucun dans le dépôt (essai-pieces-jointes.html jamais commité, supprimé après l'essai)
 Build refait : pas nécessaire
 Commit : aucun pour l'essai (fiche seule)
+
+
+## Tâche 11 — Maquette de la convention mise à jour après les retours du chef
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : intégrer les décisions du chef dans docs/ux/convention.md et maquette-convention.html (4 états du bloc Convention, fenêtre large sans défilement, ordre des blocs, dépôt du fichier signé, choix du signataire parmi les contacts du club), puis trois corrections : « Ajouter un contact » dans le bloc, champs selon le modèle, siège du club complet, représentant de l'agence saisi dans la fenêtre
+
+Note /5 : 5
+Ce qui allait : décisions du chef intégrées ; fenêtre en modal-xl sur trois colonnes, sans défilement sur mon écran ; composants recopiés avec leur lien ; piège du formulaire dans un formulaire repéré et contourné ; tableau des champs par modèle ; seuls les fichiers de docs/ux/ modifiés.
+Ce que j'ai fait corriger : nombre d'opérations affiché à tort pour « Du stade vers l'emploi » ; « Ajouter un contact » en seconde fenêtre (remplacé par un formulaire dans le bloc) ; siège du club coupé ; représentant de l'agence prérempli (il est saisi). Composant de dépôt de fichier absent du design system : méthode de fiche-club retenue.
+Tests : 0 lancés, 0 réussis (maquette) ; fenêtre vérifiée à l'écran
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 9409f5b sur feature/convention
