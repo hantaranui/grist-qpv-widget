@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Maquette : convention de partenariat</title>
+    <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
+    <!-- Les classes de la fiche (edit-card, section-head, edit-fields, edit-field, edit-row) viennent du style du tableau de bord, lu tel quel. -->
+    <link rel="stylesheet" href="../../src/actions-dashboard/style.css">
+    <style>
+      /* Réglages de cette maquette uniquement : ils ne sont pas à reprendre tels quels.
+         La feuille du design system masque .modal et la fixe à l'écran : ici on l'affiche dans la page,
+         pour pouvoir empiler les états. Les trois classes convention-* sont à créer dans le widget
+         (aucune n'existe dans le design system). */
+      body { padding: 24px; }
+      .maquette-bloc { margin-bottom: 48px; }
+      .maquette-bloc > h2 { margin: 0 0 16px; }
+      .maquette-modal { position: relative; background: var(--ft-color-background-opacity-dark-opacity); padding: 16px 0; }
+      .maquette-modal .modal { position: static; display: block; width: auto; height: auto; overflow: visible; }
+      .maquette-modal .modal-dialog { margin: 0 auto; }
+      .maquette-carte { max-width: 520px; margin-bottom: 16px; }
+      .convention-part { margin: 0 0 24px; padding: 0; border: 0; min-width: 0; }
+      .convention-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; padding: 16px 0 0; }
+      .convention-pdf-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+
+      /* Impression (Cmd + P) : une partie par page, fenêtre jamais coupée, rien de tronqué.
+         L'écran ne change pas. */
+      @media print {
+        @page { size: A4 portrait; margin: 10mm; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { padding: 0; }
+        .maquette-bloc { margin: 0; break-before: page; break-inside: avoid; page-break-before: always; page-break-inside: avoid; }
+        .maquette-bloc:first-of-type { break-before: auto; page-break-before: auto; }
+        /* La fenêtre défile à l'écran (hauteur limitée, contenu masqué au-delà) : à l'impression elle se déroule en entier. */
+        .maquette-modal .modal-dialog,
+        .maquette-modal .modal-dialog-scrollable .modal-content,
+        .maquette-modal .modal-body { max-height: none; height: auto; overflow: visible; }
+        .maquette-modal .modal-dialog { min-width: 0; width: 100%; max-width: none; }
+        .maquette-modal .modal-content { width: 100%; }
+        /* Réduction pour tenir sur une page : la fenêtre entière se réduit, rien n'est coupé. */
+        .maquette-modal { zoom: .66; break-inside: avoid; page-break-inside: avoid; }
+        .maquette-modal .modal-dialog.modal-lg { min-width: 0; max-width: 100%; }
+        .edit-field, .convention-part, .modal-header, .modal-footer { break-inside: avoid; page-break-inside: avoid; }
+        .edit-field input, .edit-field .form-control { min-width: 0; overflow: visible; text-overflow: clip; }
+        .convention-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .maquette-carte, .edit-card { break-inside: avoid; page-break-inside: avoid; overflow: visible; }
+      }
+    </style>
+  </head>
+  <body class="outil-agent">
+    <h1>Maquette : convention de partenariat</h1>
+    <p>Maquette statique, sans JavaScript, données fictives. Les points marqués [À CONFIRMER] attendent la réponse du chef. Voir docs/ux/convention.md.</p>
+
+    <section class="maquette-bloc" aria-labelledby="mq-a">
+      <h2 id="mq-a">A. Bas de la fiche d'action : nouveau bloc « Convention »</h2>
+      <div class="edit-row edit-row-bottom">
+        <section class="edit-card"><div class="section-head"><span>Statut</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
+        <section class="edit-card"><div class="section-head"><span>Financement</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
+      </div>
+      <p>Le bloc Convention est un bloc de plus, sous Statut et Financement, pleine largeur. Trois états :</p>
+      <div class="edit-card maquette-carte">
+  <div class="section-head"><span>Convention</span></div>
+  <div class="edit-fields">
+    <p>Aucune convention générée.</p>
+    <div><button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Ouvrir la convention</span></button></div>
+  </div>
+</div>
+      <div class="edit-card maquette-carte">
+  <div class="section-head"><span>Convention</span></div>
+  <div class="edit-fields">
+    <p>Convention générée le 12/09/2026.</p>
+    <div><button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Ouvrir la convention</span></button></div>
+  </div>
+</div>
+      <div class="edit-card maquette-carte">
+  <div class="section-head"><span>Convention</span></div>
+  <div class="edit-fields">
+    <p>Pas encore de modèle de convention pour ce dispositif.</p>
+    <div><button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Ouvrir la convention</span></button></div>
+  </div>
+</div>
+    </section>
+
+<section class="maquette-bloc" aria-labelledby="mq-m1">
+  <h2 id="mq-m1">B1. Fenêtre « Convention » — zone PDF : aucune convention générée</h2>
+  <div class="maquette-modal">
+  <div class="modal fade show" id="conventionDialog1" role="dialog" aria-modal="true" aria-labelledby="conventionTitle1" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <form class="modal-content" id="conventionForm1" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="conventionTitle1">Convention</h2></div>
+        <div class="modal-body">
+          <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">France Travail</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="ftAgence1">Agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAgence1" name="ftAgence1" type="text" required value="Agence Exemple Centre">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftRepresentant1">Représentant de l'agence (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftRepresentant1" name="ftRepresentant1" type="text" required value="Alex Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftFonction1">Fonction du représentant<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftFonction1" name="ftFonction1" type="text" required value="Directrice d'agence">
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="ftAdresse1">Adresse de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAdresse1" name="ftAdresse1" type="text" required value="1 rue de l'Exemple, 00000 Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftSiret1">SIRET de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftSiret1" name="ftSiret1" type="text" required aria-describedby="help-ftSiret1" value="123 456 789 00012">
+          <p class="help-block" id="help-ftSiret1">14 chiffres.</p>
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Club</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="clubNom1">Nom du club</label>
+          <input class="form-control" id="clubNom1" name="clubNom1" type="text" readonly aria-describedby="help-clubNom1" value="Association Sportive Exemple">
+          <p class="help-block" id="help-clubNom1">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="clubSiege1">Siège du club</label>
+          <input class="form-control" id="clubSiege1" name="clubSiege1" type="text" readonly aria-describedby="help-clubSiege1" value="2 avenue du Stade, 00000 Ville-Exemple">
+          <p class="help-block" id="help-clubSiege1">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSiret1">SIRET du club</label>
+          <input class="form-control" id="clubSiret1" name="clubSiret1" type="text" readonly aria-describedby="help-clubSiret1" value="987 654 321 00019">
+          <p class="help-block" id="help-clubSiret1">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSignataire1">Signataire du club (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubSignataire1" name="clubSignataire1" type="text" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubFonction1">Fonction du signataire<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubFonction1" name="clubFonction1" type="text" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Convention</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="convModele1">Modèle utilisé</label>
+          <input class="form-control" id="convModele1" name="convModele1" type="text" readonly aria-describedby="help-convModele1" value="Du stade vers l'emploi">
+          <p class="help-block" id="help-convModele1">Choisi selon le dispositif de l'action. [À CONFIRMER] : quel modèle pour quel dispositif.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convAnnee1">Année de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convAnnee1" name="convAnnee1" type="number" required value="2026">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convOperations1">Nombre d'opérations<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convOperations1" name="convOperations1" type="number" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convFin1">Date de fin de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convFin1" name="convFin1" type="date" required aria-describedby="help-convFin1" value="">
+          <p class="help-block" id="help-convFin1">[À CONFIRMER] : date fixe (31/12 de l'année) ou date libre.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDpo1">Contact protection des données du club</label>
+          <input class="form-control" id="convDpo1" name="convDpo1" type="email" aria-describedby="help-convDpo1" value="">
+          <p class="help-block" id="help-convDpo1">[À CONFIRMER] : adresse de messagerie fonctionnelle du club, pas un nom de personne.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convLieu1">Fait à<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convLieu1" name="convLieu1" type="text" required value="Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDate1">Date<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convDate1" name="convDate1" type="date" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part" aria-labelledby="pdfTitre1">
+        <h3 class="form-legend" id="pdfTitre1">PDF</h3>
+        <p id="pdfEtat1">Aucune convention n'a encore été générée pour cette action.</p>
+        <p class="help-block" id="pdfAide1">Le PDF reprend les informations ci-dessus. Pensez à enregistrer les informations avant de le générer.</p>
+      </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
+          <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
+          <button class="btn btn-primary" type="button"><span class="btn-content">Générer le PDF</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="maquette-bloc" aria-labelledby="mq-m2">
+  <h2 id="mq-m2">B2. Fenêtre « Convention » — zone PDF : convention générée</h2>
+  <div class="maquette-modal">
+  <div class="modal fade show" id="conventionDialog2" role="dialog" aria-modal="true" aria-labelledby="conventionTitle2" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <form class="modal-content" id="conventionForm2" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="conventionTitle2">Convention</h2></div>
+        <div class="modal-body">
+          <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">France Travail</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="ftAgence2">Agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAgence2" name="ftAgence2" type="text" required value="Agence Exemple Centre">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftRepresentant2">Représentant de l'agence (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftRepresentant2" name="ftRepresentant2" type="text" required value="Alex Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftFonction2">Fonction du représentant<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftFonction2" name="ftFonction2" type="text" required value="Directrice d'agence">
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="ftAdresse2">Adresse de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAdresse2" name="ftAdresse2" type="text" required value="1 rue de l'Exemple, 00000 Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftSiret2">SIRET de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftSiret2" name="ftSiret2" type="text" required aria-describedby="help-ftSiret2" value="123 456 789 00012">
+          <p class="help-block" id="help-ftSiret2">14 chiffres.</p>
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Club</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="clubNom2">Nom du club</label>
+          <input class="form-control" id="clubNom2" name="clubNom2" type="text" readonly aria-describedby="help-clubNom2" value="Association Sportive Exemple">
+          <p class="help-block" id="help-clubNom2">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="clubSiege2">Siège du club</label>
+          <input class="form-control" id="clubSiege2" name="clubSiege2" type="text" readonly aria-describedby="help-clubSiege2" value="2 avenue du Stade, 00000 Ville-Exemple">
+          <p class="help-block" id="help-clubSiege2">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSiret2">SIRET du club</label>
+          <input class="form-control" id="clubSiret2" name="clubSiret2" type="text" readonly aria-describedby="help-clubSiret2" value="987 654 321 00019">
+          <p class="help-block" id="help-clubSiret2">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSignataire2">Signataire du club (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubSignataire2" name="clubSignataire2" type="text" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubFonction2">Fonction du signataire<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubFonction2" name="clubFonction2" type="text" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Convention</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="convModele2">Modèle utilisé</label>
+          <input class="form-control" id="convModele2" name="convModele2" type="text" readonly aria-describedby="help-convModele2" value="Le Match des Métiers">
+          <p class="help-block" id="help-convModele2">Choisi selon le dispositif de l'action. [À CONFIRMER] : quel modèle pour quel dispositif.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convAnnee2">Année de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convAnnee2" name="convAnnee2" type="number" required value="2026">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convOperations2">Nombre d'opérations<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convOperations2" name="convOperations2" type="number" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convFin2">Date de fin de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convFin2" name="convFin2" type="date" required aria-describedby="help-convFin2" value="">
+          <p class="help-block" id="help-convFin2">[À CONFIRMER] : date fixe (31/12 de l'année) ou date libre.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDpo2">Contact protection des données du club</label>
+          <input class="form-control" id="convDpo2" name="convDpo2" type="email" aria-describedby="help-convDpo2" value="">
+          <p class="help-block" id="help-convDpo2">[À CONFIRMER] : adresse de messagerie fonctionnelle du club, pas un nom de personne.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convLieu2">Fait à<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convLieu2" name="convLieu2" type="text" required value="Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDate2">Date<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convDate2" name="convDate2" type="date" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part" aria-labelledby="pdfTitre2">
+        <h3 class="form-legend" id="pdfTitre2">PDF</h3>
+        <p id="pdfEtat2">Convention générée le <strong>12/09/2026</strong>.</p>
+        <div class="convention-pdf-actions">
+          <a class="btn btn-secondary btn-sm" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir<span class="sr-only"> la convention (s'ouvre dans un nouvel onglet)</span></span></a>
+          <button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Télécharger<span class="sr-only"> la convention (PDF)</span></span></button>
+          <button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Régénérer<span class="sr-only"> la convention</span></span></button>
+        </div>
+        <p class="help-block" id="pdfAide2">Régénérer crée un nouveau PDF avec les informations actuelles. [À CONFIRMER] : il remplace l'ancien, ou s'ajoute à l'historique.</p>
+      </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
+          <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
+          
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="maquette-bloc" aria-labelledby="mq-m3">
+  <h2 id="mq-m3">B3. Fenêtre « Convention » — zone PDF : dispositif sans modèle</h2>
+  <div class="maquette-modal">
+  <div class="modal fade show" id="conventionDialog3" role="dialog" aria-modal="true" aria-labelledby="conventionTitle3" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <form class="modal-content" id="conventionForm3" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="conventionTitle3">Convention</h2></div>
+        <div class="modal-body">
+          <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">France Travail</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="ftAgence3">Agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAgence3" name="ftAgence3" type="text" required value="Agence Exemple Centre">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftRepresentant3">Représentant de l'agence (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftRepresentant3" name="ftRepresentant3" type="text" required value="Alex Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftFonction3">Fonction du représentant<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftFonction3" name="ftFonction3" type="text" required value="Directrice d'agence">
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="ftAdresse3">Adresse de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftAdresse3" name="ftAdresse3" type="text" required value="1 rue de l'Exemple, 00000 Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="ftSiret3">SIRET de l'agence<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="ftSiret3" name="ftSiret3" type="text" required aria-describedby="help-ftSiret3" value="123 456 789 00012">
+          <p class="help-block" id="help-ftSiret3">14 chiffres.</p>
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Club</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field">
+          <label class="form-label" for="clubNom3">Nom du club</label>
+          <input class="form-control" id="clubNom3" name="clubNom3" type="text" readonly aria-describedby="help-clubNom3" value="Association Sportive Exemple">
+          <p class="help-block" id="help-clubNom3">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="clubSiege3">Siège du club</label>
+          <input class="form-control" id="clubSiege3" name="clubSiege3" type="text" readonly aria-describedby="help-clubSiege3" value="2 avenue du Stade, 00000 Ville-Exemple">
+          <p class="help-block" id="help-clubSiege3">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSiret3">SIRET du club</label>
+          <input class="form-control" id="clubSiret3" name="clubSiret3" type="text" readonly aria-describedby="help-clubSiret3" value="987 654 321 00019">
+          <p class="help-block" id="help-clubSiret3">Repris de la fiche du club.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubSignataire3">Signataire du club (nom et prénom)<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubSignataire3" name="clubSignataire3" type="text" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="clubFonction3">Fonction du signataire<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="clubFonction3" name="clubFonction3" type="text" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part">
+        <legend class="form-legend">Convention</legend>
+        <div class="edit-fields convention-fields">
+        <div class="edit-field edit-field-wide">
+          <label class="form-label" for="convModele3">Modèle utilisé</label>
+          <input class="form-control" id="convModele3" name="convModele3" type="text" readonly aria-describedby="help-convModele3" value="Aucun modèle pour ce dispositif">
+          <p class="help-block" id="help-convModele3">Choisi selon le dispositif de l'action. [À CONFIRMER] : quel modèle pour quel dispositif.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convAnnee3">Année de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convAnnee3" name="convAnnee3" type="number" required value="2026">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convOperations3">Nombre d'opérations<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convOperations3" name="convOperations3" type="number" required value="">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convFin3">Date de fin de la convention<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convFin3" name="convFin3" type="date" required aria-describedby="help-convFin3" value="">
+          <p class="help-block" id="help-convFin3">[À CONFIRMER] : date fixe (31/12 de l'année) ou date libre.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDpo3">Contact protection des données du club</label>
+          <input class="form-control" id="convDpo3" name="convDpo3" type="email" aria-describedby="help-convDpo3" value="">
+          <p class="help-block" id="help-convDpo3">[À CONFIRMER] : adresse de messagerie fonctionnelle du club, pas un nom de personne.</p>
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convLieu3">Fait à<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convLieu3" name="convLieu3" type="text" required value="Ville-Exemple">
+        </div>
+        <div class="edit-field">
+          <label class="form-label" for="convDate3">Date<span class="required">&nbsp;*</span></label>
+          <input class="form-control" id="convDate3" name="convDate3" type="date" required value="">
+        </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="convention-part" aria-labelledby="pdfTitre3">
+        <h3 class="form-legend" id="pdfTitre3">PDF</h3>
+        <p id="pdfEtat3">Aucune convention n'a été générée pour cette action.</p>
+        <p class="help-block" id="pdfAide3">Pas encore de modèle de convention pour ce dispositif</p>
+      </fieldset>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
+          <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
+          <button class="btn btn-primary" type="button" aria-disabled="true" aria-describedby="pdfAide3"><span class="btn-content">Générer le PDF</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</section>
+  </body>
+</html>
