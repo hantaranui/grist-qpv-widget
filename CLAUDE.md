@@ -1,4 +1,3 @@
-
 # CLAUDE.md — Widgets « Actions d'insertion par le sport » : tableau de bord et clubs (widgets Grist)
 
 ## Avec qui tu travailles
@@ -106,3 +105,4 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Les tables et colonnes Grist sont partagées entre tous les widgets du projet. Colonnes écrites par ces widgets : ne jamais les renommer.
 - Les règles d'accès du document (profils FT National, Régional, Départemental, ANS) décident de ce que chacun voit et modifie : le widget ne doit jamais essayer de les contourner.
 - Le script du bandeau est chargé depuis un autre site, sans numéro de version figé : s'il change, nos widgets changent sans commit de notre part. À faire examiner par auditeur-securite.
+- Envoyer un fichier en pièce jointe depuis un widget : jeton d'écriture dans l'adresse (?auth=), credentials 'omit' et en-tête X-Requested-With: XMLHttpRequest, comme fiche-club. Sans cet en-tête, Grist répond 401. Télécharger un fichier et ouvrir un onglet depuis le cadre de Grist fonctionnent.
