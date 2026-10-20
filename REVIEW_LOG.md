@@ -138,3 +138,18 @@ Tests : 0 lancés, 0 réussis (maquette) ; PDF de contrôle généré par l'agen
 Fichiers modifiés : docs/ux/convention.md (créé), docs/ux/maquette-convention.html (créé)
 Build refait : pas nécessaire
 Commit : 78ebd82 sur feature/convention
+
+
+## Tâche 10 — Essai technique : téléchargement et pièce jointe depuis un widget
+
+Date : 2026-10-20
+Agent : @dev-backend
+Prompt : page d'essai jetable essai-pieces-jointes.html (4 boutons : télécharger un fichier, l'ouvrir dans un onglet, l'enregistrer en pièce jointe dans la table Essai_pieces_jointes de DEV6, le relire), puis deux corrections de l'envoi
+
+Note /5 : 4
+Ce qui allait : les 4 points sont possibles depuis un widget dans Grist ; jeton jamais affiché ; une seule table d'essai écrite ; l'agent n'a pas recopié l'affichage du jeton de fiche-club.
+Ce que j'ai fait corriger : envoi refusé deux fois (« Failed to fetch » avec le jeton dans un en-tête, puis 401) ; il fallait la méthode de fiche-club : jeton dans l'adresse (?auth=), credentials 'omit' et en-tête X-Requested-With. Découvert : fiche-club affiche le jeton d'écriture dans la console (console.info), à corriger.
+Tests : 184 lancés, 184 réussis (npm test, page d'essai présente) ; essai manuel dans DEV6 : 4 sur 4
+Fichiers modifiés : aucun dans le dépôt (essai-pieces-jointes.html jamais commité, supprimé après l'essai)
+Build refait : pas nécessaire
+Commit : aucun pour l'essai (fiche seule)
