@@ -3,12 +3,11 @@
 // Le bouton « Supprimer » de la fiche action ne retire jamais la ligne de Grist :
 // il passe la colonne Corbeille a « Oui ». Ces tests fixent les deux fenetres
 // (refus si financements, confirmation), l'ecriture envoyee, et le fait que les
-// trois widgets ignorent ensuite les actions en corbeille.
+// widgets ignorent ensuite les actions en corbeille.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget.js");
-const {loadFiche} = require("./helpers/fiche-club.js");
 const {loadClubs} = require("./helpers/clubs.js");
 
 const w = loadWidget();
@@ -66,12 +65,11 @@ test("le tableau de bord ignore les actions en corbeille", () => {
   assert.deepEqual(contenu(actions.map((a) => a.id)), [1, 4]);
 });
 
-test("la fiche club et le widget clubs ignorent les actions en corbeille", () => {
+test("le widget clubs ignore les actions en corbeille", () => {
   const raw = {
     Structures: [{id: 5, Nom: "Club"}],
     Actions: [{id: 1, Club: 5, Intitule: "Visible"}, {id: 2, Club: 5, Intitule: "Supprimee", Corbeille: "Oui"}],
     Cofinancements: [], Dispositifs: [], Contacts: [],
   };
-  assert.deepEqual(contenu(loadFiche().buildFiche(raw, 5).actions.map((a) => a.id)), [1]);
   assert.deepEqual(contenu(loadClubs().buildFicheDetail(raw, 5).actions.map((a) => a.id)), [1]);
 });

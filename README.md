@@ -19,14 +19,13 @@ Le code source de chaque widget est separe en HTML/CSS/JS sous `src/` :
 src/
   qpv-widget/index.html, style.css, script.js
   actions-dashboard/index.html, style.css, script.js
-  fiche-club/index.html, style.css, script.js
   clubs/index.html, style.css, script.js
 ```
 
 Grist et GitHub Pages ont besoin d'un seul fichier HTML par widget. Le script
 `build.js` reassemble donc chaque dossier `src/<widget>/` en un unique fichier
 `<widget>.html` a la racine du depot (`qpv-widget.html`, `actions-dashboard.html`,
-`fiche-club.html`, `clubs.html`) :
+`clubs.html`) :
 
 ```text
 npm run build
@@ -76,8 +75,7 @@ npm test
 
 Les tests s'executent avec le lanceur integre de Node, sans dependance. Ils
 couvrent la logique pure du tableau de bord (construction des actions a partir
-des tables Grist, filtres, tri, listes de choix), de la fiche club et du widget
-clubs (fiche, tri, taux de financement, zonages, televersement du logo, contrat
+des tables Grist, filtres, tri, listes de choix) et du widget clubs (fiche, tri, taux de financement, zonages, televersement du logo, contrat
 de navigation vers le tableau de bord), et verifient que les fichiers HTML
 assembles a la racine correspondent bien aux sources de `src/`.
 
@@ -112,25 +110,42 @@ URL a utiliser dans Grist :
 https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html
 ```
 
-## Widget fiche club
+## Widget clubs
 
-`fiche-club.html` affiche la fiche du club selectionne dans la table `Structures`,
-en lecture seule sauf le logo :
-
-- en-tete : logo, nom, SIRET, adresse, zonages QPV et FRR ;
-- contacts du club (table `Contacts`) : prenom, nom, e-mail, telephone ;
-- actions portees par le club (table `Actions`) : date, statut, dispositif et part
-  du budget couverte par les `Cofinancements`, des plus recentes aux plus
-  anciennes, les actions sans date en dernier.
+`clubs.html` affiche une liste de clubs, filtrable, d'ou s'ouvre la fiche d'un
+club (identite, zonages, contacts, actions). Meme motif que `actions-dashboard` :
+`state.view` bascule entre liste et fiche.
 
 URL a utiliser dans Grist :
 
 ```text
-https://hantaranui.github.io/grist-qpv-widget/fiche-club.html
+https://hantaranui.github.io/grist-qpv-widget/clubs.html
 ```
 
-Configuration : choisir `Structures` comme table du widget et lui donner l'acces
-complet. Il en a besoin pour lire les autres tables et pour televerser un logo.
+Configuration : `Structures` comme table du widget, acces complet. Il en a
+besoin pour lire les autres tables et pour televerser un logo.
+
+### Liste
+
+Quatre filtres (Region, Departement, Federation, Club) au-dessus d'un tableau
+sans en-tete de tri : Club, Code postal, Ville, DD, DR, Federation, puis un
+bouton **Voir** par ligne. La federation d'un club n'est portee par aucune
+colonne : elle est deduite des `Actions` qu'il porte. Dix clubs, au 28/09/2026,
+en portent de plusieurs federations differentes — la liste et le filtre les
+affichent toutes plutot que d'en choisir une a la place du metier.
+
+### Fiche
+
+Trois cartes, dans le style du tableau de bord des actions (bandeau
+`ACTION`/`AGENCE`/`CLUB` de son propre formulaire) :
+
+- **Club** : logo, nom, SIRET, adresse, zonages QPV et FRR (voir « Zonages » et
+  « Logo » ci-dessous). Tout est en lecture seule, sauf le logo.
+- **Contacts** (table `Contacts`) : prenom, nom, e-mail, telephone.
+- **Actions** (table `Actions`) : date, statut, dispositif, part du budget
+  couverte par les `Cofinancements`, des plus recentes aux plus anciennes, les
+  actions sans date en dernier, et un bouton **Voir** qui ouvre directement la fiche modifiable de l'action dans
+  `actions-dashboard`, sur une autre page Grist.
 
 ### Zonages
 
@@ -176,44 +191,6 @@ fetch »), sans aucun detail. Constate le 2026-09-29, confirme par deux
 implementations independantes (un tutoriel de la communaute Grist, un widget
 deja en service sur une autre instance) qui posent toutes les deux cet
 en-tete. La lecture (telechargement), elle, n'en a pas besoin.
-
-## Widget clubs
-
-`clubs.html` est le point d'entree habituel : une liste de clubs, filtrable,
-d'ou s'ouvre la fiche d'un club. Meme motif que `actions-dashboard`
-(`state.view` bascule entre liste et fiche), meme contenu de fiche que
-`fiche-club` ci-dessus (identite, zonages, contacts, actions), mais atteint
-depuis une liste plutot qu'en associant directement une ligne au widget.
-
-URL a utiliser dans Grist :
-
-```text
-https://hantaranui.github.io/grist-qpv-widget/clubs.html
-```
-
-Configuration : `Structures` comme table du widget, acces complet — memes
-raisons que `fiche-club`.
-
-### Liste
-
-Quatre filtres (Region, Departement, Federation, Club) au-dessus d'un tableau
-sans en-tete de tri : Club, Code postal, Ville, DD, DR, Federation, puis un
-bouton **Voir** par ligne. La federation d'un club n'est portee par aucune
-colonne : elle est deduite des `Actions` qu'il porte. Dix clubs, au 28/09/2026,
-en portent de plusieurs federations differentes — la liste et le filtre les
-affichent toutes plutot que d'en choisir une a la place du metier.
-
-### Fiche
-
-Trois cartes, dans le style du tableau de bord des actions (bandeau
-`ACTION`/`AGENCE`/`CLUB` de son propre formulaire) :
-
-- **Club** : logo, SIRET, adresse, zonages QPV et FRR — voir la section
-  « Widget fiche club » ci-dessus, le code est partage a l'identique.
-- **Contacts** : prenom, nom, e-mail, telephone.
-- **Actions** : date, statut, dispositif, part du budget couverte, et un
-  bouton **Voir** qui ouvre directement la fiche modifiable de l'action dans
-  `actions-dashboard`, sur une autre page Grist.
 
 ### Ouvrir une action dans le tableau de bord
 

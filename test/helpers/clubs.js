@@ -1,6 +1,6 @@
 "use strict";
 
-// Meme principe que widget.js et fiche-club.js : on evalue le script dans un
+// Meme principe que widget.js : on evalue le script dans un
 // bac a sable muni de doublures, puis on recupere ses fonctions et son etat.
 
 const fs = require("fs");
