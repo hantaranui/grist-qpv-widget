@@ -1,4 +1,3 @@
-
 # Journal de revue — Tableau de bord « Actions d'insertion par le sport » (grist-qpv-widget)
 
 ## Tâche 0 — Sprint 0 : installation de la squad
@@ -40,6 +39,20 @@ Tests : 172 lancés, 172 réussis
 Fichiers modifiés : src/actions-dashboard/index.html, actions-dashboard.html
 Build refait : oui
 Commit : 67bb166 sur feature/bandeau-commun
+
+## Tâche 2 bis — Ajout du bandeau commun au widget clubs
+
+Date : 16/10/2026
+Agent : designer-ux (note docs/ux/bandeau-commun-clubs.md), puis dev-interface
+Prompt : ajouter la balise du bandeau dans src/clubs/index.html, après le script jszip, avant la feuille du design system
+
+Note /5 : sans objet
+Ce qui allait : une seule ligne ajoutée ; h1 « Clubs » conservé (choix de la note UX) ; aucun autre widget touché
+Ce que j'ai fait corriger : sans objet
+Tests : non notés (fiche écrite après coup ; la publication est testée en tâche 3)
+Fichiers modifiés : src/clubs/index.html, clubs.html, docs/ux/bandeau-commun-clubs.md
+Build refait : oui
+Commit : 9d281a4 sur feature/fiche-club
 
 ## Tâche 3 — Réunion des branches et publication du bandeau commun (manuel)
 
@@ -110,7 +123,6 @@ Tests : 184 lancés, 184 réussis
 Fichiers modifiés : test/filtres-geographiques.test.js (créé)
 Build refait : pas nécessaire
 Commit : 0c3cf11 sur feature/filtres-geographiques-dependants
-
 
 ## Tâche 8 — Carnet de tests humains des filtres géographiques dépendants
 
