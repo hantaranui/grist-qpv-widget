@@ -249,3 +249,18 @@ Tests : aucun (documentation)
 Fichiers modifiés : docs/ux/contacts-fiche-club.md (créé)
 Build refait : non
 Commit : 2a0d61f sur feature/contacts-fiche-club
+
+## Tâche 17 — Contacts : partie données (dev-backend)
+
+Date : 21/10/2026
+Agent : dev-backend
+Prompt : lire Fonction dans buildFicheDetail ; contrôler les saisies ; ajouter, modifier et supprimer un contact par applyUserActions, une opération chacune ; classer les erreurs ; sans aucun écran
+
+Note /5 : 5
+Ce qui allait : fonctions emailBienForme, controlerContact, contactDuClubOuvert, classerErreurEcriture, ecrireContacts, ajouterContact, modifierContact, supprimerContact, ressembleAUnRefus ; retours clairs par cas ; aucune valeur saisie ni texte brut de Grist dans la console ; pas de jeton d'écriture ; DR et DD jamais écrites ; règles de mailHref et du refus du logo mises en commun sans changer leur comportement
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 180 réussis (npm test) ; les nouvelles fonctions n'ont pas encore de test
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : dc2e898 sur feature/contacts-fiche-club
+Risques : reconnaissance du refus et de l'échec réseau par mots supposés (à constater en recette) ; contact supprimé entre-temps classé « autre »
