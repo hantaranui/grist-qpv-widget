@@ -137,3 +137,17 @@ Tests : 0 lancés, 0 réussis (rédaction du carnet)
 Fichiers modifiés : docs/tests/carnet-tableau-de-bord.md (créé)
 Build refait : pas nécessaire
 Commit : f12921f sur feature/filtres-geographiques-dependants
+
+## Tâche 9 — Retrait de fiche-club, étape 1 : tester directement la fiche de clubs
+
+Date : 21/10/2026
+Agent : testeur (après l'inventaire du relecteur)
+Prompt : recopier dans un nouveau fichier test/clubs-fiche.test.js les tests de fiche-club.test.js qui portent sur des fonctions présentes dans clubs, en les faisant viser clubs ; ne rien supprimer ni modifier d'autre
+
+Note /5 : sans objet
+Ce qui allait : 32 tests recopiés, tableau de correspondance complet (chaque test non recopié a sa raison) ; contournement charger() signalé au lieu de modifier le helper ; un seul fichier créé
+Ce que j'ai fait corriger : rien. Total annoncé 204 au lieu de 216 : erreur de point de départ dans le prompt (172 au lieu de 184), pas de l'agent
+Tests : 216 lancés, 216 réussis (npm test)
+Fichiers modifiés : test/clubs-fiche.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 08e055a sur chore/retrait-fiche-club
