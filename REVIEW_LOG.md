@@ -172,10 +172,24 @@ Date : 21/10/2026
 Agent : aucun (fait à la main avec git rm)
 Prompt : sans objet
 
-Note /5 : [ta note]
+Note /5 : sans opjet
 Ce qui allait : src/fiche-club/ et fiche-club.html supprimés ; le build ne construit plus que actions-dashboard, clubs et qpv-widget ; aucun autre fichier généré modifié
 Ce que j'ai fait corriger : sans objet
 Tests : 177 lancés, 177 réussis (npm test ; le test « fiche-club.html est à jour » a disparu avec le widget)
 Fichiers modifiés : supprimés : src/fiche-club/index.html, src/fiche-club/script.js, src/fiche-club/style.css, fiche-club.html
 Build refait : oui
 Commit : 8939bc3 sur chore/retrait-fiche-club
+
+## Tâche 12 — Retrait de fiche-club, étape 4 : documentation
+
+Date : 21/10/2026
+Agent : documentaliste
+Prompt : mettre à jour README.md, CLAUDE.md, la description de package.json, docs/ux/bandeau-commun-clubs.md et le commentaire de scripts/maj-frr.js pour ne plus décrire fiche-club ; déplacer dans la section clubs du README ce qui sert encore à clubs
+
+Note /5 : sans objet
+Ce qui allait : sections Zonages et Logo déplacées dans « Widget clubs » sans perte ; mention du test de comparaison avec qpv-widget gardée à juste titre ; mentions restantes listées et classées (normales / à corriger)
+Ce que j'ai fait corriger : rien. Commentaires de src/clubs/ et src/actions-dashboard/ laissés volontairement, à corriger pendant la gestion des contacts (noté dans le backlog)
+Tests : 177 lancés, 177 réussis (npm test)
+Fichiers modifiés : README.md, CLAUDE.md, package.json, docs/ux/bandeau-commun-clubs.md, scripts/maj-frr.js
+Build refait : non (src/ inchangé)
+Commit : 0e7557a sur chore/retrait-fiche-club
