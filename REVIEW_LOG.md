@@ -207,3 +207,17 @@ Tests : 180 lancés, 177 réussis, 3 en échec comme attendu (les 3 nouveaux, é
 Fichiers modifiés : test/clubs-fiche.test.js
 Build refait : non (src/ inchangé)
 Commit : 14f49d1 sur fix/jeton-console-clubs
+
+## Tâche 14 — Fuite du jeton d'écriture dans la console (clubs), étape 2 : correction
+
+Date : 21/10/2026
+Agent : dev-backend
+Prompt : corriger la cause seule pour que les 3 tests de la tâche 13 passent ; supprimer le console.info qui affichait la commande curl avec le jeton, et corriger le console.error seulement s'il fuyait aussi ; uniquement src/clubs/script.js
+
+Note /5 : sans objet
+Ce qui allait : console.info supprimé ; fuite du console.error confirmée et corrigée par une fonction sansJeton qui masque ?auth= ou &auth= tout en gardant un message d'erreur utile ; rien d'autre changé au téléversement
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 180 réussis (npm test)
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : 9334db8 sur fix/jeton-console-clubs
