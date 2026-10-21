@@ -1,6 +1,6 @@
 "use strict";
 
-// Le widget « fiche club » ouvre une action en deposant une note dans le
+// Le widget clubs ouvre une action en deposant une note dans le
 // localStorage — partage, les deux widgets ayant la meme origine — puis en
 // faisant naviguer la page vers le tableau de bord. Ces tests fixent le contrat
 // de lecture : la cle, la duree de validite, et le fait que la note ne survive

@@ -61,7 +61,7 @@ function loadWidget() {
   const elements = new Map();
 
   // Le stockage local du navigateur, reduit a ce dont le widget se sert. Les
-  // tests y deposent la note laissee par le widget « fiche club ».
+  // tests y deposent la note laissee par le widget clubs.
   const store = new Map();
   const localStorage = {
     getItem: (key) => (store.has(key) ? store.get(key) : null),
