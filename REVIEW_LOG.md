@@ -221,3 +221,17 @@ Tests : 180 lancés, 180 réussis (npm test)
 Fichiers modifiés : src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : 9334db8 sur fix/jeton-console-clubs
+
+## Tâche 15 — Contacts : règles d'accès dans DEV7 (manuel)
+
+Date : 21/10/2026
+Agent : aucun (fait à la main dans Grist DEV7, règle relue par auditeur-securite)
+Prompt : sans objet
+
+Note /5 : sans objet
+Ce qui allait : colonnes formules DR = $Club.DR et DD = $Club.DD ajoutées dans Contacts (type Référence) ; règles sur Contacts : propriétaire en tête, pas de création sans club, club non modifiable, FT National sur tout, FT Régional et FT Départemental sur leur périmètre (rec pour modifier et supprimer, newRec pour créer), lecture actuelle inchangée en dernier
+Ce que j'ai fait corriger : règle du Départemental écrite avec newRec au lieu de rec (corrigé) ; identifiant de colonne DD
+Tests : « Voir en tant que » : modification acceptée dans le périmètre et refusée hors périmètre (Régional, Départemental), National sur tout, ANS en lecture seule, changement de club refusé, suppression acceptée. Création non testable dans le tableau (ligne vide refusée) : à tester avec le widget
+Fichiers modifiés : aucun (document Grist DEV7 uniquement)
+Build refait : non
+Commit : aucun (configuration Grist)
