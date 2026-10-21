@@ -96,6 +96,7 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Aucun secret (jeton Grist, clé, mot de passe), aucune adresse de document ni donnée réelle de personne dans le code, les tests ou la documentation. Le dépôt est public.
 - « Tests proposés » ne veut pas dire « tests passés » : donner le résultat réellement affiché.
 - Chaque compte rendu se termine par : 1. fichiers lus ; 2. fichiers modifiés ; 3. tests lancés et résultat ; 4. risques restants.
+- Quand Hanta appelle un agent avec @, tu transmets son rapport tel quel, sans le résumer ni le compléter, et tu ne proposes jamais de faire toi-même la suite (correction, modification, commit) : c'est Hanta qui choisit le prochain agent.
 
 ## Pièges connus
 
