@@ -151,3 +151,17 @@ Tests : 216 lancés, 216 réussis (npm test)
 Fichiers modifiés : test/clubs-fiche.test.js (créé)
 Build refait : non (src/ inchangé)
 Commit : 08e055a sur chore/retrait-fiche-club
+
+## Tâche 10 — Retrait de fiche-club, étape 2 : retirer les tests qui visaient fiche-club
+
+Date : 21/10/2026
+Agent : testeur
+Prompt : supprimer test/fiche-club.test.js et test/helpers/fiche-club.js, retirer le test de non-divergence de clubs.test.js, retirer loadFiche de suppression-action.test.js, corriger les titres et commentaires qui citaient fiche-club ; uniquement dans test/
+
+Note /5 : sans objet
+Ce qui allait : 38 tests retirés, total annoncé (178) confirmé par npm test ; aucun fichier hors de test/ touché ; commentaires de clubs-fiche.test.js et de scripts/maj-frr.js signalés au lieu d'être modifiés
+Ce que j'ai fait corriger : rien. Commentaires de clubs-fiche.test.js gardés volontairement (ils disent d'où viennent les tests)
+Tests : 178 lancés, 178 réussis (npm test)
+Fichiers modifiés : test/clubs.test.js, test/suppression-action.test.js, test/helpers/clubs.js, test/helpers/widget.js, test/navigation-dashboard.test.js ; supprimés : test/fiche-club.test.js, test/helpers/fiche-club.js
+Build refait : non (src/ inchangé)
+Commit : 424c7f7 sur chore/retrait-fiche-club
