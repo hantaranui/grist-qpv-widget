@@ -235,3 +235,17 @@ Tests : « Voir en tant que » : modification acceptée dans le périmètre et r
 Fichiers modifiés : aucun (document Grist DEV7 uniquement)
 Build refait : non
 Commit : aucun (configuration Grist)
+
+## Tâche 16 — Contacts : note UX de la carte Contacts
+
+Date : 21/10/2026
+Agent : designer-ux (2 corrections)
+Prompt : écrire docs/ux/contacts-fiche-club.md (parcours, maquettes, messages, mention coordonnées professionnelles, mobile, accessibilité, HTML du design system, règles pour dev-interface), puis intégrer les décisions de Hanta et corriger les détails relevés
+
+Note /5 : sans objet
+Ce qui allait : note complète, structures HTML recopiées, existant mesuré (règle .edit-row-lists citée avec ses lignes), ce qui n'est pas vérifié clairement signalé (alert-success, refus de Grist) ; texte brut des erreurs Grist volontairement non affiché
+Ce que j'ai fait corriger : décisions intégrées (Fonction affichée, bouton d'ajout masqué si lecture refusée, « Supprimer », règle mailHref, erreurs du design system, « * champ obligatoire », cartes à moitiés égales, pas d'alerte de succès) ; balise abîmée par VS Code, type de l'e-mail, nom de classe contact-required-note, « Erreur : » uniformisé, DEV2 corrigé en DEV7
+Tests : aucun (documentation)
+Fichiers modifiés : docs/ux/contacts-fiche-club.md (créé)
+Build refait : non
+Commit : 2a0d61f sur feature/contacts-fiche-club
