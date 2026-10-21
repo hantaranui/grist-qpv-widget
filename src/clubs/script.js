@@ -529,6 +529,7 @@ function buildFicheDetail(raw, clubId) {
       nom: text(contact.Nom),
       email: text(contact.Email),
       telephone: text(contact.Telephone),
+      fonction: text(contact.Fonction),
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.prenom.localeCompare(b.prenom, 'fr') || a.id - b.id);
 
@@ -621,8 +622,99 @@ function telHref(value) {
   return 'tel:' + (/^0\d{9}$/.test(digits) ? '+33' + digits.slice(1) : digits);
 }
 
+// Forme d'une adresse e-mail : une arobase, rien d'espace avant ni apres. Une
+// seule regle, partagee par le lien mailto: et le controle de saisie des contacts.
+function emailBienForme(value) {
+  return /^[^\s@]+@[^\s@]+$/.test(value);
+}
+
 function mailHref(value) {
-  return /^[^\s@]+@[^\s@]+$/.test(value) ? 'mailto:' + value : null;
+  return emailBienForme(value) ? 'mailto:' + value : null;
+}
+
+// ---------------------------------------------------------------------------
+// Contacts : controle des saisies et ecritures dans la table Contacts. Aucun
+// ecran ici. Les droits sont decides par les regles d'acces de Grist : on tente
+// l'ecriture et on classe l'erreur. Jamais de valeur saisie (nom, e-mail,
+// telephone) ni de texte brut d'erreur Grist dans la console.
+// ---------------------------------------------------------------------------
+
+// Recoit les cinq valeurs saisies, les nettoie (espaces de debut et de fin) et
+// renvoie {valeurs, problemes}. « problemes » est une liste de codes, vide si
+// tout est correct : 'nom-vide', 'email-vide', 'email-mal-forme'.
+function controlerContact(saisie) {
+  const source = saisie || {};
+  const valeurs = {
+    Nom: text(source.Nom),
+    Prenom: text(source.Prenom),
+    Email: text(source.Email),
+    Telephone: text(source.Telephone),
+    Fonction: text(source.Fonction),
+  };
+  const problemes = [];
+  if (!valeurs.Nom) problemes.push('nom-vide');
+  if (!valeurs.Email) problemes.push('email-vide');
+  else if (!emailBienForme(valeurs.Email)) problemes.push('email-mal-forme');
+  return {valeurs, problemes};
+}
+
+// Un contact de la table lue appartient-il au club ouvert ? On regarde l'etat
+// charge (state.raw), pas ce que l'ecran affiche.
+function contactDuClubOuvert(clubId, contactId) {
+  if (!Number.isInteger(clubId) || clubId !== state.currentId) return false;
+  return (state.raw.Contacts || []).some(contact => contact.id === contactId && contact.Club === clubId);
+}
+
+// Range une erreur d'ecriture dans 'droits', 'reseau' ou 'autre'. Le refus est
+// reconnu par les mots que Grist met dans son message (meme liste que pour le
+// logo, voir ressembleAUnRefus) : ce n'est pas un code d'erreur officiel, donc
+// un refus au texte inattendu tombera dans 'autre'. Ne journalise rien.
+function classerErreurEcriture(error) {
+  const detail = errorDetail(error);
+  if (ressembleAUnRefus(detail)) return 'droits';
+  if (/failed to fetch|network|load failed|timeout|timed out|disconnect|offline|réseau|reseau/i.test(detail)) return 'reseau';
+  return 'autre';
+}
+
+// Envoie une seule operation a Grist. Renvoie {ok: true} ou
+// {ok: false, type: 'droits' | 'reseau' | 'autre'}.
+async function ecrireContacts(action) {
+  try {
+    await grist.docApi.applyUserActions([action]);
+    return {ok: true};
+  } catch (error) {
+    const type = classerErreurEcriture(error);
+    console.error(`Écriture dans Contacts non aboutie (${action[0]}) : ${type}`);
+    return {ok: false, type};
+  }
+}
+
+// Ajoute un contact au club ouvert : une seule AddRecord avec toutes les
+// valeurs, Club compris. Renvoie {ok: true}, {ok: false, type: 'saisie',
+// problemes: [...]}, {ok: false, type: 'club'} (ce n'est pas le club ouvert) ou
+// le resultat de ecrireContacts. N'envoie rien si la saisie est incorrecte.
+async function ajouterContact(clubId, saisie) {
+  if (!Number.isInteger(clubId) || clubId !== state.currentId) return {ok: false, type: 'club'};
+  const {valeurs, problemes} = controlerContact(saisie);
+  if (problemes.length) return {ok: false, type: 'saisie', problemes};
+  return ecrireContacts(['AddRecord', 'Contacts', null, {Club: clubId, ...valeurs}]);
+}
+
+// Modifie un contact du club ouvert : Nom, Prenom, Email, Telephone, Fonction
+// seulement, jamais Club. Meme forme de retour que ajouterContact, avec
+// {ok: false, type: 'introuvable'} si le contact n'est pas un contact de ce club.
+async function modifierContact(clubId, contactId, saisie) {
+  if (!contactDuClubOuvert(clubId, contactId)) return {ok: false, type: 'introuvable'};
+  const {valeurs, problemes} = controlerContact(saisie);
+  if (problemes.length) return {ok: false, type: 'saisie', problemes};
+  return ecrireContacts(['UpdateRecord', 'Contacts', contactId, valeurs]);
+}
+
+// Supprime pour de bon un contact du club ouvert. Retour comme modifierContact,
+// sans controle de saisie.
+async function supprimerContact(clubId, contactId) {
+  if (!contactDuClubOuvert(clubId, contactId)) return {ok: false, type: 'introuvable'};
+  return ecrireContacts(['RemoveRecord', 'Contacts', contactId]);
 }
 
 function renderContacts(contacts) {
@@ -1379,6 +1471,12 @@ function errorDetail(error) {
   try { return JSON.stringify(error); } catch (jsonError) { return String(error); }
 }
 
+// Le texte d'une erreur evoque-t-il un refus d'acces de Grist ? Meme liste de
+// mots pour le logo et pour les contacts.
+function ressembleAUnRefus(detail) {
+  return /access|acl|blocked|permission|refus/i.test(detail);
+}
+
 function uploadErrorMessage(error) {
   if (error && (error.status === 401 || error.status === 403)) {
     return "Envoi refusé : votre compte n'a pas le droit de modifier ce document.";
@@ -1394,7 +1492,7 @@ function uploadErrorMessage(error) {
     return `${error.message} La console du navigateur (F12, onglet Console) affiche la cause exacte.`;
   }
   const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
-  if (/access|acl|blocked|permission|refus/i.test(detail)) {
+  if (ressembleAUnRefus(detail)) {
     return "Enregistrement refusé : les règles d'accès du document ne vous permettent pas de modifier la fiche de ce club.";
   }
   if (error && error.step === 'update') {
