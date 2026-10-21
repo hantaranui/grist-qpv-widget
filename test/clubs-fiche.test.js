@@ -519,6 +519,71 @@ test("un rattachement refuse par Grist (piece jointe neuve, hors proprietaire) l
   });
 });
 
+// --- Aucun jeton dans la console ----------------------------------------------
+
+// Jeton factice, facile a reperer : aucun vrai jeton dans le depot.
+const JETON_FACTICE = "JETON-FACTICE-NE-DOIT-JAMAIS-APPARAITRE-123";
+
+// Met un argument de console en texte, erreurs comprises (message, pile, cause).
+function enTexte(valeur, vus = new Set()) {
+  if (valeur && typeof valeur === "object") {
+    if (vus.has(valeur)) return "";
+    vus.add(valeur);
+    if (valeur instanceof Error || ("message" in valeur && "stack" in valeur)) {
+      return [valeur.message, valeur.stack, enTexte(valeur.cause, vus)].join(" ");
+    }
+    try { return JSON.stringify(valeur); } catch { return String(valeur); }
+  }
+  return String(valeur);
+}
+
+// Remplace les cinq methodes de console du bac a sable (le script lit
+// `console` au moment de s'en servir) et range tout ce qui est ecrit.
+function espionnerConsole(w) {
+  const lignes = [];
+  for (const methode of ["log", "info", "warn", "error", "debug"]) {
+    w.console[methode] = (...args) => lignes.push({methode, texte: args.map((arg) => enTexte(arg)).join(" ")});
+  }
+  return lignes;
+}
+
+function verifierConsolePropre(lignes) {
+  for (const {methode, texte} of lignes) {
+    assert.ok(!texte.includes(JETON_FACTICE), `console.${methode} laisse voir le jeton : ${texte.slice(0, 120)}`);
+    assert.ok(!/[?&]auth=/.test(texte), `console.${methode} affiche une adresse avec ?auth= : ${texte.slice(0, 120)}`);
+  }
+}
+
+function chargerAvecJetonFactice(fetch) {
+  return charger({
+    grist: {docApi: {getAccessToken: () => Promise.resolve({token: JETON_FACTICE, baseUrl: "https://grist.example/api/docs/DOC"})}},
+    fetch,
+  });
+}
+
+test("un televersement de logo reussi n'ecrit jamais le jeton dans la console", async () => {
+  const w = chargerAvecJetonFactice((url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({}) : reponse({})));
+  const lignes = espionnerConsole(w);
+  await w.uploadLogo(7, fichier());
+  verifierConsolePropre(lignes);
+});
+
+test("un televersement de logo en echec reseau n'ecrit jamais le jeton dans la console", async () => {
+  // Certains navigateurs recopient l'adresse appelee (avec ?auth=) dans le message d'erreur.
+  const w = chargerAvecJetonFactice((url) => Promise.reject(new TypeError(`Failed to fetch ${url}`)));
+  const lignes = espionnerConsole(w);
+  await w.addLogo({id: 7, nom: "Club fictif"}, fichier());
+  assert.ok(lignes.some(({methode}) => methode === "error"), "l'échec doit bien passer par console.error pour que ce test ait un sens");
+  verifierConsolePropre(lignes);
+});
+
+test("un refus de Grist au televersement n'ecrit jamais le jeton dans la console", async () => {
+  const w = chargerAvecJetonFactice((url) => reponse({error: `No write access for ${url}`}, {status: 403}));
+  const lignes = espionnerConsole(w);
+  await w.addLogo({id: 7, nom: "Club fictif"}, fichier());
+  verifierConsolePropre(lignes);
+});
+
 test("seules les images raisonnables sont acceptees", () => {
   const w = charger();
   assert.equal(w.logoFileProblem(fichier("image/png")), "");
