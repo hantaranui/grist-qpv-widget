@@ -399,6 +399,7 @@ function closeFiche() {
   state.view = 'list';
   state.currentId = null;
   state.actionId = null;
+  annoncerContact('');
   render();
   if (focusAvantFiche && document.body.contains(focusAvantFiche)) focusAvantFiche.focus();
   focusAvantFiche = null;
@@ -456,7 +457,7 @@ function renderFiche() {
             <div class="card-body">
               ${state.unreadable.includes('Contacts')
                 ? '<p class="empty-note">Vos droits ne permettent pas de lire les contacts.</p>'
-                : renderContacts(detail.contacts)}
+                : '<button class="btn btn-secondary btn-sm contact-add" type="button" id="addContact"><span class="btn-content">+ Ajouter un contact</span></button>' + renderContacts(detail.contacts)}
             </div>
           </section>
           <section class="edit-card" aria-labelledby="actionsTitle">
@@ -475,6 +476,7 @@ function renderFiche() {
   `;
   document.getElementById('backToList').addEventListener('click', closeFiche);
   bindLogo(club);
+  bindContactButtons();
   fillCommune(club);
   fillZonages(club);
 
@@ -720,15 +722,273 @@ async function supprimerContact(clubId, contactId) {
 function renderContacts(contacts) {
   if (!contacts.length) return '<p class="empty-note">Aucun contact enregistré pour ce club.</p>';
   return `<ul class="contact-list">${contacts.map(contact => {
-    const nom = [contact.prenom, contact.nom].filter(Boolean).join(' ') || 'Contact sans nom';
+    const nomComplet = [contact.prenom, contact.nom].filter(Boolean).join(' ');
+    const nom = nomComplet || 'Contact sans nom';
+    // Plusieurs lignes portent les memes mots « Modifier » : l'etiquette du
+    // bouton nomme le contact pour un lecteur d'ecran.
+    const libelleModifier = nomComplet ? `Modifier le contact ${nomComplet}` : 'Modifier le contact sans nom';
     const mail = mailHref(contact.email);
     const tel = telHref(contact.telephone);
     return `<li class="contact-item">
       <span class="contact-name">${escapeHtml(nom)}</span>
+      ${contact.fonction ? `<div class="contact-fonction muted-text">${escapeHtml(contact.fonction)}</div>` : ''}
       ${mail ? `<a class="contact-mail" href="${escapeAttr(mail)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
       ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+      <div class="contact-buttons">
+        <button class="btn btn-secondary btn-sm" type="button" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span class="btn-content">Modifier</span></button>
+      </div>
     </li>`;
   }).join('')}</ul>`;
+}
+
+// ---------------------------------------------------------------------------
+// Contacts : fenetre d'ajout et de modification. La fenetre est creee dans
+// #contactModal (hors de la fiche, qui est redessinee a chaque relecture des
+// tables) et detruite a sa fermeture. Les textes sont fixes : on n'affiche
+// jamais le texte brut d'une erreur Grist, qui pourrait reprendre des valeurs
+// saisies (donnees de personnes).
+// ---------------------------------------------------------------------------
+
+// Les cinq champs, dans l'ordre de la fenetre. « cle » est le nom de la colonne
+// de Contacts, aussi celui des valeurs que controlerContact attend.
+const CHAMPS_CONTACT = [
+  {cle: 'Nom', id: 'contactNom', label: 'Nom', type: 'text', obligatoire: true},
+  {cle: 'Prenom', id: 'contactPrenom', label: 'Prénom', type: 'text'},
+  {cle: 'Email', id: 'contactEmail', label: 'E-mail', type: 'email', obligatoire: true},
+  {cle: 'Telephone', id: 'contactTelephone', label: 'Téléphone', type: 'tel'},
+  {cle: 'Fonction', id: 'contactFonction', label: 'Fonction', type: 'text'},
+];
+
+// Message affiche sous le champ, selon le probleme que renvoie controlerContact.
+const MESSAGES_SAISIE_CONTACT = {
+  'nom-vide': 'Saisissez le nom du contact.',
+  'email-vide': "Saisissez l'adresse e-mail du contact.",
+  'email-mal-forme': 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.',
+};
+
+const MESSAGE_CONTACT_DROITS = "Vous n'avez pas les droits pour ajouter ou modifier des contacts de ce club. Vos données n'ont pas été enregistrées. Rapprochez-vous de l'équipe qui gère le document.";
+const MESSAGE_CONTACT_RESEAU = "L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez.";
+// Repli : un refus que le widget n'a pas su reconnaitre tombe ici.
+const MESSAGE_CONTACT_AUTRE = "L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de modifier les contacts de ce club.";
+const MESSAGE_CONTACT_INTROUVABLE = "Ce contact n'existe plus. La liste va être actualisée.";
+
+// Fenetre ouverte : {mode: 'add' | 'edit', contactId, busy}, sinon null.
+let contactDialog = null;
+
+// Ecrit (ou efface, avec '') le texte lu aux lecteurs d'ecran. Vide d'abord,
+// pour que deux reussites de suite soient annoncees toutes les deux.
+function annoncerContact(texte) {
+  const zone = document.getElementById('contactStatus');
+  if (!zone) return;
+  zone.textContent = '';
+  if (texte) zone.textContent = texte;
+}
+
+function bindContactButtons() {
+  const ajouter = document.getElementById('addContact');
+  if (ajouter) ajouter.addEventListener('click', () => openContactDialog('add'));
+  document.querySelectorAll('[data-edit-contact]').forEach(button => {
+    button.addEventListener('click', () => openContactDialog('edit', Number(button.dataset.editContact)));
+  });
+}
+
+// Un champ du formulaire. Avec « erreur », la structure « Input : Avec une
+// erreur » du design system ; le prefixe sr-only fait lire « Erreur : » aux
+// lecteurs d'ecran sans l'afficher.
+function contactFieldHtml(champ, valeur, erreur) {
+  const requis = champ.obligatoire ? '<span class="required">&nbsp;*</span>' : '';
+  const erreurId = `${champ.id}Error`;
+  const attributsErreur = erreur ? ` aria-describedby="${erreurId}" aria-invalid="true"` : '';
+  return `<div class="contact-field${erreur ? ' has-error' : ''}">
+    <label class="form-label" for="${champ.id}">${champ.label}${requis}</label>
+    <input class="form-control${erreur ? ' is-invalid' : ''}"${attributsErreur} id="${champ.id}" name="${champ.id}"${champ.obligatoire ? ' required' : ''} type="${champ.type}" autocomplete="off" value="${escapeAttr(valeur)}">
+    ${erreur ? `<p class="help-block invalid-feedback" id="${erreurId}"><span class="sr-only">Erreur :&nbsp;</span>${escapeHtml(erreur)}</p>` : ''}
+  </div>`;
+}
+
+// valeurs : {Nom, Prenom, ...} (texte brut, echappe ici) ; erreurs : {Nom: texte}.
+function contactFieldsHtml(valeurs, erreurs) {
+  return CHAMPS_CONTACT.map(champ => contactFieldHtml(champ, valeurs[champ.cle] || '', erreurs[champ.cle])).join('');
+}
+
+function contactDialogHtml(mode, valeurs, nomClub) {
+  const titre = mode === 'edit' ? "Modification d'un contact" : "Ajout d'un contact";
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="contactDialog" role="dialog" aria-modal="true" aria-labelledby="contactDialogTitle" aria-describedby="contactDialogNote" tabindex="-1">
+    <div class="modal-dialog">
+      <form class="modal-content" id="contactForm" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="contactDialogTitle">${titre}</h2></div>
+        <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="contactMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <p class="contact-required-note">* champ obligatoire</p>
+          <p class="contact-club">Club : ${escapeHtml(nomClub)} (non modifiable)</p>
+          <p class="help-block" id="contactDialogNote">Saisissez des coordonnées professionnelles (adresse e-mail et téléphone de la structure), pas des coordonnées personnelles.</p>
+          <div class="contact-fields" id="contactFields">${contactFieldsHtml(valeurs, {})}</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelContact"><span class="btn-content">Annuler</span></button>
+          <button type="submit" class="btn btn-primary" id="submitContact"><span class="btn-content">Valider</span></button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+function openContactDialog(mode, contactId) {
+  const club = state.clubs.find(item => item.id === state.currentId);
+  if (!club) return;
+  let valeurs = {};
+  if (mode === 'edit') {
+    const contact = buildFicheDetail(state.raw, club.id).contacts.find(item => item.id === contactId);
+    if (!contact) return;
+    valeurs = {Nom: contact.nom, Prenom: contact.prenom, Email: contact.email, Telephone: contact.telephone, Fonction: contact.fonction};
+  }
+  annoncerContact('');
+  contactDialog = {mode, contactId: mode === 'edit' ? contactId : null, busy: false};
+  const host = document.getElementById('contactModal');
+  host.innerHTML = contactDialogHtml(mode, valeurs, club.nom || 'Club sans nom');
+  document.body.classList.add('modal-open');
+  document.getElementById('contactForm').addEventListener('submit', submitContact);
+  document.getElementById('cancelContact').addEventListener('click', () => closeContactDialog());
+  document.addEventListener('keydown', keepFocusInContactDialog);
+  document.getElementById('contactNom').focus();
+  requestResize();
+}
+
+// Le bouton qui a ouvert la fenetre : cherche au moment de la fermeture, car la
+// fiche est redessinee a chaque relecture et les anciens boutons n'existent plus.
+// Un contact disparu ne laisse plus son bouton : on retombe sur « Ajouter ».
+function contactOpenerButton() {
+  if (contactDialog && contactDialog.mode === 'edit') {
+    const bouton = document.querySelector(`[data-edit-contact="${contactDialog.contactId}"]`);
+    if (bouton) return bouton;
+  }
+  return document.getElementById('addContact');
+}
+
+function closeContactDialog(rendreLeFocus = true) {
+  if (!contactDialog || contactDialog.busy) return;
+  const bouton = rendreLeFocus ? contactOpenerButton() : null;
+  document.removeEventListener('keydown', keepFocusInContactDialog);
+  document.getElementById('contactModal').innerHTML = '';
+  document.body.classList.remove('modal-open');
+  contactDialog = null;
+  if (bouton && document.body.contains(bouton)) bouton.focus();
+  requestResize();
+}
+
+// Une boite de dialogue garde le focus : Tab et Maj+Tab tournent entre ses
+// controles, Echap la ferme sans enregistrer. Ecoute le document et non la
+// fenetre, car le focus peut etre perdu (relecture de la fiche) sans que la
+// fenetre ait disparu.
+function keepFocusInContactDialog(event) {
+  if (!contactDialog) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeContactDialog();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = [...document.querySelectorAll('#contactDialog input, #contactDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const actif = document.activeElement;
+  if (!document.getElementById('contactDialog').contains(actif)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && actif === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && actif === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+// Les valeurs telles que saisies, sans toucher au DOM d'autre chose que les champs.
+function readContactForm() {
+  const saisie = {};
+  CHAMPS_CONTACT.forEach(champ => { saisie[champ.cle] = document.getElementById(champ.id).value; });
+  return saisie;
+}
+
+// Redessine les champs avec leurs valeurs, les erreurs de saisie en plus, et met
+// le focus sur le premier champ a corriger.
+function markContactProblems(saisie, problemes) {
+  const erreurs = {};
+  problemes.forEach(code => {
+    const cle = code === 'nom-vide' ? 'Nom' : 'Email';
+    if (!erreurs[cle]) erreurs[cle] = MESSAGES_SAISIE_CONTACT[code];
+  });
+  document.getElementById('contactFields').innerHTML = contactFieldsHtml(saisie, erreurs);
+  const premier = CHAMPS_CONTACT.find(champ => erreurs[champ.cle]);
+  if (premier) document.getElementById(premier.id).focus();
+}
+
+function showContactMessage(texte) {
+  const message = document.getElementById('contactMessage');
+  message.querySelector('.alert-content').textContent = texte;
+  message.classList.remove('is-hidden');
+}
+
+function setContactBusy(occupe) {
+  contactDialog.busy = occupe;
+  const bouton = document.getElementById('submitContact');
+  bouton.disabled = occupe;
+  bouton.querySelector('.btn-content').textContent = occupe ? 'Enregistrement en cours…' : 'Valider';
+}
+
+function contactFailureMessage(type) {
+  if (type === 'droits') return MESSAGE_CONTACT_DROITS;
+  if (type === 'reseau') return MESSAGE_CONTACT_RESEAU;
+  if (type === 'introuvable') return MESSAGE_CONTACT_INTROUVABLE;
+  return MESSAGE_CONTACT_AUTRE;
+}
+
+async function submitContact(event) {
+  event.preventDefault();
+  if (!contactDialog || contactDialog.busy) return;
+  const saisie = readContactForm();
+  const {problemes} = controlerContact(saisie);
+  if (problemes.length) {
+    markContactProblems(saisie, problemes);
+    return;
+  }
+  const {mode, contactId} = contactDialog;
+  document.getElementById('contactMessage').classList.add('is-hidden');
+  setContactBusy(true);
+  const resultat = mode === 'edit'
+    ? await modifierContact(state.currentId, contactId, saisie)
+    : await ajouterContact(state.currentId, saisie);
+
+  if (resultat.ok) {
+    // La fenetre se ferme avant la relecture ; le focus est place apres, car le
+    // rendu de la fiche le donne au titre du club.
+    contactDialog.busy = false;
+    closeContactDialog(false);
+    await load();
+    annoncerContact(mode === 'edit' ? 'Le contact a bien été modifié.' : 'Le contact a bien été ajouté.');
+    const bouton = mode === 'edit' ? document.querySelector(`[data-edit-contact="${contactId}"]`) : null;
+    const cible = bouton || document.getElementById('addContact');
+    if (cible) cible.focus();
+    return;
+  }
+
+  if (resultat.type === 'saisie') {
+    setContactBusy(false);
+    markContactProblems(saisie, resultat.problemes || []);
+    return;
+  }
+  showContactMessage(contactFailureMessage(resultat.type));
+  if (resultat.type === 'introuvable' || resultat.type === 'autre') {
+    // La fenetre est hors de la fiche : elle garde ses valeurs pendant que la
+    // liste est relue. Le rendu de la fiche vole le focus, on le reprend.
+    await load();
+  }
+  setContactBusy(false);
+  const valider = document.getElementById('submitContact');
+  if (valider) valider.focus();
 }
 
 // Une valeur saisie mais inexploitable comme lien reste affichee telle quelle.

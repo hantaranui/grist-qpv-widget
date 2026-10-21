@@ -53,6 +53,15 @@
 
     <section class="fiche-view is-hidden" id="ficheView"></section>
 
+    <!-- Zone d'annonce pour les lecteurs d'écran (réussite d'un ajout ou d'une
+         modification de contact). Elle est ici, hors de la fiche, pour exister
+         avant l'écriture du texte : la fiche est redessinée à chaque relecture. -->
+    <p class="sr-only" id="contactStatus" role="status" aria-live="polite"></p>
+
+    <!-- Conteneur de la fenêtre d'ajout / modification d'un contact : vide tant
+         que la fenêtre est fermée, hors de la fiche pour survivre à son rendu. -->
+    <div id="contactModal"></div>
+
     <script src="script.js"></script>
   </body>
 </html>
