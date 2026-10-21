@@ -165,3 +165,17 @@ Tests : 178 lancés, 178 réussis (npm test)
 Fichiers modifiés : test/clubs.test.js, test/suppression-action.test.js, test/helpers/clubs.js, test/helpers/widget.js, test/navigation-dashboard.test.js ; supprimés : test/fiche-club.test.js, test/helpers/fiche-club.js
 Build refait : non (src/ inchangé)
 Commit : 424c7f7 sur chore/retrait-fiche-club
+
+## Tâche 11 — Retrait de fiche-club, étape 3 : supprimer les sources (manuel)
+
+Date : 21/10/2026
+Agent : aucun (fait à la main avec git rm)
+Prompt : sans objet
+
+Note /5 : [ta note]
+Ce qui allait : src/fiche-club/ et fiche-club.html supprimés ; le build ne construit plus que actions-dashboard, clubs et qpv-widget ; aucun autre fichier généré modifié
+Ce que j'ai fait corriger : sans objet
+Tests : 177 lancés, 177 réussis (npm test ; le test « fiche-club.html est à jour » a disparu avec le widget)
+Fichiers modifiés : supprimés : src/fiche-club/index.html, src/fiche-club/script.js, src/fiche-club/style.css, fiche-club.html
+Build refait : oui
+Commit : 8939bc3 sur chore/retrait-fiche-club
