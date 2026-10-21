@@ -1248,11 +1248,19 @@ async function addLogo(club, file) {
     // La cause d'origine (avant l'etiquetage par etape dans uploadLogo) est celle
     // qui aide a diagnostiquer : la console developpeur la garde meme quand le
     // message affiche a l'utilisateur reste generique.
-    console.error(error, error && error.cause);
+    // On n'affiche que des textes passes par sansJeton : certains navigateurs
+    // recopient l'adresse appelee (avec ?auth=<jeton>) dans le message d'erreur.
+    console.error(sansJeton(errorDetail(error)), sansJeton(errorDetail(error && error.cause)));
     if (!isCurrent(club)) return;
     state.upload = {busy: false, message: uploadErrorMessage(error), kind: 'error'};
     render();
   }
+}
+
+// Retire d'un texte le parametre ?auth=<jeton> (ou &auth=<jeton>) d'une adresse :
+// le jeton d'ecriture ne doit jamais atteindre la console du navigateur.
+function sansJeton(texte) {
+  return String(texte).replace(/[?&]auth=[^&\s"'<>]*/g, '[jeton retiré]');
 }
 
 function logoFileProblem(file) {
@@ -1303,17 +1311,6 @@ async function uploadLogo(clubId, file) {
   } catch (error) {
     throw Object.assign(new Error("Jeton d'écriture refusé."), {step: 'access', cause: error});
   }
-
-  // Le jeton est valable quelques minutes : de quoi rejouer l'envoi hors
-  // navigateur (curl, Postman...) pendant qu'il est encore frais, si celui-ci
-  // echoue juste apres. Un essai qui reussit la ou le navigateur bloque
-  // designerait un souci propre a la reponse CORS (reparable cote serveur) ;
-  // un echec identique designerait un refus du serveur lui-meme, quel que
-  // soit le client.
-  console.info(
-    "Pour rejouer cet envoi hors navigateur (isole un blocage propre au CORS) :\n" +
-    `curl -i -X POST "${access.baseUrl}/attachments?auth=${access.token}" -F "upload=@/chemin/vers/une/image.png"`
-  );
 
   const form = new FormData();
   form.append('upload', file, file.name);
