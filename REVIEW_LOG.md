@@ -193,3 +193,17 @@ Tests : 177 lancés, 177 réussis (npm test)
 Fichiers modifiés : README.md, CLAUDE.md, package.json, docs/ux/bandeau-commun-clubs.md, scripts/maj-frr.js
 Build refait : non (src/ inchangé)
 Commit : 0e7557a sur chore/retrait-fiche-club
+
+## Tâche 13 — Fuite du jeton d'écriture dans la console (clubs), étape 1 : test qui échoue
+
+Date : 21/10/2026
+Agent : testeur (cause trouvée par auditeur-securite : console.info lignes 1313-1316 de src/clubs/script.js)
+Prompt : écrire un test qui échoue tant que le jeton d'écriture, ou une adresse avec ?auth=, apparaît dans la console lors d'un téléversement de logo ; uniquement dans test/
+
+Note /5 : sans objet
+Ce qui allait : 3 tests (envoi réussi, échec réseau, refus de Grist), jeton factice, aucun helper modifié ; risque du console.error ligne 1251 bien identifié
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 177 réussis, 3 en échec comme attendu (les 3 nouveaux, échec causé par le console.info)
+Fichiers modifiés : test/clubs-fiche.test.js
+Build refait : non (src/ inchangé)
+Commit : 14f49d1 sur fix/jeton-console-clubs
