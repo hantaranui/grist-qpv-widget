@@ -264,3 +264,17 @@ Fichiers modifiés : src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : dc2e898 sur feature/contacts-fiche-club
 Risques : reconnaissance du refus et de l'échec réseau par mots supposés (à constater en recette) ; contact supprimé entre-temps classé « autre »
+
+## Tâche 18 — Contacts : tests de la partie données
+
+Date : 21/10/2026
+Agent : testeur (2 corrections)
+Prompt : tester controlerContact, ajouterContact, modifierContact, supprimerContact, classerErreurEcriture, la console et buildFicheDetail, dans test/clubs-contacts.test.js
+
+Note /5 : sans objet
+Ce qui allait : 32 tests couvrant chaque règle de la note UX, dont les cas où rien n'est envoyé ; un test qui passait par hasard (console en réussite) repéré et renforcé par l'agent
+Ce que j'ai fait corriger : 1) activité en arrière-plan après la fin de 4 tests (doublure sans fetchTable) ; 2) le chargement de départ effaçait les contacts préparés, d'où un « introuvable » au lieu de « droits » ; les tests attendent désormais la fin du chargement et vérifient que chaque écriture est réellement partie
+Tests : 212 lancés, 212 réussis (npm test)
+Fichiers modifiés : test/clubs-contacts.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 68301b1 sur feature/contacts-fiche-club
