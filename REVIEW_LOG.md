@@ -336,3 +336,17 @@ Tests : 0 lancés, 0 réussis (note)
 Fichiers modifiés : docs/ux/convention.md
 Build refait : pas nécessaire
 Commit : 468aa36 sur feature/convention
+
+## Tâche C10 — Backlog de la convention mis à jour après S0, .env ignoré
+
+Date : 2026-10-22
+Agent : Claude sans agent
+Prompt : marquer comme faites les tâches 0.2 (adresse du club : colonne Adresse, Siege = Oui/Non), 0.3 (audit et ses décisions) et 0.4 (main ramené dans la branche) dans docs/backlog.md ; ajouter l'adresse du club aux blocages de la génération ; ajouter .env à .gitignore
+
+Note /5 : sans objet
+Ce qui allait : seuls les deux fichiers demandés modifiés ; adresse du club ajoutée aux blocages à trois endroits (règle, tâche 3.3, recette R4) ; contradiction sur Siege repérée et signalée au lieu d'être corrigée sans accord.
+Ce que j'ai fait corriger : la ligne « Réponses intégrées » sur Structures.Siege, alignée sur la note de la tâche 0.2.
+Tests : 0 lancés, 0 réussis (documentation)
+Fichiers modifiés : docs/backlog.md, .gitignore
+Build refait : pas nécessaire
+Commit : a424826 sur feature/convention
