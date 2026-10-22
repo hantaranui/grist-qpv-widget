@@ -40,6 +40,20 @@ Fichiers modifiés : src/actions-dashboard/index.html, actions-dashboard.html
 Build refait : oui
 Commit : 67bb166 sur feature/bandeau-commun
 
+## Tâche 2 bis — Ajout du bandeau commun au widget clubs
+
+Date : 16/10/2026
+Agent : designer-ux (note docs/ux/bandeau-commun-clubs.md), puis dev-interface
+Prompt : ajouter la balise du bandeau dans src/clubs/index.html, après le script jszip, avant la feuille du design system
+
+Note /5 : sans objet
+Ce qui allait : une seule ligne ajoutée ; h1 « Clubs » conservé (choix de la note UX) ; aucun autre widget touché
+Ce que j'ai fait corriger : sans objet
+Tests : non notés (fiche écrite après coup ; la publication est testée en tâche 3)
+Fichiers modifiés : src/clubs/index.html, clubs.html, docs/ux/bandeau-commun-clubs.md
+Build refait : oui
+Commit : 9d281a4 sur feature/fiche-club
+
 ## Tâche 3 — Réunion des branches et publication du bandeau commun (manuel)
 
 Date : 17/10/2026
@@ -124,8 +138,77 @@ Fichiers modifiés : docs/tests/carnet-tableau-de-bord.md (créé)
 Build refait : pas nécessaire
 Commit : f12921f sur feature/filtres-geographiques-dependants
 
+## Tâche 9 — Retrait de fiche-club, étape 1 : tester directement la fiche de clubs
 
-## Tâche 9 — Maquette de la convention de partenariat
+Date : 21/10/2026
+Agent : testeur (après l'inventaire du relecteur)
+Prompt : recopier dans un nouveau fichier test/clubs-fiche.test.js les tests de fiche-club.test.js qui portent sur des fonctions présentes dans clubs, en les faisant viser clubs ; ne rien supprimer ni modifier d'autre
+
+Note /5 : sans objet
+Ce qui allait : 32 tests recopiés, tableau de correspondance complet (chaque test non recopié a sa raison) ; contournement charger() signalé au lieu de modifier le helper ; un seul fichier créé
+Ce que j'ai fait corriger : rien. Total annoncé 204 au lieu de 216 : erreur de point de départ dans le prompt (172 au lieu de 184), pas de l'agent
+Tests : 216 lancés, 216 réussis (npm test)
+Fichiers modifiés : test/clubs-fiche.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 08e055a sur chore/retrait-fiche-club
+
+## Tâche 10 — Retrait de fiche-club, étape 2 : retirer les tests qui visaient fiche-club
+
+Date : 21/10/2026
+Agent : testeur
+Prompt : supprimer test/fiche-club.test.js et test/helpers/fiche-club.js, retirer le test de non-divergence de clubs.test.js, retirer loadFiche de suppression-action.test.js, corriger les titres et commentaires qui citaient fiche-club ; uniquement dans test/
+
+Note /5 : sans objet
+Ce qui allait : 38 tests retirés, total annoncé (178) confirmé par npm test ; aucun fichier hors de test/ touché ; commentaires de clubs-fiche.test.js et de scripts/maj-frr.js signalés au lieu d'être modifiés
+Ce que j'ai fait corriger : rien. Commentaires de clubs-fiche.test.js gardés volontairement (ils disent d'où viennent les tests)
+Tests : 178 lancés, 178 réussis (npm test)
+Fichiers modifiés : test/clubs.test.js, test/suppression-action.test.js, test/helpers/clubs.js, test/helpers/widget.js, test/navigation-dashboard.test.js ; supprimés : test/fiche-club.test.js, test/helpers/fiche-club.js
+Build refait : non (src/ inchangé)
+Commit : 424c7f7 sur chore/retrait-fiche-club
+
+## Tâche 11 — Retrait de fiche-club, étape 3 : supprimer les sources (manuel)
+
+Date : 21/10/2026
+Agent : aucun (fait à la main avec git rm)
+Prompt : sans objet
+
+Note /5 : sans opjet
+Ce qui allait : src/fiche-club/ et fiche-club.html supprimés ; le build ne construit plus que actions-dashboard, clubs et qpv-widget ; aucun autre fichier généré modifié
+Ce que j'ai fait corriger : sans objet
+Tests : 177 lancés, 177 réussis (npm test ; le test « fiche-club.html est à jour » a disparu avec le widget)
+Fichiers modifiés : supprimés : src/fiche-club/index.html, src/fiche-club/script.js, src/fiche-club/style.css, fiche-club.html
+Build refait : oui
+Commit : 8939bc3 sur chore/retrait-fiche-club
+
+## Tâche 12 — Retrait de fiche-club, étape 4 : documentation
+
+Date : 21/10/2026
+Agent : documentaliste
+Prompt : mettre à jour README.md, CLAUDE.md, la description de package.json, docs/ux/bandeau-commun-clubs.md et le commentaire de scripts/maj-frr.js pour ne plus décrire fiche-club ; déplacer dans la section clubs du README ce qui sert encore à clubs
+
+Note /5 : sans objet
+Ce qui allait : sections Zonages et Logo déplacées dans « Widget clubs » sans perte ; mention du test de comparaison avec qpv-widget gardée à juste titre ; mentions restantes listées et classées (normales / à corriger)
+Ce que j'ai fait corriger : rien. Commentaires de src/clubs/ et src/actions-dashboard/ laissés volontairement, à corriger pendant la gestion des contacts (noté dans le backlog)
+Tests : 177 lancés, 177 réussis (npm test)
+Fichiers modifiés : README.md, CLAUDE.md, package.json, docs/ux/bandeau-commun-clubs.md, scripts/maj-frr.js
+Build refait : non (src/ inchangé)
+Commit : 0e7557a sur chore/retrait-fiche-club
+
+## Tâche 13 — Fuite du jeton d'écriture dans la console (clubs), étape 1 : test qui échoue
+
+Date : 21/10/2026
+Agent : testeur (cause trouvée par auditeur-securite : console.info lignes 1313-1316 de src/clubs/script.js)
+Prompt : écrire un test qui échoue tant que le jeton d'écriture, ou une adresse avec ?auth=, apparaît dans la console lors d'un téléversement de logo ; uniquement dans test/
+
+Note /5 : sans objet
+Ce qui allait : 3 tests (envoi réussi, échec réseau, refus de Grist), jeton factice, aucun helper modifié ; risque du console.error ligne 1251 bien identifié
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 177 réussis, 3 en échec comme attendu (les 3 nouveaux, échec causé par le console.info)
+Fichiers modifiés : test/clubs-fiche.test.js
+Build refait : non (src/ inchangé)
+Commit : 14f49d1 sur fix/jeton-console-clubs
+
+## Tâche C1 — Maquette de la convention de partenariat
 
 Date : 2026-10-20
 Agent : @designer-ux
@@ -140,7 +223,7 @@ Build refait : pas nécessaire
 Commit : 78ebd82 sur feature/convention
 
 
-## Tâche 10 — Essai technique : téléchargement et pièce jointe depuis un widget
+## Tâche C2 — Essai technique : téléchargement et pièce jointe depuis un widget
 
 Date : 2026-10-20
 Agent : @dev-backend
@@ -155,7 +238,7 @@ Build refait : pas nécessaire
 Commit : aucun pour l'essai (fiche seule)
 
 
-## Tâche 11 — Maquette de la convention mise à jour après les retours du chef
+## Tâche C3 — Maquette de la convention mise à jour après les retours du chef
 
 Date : 2026-10-20
 Agent : @designer-ux
@@ -170,7 +253,7 @@ Build refait : pas nécessaire
 Commit : 9409f5b sur feature/convention
 
 
-## Tâche 12 — Maquette de la convention : re-générer et dépôt direct du fichier signé
+## Tâche C4 — Maquette de la convention : re-générer et dépôt direct du fichier signé
 
 Date : 2026-10-20
 Agent : @designer-ux
@@ -184,7 +267,7 @@ Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
 Build refait : pas nécessaire
 Commit : 1ea1315 sur feature/convention
 
-## Tâche 13 — Maquette de la convention alignée sur les réponses du client
+## Tâche C5 — Maquette de la convention alignée sur les réponses du client
 
 Date : 2026-10-22
 Agent : @designer-ux
@@ -198,7 +281,7 @@ Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
 Build refait : pas nécessaire
 Commit : 49821cd sur feature/convention
 
-## Tâche 14 — Cadrage du développement de la convention
+## Tâche C6 — Cadrage du développement de la convention
 
 Date : 2026-10-22
 Agent : @chef-de-projet (cadrage), puis Claude sans agent (enregistrement dans docs/backlog.md)

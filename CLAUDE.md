@@ -10,12 +10,12 @@ France Travail, Partenariat simplifié : remplacer la gestion sur Excel des « a
 Plusieurs dépôts (page-accueil-partenariat-simplifi-, grist-qpv-widget, Soutien_actions_widget-Grist, d'autres à venir) partagent le même document Grist. Renommer une table ou une colonne peut casser plusieurs widgets.
 Modèle de données de référence : dépôt model-de-donnees-aucarre.
 
-## Ce dépôt contient QUATRE widgets. On travaille sur le tableau de bord, et sur clubs pour le bandeau commun seulement.
+## Ce dépôt contient TROIS widgets. On travaille sur le tableau de bord, et sur clubs pour le bandeau commun seulement.
 
 - actions-dashboard : le tableau de bord. Widget principal de notre travail.
 - clubs : dans le périmètre UNIQUEMENT pour l'ajout du bandeau commun (voir plus bas). Toute autre modification de clubs demande l'accord explicite de Hanta.
-- qpv-widget, fiche-club : à ne pas modifier, sauf demande explicite de Hanta.
-- Tous les widgets partagent build.js, npm test et le dossier test/. Une tâche sur un widget ne doit modifier ni les sources ni les fichiers générés des autres (qpv-widget.html, fiche-club.html, clubs.html, actions-dashboard.html, index.html).
+- qpv-widget : à ne pas modifier, sauf demande explicite de Hanta.
+- Tous les widgets partagent build.js, npm test et le dossier test/. Une tâche sur un widget ne doit modifier ni les sources ni les fichiers générés des autres (qpv-widget.html, clubs.html, actions-dashboard.html, index.html).
 
 ## Le tableau de bord
 
@@ -50,7 +50,7 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 
 - src/actions-dashboard/index.html, style.css, script.js : les sources du tableau de bord.
 - src/clubs/ : les sources du widget clubs.
-- build.js : assemble chaque dossier src/[widget]/ en [widget].html à la racine. Il reconstruit les quatre widgets.
+- build.js : assemble chaque dossier src/[widget]/ en [widget].html à la racine. Il reconstruit les trois widgets.
 - actions-dashboard.html, clubs.html : fichiers générés. Ne jamais les modifier à la main.
 - test/ : tests avec le lanceur de tests de Node, sans dépendance. Ceux du tableau de bord : logic, render, ajout-action, suppression-action, navigation-dashboard, styles. build.test.js vérifie que les fichiers générés sont à jour. test/helpers/widget.js évalue le script du tableau de bord dans un bac à sable, avec des doublures du DOM et de l'API Grist.
 - dev-server.js : serveur local (npm run dev).
@@ -58,13 +58,13 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 - docs/audit-design-system.html : audit de conformité, gardé en local, ignoré par git.
 - docs/design-system-france-travail.md : fiche du design system.
 - docs/ux/ : notes du designer-ux.
-- README.md : documentation des quatre widgets.
+- README.md : documentation des trois widgets.
 - Aucune dépendance npm.
 
 ## Commandes
 
 - npm run build : régénère les fichiers HTML. Obligatoire après toute modification de src/.
-- npm test : lance tous les tests des quatre widgets. Le test de build échoue si le build n'a pas été refait.
+- npm test : lance tous les tests des trois widgets. Le test de build échoue si le build n'a pas été refait.
 - Après le build, git status : seul le fichier généré du widget modifié doit apparaître (actions-dashboard.html OU clubs.html). Si un autre .html a changé, s'arrêter et le signaler.
 - Ces trois commandes sont lancées par Hanta elle-même : Claude Code les refuse aux agents depuis l'ajout du script externe du bandeau. Un agent ne prétend jamais les avoir lancées ; il demande à Hanta le résultat affiché.
 - Test local : npm run dev (port 8000), puis http://localhost:8000/actions-dashboard.html (ou /clubs.html) comme URL du widget dans le document Grist DEV. Pour tester le lien depuis clubs, servir les deux widgets avec le même npm run dev (même port). Après la démonstration, remettre l'adresse GitHub Pages dans Grist DEV.
@@ -96,10 +96,11 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Aucun secret (jeton Grist, clé, mot de passe), aucune adresse de document ni donnée réelle de personne dans le code, les tests ou la documentation. Le dépôt est public.
 - « Tests proposés » ne veut pas dire « tests passés » : donner le résultat réellement affiché.
 - Chaque compte rendu se termine par : 1. fichiers lus ; 2. fichiers modifiés ; 3. tests lancés et résultat ; 4. risques restants.
+- Quand Hanta appelle un agent avec @, tu transmets son rapport tel quel, sans le résumer ni le compléter, et tu ne proposes jamais de faire toi-même la suite (correction, modification, commit) : c'est Hanta qui choisit le prochain agent.
 
 ## Pièges connus
 
-- build.js reconstruit les quatre widgets : vérifier avec git status qu'aucun autre fichier généré n'a changé.
+- build.js reconstruit les trois widgets : vérifier avec git status qu'aucun autre fichier généré n'a changé.
 - grist.setOption ne garde pas ses valeurs après un rechargement complet : ne pas s'en servir pour mémoriser un réglage (voir le README, widget clubs).
 - Les couleurs des graphiques sont écrites en dur dans script.js (COLORS) : écart possible au design system, à vérifier avant d'y toucher.
 - Les tables et colonnes Grist sont partagées entre tous les widgets du projet. Colonnes écrites par ces widgets : ne jamais les renommer.

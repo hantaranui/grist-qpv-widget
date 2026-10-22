@@ -1,19 +1,51 @@
 "use strict";
 
+// Tests de la fiche embarquee dans le widget clubs : zonages QPV et FRR, logo,
+// contacts, actions, feuille de style, divergence avec qpv-widget et script
+// maj-frr. Repris de test/fiche-club.test.js, qui visait src/fiche-club/, pour
+// viser src/clubs/ a la place (via test/helpers/clubs.js).
+//
+// Differences avec la version fiche-club, dues au script de clubs :
+//  - la fiche se construit par buildClubs (identite) + buildFicheDetail
+//    (contacts, actions), pas par buildFiche ;
+//  - renderFiche() lit state, au lieu de recevoir la fiche en argument ;
+//  - la liste des actions affiche un pourcentage, sans barre (renderFundingPercent) ;
+//  - load() demande deja un jeton en lecture seule au chargement : les tests
+//    d'envoi de logo filtrent donc les jetons demandes.
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
-const {loadFiche, reponse} = require("./helpers/fiche-club");
+const {loadClubs} = require("./helpers/clubs");
 const {lireEntreeZip, lireFeuilleFrr, millesime} = require("../scripts/maj-frr");
 
 const ROOT = path.join(__dirname, "..");
-const SRC = path.join(ROOT, "src", "fiche-club");
+const SRC = path.join(ROOT, "src", "clubs");
 
 // Les objets crees dans le bac a sable ont leurs propres prototypes : on les
 // ramene a des valeurs simples avant de les comparer.
 const plain = (value) => JSON.parse(JSON.stringify(value));
+
+// loadClubs ne fournit ni FormData, ni Blob, ni JSZip au bac a sable. Ils sont
+// poses apres coup sur son objet global (w.globalThis), que le script lit au
+// moment de s'en servir : le helper n'est pas modifie.
+function charger(overrides = {}, globals = {}) {
+  const w = loadClubs(overrides);
+  Object.assign(w.globalThis, {FormData, Blob}, globals);
+  return w;
+}
+
+// Reponse HTTP minimale, suffisante pour ce que le widget en lit.
+function reponse(corps, {status = 200} = {}) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(typeof corps === "string" ? JSON.parse(corps) : corps),
+    text: () => Promise.resolve(typeof corps === "string" ? corps : JSON.stringify(corps)),
+  });
+}
 
 // Tables au format colonnes, celui que renvoie grist.docApi.fetchTable.
 function columns(records) {
@@ -62,42 +94,49 @@ function tables(w) {
   return Object.fromEntries(Object.entries(raw).map(([name, records]) => [name, w.rows(columns(records))]));
 }
 
+// Le club tel que la liste le construit (buildClubs), l'identite que
+// buildFiche portait dans fiche-club.
+function clubDe(w, id) {
+  return w.buildClubs(tables(w)).find((item) => item.id === id);
+}
+
 // --- Construction de la fiche -------------------------------------------------
 
-test("la fiche reunit le club, ses contacts et ses actions", () => {
-  const w = loadFiche();
-  const fiche = plain(w.buildFiche(tables(w), 7));
+test("la fiche reunit les contacts et les actions du club, avec leurs cofinancements", () => {
+  const w = charger();
+  const detail = plain(w.buildFicheDetail(tables(w), 7));
 
-  assert.deepEqual(fiche.club, {
-    id: 7, nom: "Club fictif de Beauvais", siret: "12345678900012", adresse: "1 rue des Fleurs",
-    codePostal: "60000", codeInsee: "60057", logoIds: [],
-  });
-  assert.deepEqual(fiche.contacts.map((contact) => contact.prenom), ["Alex", "Zoé"],
+  assert.deepEqual(detail.contacts.map((contact) => contact.prenom), ["Alex", "Zoé"],
     "les contacts du seul club 7, classés par nom");
-  assert.equal(fiche.actions.length, 5, "les actions des autres clubs sont écartées");
+  assert.equal(detail.actions.length, 5, "les actions des autres clubs sont écartées");
 
-  const realisee = fiche.actions.find((action) => action.id === 10);
+  const realisee = detail.actions.find((action) => action.id === 10);
   assert.equal(realisee.dispositif, "Du stade vers l'emploi");
   assert.equal(realisee.financed, 1500, "somme des cofinancements de l'action");
-  assert.equal(fiche.actions.find((action) => action.id === 11).dispositif, "ESS",
+  assert.equal(detail.actions.find((action) => action.id === 11).dispositif, "ESS",
     "à défaut de libellé, le code du dispositif");
 });
 
-test("un club absent de Structures ne donne pas de fiche", () => {
-  const w = loadFiche();
-  assert.equal(w.buildFiche(tables(w), 404), null);
+test("l'identite du club (nom, SIRET, adresse, codes, logo) vient de buildClubs", () => {
+  const w = charger();
+  const {id, nom, siret, adresse, codePostal, codeInsee, logoIds} = plain(clubDe(w, 7));
+  assert.deepEqual({id, nom, siret, adresse, codePostal, codeInsee, logoIds}, {
+    id: 7, nom: "Club fictif de Beauvais", siret: "12345678900012", adresse: "1 rue des Fleurs",
+    codePostal: "60000", codeInsee: "60057", logoIds: [],
+  });
+  assert.deepEqual(plain(clubDe(w, 8).logoIds), [42]);
 });
 
 test("les actions sont classees par date decroissante, les non datees a la fin", () => {
-  const w = loadFiche();
-  const ids = w.buildFiche(tables(w), 7).actions.map((action) => action.id);
+  const w = charger();
+  const ids = w.buildFicheDetail(tables(w), 7).actions.map((action) => action.id);
   assert.deepEqual(plain(ids), [11, 13, 10, 14, 12],
     "mars 2026, janvier 2026, juin 2025, puis les actions sans date, dernière saisie en tête");
 });
 
 test("le pourcentage de financement rapporte les cofinancements au budget", () => {
-  const w = loadFiche();
-  const byId = new Map(w.buildFiche(tables(w), 7).actions.map((action) => [action.id, action]));
+  const w = charger();
+  const byId = new Map(w.buildFicheDetail(tables(w), 7).actions.map((action) => [action.id, action]));
 
   assert.equal(w.percent(byId.get(10).rate), 50, "1 500 € sur 3 000 €");
   assert.equal(w.percent(byId.get(11).rate), 120, "un dépassement reste visible");
@@ -106,33 +145,8 @@ test("le pourcentage de financement rapporte les cofinancements au budget", () =
   assert.equal(w.percent(w.coverage(1, 3)), 33, "arrondi à l'entier");
 });
 
-test("chaque action tient en quatre colonnes : date, statut, dispositif, financement", () => {
-  const w = loadFiche();
-  const html = w.renderActions(w.buildFiche(tables(w), 7).actions);
-  const premiere = html.slice(html.indexOf('<li class="action-item">'), html.indexOf("</li>"));
-  const colonnes = [...premiere.matchAll(/^      <span class="(action-[\w-]+)">/gm)].map((m) => m[1]);
-  assert.deepEqual(colonnes, ["action-date", "action-status", "action-dispositif", "action-funding"]);
-  assert.match(premiere, /<span class="action-date">01\/03\/2026<\/span>/, "le statut n'est plus dans la date");
-  assert.match(premiere, /<span class="action-status"><span class="status-tag planifiee">Planifiée<\/span><\/span>/);
-  assert.match(html, /<span class="action-date">Automne 2026<\/span>/, "sans date, la période approximative");
-  assert.match(html, /<span class="action-date"><span class="muted-text">Date à définir<\/span><\/span>/,
-    "ni date ni période");
-});
-
-test("la barre plafonne a 100 % mais le texte dit le depassement", () => {
-  const w = loadFiche();
-  const html = w.renderFunding({rate: 1.2});
-  assert.match(html, /aria-valuenow="100"/);
-  assert.match(html, /aria-valuetext="120 % du budget financé"/);
-  assert.match(html, /width:100%/);
-  assert.match(html, /120 % financé/);
-  assert.ok(html.indexOf("funding-rate") < html.indexOf("funding-bar"),
-    "le pourcentage precede la barre, pour s'afficher au-dessus d'elle");
-  assert.match(w.renderFunding({rate: null}), /Budget non renseigné/);
-});
-
 test("les valeurs de Grist sont lues sous toutes leurs formes", () => {
-  const w = loadFiche();
+  const w = charger();
   assert.deepEqual(plain(w.attachmentIds(["L", 42, 43])), [42, 43]);
   assert.deepEqual(plain(w.attachmentIds([42])), [42]);
   assert.deepEqual(plain(w.attachmentIds(null)), []);
@@ -148,21 +162,19 @@ test("les valeurs de Grist sont lues sous toutes leurs formes", () => {
 
 // --- Rendu ---------------------------------------------------------------------
 
-test("sans contact ni action, la fiche le dit au lieu d'afficher une liste vide", () => {
-  const w = loadFiche();
-  const html = w.renderFiche(w.buildFiche(tables(w), 8), {});
+test("sans contact, la fiche le dit au lieu d'afficher une liste vide, et l'adresse absente aussi", () => {
+  const w = charger();
+  const html = w.renderContacts(plain(w.buildFicheDetail(tables(w), 8)).contacts);
   assert.match(html, /Aucun contact enregistré pour ce club\./);
   assert.ok(!html.includes('class="contact-list"'));
-  assert.match(html, /Adresse non renseignée/);
-  assert.match(html, /SIRET : <span class="muted-text">non renseigné<\/span>/);
 
-  const sansAction = w.renderFiche({...w.buildFiche(tables(w), 8), actions: []}, {});
-  assert.match(sansAction, /Aucune action portée par ce club\./);
+  const club = clubDe(w, 8);
+  assert.match(w.renderAddress({...club, adresse: ""}, ""), /Adresse non renseignée/);
 });
 
 test("les contacts sont des liens reels, sans entete de tableau", () => {
-  const w = loadFiche();
-  const html = w.renderFiche(w.buildFiche(tables(w), 7), {});
+  const w = charger();
+  const html = w.renderContacts(w.buildFicheDetail(tables(w), 7).contacts);
   assert.ok(!/<table|<th/.test(html), "une liste, pas un tableau");
   assert.match(html, /<a class="contact-mail" href="mailto:zoe\.martin@example\.org">/);
   assert.match(html, /<a class="contact-tel" href="tel:\+33612345678">06 12 34 56 78<\/a>/);
@@ -171,16 +183,16 @@ test("les contacts sont des liens reels, sans entete de tableau", () => {
 });
 
 test("sans logo, la fiche propose un vrai bouton pour en ajouter un", () => {
-  const w = loadFiche();
-  const html = w.renderFiche(w.buildFiche(tables(w), 7), {logoUrl: null});
+  const w = charger();
+  const html = w.renderLogo(clubDe(w, 7), null, {});
   assert.match(html, /<button class="btn btn-secondary btn-sm" type="button" id="addLogo">/);
   assert.match(html, /<input class="logo-input" type="file" id="logoInput" accept="image\/png,/);
   assert.ok(!html.includes("<img"));
 });
 
 test("un logo existant s'affiche par une URL signee, sans bouton d'ajout", () => {
-  const w = loadFiche();
-  const club = w.buildFiche(tables(w), 8).club;
+  const w = charger();
+  const club = clubDe(w, 8);
   const url = w.logoUrl(club.logoIds, {token: "a b", baseUrl: "https://grist.example/api/docs/DOC"});
   assert.equal(url, "https://grist.example/api/docs/DOC/attachments/42/download?auth=a%20b");
 
@@ -195,18 +207,28 @@ test("un logo existant s'affiche par une URL signee, sans bouton d'ajout", () =>
 });
 
 test("le texte saisi est echappe", () => {
-  const w = loadFiche();
-  const fiche = w.buildFiche(tables(w), 7);
-  fiche.club.nom = '<img src=x onerror="alert(1)">';
-  const html = w.renderFiche(fiche, {});
-  assert.ok(!html.includes("<img src=x"));
-  assert.match(html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+  const w = charger();
+  const hostile = '<img src=x onerror="alert(1)">';
+
+  const contacts = w.renderContacts([{id: 1, prenom: "", nom: hostile, email: "", telephone: ""}]);
+  assert.ok(!contacts.includes("<img src=x"));
+  assert.match(contacts, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+
+  const logo = w.renderLogo({...clubDe(w, 8), nom: hostile}, "https://grist.example/logo", {});
+  assert.ok(!logo.includes('alt="Logo de <img'));
+  assert.match(logo, /alt="Logo de &lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;"/);
 });
 
 test("le FRR est explique comme successeur des ZRR", () => {
-  const w = loadFiche();
-  const html = w.renderFiche(w.buildFiche(tables(w), 7), {});
-  assert.match(html, /remplace les zones de revitalisation rurale \(ZRR\) depuis le 1<sup>er<\/sup> juillet 2024/);
+  const w = charger();
+  // Sans code INSEE : la fiche s'affiche sans lancer de verification en ligne.
+  w.state.clubs = [{...clubDe(w, 7), codeInsee: ""}];
+  w.state.raw = tables(w);
+  w.state.view = "fiche";
+  w.state.currentId = 7;
+  w.render();
+  assert.match(w.elements.get("ficheView").innerHTML,
+    /remplace les zones de revitalisation rurale \(ZRR\) depuis le 1<sup>er<\/sup> juillet 2024/);
 });
 
 // --- FRR -----------------------------------------------------------------------
@@ -214,7 +236,7 @@ test("le FRR est explique comme successeur des ZRR", () => {
 const FRR = JSON.parse(fs.readFileSync(path.join(ROOT, "donnees", "frr-communes.json"), "utf8"));
 
 test("la liste FRR versionnee couvre toutes les communes et se lit par code", () => {
-  const w = loadFiche();
+  const w = charger();
   const frr = w.indexFrr(FRR);
   assert.ok(frr.index.size > 34000, "toutes les communes, classées ou non");
   assert.equal(frr.geographie, "Commune (2025)");
@@ -225,7 +247,7 @@ test("la liste FRR versionnee couvre toutes les communes et se lit par code", ()
 });
 
 test("le classement FRR se lit sur la commune, arrondissements compris", () => {
-  const w = loadFiche();
+  const w = charger();
   const frr = w.indexFrr({geographie: "Commune (2025)", communes: {"0": "75056 60057", "4": "15014", "5": "23001", "1": "01001", "2": "01187"}});
 
   assert.deepEqual(plain(w.frrStatus(frr, "75118")), {etat: "classement", classement: "0", code: "75056"},
@@ -289,7 +311,7 @@ const CONTOURS = {
 };
 
 test("la liste des QPV rattache chaque quartier a toutes ses communes", () => {
-  const w = loadFiche();
+  const w = charger();
   const liste = w.parseQpvList(LISTE_QPV);
   assert.deepEqual(plain(liste.get("60057")), [{code: "QN06099M", nom: "Quartier fictif"}]);
   assert.equal(liste.get("13055")[0].code, "QN01341I", "quartier à cheval sur deux communes");
@@ -322,14 +344,14 @@ const JSZIP = {loadAsync: () => Promise.resolve({files: {a: {
 const club = (champs) => ({id: 7, adresse: "1 rue des Fleurs", codePostal: "60000", codeInsee: "60057", ...champs});
 
 test("une commune sans quartier prioritaire suffit a conclure, sans geocodage", async () => {
-  const w = loadFiche({fetch: reseauQpv({ban: {}})});
+  const w = charger({fetch: reseauQpv({ban: {}})});
   const result = await w.qpvFor(club({codeInsee: "15014", adresse: ""}));
   assert.deepEqual(plain(result), {etat: "commune-sans-qpv"});
   assert.ok(!w.calls.fetches.some((call) => call.url.includes("api-adresse")), "aucun appel à la BAN");
 });
 
 test("sans adresse, le QPV reste a determiner dans une commune qui en compte", async () => {
-  const w = loadFiche({fetch: reseauQpv({ban: {}})});
+  const w = charger({fetch: reseauQpv({ban: {}})});
   const result = await w.qpvFor(club({adresse: ""}));
   assert.deepEqual(plain(result), {etat: "sans-adresse", nombre: 1});
   assert.match(w.renderQpv(result), /À déterminer.*1 quartier prioritaire ; l'adresse du club est nécessaire/);
@@ -339,7 +361,7 @@ test("sans adresse, le QPV reste a determiner dans une commune qui en compte", a
 
 test("une adresse geocodee dans un contour donne le quartier", async () => {
   const ban = {features: [{geometry: {coordinates: [2.1, 49.45]}, properties: {type: "housenumber", label: "1 Rue des Fleurs 60000 Beauvais"}}]};
-  const w = loadFiche({fetch: reseauQpv({ban}), globals: {JSZip: JSZIP}});
+  const w = charger({fetch: reseauQpv({ban})}, {JSZip: JSZIP});
   const result = await w.qpvFor(club({}));
   assert.deepEqual(plain(result), {etat: "dans", precision: "numero", quartier: {code: "QN06099M", nom: "Quartier fictif"}});
 
@@ -349,11 +371,11 @@ test("une adresse geocodee dans un contour donne le quartier", async () => {
 
 test("une adresse hors contour, ou localisee a la seule commune, ne conclut pas a tort", async () => {
   const dehors = {features: [{geometry: {coordinates: [2.5, 49.45]}, properties: {type: "street"}}]};
-  const w = loadFiche({fetch: reseauQpv({ban: dehors}), globals: {JSZip: JSZIP}});
+  const w = charger({fetch: reseauQpv({ban: dehors})}, {JSZip: JSZIP});
   assert.deepEqual(plain(await w.qpvFor(club({}))), {etat: "hors", precision: "rue"});
 
   const commune = {features: [{geometry: {coordinates: [2.1, 49.45]}, properties: {type: "municipality"}}]};
-  const w2 = loadFiche({fetch: reseauQpv({ban: commune}), globals: {JSZip: JSZIP}});
+  const w2 = charger({fetch: reseauQpv({ban: commune})}, {JSZip: JSZIP});
   assert.deepEqual(plain(await w2.qpvFor(club({}))), {etat: "imprecise"});
 });
 
@@ -384,13 +406,16 @@ function fichier(type = "image/png", size = 1000) {
 }
 
 test("le logo est televerse avec un jeton d'ecriture puis rattache par la meme API REST", async () => {
-  const w = loadFiche({
+  const w = charger({
     fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({}) : Promise.reject(new Error(url))),
   });
   const ids = await w.uploadLogo(7, fichier());
 
   assert.deepEqual(plain(ids), [42]);
-  assert.deepEqual(plain(w.calls.accessTokens), [{readOnly: false}], "jeton demandé sans lecture seule");
+  // Au chargement, le widget demande aussi un jeton en lecture seule (pour l'URL
+  // du logo) : on ne regarde ici que le jeton d'ecriture.
+  assert.deepEqual(plain(w.calls.accessTokens.filter((options) => options && options.readOnly === false)), [{readOnly: false}],
+    "jeton d'écriture demandé sans lecture seule");
   const envoi = w.calls.fetches[0];
   assert.equal(envoi.url, "https://grist.example/api/docs/DOC/attachments?auth=jeton");
   assert.equal(envoi.options.method, "POST");
@@ -409,7 +434,7 @@ test("le logo est televerse avec un jeton d'ecriture puis rattache par la meme A
 });
 
 test("un refus de Grist est explique a l'utilisateur", async () => {
-  const w = loadFiche({fetch: () => reponse({error: "No write access"}, {status: 403})});
+  const w = charger({fetch: () => reponse({error: "No write access"}, {status: 403})});
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.match(w.uploadErrorMessage(error), /votre compte n'a pas le droit de modifier ce document/);
     return true;
@@ -424,7 +449,7 @@ test("sans acces complet accorde au widget, le message dit ou l'activer", async 
   // « Acces complet » est un reglage du panneau de configuration du widget,
   // distinct de requiredAccess declare au chargement : getAccessToken le refuse
   // avant tout envoi, sans passer par le reseau.
-  const w = loadFiche({grist: {docApi: {getAccessToken: () => Promise.reject(new Error("Access not granted. Current access level none"))}}});
+  const w = charger({grist: {docApi: {getAccessToken: () => Promise.reject(new Error("Access not granted. Current access level none"))}}});
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "access");
     assert.match(w.uploadErrorMessage(error), /n'a pas l'accès complet au document/);
@@ -437,7 +462,7 @@ test("un refus qui perd son message en traversant le widget reste explique", () 
   // Error.message n'est pas enumerable : une passerelle qui serialise l'erreur
   // en JSON pour la faire traverser la frontiere widget/Grist peut la perdre.
   // Le message reste actionnable meme quand aucun texte n'a survecu.
-  const w = loadFiche({grist: {docApi: {getAccessToken: () => Promise.reject({})}}});
+  const w = charger({grist: {docApi: {getAccessToken: () => Promise.reject({})}}});
   return assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "access");
     assert.match(w.uploadErrorMessage(error), /accès complet/);
@@ -448,7 +473,7 @@ test("un refus qui perd son message en traversant le widget reste explique", () 
 test("un echec reseau general (meme la lecture) se distingue d'un echec propre a l'envoi", async () => {
   // Le POST et la sonde GET echouent toutes les deux : rien ne dit que c'est
   // l'envoi en particulier qui pose probleme.
-  const w = loadFiche({fetch: () => Promise.reject(new TypeError("Failed to fetch"))});
+  const w = charger({fetch: () => Promise.reject(new TypeError("Failed to fetch"))});
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "network");
     assert.match(w.uploadErrorMessage(error), /y compris pour une simple lecture/);
@@ -460,7 +485,7 @@ test("un echec reseau general (meme la lecture) se distingue d'un echec propre a
 test("un echec reseau propre a l'envoi se distingue d'un echec general", async () => {
   // La sonde (GET, sans methode ni corps inhabituels) reussit ; seul le POST
   // multipart echoue — le message doit dire que ce n'est pas Grist en general.
-  const w = loadFiche({fetch: (url, options) => (options && options.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : reponse({}))});
+  const w = charger({fetch: (url, options) => (options && options.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : reponse({}))});
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
     assert.equal(error.step, "network");
     assert.match(w.uploadErrorMessage(error), /une simple lecture, elle, fonctionne/);
@@ -469,7 +494,7 @@ test("un echec reseau propre a l'envoi se distingue d'un echec general", async (
 });
 
 test("un fichier envoye mais non rattache le dit, sans faire perdre le televersement", async () => {
-  const w = loadFiche({
+  const w = charger({
     fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({error: "boom"}, {status: 500}) : Promise.reject(new Error(url))),
   });
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
@@ -484,7 +509,7 @@ test("un rattachement refuse par Grist (piece jointe neuve, hors proprietaire) l
   // Cas reel constate : l'envoi reussit, mais Grist refuse le rattachement
   // pour qui n'est pas proprietaire du document — voir le commentaire
   // au-dessus de uploadLogo.
-  const w = loadFiche({
+  const w = charger({
     fetch: (url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({error: "Cannot access attachment"}, {status: 403}) : Promise.reject(new Error(url))),
   });
   await assert.rejects(w.uploadLogo(7, fichier()), (error) => {
@@ -494,8 +519,73 @@ test("un rattachement refuse par Grist (piece jointe neuve, hors proprietaire) l
   });
 });
 
+// --- Aucun jeton dans la console ----------------------------------------------
+
+// Jeton factice, facile a reperer : aucun vrai jeton dans le depot.
+const JETON_FACTICE = "JETON-FACTICE-NE-DOIT-JAMAIS-APPARAITRE-123";
+
+// Met un argument de console en texte, erreurs comprises (message, pile, cause).
+function enTexte(valeur, vus = new Set()) {
+  if (valeur && typeof valeur === "object") {
+    if (vus.has(valeur)) return "";
+    vus.add(valeur);
+    if (valeur instanceof Error || ("message" in valeur && "stack" in valeur)) {
+      return [valeur.message, valeur.stack, enTexte(valeur.cause, vus)].join(" ");
+    }
+    try { return JSON.stringify(valeur); } catch { return String(valeur); }
+  }
+  return String(valeur);
+}
+
+// Remplace les cinq methodes de console du bac a sable (le script lit
+// `console` au moment de s'en servir) et range tout ce qui est ecrit.
+function espionnerConsole(w) {
+  const lignes = [];
+  for (const methode of ["log", "info", "warn", "error", "debug"]) {
+    w.console[methode] = (...args) => lignes.push({methode, texte: args.map((arg) => enTexte(arg)).join(" ")});
+  }
+  return lignes;
+}
+
+function verifierConsolePropre(lignes) {
+  for (const {methode, texte} of lignes) {
+    assert.ok(!texte.includes(JETON_FACTICE), `console.${methode} laisse voir le jeton : ${texte.slice(0, 120)}`);
+    assert.ok(!/[?&]auth=/.test(texte), `console.${methode} affiche une adresse avec ?auth= : ${texte.slice(0, 120)}`);
+  }
+}
+
+function chargerAvecJetonFactice(fetch) {
+  return charger({
+    grist: {docApi: {getAccessToken: () => Promise.resolve({token: JETON_FACTICE, baseUrl: "https://grist.example/api/docs/DOC"})}},
+    fetch,
+  });
+}
+
+test("un televersement de logo reussi n'ecrit jamais le jeton dans la console", async () => {
+  const w = chargerAvecJetonFactice((url) => (url.includes("/attachments?") ? reponse([42]) : url.includes("/tables/Structures/records?") ? reponse({}) : reponse({})));
+  const lignes = espionnerConsole(w);
+  await w.uploadLogo(7, fichier());
+  verifierConsolePropre(lignes);
+});
+
+test("un televersement de logo en echec reseau n'ecrit jamais le jeton dans la console", async () => {
+  // Certains navigateurs recopient l'adresse appelee (avec ?auth=) dans le message d'erreur.
+  const w = chargerAvecJetonFactice((url) => Promise.reject(new TypeError(`Failed to fetch ${url}`)));
+  const lignes = espionnerConsole(w);
+  await w.addLogo({id: 7, nom: "Club fictif"}, fichier());
+  assert.ok(lignes.some(({methode}) => methode === "error"), "l'échec doit bien passer par console.error pour que ce test ait un sens");
+  verifierConsolePropre(lignes);
+});
+
+test("un refus de Grist au televersement n'ecrit jamais le jeton dans la console", async () => {
+  const w = chargerAvecJetonFactice((url) => reponse({error: `No write access for ${url}`}, {status: 403}));
+  const lignes = espionnerConsole(w);
+  await w.addLogo({id: 7, nom: "Club fictif"}, fichier());
+  verifierConsolePropre(lignes);
+});
+
 test("seules les images raisonnables sont acceptees", () => {
-  const w = loadFiche();
+  const w = charger();
   assert.equal(w.logoFileProblem(fichier("image/png")), "");
   assert.match(w.logoFileProblem(fichier("application/pdf")), /Format non pris en charge/);
   assert.match(w.logoFileProblem(fichier("image/png", 6 * 1024 * 1024)), /5 Mo au maximum/);
@@ -505,11 +595,7 @@ test("seules les images raisonnables sont acceptees", () => {
 
 const CSS = fs.readFileSync(path.join(SRC, "style.css"), "utf8");
 
-test("le pourcentage de financement se cale a droite, au-dessus de la barre", () => {
-  assert.match(CSS, /\.funding-rate \{ align-self: flex-end; \}/);
-});
-
-test("la feuille ne reprend aucun nom de classe du design system", () => {
+test("la feuille de clubs ne reprend aucun nom de classe du design system, barre de progression comprise", () => {
   // Meme liste que test/styles.test.js : une classe redefinie sous un nom du
   // design system heriterait de ses regles en silence.
   const reserves = ["table", "layout", "tag", "section", "btn", "badge", "card", "alert", "modal",
@@ -527,10 +613,6 @@ test("la feuille ne reprend aucun nom de classe du design system", () => {
   assert.deepEqual(reserves.filter((nom) => enTete.has(nom)), []);
 });
 
-test("aucune couleur n'est ecrite en dur : tout vient de la palette", () => {
-  assert.ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(CSS), "couleur hors palette du design system");
-});
-
 test("aucun champ de contact ou d'action ne s'etire pour combler l'espace", () => {
   // Une colonne en fr (grid) ou flex-grow s'etire meme si son contenu est court,
   // laissant un vide avant le champ suivant sur une fiche large. Chaque champ
@@ -542,14 +624,7 @@ test("aucun champ de contact ou d'action ne s'etire pour combler l'espace", () =
   }
 });
 
-test("un trait separe les deux listes, vertical cote a cote puis horizontal empilees", () => {
-  assert.match(CSS, /\.club-lists \.club-section \+ \.club-section \{\n  padding-left: 32px;\n  border-left: 1px solid var\(--line\);/);
-  assert.match(CSS, /@media \(max-width: 900px\)[\s\S]*?border-top: 1px solid var\(--line\);/);
-});
-
-test("la fiche reste lisible jusqu'a 400 px", () => {
-  assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.club-header \{ grid-template-columns: minmax\(0, 1fr\);/,
-    "le logo passe au-dessus du nom");
+test("contacts et actions restent lisibles jusqu'a 400 px", () => {
   assert.match(CSS, /@media \(max-width: 560px\) \{[^@]*\.contact-item,\n  \.action-item \{ flex-direction: column;/,
     "chaque champ prend sa propre ligne");
   assert.ok((CSS.match(/overflow-wrap: anywhere/g) || []).length >= 3,

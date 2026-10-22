@@ -229,7 +229,7 @@ test("fillCommune n'interroge le reseau que si la ville n'est pas deja connue", 
   assert.equal(w.calls.fetches.length, 1, "sans ville connue, le nom de commune est demandé à geo.api.gouv.fr");
 });
 
-test("le logo se comporte comme dans fiche-club : affiche, ou bouton d'ajout", () => {
+test("le logo s'affiche s'il existe, sinon un bouton d'ajout est proposé", () => {
   const w = loadClubs();
   const sansLogo = {id: 1, nom: "Club Alpha", logoIds: []};
   const avecLogo = {id: 3, nom: "Club Multi", logoIds: [9]};
@@ -333,48 +333,11 @@ test("des droits insuffisants sur Contacts ou Actions se disent, plutot qu'une l
   assert.match(html, /Vos droits ne permettent pas de lire les actions\./);
 });
 
-test("isCurrent suit state.currentId, pas state.clubId (fiche-club utilise l'autre nom)", () => {
+test("isCurrent suit state.currentId, pas state.clubId", () => {
   const w = loadClubs();
   w.state.currentId = 5;
   assert.equal(w.isCurrent({id: 5}), true);
   assert.equal(w.isCurrent({id: 6}), false);
-});
-
-test("les fonctions de zonages, de logo, de contacts et d'actions n'ont pas diverge de fiche-club", () => {
-  // Dupliquees faute de module partage entre widgets (voir la note en tete de
-  // src/clubs/script.js) : ce test echoue si l'une des deux copies est modifiee
-  // sans repercuter le changement sur l'autre. Exclues volontairement :
-  // isCurrent (nom de propriété d'état différent), fillCommune (ici, la ville
-  // est déjà connue via la table Communes, inutile dans fiche-club), addLogo
-  // (recharge la fiche différemment selon le widget), buildFiche/buildFicheDetail
-  // (le premier construit aussi l'identité du club, déjà faite dans buildClubs
-  // ici) et renderActionsList (un bouton « Voir » de plus qu'à fiche-club).
-  const source = (fichier, nom) => {
-    const code = fs.readFileSync(fichier, "utf8");
-    const debut = code.indexOf(`function ${nom}(`);
-    assert.ok(debut >= 0, `${nom} introuvable dans ${path.relative(ROOT, fichier)}`);
-    let profondeur = 0;
-    for (let i = code.indexOf("{", debut); i < code.length; i += 1) {
-      if (code[i] === "{") profondeur += 1;
-      if (code[i] === "}" && --profondeur === 0) return code.slice(debut, i + 1).replace(/\s+/g, " ");
-    }
-    throw new Error(`fin de ${nom} introuvable`);
-  };
-  const ficheClub = path.join(ROOT, "src", "fiche-club", "script.js");
-  const noms = [
-    "once", "formatSiret", "logoUrl", "addressLine", "parentCommune", "communeCodes",
-    "renderAddress", "renderLogo", "renderQpv", "renderFrr", "writeInto", "communeName",
-    "fillZonages", "frrFor", "loadFrr", "indexFrr", "frrStatus", "qpvFor",
-    "hasUsableStreetAddress", "geocode", "banResult", "loadQpvList", "selectQpvListResource",
-    "parseQpvList", "parseCsvLine", "loadQpvContours", "fetchJson", "readCache", "writeCache",
-    "selectGeojsonResource", "chooseGeojsonFile", "geometryContainsPoint", "polygonContainsPoint",
-    "ringContainsPoint", "bindLogo", "logoFileProblem", "probeAttachmentsReadable", "uploadLogo", "errorDetail", "uploadErrorMessage",
-    "coverage", "percent", "sortActions", "dateSeconds", "formatDate", "statusClass", "missing",
-    "renderContacts", "telHref", "mailHref",
-  ];
-  for (const nom of noms) {
-    assert.equal(source(path.join(SRC, "script.js"), nom), source(ficheClub, nom), `${nom} a divergé de fiche-club`);
-  }
 });
 
 // --- Feuille de style -------------------------------------------------------------

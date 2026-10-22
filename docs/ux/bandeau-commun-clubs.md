@@ -63,7 +63,7 @@ Pas de raison propre à clubs de s'écarter de ce choix.
 - `grist.ready({requiredAccess: 'full'})` et tout autre appel à l'API Grist dans `script.js`.
 - Les fichiers générés : ne jamais modifier `clubs.html` à la main, toujours passer par `npm run build`.
 - `build.js` et le dossier `test/` : cette tâche ne les concerne pas.
-- Les autres widgets (`actions-dashboard`, `qpv-widget`, `fiche-club`) et leurs fichiers générés.
+- Les autres widgets (`actions-dashboard`, `qpv-widget`) et leurs fichiers générés.
 
 ## Vérifications visuelles dans le document Grist DEV
 

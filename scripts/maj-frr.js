@@ -2,7 +2,7 @@
 "use strict";
 
 // Regenere donnees/frr-communes.json, la liste des communes classees France
-// Ruralites Revitalisation lue par le widget fiche-club.
+// Ruralites Revitalisation lue par le widget clubs.
 //
 //   npm run maj-frr
 //
