@@ -50,13 +50,16 @@ function makeElement() {
   };
 }
 
-function loadWidget() {
+// Options facultatives, pour les tests qui simulent le chargement des tables :
+//   fetchTable(nom) : remplace la lecture des tables par l'API Grist (peut refuser) ;
+//   console : remplace la console muette, pour lire ce que le widget journalise.
+function loadWidget(options = {}) {
   const code = fs.readFileSync(SCRIPT, "utf8")
     + `\n;globalThis.__widget = {${EXPORTED.join(", ")}};\n`;
 
   // Le chargement asynchrone du widget journalise ses replis : inutile de polluer
   // la sortie des tests avec.
-  const quiet = {log() {}, warn() {}, error() {}, info() {}};
+  const quiet = options.console || {log() {}, warn() {}, error() {}, info() {}};
 
   const elements = new Map();
 
@@ -93,7 +96,7 @@ function loadWidget() {
       docApi: {
         // Une table vide au format colonnes de Grist : le widget demarre sans
         // donnee, les tests fournissent ensuite leurs propres jeux d'essai.
-        fetchTable: () => Promise.resolve({id: []}),
+        fetchTable: options.fetchTable || (() => Promise.resolve({id: []})),
         getAccessToken: () => Promise.reject(new Error("pas de jeton en test")),
         applyUserActions: () => Promise.resolve({}),
       },
