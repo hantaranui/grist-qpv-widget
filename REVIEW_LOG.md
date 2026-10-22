@@ -197,3 +197,17 @@ Tests : 0 lancés, 0 réussis (maquette)
 Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
 Build refait : pas nécessaire
 Commit : 49821cd sur feature/convention
+
+## Tâche 14 — Cadrage du développement de la convention
+
+Date : 2026-10-22
+Agent : @chef-de-projet (cadrage), puis Claude sans agent (enregistrement dans docs/backlog.md)
+Prompt : cadrer le développement de la convention sans rien modifier : structure Grist (Modeles_convention, Conventions), règles d'accès par profil, format du texte des modèles, découpage en tâches de S0 à S10 avec recette à la fin de chaque fonction, risques et questions ; puis enregistrer le plan dans docs/backlog.md avec les réponses déjà connues
+
+Note /5 : sans objet
+Ce qui allait : état du bloc calculé à partir des fichiers présents, sans colonne Statut ; case inconnue qui bloque la génération ; piège des droits repéré (« pas de modèle » affiché à tort) ; recette à la fin de chaque fonction ; plan enregistré sans rien effacer ; tâche 0.4 ajoutée (ramener main dans la branche avant de s'inspirer de clubs).
+Ce que j'ai fait corriger : l'agent avait lu src/fiche-club/ au lieu de src/clubs/ (ancien prompt) : corrigé à l'enregistrement. Questions encore ouvertes : action en corbeille ou annulée, note de bas de page, logo du PDF.
+Tests : 0 lancés, 0 réussis (cadrage)
+Fichiers modifiés : docs/backlog.md
+Build refait : pas nécessaire
+Commit : 469d5c1 sur feature/convention
