@@ -183,3 +183,17 @@ Tests : 0 lancés, 0 réussis (maquette)
 Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
 Build refait : pas nécessaire
 Commit : 1ea1315 sur feature/convention
+
+## Tâche 13 — Maquette de la convention alignée sur les réponses du client
+
+Date : 2026-10-22
+Agent : @designer-ux
+Prompt : intégrer les réponses du client dans docs/ux/convention.md et maquette-convention.html : une convention par action ; zones en pointillés remplies à la main (nombre d'opérations, date de fin, contact protection des données, « Fait à » et date) ; signataire France Travail = directeur d'agence
+
+Note /5 : 5
+Ce qui allait : fenêtre réduite à trois blocs, sans défilement (vérifié à l'écran) ; champs Nombre d'opérations, Date de fin et bloc Date et lieu retirés ; règle « action sans fédération » retirée ; fonction du représentant préremplie « Directeur d'agence » ; variante B ter supprimée car devenue inutile ; points à confirmer mis à jour.
+Ce que j'ai fait corriger : rien. À prévoir au développement : des pointillés assez longs pour écrire à la main dans le PDF.
+Tests : 0 lancés, 0 réussis (maquette)
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 49821cd sur feature/convention
