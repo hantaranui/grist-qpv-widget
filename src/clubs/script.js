@@ -724,8 +724,8 @@ function renderContacts(contacts) {
   return `<ul class="contact-list">${contacts.map(contact => {
     const nomComplet = [contact.prenom, contact.nom].filter(Boolean).join(' ');
     const nom = nomComplet || 'Contact sans nom';
-    // Plusieurs lignes portent les memes mots « Modifier » : l'etiquette du
-    // bouton nomme le contact pour un lecteur d'ecran.
+    // Boutons a icone seule : plusieurs lignes portent la meme icone, donc
+    // l'etiquette (aria-label) nomme le contact pour un lecteur d'ecran.
     const libelleModifier = nomComplet ? `Modifier le contact ${nomComplet}` : 'Modifier le contact sans nom';
     const libelleSupprimer = nomComplet ? `Supprimer le contact ${nomComplet}` : 'Supprimer le contact sans nom';
     const mail = mailHref(contact.email);
@@ -736,8 +736,8 @@ function renderContacts(contacts) {
       ${mail ? `<a class="contact-mail" href="${escapeAttr(mail)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
       ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
       <div class="contact-buttons">
-        <button class="btn btn-secondary btn-sm" type="button" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span class="btn-content">Modifier</span></button>
-        <button class="btn btn-secondary btn-sm" type="button" data-delete-contact="${contact.id}" aria-label="${escapeAttr(libelleSupprimer)}"><span class="btn-content">Supprimer</span></button>
+        <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Modifier" data-ft-vocalize="false" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span aria-hidden="true" class="icon icon-edit"></span></button>
+        <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Supprimer" data-ft-vocalize="false" data-delete-contact="${contact.id}" aria-label="${escapeAttr(libelleSupprimer)}"><span aria-hidden="true" class="icon icon-trash"></span></button>
       </div>
     </li>`;
   }).join('')}</ul>`;
