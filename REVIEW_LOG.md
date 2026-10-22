@@ -306,3 +306,17 @@ Tests : [résultat de npm test]. Vérification dans DEV7 : annuler (bouton et É
 Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : 23f14dd sur feature/contacts-fiche-club
+
+## Tâche 21 — Contacts : note UX, boutons icônes
+
+Date : 22/10/2026
+Agent : designer-ux
+Prompt : remplacer les boutons texte « Modifier » et « Supprimer » de la carte Contacts par des boutons icône seule (icon-edit, icon-trash), avec aria-label et info-bulle
+
+Note /5 : 5
+Ce qui allait : structure du bouton « Icône seule » du design system recopiée ; note relue (plus d'icon-pencil ni de bouton texte dans la carte) ; risques signalés (taille des boutons, info-bulle au clavier, pas d'info-bulle sur mobile)
+Ce que j'ai fait corriger : nom de l'icône corbeille introuvable par l'agent, trouvé par Hanta sur la page Icônes ; icon-edit préféré à icon-pencil
+Tests : aucun (documentation)
+Fichiers modifiés : docs/ux/contacts-fiche-club.md
+Build refait : non
+Commit : 25ba1f3 sur feature/contacts-fiche-club
