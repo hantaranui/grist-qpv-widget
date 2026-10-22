@@ -105,10 +105,10 @@ Le texte se lit ligne par ligne.
 | Liste numérotée | `1. …` |
 | Note de bas de page | `[^1]` dans le texte, `[^1]: texte` sur une ligne à part |
 | Case remplie par le widget | `[Nom de la case]` |
-| Pointillés | `{...}`, `{...:40}` ou `{...:ligne}` |
+| Pointillés | de vrais points tapés dans le texte (.......), imprimés tels quels ; pas de repère {...} (décision du 2026-10-22) |
 | Crochet littéral | `\[` |
-| Saut de page (proposé) | une ligne `{saut-de-page}` |
-| Bloc de signature à deux colonnes (proposé) | une ligne `{signatures}` ; le contenu des deux colonnes vient des cases (club à gauche, agence à droite) |
+| Saut de page | une ligne `{saut-de-page}` |
+| Bloc de signature à deux colonnes | une ligne {signatures}, ou {signatures:lieu-date} avec « À ……, le …… » en tête de chaque colonne ; club à gauche, agence à droite, remplis par les cases. |
 
 - Case inconnue : la génération est bloquée, la case fautive est nommée.
 - Le logo en en-tête et les numéros de page ne sont pas dans le texte : ils sont ajoutés par le widget.
@@ -143,10 +143,10 @@ Le texte se lit ligne par ligne.
 |---|---|---|---|---|
 | 2.1 | Analyse du texte en blocs : titres (#, ##, ### ou ligne en gras), paragraphes, retrait (>), listes à puces et numérotées, gras, italique, souligné, exposant, liens (texte puis adresse), appels et textes de note (rangés à la fin, provisoire). Fonction pure conventionVersContenuPdf. Fait (commit ccc3dcd). | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.2. |
 | 2.2 | Tests de 2.1. Fait (commits af85b34 et 2198a5b). | testeur | `test/convention-modele.test.js` (nouveau) | 22 tests : titres, retrait, listes, gras, italique, souligné, exposant, commentaire vide, lien, cases, pointillés, note, texte vide. |
-| 2.3 | Cases et pointillés : remplacement, refus d'une case inconnue (nommée), longueur des pointillés. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.4. |
-| 2.4 | Tests de 2.3. | testeur | `test/convention-modele.test.js` | Case inconnue, `\[`, nom de club avec caractères spéciaux. |
-| 2.5 | Description du PDF pour pdfmake : logo en en-tête, numéros de page, placement des notes, saut de page ({saut-de-page}) et bloc de signature à deux colonnes ({signatures}), marqueurs proposés dans « Format du texte des modèles ». Fonction pure, sans appel à pdfmake. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.6. |
-| 2.6 | Tests de 2.5. | testeur | `test/convention-modele.test.js` | Note citée mais non définie, définie mais non citée, numérotation, en-tête et pied de page présents, saut de page, deux colonnes de signature. |
+| 2.3 | Cases et pointillés : remplacement, refus d'une case inconnue (nommée), longueur des pointillés. Fait. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.4. |
+| 2.4 | Tests de 2.3. Fait. | testeur | `test/convention-modele.test.js` | Case inconnue, `\[`, nom de club avec caractères spéciaux. |
+| 2.5 | Description du PDF pour pdfmake : logo en en-tête, numéros de page, placement des notes, saut de page ({saut-de-page}) et bloc de signature à deux colonnes ({signatures}), marqueurs proposés dans « Format du texte des modèles ». Fonction pure, sans appel à pdfmake. Fait. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.6. |
+| 2.6 | Tests de 2.5. Fait. | testeur | `test/convention-modele.test.js` | Note citée mais non définie, définie mais non citée, numérotation, en-tête et pied de page présents, saut de page, deux colonnes de signature. |
 
 ### S3. Lire les données (sans écran visible)
 
