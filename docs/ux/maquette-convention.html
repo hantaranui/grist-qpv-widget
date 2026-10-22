@@ -58,7 +58,7 @@
   </head>
   <body class="outil-agent">
     <h1>Maquette : convention de partenariat</h1>
-    <p>Maquette statique, sans JavaScript, données fictives. Les points marqués [À CONFIRMER] attendent la réponse du chef. Voir docs/ux/convention.md. Les notes en italique sont des annotations de la maquette, pas des textes de l'écran. Pour voir la fenêtre B sur trois colonnes, la page doit faire au moins 1200 px de large.</p>
+    <p>Maquette statique, sans JavaScript, données fictives. Les points marqués [À CONFIRMER] attendent la réponse du chef. Les conventions sont imprimées et signées à la main : les zones en pointillés du PDF (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature) sont remplies à la main et ne figurent pas dans la fenêtre. Voir docs/ux/convention.md. Les notes en italique sont des annotations de la maquette, pas des textes de l'écran. Pour voir la fenêtre B sur trois colonnes, la page doit faire au moins 1200 px de large.</p>
 
     <!-- ================= PARTIE A ================= -->
     <section class="maquette-bloc" aria-labelledby="mq-a">
@@ -67,7 +67,7 @@
         <section class="edit-card"><div class="section-head"><span>Statut</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
         <section class="edit-card"><div class="section-head"><span>Financement</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
       </div>
-      <p>Le bloc Convention est un bloc de plus, sous Statut et Financement, pleine largeur. Quatre états, plus un cas où la génération est impossible.</p>
+      <p>Le bloc Convention est un bloc de plus, sous Statut et Financement, pleine largeur. Quatre états.</p>
 
       <h3>A1. À générer</h3>
       <div class="edit-card maquette-carte">
@@ -78,16 +78,6 @@
         </div>
       </div>
       <p class="help-block maquette-note"><em>Ce bouton ouvre la fenêtre de la partie B.</em></p>
-
-      <h3>A1 bis. À générer, mais l'action n'a pas de fédération</h3>
-      <div class="edit-card maquette-carte">
-        <div class="section-head"><span>Convention</span></div>
-        <div class="edit-fields">
-          <p>Aucune convention générée.</p>
-          <p role="status">Renseignez la fédération de l'action avant de générer la convention.</p>
-        </div>
-      </div>
-      <p class="help-block maquette-note"><em>Le bouton est remplacé par le message (pas de bouton grisé). Le message est un texte simple : il n'a pas besoin d'alerte.</em></p>
 
       <h3>A2. Générée</h3>
       <div class="edit-card maquette-carte">
@@ -158,7 +148,7 @@
     <!-- ================= PARTIE B ================= -->
     <section class="maquette-bloc" aria-labelledby="mq-b">
       <h2 id="mq-b">B. Fenêtre « Convention », modèle « Du stade vers l'emploi » (état À générer uniquement), large, sans défilement</h2>
-      <p class="maquette-note"><em>Cette fenêtre s'ouvre aussi depuis « Re-générer » (état Générée), préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF. Fenêtre de taille modal-xl :1164 px de large à partir de 1200 px d'écran, trois colonnes. En dessous de 1200 px elle passe en une colonne et défile. Ici le formulaire « Ajouter un contact » est fermé. Pas de « Nombre d'opérations » (toujours une opération) ni de « Date de fin » (31 décembre de l'année, fixe) : une phrase les rappelle. Le siège du club s'affiche en entier, sur plusieurs lignes.</em></p>
+      <p class="maquette-note"><em>Cette fenêtre s'ouvre aussi depuis « Re-générer » (état Générée), préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF. Fenêtre de taille modal-xl : 1164 px de large à partir de 1200 px d'écran, trois colonnes. En dessous de 1200 px elle passe en une colonne et défile. Ici le formulaire « Ajouter un contact » est fermé. Le siège du club et l'adresse de l'agence s'affichent en entier, sur plusieurs lignes. Pour « Le Match des Métiers », la fenêtre est identique ; pour « Parcours de remobilisation », seul le champ « Année » disparaît (le bloc 1 ne contient plus que le modèle utilisé).</em></p>
       <div class="maquette-modal maquette-modal-xl">
         <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
           <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -179,7 +169,6 @@
                         <label class="form-label" for="convAnnee">Année<span class="required">&nbsp;*</span></label>
                         <input class="form-control" id="convAnnee" name="convAnnee" type="number" required value="2026">
                       </div>
-                      <p class="help-block edit-field-wide" style="margin:0">Une seule opération. Date de fin : 31 décembre 2026.</p>
                     </div>
                   </fieldset>
 
@@ -222,46 +211,20 @@
                     <legend class="form-legend">Signataire agence</legend>
                     <div class="edit-fields convention-fields">
                       <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAgence">Agence<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAgence" name="ftAgence" type="text" required value="Agence Exemple Centre">
+                        <label class="form-label" for="ftAgence">Agence</label>
+                        <input class="form-control" id="ftAgence" name="ftAgence" type="text" readonly value="Agence Exemple Centre">
                       </div>
-                      <div class="edit-field">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAdresse">Adresse</label>
+                        <textarea class="form-control" id="ftAdresse" name="ftAdresse" readonly rows="2">1 rue de l'Exemple, bâtiment B, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <div class="edit-field edit-field-wide">
                         <label class="form-label" for="ftRepresentant">Représentant<span class="required">&nbsp;*</span></label>
                         <input class="form-control" id="ftRepresentant" name="ftRepresentant" type="text" required>
                       </div>
-                      <div class="edit-field">
+                      <div class="edit-field edit-field-wide">
                         <label class="form-label" for="ftFonction">Fonction du représentant<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftFonction" name="ftFonction" type="text" required>
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAdresse">Adresse<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAdresse" name="ftAdresse" type="text" required value="1 rue de l'Exemple">
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftComplement">Complément d'adresse</label>
-                        <input class="form-control" id="ftComplement" name="ftComplement" type="text" value="Bâtiment B">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftCodePostal">Code postal<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftCodePostal" name="ftCodePostal" type="text" inputmode="numeric" required value="00000">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftVille">Ville<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftVille" name="ftVille" type="text" required value="Ville-Exemple">
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="convention-part convention-part-full">
-                    <legend class="form-legend">Date et lieu</legend>
-                    <div class="edit-fields convention-fields" style="grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 50%;">
-                      <div class="edit-field">
-                        <label class="form-label" for="convLieu">Fait à<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convLieu" name="convLieu" type="text" required value="Ville-Exemple">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convDate">Date<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convDate" name="convDate" type="date" required value="">
+                        <input class="form-control" id="ftFonction" name="ftFonction" type="text" required value="Directeur d'agence">
                       </div>
                     </div>
                   </fieldset>
@@ -277,7 +240,7 @@
           </div>
         </div>
       </div>
-      <p class="help-block maquette-note"><em>Dans la vraie fenêtre, « Fait à » reprend la ville de l'agence et reste modifiable. Les champs de l'agence (agence, adresse, complément, code postal, ville) viennent de la table Agences ; le représentant et sa fonction sont saisis ici, vides et obligatoires. La liste « Signataire » vient de la table Contacts, filtrée sur le club : la fonction s'affiche en lecture seule après le choix.</em></p>
+      <p class="help-block maquette-note"><em>L'agence et son adresse viennent de la table Agences, en lecture seule ; le représentant est saisi ici (vide, obligatoire) ; sa fonction est préremplie « Directeur d'agence » et modifiable. La liste « Signataire » vient de la table Contacts, filtrée sur le club : la fonction s'affiche en lecture seule après le choix.</em></p>
     </section>
 
     <!-- ================= PARTIE B bis ================= -->
@@ -304,7 +267,6 @@
                         <label class="form-label" for="convAnneeBis">Année<span class="required">&nbsp;*</span></label>
                         <input class="form-control" id="convAnneeBis" name="convAnneeBis" type="number" required value="2026">
                       </div>
-                      <p class="help-block edit-field-wide" style="margin:0">Une seule opération. Date de fin : 31 décembre 2026.</p>
                     </div>
                   </fieldset>
 
@@ -369,46 +331,20 @@
                     <legend class="form-legend">Signataire agence</legend>
                     <div class="edit-fields convention-fields">
                       <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAgenceBis">Agence<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAgenceBis" name="ftAgenceBis" type="text" required value="Agence Exemple Centre">
+                        <label class="form-label" for="ftAgenceBis">Agence</label>
+                        <input class="form-control" id="ftAgenceBis" name="ftAgenceBis" type="text" readonly value="Agence Exemple Centre">
                       </div>
-                      <div class="edit-field">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAdresseBis">Adresse</label>
+                        <textarea class="form-control" id="ftAdresseBis" name="ftAdresseBis" readonly rows="2">1 rue de l'Exemple, bâtiment B, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <div class="edit-field edit-field-wide">
                         <label class="form-label" for="ftRepresentantBis">Représentant<span class="required">&nbsp;*</span></label>
                         <input class="form-control" id="ftRepresentantBis" name="ftRepresentantBis" type="text" required>
                       </div>
-                      <div class="edit-field">
+                      <div class="edit-field edit-field-wide">
                         <label class="form-label" for="ftFonctionBis">Fonction du représentant<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftFonctionBis" name="ftFonctionBis" type="text" required>
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAdresseBis">Adresse<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAdresseBis" name="ftAdresseBis" type="text" required value="1 rue de l'Exemple">
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftComplementBis">Complément d'adresse</label>
-                        <input class="form-control" id="ftComplementBis" name="ftComplementBis" type="text" value="Bâtiment B">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftCodePostalBis">Code postal<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftCodePostalBis" name="ftCodePostalBis" type="text" inputmode="numeric" required value="00000">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftVilleBis">Ville<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftVilleBis" name="ftVilleBis" type="text" required value="Ville-Exemple">
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="convention-part convention-part-full">
-                    <legend class="form-legend">Date et lieu</legend>
-                    <div class="edit-fields convention-fields" style="grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 50%;">
-                      <div class="edit-field">
-                        <label class="form-label" for="convLieuBis">Fait à<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convLieuBis" name="convLieuBis" type="text" required value="Ville-Exemple">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convDateBis">Date<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convDateBis" name="convDateBis" type="date" required value="">
+                        <input class="form-control" id="ftFonctionBis" name="ftFonctionBis" type="text" required value="Directeur d'agence">
                       </div>
                     </div>
                   </fieldset>
@@ -424,144 +360,7 @@
           </div>
         </div>
       </div>
-      <p class="help-block maquette-note"><em>[À CONFIRMER] : nom, prénom et fonction suffisent-ils ? (la fiche du club montre aussi l'e-mail et le téléphone des contacts). Dans la vraie fenêtre, « Fait à » reprend la ville de l'agence et reste modifiable. Les champs de l'agence (agence, adresse, complément, code postal, ville) viennent de la table Agences ; le représentant et sa fonction sont saisis ici, vides et obligatoires. La liste « Signataire » vient de la table Contacts, filtrée sur le club : la fonction s'affiche en lecture seule après le choix.</em></p>
-    </section>
-
-
-    <!-- ================= PARTIE B ter ================= -->
-    <section class="maquette-bloc" aria-labelledby="mq-b3">
-      <h2 id="mq-b3">B ter. Même fenêtre, modèle « Parcours de remobilisation »</h2>
-      <p class="maquette-note"><em>Pas de champ « Année » (texte fixe dans la convention). « Nombre d'opérations » et « Date de fin » (libre) sont à saisir. « Date et lieu » : un lieu et une date pour le club, un lieu et une date pour France Travail. Pour « Le Match des Métiers » : année et nombre d'opérations, pas de date de fin, un seul « Fait à » et une seule date (voir convention.md, §3).</em></p>
-      <div class="maquette-modal maquette-modal-xl">
-        <div class="modal fade show" id="conventionDialogTer" role="dialog" aria-modal="true" aria-labelledby="conventionTitleTer" tabindex="-1">
-          <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <form class="modal-content" id="conventionFormTer" novalidate>
-              <div class="modal-header"><h2 class="modal-title" id="conventionTitleTer">Convention</h2></div>
-              <div class="modal-body">
-                <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
-                <div class="convention-grid">
-
-                  <fieldset class="convention-part">
-                    <legend class="form-legend">Informations relatives à la convention</legend>
-                    <div class="edit-fields convention-fields">
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="convModeleTer">Modèle utilisé</label>
-                        <input class="form-control" id="convModeleTer" name="convModeleTer" type="text" readonly value="Parcours de remobilisation">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convOperationsTer">Nombre d'opérations<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convOperationsTer" name="convOperationsTer" type="number" min="0" required value="">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convFinTer">Date de fin<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convFinTer" name="convFinTer" type="date" required value="">
-                      </div>
-                                          </div>
-                  </fieldset>
-
-                  <fieldset class="convention-part">
-                    <legend class="form-legend">Signataire club</legend>
-                    <div class="edit-fields convention-fields">
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="clubNomTer">Nom du club</label>
-                        <input class="form-control" id="clubNomTer" name="clubNomTer" type="text" readonly value="Association Sportive Exemple">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="clubSiretTer">SIRET</label>
-                        <input class="form-control" id="clubSiretTer" name="clubSiretTer" type="text" readonly value="987 654 321 00019">
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="clubSiegeTer">Siège</label>
-                        <textarea class="form-control" id="clubSiegeTer" name="clubSiegeTer" readonly rows="2">2 avenue du Stade, résidence des Sportifs, bâtiment C, 00000 Ville-Exemple</textarea>
-                      </div>
-                      <p class="help-block edit-field-wide" style="margin:0">Pour corriger ces informations, modifiez la fiche du club.</p>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="clubSignataireTer">Signataire<span class="required">&nbsp;*</span></label>
-                        <select class="form-control" id="clubSignataireTer" name="clubSignataireTer" required>
-                          <option selected disabled value="">Veuillez sélectionner</option>
-                          <option value="contact_1">Camille Exemple</option>
-                          <option value="contact_2">Dominique Modèle</option>
-                          <option value="contact_3">Sacha Fictif</option>
-                        </select>
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="clubFonctionTer">Fonction du signataire</label>
-                        <input class="form-control" id="clubFonctionTer" name="clubFonctionTer" type="text" readonly value="">
-                      </div>
-                      <div class="edit-field" style="align-content:end">
-                        <button class="btn btn-secondary btn-sm" type="button" aria-expanded="false"><span class="btn-content">Ajouter un contact<span class="sr-only"> (le signataire n'est pas dans la liste)</span></span></button>
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="convention-part">
-                    <legend class="form-legend">Signataire agence</legend>
-                    <div class="edit-fields convention-fields">
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAgenceTer">Agence<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAgenceTer" name="ftAgenceTer" type="text" required value="Agence Exemple Centre">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftRepresentantTer">Représentant<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftRepresentantTer" name="ftRepresentantTer" type="text" required>
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftFonctionTer">Fonction du représentant<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftFonctionTer" name="ftFonctionTer" type="text" required>
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftAdresseTer">Adresse<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftAdresseTer" name="ftAdresseTer" type="text" required value="1 rue de l'Exemple">
-                      </div>
-                      <div class="edit-field edit-field-wide">
-                        <label class="form-label" for="ftComplementTer">Complément d'adresse</label>
-                        <input class="form-control" id="ftComplementTer" name="ftComplementTer" type="text" value="Bâtiment B">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftCodePostalTer">Code postal<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftCodePostalTer" name="ftCodePostalTer" type="text" inputmode="numeric" required value="00000">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="ftVilleTer">Ville<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="ftVilleTer" name="ftVilleTer" type="text" required value="Ville-Exemple">
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="convention-part convention-part-full">
-                    <legend class="form-legend">Date et lieu</legend>
-                    <div class="edit-fields convention-fields" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
-                      <div class="edit-field">
-                        <label class="form-label" for="convLieuClubTer">Fait à (club)<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convLieuClubTer" name="convLieuClubTer" type="text" required value="">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convDateClubTer">Date (club)<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convDateClubTer" name="convDateClubTer" type="date" required value="">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convLieuFtTer">Fait à (France Travail)<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convLieuFtTer" name="convLieuFtTer" type="text" required value="Ville-Exemple">
-                      </div>
-                      <div class="edit-field">
-                        <label class="form-label" for="convDateFtTer">Date (France Travail)<span class="required">&nbsp;*</span></label>
-                        <input class="form-control" id="convDateFtTer" name="convDateFtTer" type="date" required value="">
-                      </div>
-                    </div>
-                  </fieldset>
-
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
-                <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
-                <button class="btn btn-primary" type="button"><span class="btn-content">Générer la convention</span></button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <p class="help-block maquette-note"><em>Dans la vraie fenêtre, le « Fait à » de France Travail reprend la ville de l'agence et reste modifiable ; celui du club est vide. Les champs de l'agence (agence, adresse, complément, code postal, ville) viennent de la table Agences ; le représentant et sa fonction sont saisis ici, vides et obligatoires. La liste « Signataire » vient de la table Contacts, filtrée sur le club : la fonction s'affiche en lecture seule après le choix.</em></p>
+      <p class="help-block maquette-note"><em>[À CONFIRMER] : nom, prénom et fonction suffisent-ils ? (la fiche du club montre aussi l'e-mail et le téléphone des contacts). L'agence et son adresse viennent de la table Agences, en lecture seule ; le représentant est saisi ici ; sa fonction est préremplie « Directeur d'agence ». La liste « Signataire » vient de la table Contacts, filtrée sur le club.</em></p>
     </section>
 
 

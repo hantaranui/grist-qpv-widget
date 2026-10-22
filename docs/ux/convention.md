@@ -3,7 +3,9 @@
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
-Cette version intègre les décisions du chef sur la première maquette, puis ses corrections : formulaire « Ajouter un contact » dans le bloc (plus de seconde fenêtre), champs de la fenêtre selon le modèle de convention, correspondance dispositif / modèle, siège du club affiché en entier, bouton « Re-générer », PDF généré gardé mais non montré après la signature, dépôt du fichier signé sans fenêtre de vérification.
+Cette version intègre les décisions du chef sur la première maquette, puis ses corrections : formulaire « Ajouter un contact » dans le bloc (plus de seconde fenêtre), correspondance dispositif / modèle, siège du club affiché en entier, bouton « Re-générer », PDF généré gardé mais non montré après la signature, dépôt du fichier signé sans fenêtre de vérification. Dernières réponses du client : une convention couvre une seule action ; les conventions sont imprimées et signées à la main ; le signataire côté France Travail est le directeur d'agence. La fenêtre est donc réduite à trois blocs.
+
+**Les zones en pointillés du PDF sont remplies à la main après impression** : nombre d'opérations ou de parcours, date de fin, contact protection des données du club (article 6.1), « Fait à » et date de signature (y compris les deux lieux et dates du modèle Parcours de remobilisation). Le tableau de bord ne les demande pas.
 
 Les points qui attendent la réponse du chef sont marqués **[À CONFIRMER]** ; la liste complète est à la fin (§10).
 
@@ -16,7 +18,7 @@ Parcours 1, générer (état « À générer ») :
 
 1. Ouvrir la fiche de l'action (existant).
 2. Dans le bloc **Convention**, cliquer sur « Générer la convention ».
-3. Dans la fenêtre : choisir le signataire du club (ou « Ajouter un contact »), relire les informations préremplies, compléter les champs obligatoires.
+3. Dans la fenêtre : choisir le signataire du club (ou « Ajouter un contact »), relire les informations préremplies, saisir le représentant de l'agence et vérifier sa fonction.
 4. « Enregistrer les informations » (facultatif : « Générer la convention » les enregistre aussi).
 5. « Générer la convention ». La fenêtre se ferme, le bloc passe à l'état « Générée ».
 
@@ -47,7 +49,6 @@ Contenu : en-tête « Convention » (même `section-head` que les autres blocs),
 | État | Texte | Boutons |
 |---|---|---|
 | **À générer** (A1) | « Aucune convention générée. » | « Générer la convention » (`btn btn-secondary`, `aria-haspopup="dialog"`) : ouvre la fenêtre B |
-| **À générer, action sans fédération** (A1 bis) | « Aucune convention générée. » puis « Renseignez la fédération de l'action avant de générer la convention. » | aucun : le message remplace le bouton |
 | **Générée** (A2) | « Convention générée le [date]. » | « Voir la convention » (lien, ouvre le PDF directement dans un nouvel onglet, sans fenêtre) ; « Re-générer » (`btn btn-secondary`, `aria-haspopup="dialog"`) : rouvre la fenêtre B préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF, sans historique ; « Déposer la convention signée » : ouvre directement le choix du fichier |
 | **Signée** (A3) | « Convention signée, déposée le [date]. » | « Voir la convention signée » (lien, nouvel onglet) ; en dessous, lien « Remplacer le fichier signé » (ouvre directement le choix du fichier). Plus de régénération, ni d'accès au PDF généré : il reste gardé dans Grist mais n'est plus montré. |
 | **Dispositif sans modèle** (A4) | « Pas encore de modèle de convention pour ce dispositif. » | aucun (dispositifs concernés : Aller vers, Parcours complet d'insertion par le sport) |
@@ -56,7 +57,7 @@ Messages d'erreur du bloc (A5) : si le fichier choisi n'est pas un PDF, une aler
 
 Confirmation (A6) : après un dépôt réussi, une alerte de succès (`alert alert-success`, `role="status"`) « Convention signée enregistrée. » s'affiche en haut du bloc.
 
-Règle d'ordre des états : un dispositif sans modèle n'a jamais de bouton. L'état « Signée » l'emporte sur « Générée ». Le cas « sans fédération » ne concerne que l'état « À générer » (le modèle « Du stade vers l'emploi » cite la fédération du club ; la fédération se lit sur l'action).
+Règle d'ordre des états : un dispositif sans modèle n'a jamais de bouton. L'état « Signée » l'emporte sur « Générée ». La fédération de l'action n'est plus utilisée : plus aucune règle ni message à son sujet.
 
 Voir un PDF : « Voir la convention » et « Voir la convention signée » sont des liens (`<a class="btn btn-secondary" target="_blank" rel="noopener">`) avec un texte `sr-only` « (s'ouvre dans un nouvel onglet) ». Ouvrir un onglet et télécharger un fichier depuis le cadre de Grist fonctionnent (CLAUDE.md ; confirmé par un essai dans Grist DEV).
 
@@ -72,9 +73,9 @@ Structure et comportement repris de la fenêtre « Ajout d'une action » (script
 
 **Taille : `modal-xl`**, la plus large taille du design system. Dans la feuille du CDN : 800 px de large entre 992 et 1199 px d'écran, puis 1164 px à partir de 1200 px (la feuille contient deux règles pour `.modal-xl`, 1140 px et 1164 px : à vérifier à l'écran). On garde `modal-dialog-scrollable` comme filet : si l'écran est trop court, le corps défile et les boutons restent visibles.
 
-**Disposition (à partir de 1200 px d'écran) : trois colonnes.** Les blocs 1, 2 et 3 se placent côte à côte, le bloc 4 (« Date et lieu ») est dessous, sur une ligne. Ordre de lecture = ordre visuel. Le modèle de convention change les champs des blocs 1 et 4 (voir plus bas), pas la disposition. Estimation : environ 640 px de hauteur pour la fenêtre entière (le bloc 2 est le plus haut, surtout quand le formulaire de contact est ouvert), donc sans défilement sur un écran d'au moins 768 px de haut. Je n'ai pas pu mesurer le rendu dans un navigateur : **non vérifié**, à mesurer par Hanta sur la maquette. Sous 1200 px : une seule colonne, la fenêtre défile (la promesse « sans défilement » ne vaut qu'à partir de 1200 px).
+**Disposition (à partir de 1200 px d'écran) : trois colonnes.** Les blocs 1, 2 et 3 se placent côte à côte, sur une seule rangée (il n'y a plus de bloc « Date et lieu »). Ordre de lecture = ordre visuel. Le modèle de convention ne change que le champ « Année » du bloc 1 (voir plus bas), pas la disposition. Estimation : environ 480 px de hauteur pour la fenêtre entière (le bloc 2 est le plus haut, surtout quand le formulaire de contact est ouvert), donc sans défilement sur un écran d'au moins 768 px de haut. Je n'ai pas pu mesurer le rendu dans un navigateur : **non vérifié**, à mesurer par Hanta sur la maquette. Sous 1200 px : une seule colonne, la fenêtre défile (la promesse « sans défilement » ne vaut qu'à partir de 1200 px).
 
-Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'un * sont obligatoires. », puis quatre `fieldset` avec `legend` en `form-legend`, dans cet ordre.
+Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'un * sont obligatoires. », puis trois `fieldset` avec `legend` en `form-legend`, dans cet ordre.
 
 ### Correspondance dispositif → modèle (décidée)
 
@@ -91,20 +92,15 @@ Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'u
 | Champ | Du stade vers l'emploi | Le Match des Métiers | Parcours de remobilisation |
 |---|---|---|---|
 | Année | oui | oui | non (texte fixe dans la convention) |
-| Nombre d'opérations | non (toujours une opération) | oui | oui |
-| Date de fin | non (31 décembre de l'année, fixe) | non (31 décembre de l'année, fixe) | oui (date libre) |
-| Date et lieu | un seul « Fait à » et une seule date | un seul « Fait à » et une seule date | un lieu et une date pour le club, un lieu et une date pour France Travail |
 
-Un champ « non » n'est pas affiché comme champ à remplir. Quand la valeur est fixe et utile à l'agent, une phrase d'aide la rappelle (maquette B : « Une seule opération. » et « Date de fin : 31 décembre 2026. », qui suit l'année saisie).
+C'est la seule différence entre les modèles. Tout le reste de la fenêtre est identique. Le nombre d'opérations ou de parcours, la date de fin, « Fait à » et les dates de signature ne sont plus demandés : ils sont remplis à la main sur le PDF imprimé.
 
 ### Bloc 1 : « Informations relatives à la convention »
 
 | Champ | Type | Obligatoire | Remarque |
 |---|---|---|---|
 | Modèle utilisé | lecture seule | non | selon le dispositif (tableau de correspondance ci-dessus) |
-| Année | nombre | oui | Du stade vers l'emploi et Match des Métiers seulement ; année en cours proposée |
-| Nombre d'opérations | nombre (min 0) | oui | Match des Métiers et Parcours de remobilisation seulement |
-| Date de fin | date | oui | Parcours de remobilisation seulement ; date libre |
+| Année | nombre | oui | Du stade vers l'emploi et Match des Métiers seulement ; année en cours proposée. Absent pour Parcours de remobilisation : le bloc ne contient alors que le modèle utilisé. |
 
 ### Bloc 2 : « Signataire club »
 
@@ -115,7 +111,7 @@ Un champ « non » n'est pas affiché comme champ à remplir. Quand la valeur es
 | Siège | lecture seule, **sur toute la largeur de la colonne** | non | repris de la fiche du club ; l'adresse s'affiche en entier, sur plusieurs lignes si besoin |
 | Signataire | liste de choix | oui | contacts du club (table Contacts) ; texte d'invite « Veuillez sélectionner » |
 | Fonction du signataire | lecture seule | non | colonne Fonction de Contacts, affichée après le choix |
-| bouton « Ajouter un contact » | bouton | | pour un signataire absent de la liste ; ouvre le petit formulaire dans le bloc (voir plus bas) |
+| bouton « Ajouter un contact » | bouton | | dans le bloc ; pour un signataire absent de la liste ; ouvre le petit formulaire dans le bloc (voir plus bas) |
 
 Une phrase d'aide sous les trois champs en lecture seule : « Pour corriger ces informations, modifiez la fiche du club. » (décision 7 : on ne modifie pas le club ici).
 
@@ -142,45 +138,24 @@ Décision du chef : le petit formulaire s'ouvre **directement dans le bloc « Si
 
 ### Bloc 3 : « Signataire agence »
 
-Agence, adresse, complément, code postal et ville sont préremplis depuis la table Agences (agence de l'action). **Le représentant et sa fonction ne viennent pas de la table Agences** (décision du chef) : les deux champs sont **vides à l'ouverture, obligatoires**, saisis par l'agent dans la fenêtre et enregistrés avec la convention.
+Le signataire côté France Travail est le directeur d'agence. L'agence et son adresse sont en lecture seule, repris de la table Agences (agence de l'action). **Le représentant ne vient pas de la table Agences** : il est **vide à l'ouverture, obligatoire**, saisi par l'agent et enregistré avec la convention. Sa fonction est **préremplie « Directeur d'agence »**, modifiable.
 
 | Champ | Type | Obligatoire | Valeur de départ |
 |---|---|---|---|
-| Agence | texte | oui | table Agences |
+| Agence | lecture seule | non | table Agences |
+| Adresse | lecture seule (zone de texte, plusieurs lignes) | non | table Agences (adresse, complément, code postal et ville réunis) |
 | Représentant | texte | oui | **vide** (saisi) |
-| Fonction du représentant | texte | oui | **vide** (saisie) |
-| Adresse | texte | oui | table Agences |
-| Complément d'adresse | texte | non | table Agences |
-| Code postal | texte (numérique) | oui | table Agences |
-| Ville | texte | oui | table Agences |
+| Fonction du représentant | texte | oui | « Directeur d'agence », modifiable |
 
-**Évolution prévue** : plus tard, le représentant sera choisi dans une liste des utilisateurs de profil « Agence » de cette agence (table Utilisateurs), comme les contacts du club dans le bloc 2 (liste de choix, fonction affichée après le choix). Ce profil n'est pas encore actif : ne pas coder cette liste maintenant. La saisie libre actuelle sera alors remplacée.
+**Évolution prévue** : plus tard, le représentant sera choisi dans une liste des utilisateurs de profil « Agence » de cette agence (table Utilisateurs), comme les contacts du club dans le bloc 2. Ce profil n'est pas encore actif : ne pas coder cette liste maintenant. La saisie libre actuelle sera alors remplacée.
 
-Qui peut modifier les autres informations de l'agence (adresse, etc.), et sont-elles enregistrées dans la table Agences : **[À CONFIRMER]**.
-
-### Bloc 4 : « Date et lieu »
-
-Du stade vers l'emploi et Le Match des Métiers : un seul lieu et une seule date.
-
-| Champ | Type | Obligatoire | Valeur de départ |
-|---|---|---|---|
-| Fait à | texte | oui | ville de l'agence, modifiable |
-| Date | date | oui | vide |
-
-Parcours de remobilisation : un lieu et une date pour le club, un lieu et une date pour France Travail (maquette B ter). Les libellés disent de qui il s'agit, pour qu'ils restent distincts en lecture d'écran.
-
-| Champ | Type | Obligatoire | Valeur de départ |
-|---|---|---|---|
-| Fait à (club) | texte | oui | vide |
-| Date (club) | date | oui | vide |
-| Fait à (France Travail) | texte | oui | ville de l'agence, modifiable |
-| Date (France Travail) | date | oui | vide |
-
-Le champ date utilise `<input type="date">` dans la maquette. Le tableau de bord emploie `ft-datepicker` pour la date de statut : dev-interface choisit le même composant pour rester cohérent (voir §8). Non vérifié.
+Les colonnes de la table Agences qui donnent l'adresse sont à vérifier dans le modèle de données (voir plus haut). Si l'adresse d'une agence est fausse, elle se corrige dans la table Agences, pas ici : **[À CONFIRMER]** qui peut la modifier.
 
 ### Champs retirés
 
-Par décision du chef : « SIRET de l'agence » (aucun modèle ne l'utilise) et « Contact protection des données du club » (texte fixe dans la convention). Ils n'apparaissent plus nulle part, ni dans la maquette ni dans les textes.
+Par décision du chef : « SIRET de l'agence » (aucun modèle ne l'utilise) et « Contact protection des données du club » (rempli à la main sur le PDF, article 6.1).
+
+Par les réponses du client (conventions imprimées et signées à la main) : « Nombre d'opérations », « Date de fin », tout le bloc « Date et lieu » (« Fait à » et dates de signature, y compris les deux lieux et dates de Parcours de remobilisation), et la règle « action sans fédération » avec son message (la fédération n'est plus utilisée). Ils n'apparaissent plus nulle part, ni dans la maquette ni dans les textes.
 
 ### Pied de la fenêtre
 
@@ -202,12 +177,12 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 
 ## 5. Textes affichés (tous, pour dev-interface)
 
-- Bloc : « Convention » ; « Aucune convention générée. » ; « Convention générée le [date]. » ; « Convention signée, déposée le [date]. » ; « Pas encore de modèle de convention pour ce dispositif. » ; « Renseignez la fédération de l'action avant de générer la convention. »
+- Bloc : « Convention » ; « Aucune convention générée. » ; « Convention générée le [date]. » ; « Convention signée, déposée le [date]. » ; « Pas encore de modèle de convention pour ce dispositif. »
 - Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir ».
-- Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires. » ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; « Date et lieu » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Aucun contact enregistré pour ce club. » ; « Ajouter un contact » (avec `sr-only` « (le signataire n'est pas dans la liste) »). Rappels de valeurs fixes (Du stade vers l'emploi) : « Une seule opération. » ; « Date de fin : 31 décembre [année]. ». Libellés propres à Parcours de remobilisation : « Fait à (club) », « Date (club) », « Fait à (France Travail) », « Date (France Travail) ».
+- Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires. » ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Aucun contact enregistré pour ce club. » ; « Ajouter un contact » (avec `sr-only` « (le signataire n'est pas dans la liste) ») ; valeur de départ de la fonction du représentant : « Directeur d'agence ».
 - Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération).
 - Formulaire contact (dans le bloc) : « Nouveau contact » (légende) ; « Nom » ; « Prénom » ; « Fonction » ; « Annuler » ; « Ajouter ce contact ».
-- Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Code postal : « Le code postal doit comporter 5 chiffres. » Date de fin (Parcours de remobilisation) : « La date de fin doit être postérieure à la date de la convention. » [règle à confirmer avec le chef : par rapport à laquelle des deux dates de signature ?].
+- Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Il n'y a plus de contrôle de date ni de code postal : ces champs n'existent plus dans la fenêtre.
 - Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
@@ -218,7 +193,7 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 
 | État | Ce que voit l'agent |
 |---|---|
-| Ouverture de la fenêtre B | Focus sur le premier champ modifiable (« Année »). |
+| Ouverture de la fenêtre B | Focus sur le premier champ modifiable : « Année » (Du stade vers l'emploi, Match des Métiers) ; « Signataire » du club (Parcours de remobilisation, qui n'a pas d'année). |
 | Champs invalides | Alerte d'erreur en haut, champs en `is-invalid`, messages sous chaque champ, focus sur le premier champ à corriger. |
 | Enregistrement / génération | Bouton en attente, message de succès ou d'erreur dans le corps ; à la génération réussie, la fenêtre se ferme et le bloc passe à « Générée ». |
 | Formulaire « Ajouter un contact » ouvert | Formulaire sous la liste, focus sur « Nom », bouton en `aria-expanded="true"`. |
@@ -231,13 +206,13 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 
 ## 7. Accessibilité (RGAA), mode sombre, données personnelles
 
-- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les quatre blocs sont des `legend` de `fieldset`.
+- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les trois blocs sont des `legend` de `fieldset`.
 - Chaque champ a un `label` lié (`for` / `id`). Obligatoire : astérisque dans `span.required` **et** attribut `required` ; la phrase d'introduction explique l'astérisque.
 - Champ en lecture seule : `readonly` (il reste atteignable au clavier et lu par les lecteurs d'écran).
 - Liste de choix : `label` lié, option d'invite désactivée « Veuillez sélectionner » ; erreur : `is-invalid`, `aria-invalid="true"`, `aria-describedby`.
 - Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`).
 - Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; dans le formulaire de contact du bloc 2, Échap ne le referme pas séparément ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Si des informations non enregistrées existent, Échap demande confirmation [à valider avec le chef].
-- Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, puis 4, boutons du pied. Les trois colonnes se lisent de gauche à droite, puis la ligne du bas.
+- Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, boutons du pied. Les trois colonnes se lisent de gauche à droite.
 - Liens qui ouvrent un nouvel onglet : le dire dans le texte (`sr-only`).
 - Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`.
 - Mode clair / sombre : n'utiliser que des variables `--ft-…` ou des classes du design system, aucune couleur écrite en dur. **Constat** : style.css déclare `color-scheme: light` ; le tableau de bord n'est donc pas conçu pour le mode sombre aujourd'hui. Je n'ai pas pu vérifier le rendu en mode sombre : à tester par Hanta. La maquette n'ajoute aucune couleur.
@@ -318,9 +293,9 @@ Avec erreur (page input--error.html) :
 </div>
 ```
 
-Champs numérique et date : mêmes classes avec `type="number"` / `type="date"`. Pour la date, le tableau de bord emploie `<ft-datepicker>` (script.js, `statusPeriodControl`) ; je n'ai pas lu la page du composant « datepicker » : **non vérifié**, à relire avant de choisir.
+Champ numérique (année) : mêmes classes avec `type="number"`. La fenêtre ne contient plus de champ date.
 
-### Zone de texte en lecture seule (siège du club)
+### Zone de texte en lecture seule (siège du club, adresse de l'agence)
 Aucune page de composant « zone de texte » n'a été lue : **non vérifié**. Structure proposée, identique au champ en lecture seule ci-dessus mais avec `textarea` (la classe `form-control` est celle de la feuille ; à vérifier que le tableau de bord emploie déjà un `textarea` pour le Commentaire, et à contrôler sur la page du composant avant de coder) :
 
 ```html
@@ -407,11 +382,12 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Où stocker le PDF généré, le PDF signé et les informations (nouvelle table ou colonnes dans Grist) : le modèle de données est partagé par plusieurs widgets, rien ne doit être renommé et toute nouvelle colonne est à faire valider. Non décidé ici.
 - Générer un PDF demande probablement une bibliothèque ou un service : « aucune dépendance sans l'accord de Hanta » (CLAUDE.md). À proposer avec avantages, risques et effort avant tout code.
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
+- **Zones en pointillés du PDF** : le PDF généré doit laisser de la place pour écrire à la main (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature). À vérifier sur le PDF produit, qui n'est pas dans cette note.
 - La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation ni de vérification avant l'enregistrement : le fichier choisi est enregistré tout de suite.
 
 ## 10. Liste des [À CONFIRMER]
 
-Tranchés par le chef et retirés : modèle des états de la fenêtre, contact protection des données, SIRET de l'agence, bouton sans modèle (masqué), régénération depuis la fenêtre, formulaire de contact dans le bloc (sans seconde fenêtre), champs selon le modèle (dont la date de fin : fixe ou libre selon le modèle), correspondance dispositif / modèle, origine du représentant et de sa fonction (saisis dans la fenêtre, voir §3 bloc 3).
+Tranchés par le chef ou le client et retirés : modèle des états de la fenêtre, contact protection des données (rempli à la main), SIRET de l'agence, bouton sans modèle (masqué), régénération depuis la fenêtre, formulaire de contact dans le bloc (sans seconde fenêtre), correspondance dispositif / modèle, une convention pour une seule action, date de fin et nombre d'opérations (remplis à la main sur le PDF), comparaison de la date de fin avec la date de signature (plus de champ), signataire côté France Travail (directeur d'agence, fonction préremplie et modifiable ; le représentant reste saisi).
 
 Points tranchés (dernière série de décisions du chef) :
 
@@ -421,7 +397,5 @@ Points tranchés (dernière série de décisions du chef) :
 
 À confirmer :
 
-1. **Une convention pour une seule action, ou pour plusieurs actions d'un club** ? (Change le point de départ : fiche d'action ou fiche du club.) **[À CONFIRMER]** : si une convention couvre plusieurs actions d'un club, le nombre d'opérations pourrait être calculé à partir des actions rattachées au lieu d'être saisi (champ « Nombre d'opérations » des modèles Match des Métiers et Parcours de remobilisation).
-2. **Qui peut modifier** les informations de l'agence reprises de la table Agences (adresse, complément, code postal, ville) ?
-3. **Champs du formulaire « Ajouter un contact »** : nom, prénom et fonction suffisent-ils ?
-4. **Règle de contrôle de la date de fin** (Parcours de remobilisation) : par rapport à quelle date de signature (club ou France Travail) ?
+1. **Qui peut modifier** les informations de l'agence reprises de la table Agences (agence, adresse, complément, code postal, ville), maintenant affichées en lecture seule ? **[À CONFIRMER]**
+2. **Champs du formulaire « Ajouter un contact »** : nom, prénom et fonction suffisent-ils ? **[À CONFIRMER]**
