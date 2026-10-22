@@ -420,3 +420,17 @@ Tests : npm test 202/202 réussis (rien de cassé) ; les nouvelles fonctions ne 
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : b0f593b
+
+## Tâche C16 — Tests du remplissage des cases (S2, tâche 2.4)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 11 cas du remplissage des cases (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : 22 tests ajoutés dans test/convention-modele.test.js (44 au total dans ce fichier) ; cases dans paragraphe, gras, titre, liste, retrait et note ; caractères spéciaux ; apostrophe typographique ; cases vides ; \[ ; liens et notes non remplacés ; liste des cases manquantes ; clés comme constructor ; aucune commande lancée par l'agent.
+Ce que j'ai fait corriger : rien ; un test ajouté en plus (clé constructor écrite dans l'objet) gardé ; valeur 0 et case vide [ ] non testées (absentes des modèles).
+Tests : npm test 224/224 réussis
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : a7e8583
