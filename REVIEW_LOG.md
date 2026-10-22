@@ -320,3 +320,17 @@ Tests : aucun (documentation)
 Fichiers modifiés : docs/ux/contacts-fiche-club.md
 Build refait : non
 Commit : 25ba1f3 sur feature/contacts-fiche-club
+
+## Tâche 22 — Contacts : boutons icônes (dev-interface)
+
+Date : 22/10/2026
+Agent : dev-interface
+Prompt : remplacer les boutons texte Modifier et Supprimer de chaque ligne par les boutons icône seule du §7.2 (icon-edit, icon-trash), sans changer leur comportement
+
+Note /5 : 5
+Ce qui allait : changement minimal dans renderContacts ; attributs de fonctionnement gardés (ouverture des fenêtres, retour du focus) ; aucun CSS ajouté sans besoin ; bouton rouge de la fenêtre non touché
+Ce que j'ai fait corriger : rien
+Tests : 212 lancés, 212 réussis (npm test). Vérification dans DEV7 : icônes affichées, info-bulle au survol et au clavier, focus visible, bonnes fenêtres ouvertes, retour du focus, boutons bien espacés en rétrécissant, OK
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : dbea258 sur feature/contacts-fiche-club
