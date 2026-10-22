@@ -278,3 +278,17 @@ Tests : 212 lancés, 212 réussis (npm test)
 Fichiers modifiés : test/clubs-contacts.test.js (créé)
 Build refait : non (src/ inchangé)
 Commit : 68301b1 sur feature/contacts-fiche-club
+
+## Tâche 19 — Contacts : écran d'ajout et de modification (dev-interface)
+
+Date : 21/10/2026
+Agent : dev-interface
+Prompt : carte Contacts (fonction sous le nom, « + Ajouter un contact », « Modifier » par ligne), fenêtre d'ajout et de modification selon la note UX, messages, focus et clavier, cartes à moitiés égales ; sans la suppression
+
+Note /5 : 4
+Ce qui allait : note UX suivie ; écarts justifiés et signalés (zone d'annonce hors de la fiche pour qu'elle survive au rechargement, Annuler et Échap ignorés pendant l'envoi, type « club » avec le message de repli) ; aucun texte brut de Grist affiché
+Ce que j'ai fait corriger : rien
+Tests : 212 lancés, 212 réussis (npm test ; la fenêtre n'a pas encore de test automatique). Vérification dans DEV7 avec la version locale : erreurs de saisie, ajout, modification, clavier, affichage, OK en propriétaire ; en « Voir en tant que » FT Régional, création et modification d'un contact de sa région OK (règle de création newRec confirmée) ; refus en ANS : refus constaté en « Voir en tant que » FT Départemental sur un club hors de son département : message de droits affiché, sans texte brut (l'ANS ne voit pas les clubs)
+Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : b81debf sur feature/contacts-fiche-club
