@@ -23,7 +23,7 @@ Règles du plan :
 **Colonnes existantes dans Grist DEV :**
 - `Contacts.Fonction`.
 - `Agences.Adresse`, `Complement_adresse`, `Code_postal`, `Ville`.
-- `Structures.Siege` et `Code_postal`. À vérifier dans le code en S0 : le tableau de bord lit peut-être `Adresse` au lieu de `Siege`.
+- `Structures.Siege` contient Oui ou Non (ce n'est pas une adresse). L'adresse du club vient de la colonne `Structures.Adresse` (Text), avec `Code_postal` et la ville (table `Communes`, par `Code_Insee` → `Libelle_Commune`), comme dans la note de la tâche 0.2.
 - `Actions.DR` et `Actions.DD`, en colonnes formule.
 
 **Règles d'accès actuelles d'Actions :**
@@ -34,7 +34,7 @@ Règles du plan :
 - FT National, FT Régional et FT Départemental génèrent, re-génèrent et déposent les conventions, chacun dans son périmètre.
 - ANS : aucun accès aux conventions ni aux modèles.
 
-**Génération bloquée** avec un message qui dit quoi remplir, s'il manque l'agence, le club ou le dispositif.
+**Génération bloquée** avec un message qui dit quoi remplir, s'il manque l'agence, le club, le dispositif ou l'adresse du club. Message pour l'adresse : « Renseignez l'adresse du club dans sa fiche. »
 
 **Vrais textes des modèles :**
 - Logo en en-tête (République française et France Travail).
@@ -44,7 +44,7 @@ Règles du plan :
 - Un saut de page (Parcours de remobilisation).
 - Aucun tableau.
 
-**Widget fiche-club retiré :** partout où le plan cite `src/fiche-club/`, lire `src/clubs/`. Le `console.info` du jeton est déjà supprimé de clubs dans main (fusion #5). Sur la branche `feature/convention`, `src/clubs/script.js` contient encore ce `console.info` (vers la ligne 1313) et `src/fiche-club/` existe encore. Il faut donc ramener main dans la branche avant de s'inspirer de ce code (tâche 0.4).
+**Widget fiche-club retiré :** partout où le plan cite `src/fiche-club/`, lire `src/clubs/`. Le `console.info` du jeton est supprimé de clubs dans main (fusion #5). Main a été ramené dans la branche `feature/convention` (tâche 0.4, faite) : `src/fiche-club/` est retiré et `src/clubs/script.js` ne contient plus ce `console.info`.
 
 ## Structure Grist proposée (à créer)
 
@@ -122,9 +122,9 @@ Le texte se lit ligne par ligne.
 | N° | Tâche | Agent | Fichiers | Ce qui est testé / vérifié |
 |---|---|---|---|---|
 | 0.1 | Réponses de Hanta intégrées dans ce plan. Rester à trancher : Q-A, Q-B (voir ci-dessous). | Hanta | `docs/backlog.md` | Les réponses sont écrites ici. |
-| 0.2 | Vérifier dans le code du tableau de bord : lit-il `Structures.Siege` ou `Adresse` ? Quelles colonnes d'Agences sont lues ? Lister les écarts avec Grist DEV. | auditeur-securite (lecture seule) | `src/actions-dashboard/script.js` | Liste « lu aujourd'hui / à ajouter » pour Structures, Agences, Contacts. |
-| 0.3 | Examen de sécurité de pdfmake : version à figer, cdnjs, empreinte SRI, chargement au clic, polices, poids. Examen de l'envoi : jeton jamais en console, jeton lu au clic pour « Voir ». | auditeur-securite | Aucun fichier modifié | Rapport avec une décision par point. La version proposée est citée avec sa source. |
-| 0.4 | Mettre la branche `feature/convention` à jour avec main (retrait de fiche-club, `console.info` du jeton supprimé de clubs). | Hanta | Aucun fichier de widget | `git status` propre ; le jeton n'apparaît plus dans `src/clubs/script.js`. |
+| 0.2 | **Fait.** Vérifier dans le code du tableau de bord : lit-il `Structures.Siege` ou `Adresse` ? Quelles colonnes d'Agences sont lues ? Lister les écarts avec Grist DEV. Note : la table Structures n'a pas d'adresse dans `Siege` (`Siege` contient Oui ou Non). Une colonne `Adresse` (Text) existe en PROD et a été recréée à l'identique dans DEV7 ; le widget clubs la lit déjà (`structure.Adresse`). Adresse du club dans la convention = `Adresse` + `Code_postal` + ville (table `Communes`, par `Code_Insee` → `Libelle_Commune`). | auditeur-securite (lecture seule) | `src/actions-dashboard/script.js` | Liste « lu aujourd'hui / à ajouter » pour Structures, Agences, Contacts. |
+| 0.3 | **Fait.** Examen de sécurité de pdfmake : version à figer, cdnjs, empreinte SRI, chargement au clic, polices, poids. Examen de l'envoi : jeton jamais en console, jeton lu au clic pour « Voir ». Décisions : PDF signé de 10 Mo au maximum ; « Voir » ouvre le PDF depuis la mémoire du navigateur (adresse `blob:`), sans jeton dans une adresse visible ; contrôle du fichier signé dans l'ordre vide → taille → extension `.pdf` → type `application/pdf` → début `%PDF-` ; pdfmake chargé au clic, version figée et empreinte SRI (version actuelle sur cdnjs : 0.3.3, fichiers `pdfmake.min.js` et `fonts/Roboto.min.js`, à vérifier en S7). `DT` est bien le nom de la colonne de la DD dans Utilisateurs. | auditeur-securite | Aucun fichier modifié | Rapport avec une décision par point. La version proposée est citée avec sa source. |
+| 0.4 | **Fait.** Mettre la branche `feature/convention` à jour avec main (retrait de fiche-club, `console.info` du jeton supprimé de clubs). Main ramené dans la branche (fusion faite) ; fiche-club retiré et `console.info` du jeton supprimé de clubs. | Hanta | Aucun fichier de widget | `git status` propre ; le jeton n'apparaît plus dans `src/clubs/script.js`. |
 
 ### S1. Grist (Hanta, dans Grist DEV)
 
@@ -154,7 +154,7 @@ Le texte se lit ligne par ligne.
 |---|---|---|---|---|
 | 3.1 | Lire `Contacts`, `Conventions`, `Modeles_convention` (ajout à `TABLES`). Une table refusée = liste vide. | dev-backend | `src/actions-dashboard/script.js` | Tests de 3.2. |
 | 3.2 | Tests de 3.1. | testeur | `test/convention-donnees.test.js` (nouveau), `test/helpers/widget.js` | Chaque table lue, chaque table refusée sans planter. |
-| 3.3 | État du bloc : À générer, Générée, Signée, Sans modèle, Droits insuffisants. Blocage s'il manque agence, club ou dispositif, avec le champ à remplir. | dev-backend | `src/actions-dashboard/script.js` | Tests de 3.4. |
+| 3.3 | État du bloc : À générer, Générée, Signée, Sans modèle, Droits insuffisants. Blocage s'il manque agence, club, dispositif ou adresse du club, avec le champ à remplir. | dev-backend | `src/actions-dashboard/script.js` | Tests de 3.4. |
 | 3.4 | Tests de 3.3. | testeur | `test/convention-donnees.test.js` | Les 5 états, Signée l'emporte sur Générée, deux lignes pour la même action (on garde la plus ancienne), message nommant l'élément manquant. |
 
 ### S4. Fonction A : afficher le bloc « Convention »
@@ -193,7 +193,7 @@ Le texte se lit ligne par ligne.
 | 7.4 | « Voir la convention » : ouverture dans un nouvel onglet, jeton lu au clic. | dev-interface | `src/actions-dashboard/index.html`, `script.js` | Tests de 7.5. |
 | 7.5 | Tests de 7.4. | testeur | `test/convention-generation.test.js` | Texte caché « nouvel onglet », aucun jeton dans la page avant le clic. |
 | 7.6 | Réglage des pointillés, du logo et de la mise en page sur un PDF imprimé (faux texte). | Hanta | Aucun | Elle écrit à la main dans chaque zone sans être gênée ; logo, numéros de page et saut de page corrects. |
-| R4 | Recette de la fonction D. | recetteur | `docs/tests/` | Un PDF est généré et s'ouvre pour chaque modèle ; cases correctes ; génération bloquée avec message s'il manque agence, club ou dispositif. Le texte réel n'est pas recopié dans le compte rendu. |
+| R4 | Recette de la fonction D. | recetteur | `docs/tests/` | Un PDF est généré et s'ouvre pour chaque modèle ; cases correctes ; génération bloquée avec message s'il manque agence, club, dispositif ou adresse du club. Le texte réel n'est pas recopié dans le compte rendu. |
 
 ### S8. Fonction E : re-générer
 
