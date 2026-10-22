@@ -406,3 +406,17 @@ Tests : npm test 202/202 réussis
 Fichiers modifiés : test/convention-modele.test.js (créé sous le nom test/convention.test.js, puis renommé)
 Build refait : pas nécessaire (src/ inchangé)
 Commit : af85b34
+
+## Tâche C15 — Remplissage des cases du modèle de convention (S2, tâche 2.3)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.3 du plan, pointillés laissés en vrais points (décision du 2026-10-22)
+
+Note /5 : sans objet
+Ce qui allait : conventionVersContenuPdf(texte, valeurs) remplit les cases après l'analyse (une valeur n'est jamais relue comme du Markdown, la mise en forme est gardée) ; nouvelle fonction conventionCasesManquantes(texte, valeurs) ; \[ imprime un crochet ; fonction d'aide conventionValeurDeCase ; pointillés non touchés ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; points signalés pour le testeur : tout texte entre crochets est une case ([x], [1]), \] non géré, valeur avec retour à la ligne non vérifiée dans pdfmake ; le blocage de la génération se fera à l'écran avec conventionCasesManquantes.
+Tests : npm test 202/202 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b0f593b
