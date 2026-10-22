@@ -378,3 +378,17 @@ Tests : 6 essais manuels, 6 réussis ; lignes d'essai supprimées
 Fichiers modifiés : aucun dans le dépôt
 Build refait : pas nécessaire
 Commit : aucun (fiche seule)
+
+## Tâche C13 — Texte d'un modèle de convention vers contenu pdfmake (S2, tâche 2.1)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.1 du plan, syntaxe relevée dans les 3 modèles (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : fonction pure conventionVersContenuPdf(texte) ajoutée à la fin de src/actions-dashboard/script.js, avec 3 fonctions d'aide (conventionBlocs, conventionRuns, conventionTexte) ; titres, retraits, listes à puces et numérotées, gras, italique, souligné, exposant, liens (texte puis adresse), notes rangées à la fin ; styles nommés seulement (titre1, titre2, titre3, titre, paragraphe, retrait, liste, note) ; 11 points ambigus signalés ; aucun écran ni test touché.
+Ce que j'ai fait corriger : rien ; validé : retour à la ligne simple gardé dans le paragraphe, ligne entièrement en gras = titre, titres sans niveau.
+Tests : npm test 180/180 réussis (rien de cassé) ; la nouvelle fonction n'est pas encore testée (testeur à suivre) ; exposant et souligné de pdfmake 0.3.3 à vérifier sur une page d'essai à la tâche PDF
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : ccc3dcd
