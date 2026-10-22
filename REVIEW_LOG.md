@@ -322,3 +322,17 @@ Tests : 0 lancés, 0 réussis (audit en lecture seule)
 Fichiers modifiés : aucun
 Build refait : pas nécessaire
 Commit : aucun (fiche seule)
+
+## Tâche C9 — Note UX de la convention corrigée après l'audit
+
+Date : 2026-10-22
+Agent : @designer-ux
+Prompt : corriger docs/ux/convention.md après l'audit : boutons « Voir » (PDF ouvert depuis la mémoire, sans jeton visible) au lieu de liens ; contrôle du fichier signé (extension, type, début %PDF-, vide, 10 Mo au maximum) avec ses messages
+
+Note /5 : sans objet
+Ce qui allait : un seul fichier modifié ; les deux décisions appliquées partout où la note parlait de lien ; message ajouté pour le fichier vide ; risque de blocage de l'onglet blob: signalé.
+Ce que j'ai fait corriger : rien. À faire au développement : ordre des contrôles vide → taille → extension → type → %PDF- (l'agent avait mis « vide » en 4e position) ; tester l'ouverture blob: après chargement dans Grist DEV (S7).
+Tests : 0 lancés, 0 réussis (note)
+Fichiers modifiés : docs/ux/convention.md
+Build refait : pas nécessaire
+Commit : 468aa36 sur feature/convention
