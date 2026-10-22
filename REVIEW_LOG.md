@@ -294,3 +294,17 @@ Tests : 0 lancés, 0 réussis (cadrage)
 Fichiers modifiés : docs/backlog.md
 Build refait : pas nécessaire
 Commit : 469d5c1 sur feature/convention
+
+## Tâche C7 — Ramener main dans la branche de la convention (manuel)
+
+Date : 2026-10-22
+Agent : aucun (fait à la main)
+Prompt : sans objet (tâche 0.4 du plan : git merge origin/main dans feature/convention)
+
+Note /5 : sans objet
+Ce qui allait : un seul conflit, dans REVIEW_LOG.md (fiches ajoutées au même endroit) ; CLAUDE.md fusionné automatiquement ; fiche-club retiré et jeton plus affiché dans clubs, comme sur main.
+Ce que j'ai fait corriger : conflit réglé en gardant les deux séries de fiches ; fiches de la convention renommées C1 à C6 pour ne plus entrer en collision avec les autres missions.
+Tests : 180 lancés, 180 réussis
+Fichiers modifiés : REVIEW_LOG.md (résolution du conflit), plus les fichiers venus de main
+Build refait : pas nécessaire (sources de la convention inchangées)
+Commit : 46621e8 sur feature/convention
