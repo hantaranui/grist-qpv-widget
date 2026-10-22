@@ -348,3 +348,17 @@ Tests : [résultat de npm test]
 Fichiers modifiés : test/clubs-contacts-ecran.test.js (créé)
 Build refait : non (src/ inchangé)
 Commit : 0edab57 sur feature/contacts-fiche-club
+
+## Tâche 24 — Contacts : documentation (documentaliste)
+
+Date : 22/10/2026
+Agent : documentaliste (1 correction)
+Prompt : documenter la gestion des contacts dans README.md (section Widget clubs) et CLAUDE.md, aligner le tableau des messages de la note UX sur le code
+
+Note /5 : sans objet
+Ce qui allait : noms de fonctions, constantes et colonnes vérifiés dans le code avant d'écrire ; message de repli de la suppression aligné sur le code ; décalages restants signalés par l'agent
+Ce que j'ai fait corriger : note UX mise à jour avec les constats de DEV7 (création par un non-propriétaire, refus, affichage)
+Tests : 244 lancés, 244 réussis (npm test)
+Fichiers modifiés : README.md, CLAUDE.md, docs/ux/contacts-fiche-club.md
+Build refait : non (src/ inchangé)
+Commit : b5cc09b sur feature/contacts-fiche-club
