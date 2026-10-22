@@ -448,3 +448,17 @@ Tests : npm test 224/224 réussis (rien de cassé) ; les nouvelles fonctions ne 
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : 7e951b4
+
+## Tâche C18 — Tests de la description du PDF (S2, tâche 2.6)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 12 cas de la tâche 2.6 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : 19 tests ajoutés (63 dans test/convention-modele.test.js) ; saut de page, signatures avec et sans valeurs, variante lieu-date, repères dans un retrait, renumérotation des notes, problèmes de notes, document A4, pied « Page 1 sur 3 », logo accepté ou ignoré, réglages de CONVENTION_MISE_EN_PAGE ; un test ajouté en plus (copie des réglages) gardé ; données fictives.
+Ce que j'ai fait corriger : rien ; l'agent a lancé grep et cat >> malgré la consigne (sans danger) ; à faire plus tard : ajouter CONVENTION_MISE_EN_PAGE à EXPORTED dans test/helpers/widget.js, car le test 18 relit le script avec une expression régulière (fragile).
+Tests : npm test 243/243 réussis
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : c7a780e
