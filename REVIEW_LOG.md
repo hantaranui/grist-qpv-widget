@@ -434,3 +434,17 @@ Tests : npm test 224/224 réussis
 Fichiers modifiés : test/convention-modele.test.js
 Build refait : pas nécessaire (src/ inchangé)
 Commit : a7e8583
+
+## Tâche C17 — Description du PDF de la convention pour pdfmake (S2, tâche 2.5)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.5 du plan, repères {saut-de-page}, {signatures} et {signatures:lieu-date}, logo facultatif (Q-C ouverte)
+
+Note /5 : sans objet
+Ce qui allait : repères reconnus seuls sur leur ligne ; signatures en deux colonnes (organisation sportive à gauche, France Travail à droite) remplies par les cases, d'un seul tenant ; notes renumérotées dans l'ordre du premier appel, textes à la fin (provisoire, Q-A) ; nouvelles fonctions conventionProblemesNotes et conventionDocumentPdf (A4, « Page X sur Y », logo seulement si image data:image/) ; réglages regroupés dans CONVENTION_MISE_EN_PAGE ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; points signalés : note définie deux fois = la première gardée, repères non reconnus dans un retrait, page blanche possible si {saut-de-page} est en dernier, hauteur des signatures à régler en 7.6, noms des cases avec apostrophe typographique.
+Tests : npm test 224/224 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 7e951b4
