@@ -1460,20 +1460,70 @@ function escapeAttr(value) {
 //    { "Nom": "valeur" }) est donne, sinon laissees telles quelles. La valeur est
 //    posee comme texte, apres l'analyse : elle n'est jamais relue comme du Markdown.
 //    Une case sans valeur dans l'objet reste "[Nom]" (voir conventionCasesManquantes) ;
-//  - pointilles : laisses tels quels (vrais points tapes dans le texte).
+//  - pointilles : laisses tels quels (vrais points tapes dans le texte) ;
+//  - reperes, chacun seul sur sa ligne (au premier niveau, pas dans un retrait) :
+//      {saut-de-page}         saut de page ;
+//      {signatures}           bloc de signature a deux colonnes (club a gauche, agence a droite) ;
+//      {signatures:lieu-date} pareil, avec "A ..., le ..." en tete de chaque colonne.
+//  - notes renumerotees 1, 2, 3 dans l'ordre du premier appel, quelle que soit l'etiquette ecrite.
+//    Une note definie mais jamais citee est numerotee apres les autres (voir conventionProblemesNotes).
 function conventionVersContenuPdf(texte, valeurs) {
-  const lignes = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map(ligne => ligne.trimEnd());
-  const notes = [];
-  const corps = lignes.filter(ligne => {
-    const definition = /^\[\^([^\]\s]+)\]:\s*(.*)$/.exec(ligne);
-    if (definition) notes.push({etiquette: definition[1], runs: conventionRuns(definition[2], valeurs)});
-    return !definition;
-  });
-  const blocs = conventionBlocs(corps, true, valeurs);
-  notes.forEach(note => {
-    blocs.push({text: conventionTexte([{text: note.etiquette, sup: true}, {text: ' '}, ...note.runs]), style: 'note'});
-  });
+  const {corps, definitions, numeros} = conventionAnalyseNotes(texte);
+  const blocs = conventionBlocs(corps, true, valeurs, numeros);
+  // Textes des notes a la fin du document (provisoire), dans l'ordre des numeros.
+  definitions
+    .slice()
+    .sort((a, b) => numeros.get(a.etiquette) - numeros.get(b.etiquette))
+    .forEach(note => {
+      const runs = conventionRuns(note.texte, valeurs, numeros);
+      blocs.push({text: conventionTexte([{text: String(numeros.get(note.etiquette)), sup: true}, {text: ' '}, ...runs]), style: 'note'});
+    });
   return blocs;
+}
+
+// Separe les lignes du texte en corps (tout sauf les definitions de notes), definitions
+// de notes (la premiere definition d'une etiquette compte), et appels de notes dans
+// l'ordre du premier appel. "numeros" donne le numero imprime de chaque etiquette :
+// d'abord les etiquettes citees, puis celles definies sans appel.
+function conventionAnalyseNotes(texte) {
+  const lignes = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map(ligne => ligne.trimEnd());
+  const corps = [];
+  const definitions = [];
+  lignes.forEach(ligne => {
+    const m = /^\[\^([^\]\s]+)\]:\s*(.*)$/.exec(ligne);
+    if (!m) corps.push(ligne);
+    else if (!definitions.some(d => d.etiquette === m[1])) definitions.push({etiquette: m[1], texte: m[2]});
+  });
+  // \[ est avale en premier, pour qu'un crochet litteral ne soit pas pris pour un appel.
+  const appels = [];
+  corps.forEach(ligne => {
+    const motif = /\\\[|\[\^([^\]\s]+)\]/g;
+    let m;
+    while ((m = motif.exec(ligne))) {
+      if (m[1] !== undefined && !appels.includes(m[1])) appels.push(m[1]);
+    }
+  });
+  const numeros = new Map();
+  appels.forEach(etiquette => numeros.set(etiquette, numeros.size + 1));
+  definitions.forEach(d => { if (!numeros.has(d.etiquette)) numeros.set(d.etiquette, numeros.size + 1); });
+  return {corps, definitions, appels, numeros};
+}
+
+// Problemes sur les notes du texte. Chaque probleme : { type, etiquette }.
+//  - "appel sans texte" : la note est citee ([^x]) mais jamais definie ([^x]: ...) ;
+//  - "texte sans appel" : la note est definie mais jamais citee.
+// Les appels sans texte viennent d'abord (dans l'ordre des appels), puis les textes
+// sans appel (dans l'ordre des definitions). Liste vide = aucun probleme.
+function conventionProblemesNotes(texte) {
+  const {definitions, appels} = conventionAnalyseNotes(texte);
+  const problemes = [];
+  appels.forEach(etiquette => {
+    if (!definitions.some(d => d.etiquette === etiquette)) problemes.push({type: 'appel sans texte', etiquette});
+  });
+  definitions.forEach(d => {
+    if (!appels.includes(d.etiquette)) problemes.push({type: 'texte sans appel', etiquette: d.etiquette});
+  });
+  return problemes;
 }
 
 // Liste des cases [Nom] du texte qui n'ont pas de valeur (absente ou vide), sans doublon,
@@ -1503,7 +1553,7 @@ function conventionValeurDeCase(valeurs, nom) {
 
 // Regroupe les lignes en blocs : titre, retrait, liste ou paragraphe.
 // Le retrait n'est reconnu qu'au premier niveau : un "> " dans un retrait reste du texte.
-function conventionBlocs(lignes, retraitAutorise, valeurs) {
+function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
   const blocs = [];
   let paragraphe = [];
   let liste = null;
@@ -1512,7 +1562,7 @@ function conventionBlocs(lignes, retraitAutorise, valeurs) {
       const runs = [];
       paragraphe.forEach((ligne, index) => {
         if (index) runs.push({text: '\n'});
-        runs.push(...conventionRuns(ligne, valeurs));
+        runs.push(...conventionRuns(ligne, valeurs, numeros));
       });
       blocs.push({text: conventionTexte(runs), style: 'paragraphe'});
     }
@@ -1534,7 +1584,7 @@ function conventionBlocs(lignes, retraitAutorise, valeurs) {
       fermer();
       liste = {type, items: [], debut};
     }
-    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs))});
+    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs, numeros))});
   };
 
   for (let i = 0; i < lignes.length; i++) {
@@ -1542,6 +1592,12 @@ function conventionBlocs(lignes, retraitAutorise, valeurs) {
     let m;
     if (!ligne.trim() || /^<!--\s*-->$/.test(ligne.trim())) {
       fermer();
+    } else if (retraitAutorise && ligne.trim() === '{saut-de-page}') {
+      fermer();
+      blocs.push({text: '', pageBreak: 'after'});
+    } else if (retraitAutorise && (ligne.trim() === '{signatures}' || ligne.trim() === '{signatures:lieu-date}')) {
+      fermer();
+      blocs.push(conventionSignatures(ligne.trim() === '{signatures:lieu-date}', valeurs));
     } else if (retraitAutorise && ligne.startsWith('>')) {
       fermer();
       const interieur = [];
@@ -1550,16 +1606,16 @@ function conventionBlocs(lignes, retraitAutorise, valeurs) {
         i++;
       }
       i--;
-      blocs.push({stack: conventionBlocs(interieur, false, valeurs), style: 'retrait'});
+      blocs.push({stack: conventionBlocs(interieur, false, valeurs, numeros), style: 'retrait'});
     } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
       fermer();
-      titre('titre' + m[1].length, conventionRuns(m[2], valeurs));
+      titre('titre' + m[1].length, conventionRuns(m[2], valeurs, numeros));
     } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
       ajouterItem('ul', 1, m[1]);
     } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
       ajouterItem('ol', Number(m[1]), m[2]);
     } else {
-      const runs = conventionRuns(ligne, valeurs);
+      const runs = conventionRuns(ligne, valeurs, numeros);
       const toutEnGras = runs.some(run => run.text.trim()) && runs.every(run => run.bold || !run.text.trim());
       if (toutEnGras) {
         fermer();
@@ -1576,7 +1632,8 @@ function conventionBlocs(lignes, retraitAutorise, valeurs) {
 
 // Decoupe une ligne en morceaux de texte portant chacun leur mise en forme.
 // Un marqueur ouvrant sans marqueur fermant plus loin reste du texte.
-function conventionRuns(ligne, valeurs) {
+// "numeros" (facultatif) : numero imprime de chaque note ; sans lui, l'etiquette est imprimee.
+function conventionRuns(ligne, valeurs, numeros) {
   const runs = [];
   const actif = {bold: false, italics: false, underline: false, sup: false};
   let tampon = '';
@@ -1613,7 +1670,7 @@ function conventionRuns(ligne, valeurs) {
       i += 2;
     } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
       vider();
-      ajouter(m[1], true);
+      ajouter(numeros && numeros.has(m[1]) ? String(numeros.get(m[1])) : m[1], true);
       i += m[0].length;
     } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
       vider();
@@ -1639,4 +1696,73 @@ function conventionTexte(runs) {
   const simplifies = runs.map(run => (Object.keys(run).length === 1 ? run.text : run));
   if (!simplifies.length) return '';
   return simplifies.length === 1 && typeof simplifies[0] === 'string' ? simplifies[0] : simplifies;
+}
+
+// ---- Convention : mise en page du PDF (tout ce qui se regle sur papier est ici) ----
+// Les valeurs seront ajustees sur papier (tache 7.6) : on ne change que cet objet.
+// Tailles en points (1 pt = 1/72 pouce), marges [gauche, haut, droite, bas].
+const CONVENTION_MISE_EN_PAGE = {
+  pageMargins: [56, 72, 56, 64],
+  defaultStyle: {fontSize: 11},
+  logo: {width: 90, margin: [56, 24, 0, 0]},
+  pied: {fontSize: 9},
+  signatures: {lignesVides: 4, espaceEntreColonnes: 24},
+  styles: {
+    titre1: {fontSize: 18, bold: true, margin: [0, 0, 0, 12]},
+    titre2: {fontSize: 14, bold: true, margin: [0, 12, 0, 6]},
+    titre3: {fontSize: 12, bold: true, margin: [0, 8, 0, 4]},
+    titre: {fontSize: 11, bold: true, margin: [0, 8, 0, 4]},
+    paragraphe: {margin: [0, 0, 0, 8]},
+    retrait: {margin: [28, 0, 0, 8]},
+    liste: {margin: [14, 0, 0, 8]},
+    note: {fontSize: 9, margin: [0, 0, 0, 2]},
+  },
+};
+
+// Bloc de signature a deux colonnes : club a gauche, agence a droite.
+// Une case sans valeur reste ecrite [Nom], comme dans le reste du texte.
+function conventionSignatures(avecLieuDate, valeurs) {
+  const reglages = CONVENTION_MISE_EN_PAGE.signatures;
+  const valeurOuCase = nom => {
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    return valeur === undefined || valeur === '' ? `[${nom}]` : valeur;
+  };
+  const colonne = (titre, nomPersonne, nomFonction) => {
+    const lignes = [];
+    if (avecLieuDate) lignes.push({text: 'À ............................, le ............................', style: 'paragraphe'});
+    lignes.push(
+      {text: titre, style: 'paragraphe'},
+      {text: valeurOuCase(nomPersonne), bold: true, style: 'paragraphe'},
+      {text: valeurOuCase(nomFonction), style: 'paragraphe'},
+      {text: '\n'.repeat(reglages.lignesVides), style: 'paragraphe'}
+    );
+    return {width: '*', stack: lignes};
+  };
+  return {
+    columns: [
+      colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire'),
+      colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant'),
+    ],
+    columnGap: reglages.espaceEntreColonnes,
+    unbreakable: true,
+  };
+}
+
+// Description complete du document pour pdfmake (fonction pure : elle n'appelle pas pdfmake).
+// options.logo : image en data URL, affichee a gauche de l'en-tete ; sans logo, pas d'en-tete.
+function conventionDocumentPdf(texte, valeurs, options) {
+  const mise = JSON.parse(JSON.stringify(CONVENTION_MISE_EN_PAGE));
+  const logo = options && typeof options.logo === 'string' && options.logo.startsWith('data:image/') ? options.logo : '';
+  const document = {
+    pageSize: 'A4',
+    pageMargins: mise.pageMargins,
+    defaultStyle: mise.defaultStyle,
+    content: conventionVersContenuPdf(texte, valeurs),
+    footer: (page, total) => ({text: `Page ${page} sur ${total}`, alignment: 'center', fontSize: mise.pied.fontSize}),
+    styles: mise.styles,
+  };
+  if (logo) {
+    document.header = {image: logo, width: mise.logo.width, alignment: 'left', margin: mise.logo.margin};
+  }
+  return document;
 }
