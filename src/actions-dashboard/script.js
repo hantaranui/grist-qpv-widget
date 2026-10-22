@@ -1,6 +1,10 @@
 grist.ready({requiredAccess: 'full'});
 
-const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP'];
+// Contacts, Conventions et Modeles_convention servent a la convention de
+// partenariat (lecture seule pour l'instant). Une table que les regles d'acces
+// refusent (ex. ANS : ni Conventions ni Modeles_convention) devient une liste
+// vide dans load(), comme toutes les autres.
+const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP', 'Contacts', 'Conventions', 'Modeles_convention'];
 const COLORS = [
   '#283276',
   '#008ECF',
