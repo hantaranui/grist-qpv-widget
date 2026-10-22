@@ -490,3 +490,17 @@ Tests : npm test 254/254 réussis
 Fichiers modifiés : test/convention-donnees.test.js (créé), test/helpers/widget.js
 Build refait : pas nécessaire (src/ inchangé)
 Commit : 9a85dc5
+
+## Tâche C21 — État du bloc Convention et blocage de la génération (S3, tâche 3.3)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 3.3 du plan, puis correction (ville du club)
+
+Note /5 : sans objet
+Ce qui allait : conventionEtat (À générer, Générée, Signée, Sans modèle, Droits insuffisants ; Signée l'emporte ; plus petit id gardé en cas de doublon) et conventionBlocage (agence, club, dispositif, adresse, dans cet ordre, avec message) ; state.tablesRefusees rempli par load() (noms de tables seulement) ; 3 messages proposés (agence, club, dispositif), à revoir en 4.1 ; rien lancé par l'agent.
+Ce que j'ai fait corriger : le widget ne lisait pas Communes (blocage « adresse » permanent) ; colonne formule Structures.Ville (Texte) créée dans DEV7, et adresse du club lue dans Adresse, Code_postal et Ville ; à créer aussi dans TEST puis en PROD avant la fusion. Q-B (corbeille, annulée) toujours ouverte.
+Tests : npm test 254/254 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 63a5d62
