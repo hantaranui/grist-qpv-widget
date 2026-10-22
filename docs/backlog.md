@@ -141,12 +141,12 @@ Le texte se lit ligne par ligne.
 
 | N° | Tâche | Agent | Fichiers | Ce qui est testé |
 |---|---|---|---|---|
-| 2.1 | Analyse du texte en blocs (titres, paragraphes, listes, gras, saut de page, bloc de signatures). Fonction pure. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.2. |
-| 2.2 | Tests de 2.1. | testeur | `test/convention-modele.test.js` (nouveau) | Titres, gras, listes, ligne vide, accents, saut de page, signatures. |
+| 2.1 | Analyse du texte en blocs : titres (#, ##, ### ou ligne en gras), paragraphes, retrait (>), listes à puces et numérotées, gras, italique, souligné, exposant, liens (texte puis adresse), appels et textes de note (rangés à la fin, provisoire). Fonction pure conventionVersContenuPdf. Fait (commit ccc3dcd). | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.2. |
+| 2.2 | Tests de 2.1. Fait (commits af85b34 et 2198a5b). | testeur | `test/convention-modele.test.js` (nouveau) | 22 tests : titres, retrait, listes, gras, italique, souligné, exposant, commentaire vide, lien, cases, pointillés, note, texte vide. |
 | 2.3 | Cases et pointillés : remplacement, refus d'une case inconnue (nommée), longueur des pointillés. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.4. |
 | 2.4 | Tests de 2.3. | testeur | `test/convention-modele.test.js` | Case inconnue, `\[`, nom de club avec caractères spéciaux. |
-| 2.5 | Note de bas de page et description du PDF pour pdfmake : logo en en-tête, numéros de page, bloc de signature à deux colonnes. Fonction pure, sans appel à pdfmake. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.6. |
-| 2.6 | Tests de 2.5. | testeur | `test/convention-modele.test.js` | Note citée mais non définie, définie mais non citée, numérotation, en-tête et pied de page présents, deux colonnes de signature. |
+| 2.5 | Description du PDF pour pdfmake : logo en en-tête, numéros de page, placement des notes, saut de page ({saut-de-page}) et bloc de signature à deux colonnes ({signatures}), marqueurs proposés dans « Format du texte des modèles ». Fonction pure, sans appel à pdfmake. | dev-backend | `src/actions-dashboard/script.js` | Tests de 2.6. |
+| 2.6 | Tests de 2.5. | testeur | `test/convention-modele.test.js` | Note citée mais non définie, définie mais non citée, numérotation, en-tête et pied de page présents, saut de page, deux colonnes de signature. |
 
 ### S3. Lire les données (sans écran visible)
 
