@@ -308,3 +308,17 @@ Tests : 180 lancés, 180 réussis
 Fichiers modifiés : REVIEW_LOG.md (résolution du conflit), plus les fichiers venus de main
 Build refait : pas nécessaire (sources de la convention inchangées)
 Commit : 46621e8 sur feature/convention
+
+## Tâche C8 — Audit de sécurité avant le développement de la convention
+
+Date : 2026-10-22
+Agent : @auditeur-securite
+Prompt : tâche 0.3 du plan : examiner pdfmake (version figée, SRI, chargement au clic), l'envoi des PDF en pièce jointe, « Voir la convention » sans jeton visible, le dépôt du PDF signé, les données de personnes et les règles d'accès ; dire risques, gravité, précautions et tests à prévoir
+
+Note /5 : sans objet
+Ce qui allait : audit précis, avec les numéros de ligne ; 6 points évalués ; 15 tests proposés (jeton jamais dans la console ni dans une adresse, pdfmake chargé au clic avec SRI, refus des faux PDF) ; ce qui n'est pas vérifiable depuis le dépôt clairement signalé ; aucun fichier modifié.
+Ce que j'ai fait corriger : rien. Décisions : PDF signé de 10 Mo au maximum ; « Voir » par un fichier ouvert depuis la mémoire (adresse blob:, sans jeton), déjà prouvé par l'essai C2 ; contrôle de l'extension, du type et du début %PDF- du fichier signé. DT confirmé côté Utilisateurs. À faire : corriger convention.md, backlog.md (0.4 faite) et .gitignore (.env).
+Tests : 0 lancés, 0 réussis (audit en lecture seule)
+Fichiers modifiés : aucun
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
