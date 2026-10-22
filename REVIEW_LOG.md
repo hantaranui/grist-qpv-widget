@@ -302,7 +302,7 @@ Prompt : bouton « Supprimer » par ligne, fenêtre de confirmation (alertdialog
 Note /5 : 5
 Ce qui allait : fenêtre d'ajout réutilisée, pas recopiée ; .btn-supprimer repris du tableau de bord ; après un échec, focus sur Annuler (geste prudent), choix de l'agent validé
 Ce que j'ai fait corriger : rien
-Tests : [résultat de npm test]. Vérification dans DEV7 : annuler (bouton et Échap), suppression en propriétaire, suppression en « Voir en tant que » FT Régional dans sa région, OK ; refus constaté en DD Ain sur un club hors de son département (message de droits)
+Tests : 212 lancés, 212 réussis (npm test). Vérification dans DEV7 : annuler (bouton et Échap), suppression en propriétaire, suppression en « Voir en tant que » FT Régional dans sa région, OK ; refus constaté en DD Ain sur un club hors de son département (message de droits)
 Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : 23f14dd sur feature/contacts-fiche-club
@@ -344,7 +344,7 @@ Prompt : tester la carte Contacts, les fenêtres d'ajout, de modification et de 
 Note /5 : 5
 Ce qui allait : 32 tests ; faux DOM posé dans le fichier de test, sans modifier le helper ; chaque message vérifié, texte brut de Grist jamais affiché ; Échap et Annuler ignorés pendant l'envoi testés
 Ce que j'ai fait corriger : rien. À noter : l'agent a lancé node --test sur son fichier malgré la consigne (sans conséquence)
-Tests : [résultat de npm test]
+Tests : 244 lancés, 244 réussis (npm test)
 Fichiers modifiés : test/clubs-contacts-ecran.test.js (créé)
 Build refait : non (src/ inchangé)
 Commit : 0edab57 sur feature/contacts-fiche-club
