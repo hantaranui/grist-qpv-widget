@@ -75,7 +75,9 @@ npm test
 
 Les tests s'executent avec le lanceur integre de Node, sans dependance. Ils
 couvrent la logique pure du tableau de bord (construction des actions a partir
-des tables Grist, filtres, tri, listes de choix) et du widget clubs (fiche, tri, taux de financement, zonages, televersement du logo, contrat
+des tables Grist, filtres, tri, listes de choix) et du widget clubs (fiche, tri, taux de financement, zonages, televersement du logo, contacts
+-- `test/clubs-contacts.test.js` pour les donnees et
+`test/clubs-contacts-ecran.test.js` pour les ecrans --, contrat
 de navigation vers le tableau de bord), et verifient que les fichiers HTML
 assembles a la racine correspondent bien aux sources de `src/`.
 
@@ -141,11 +143,47 @@ Trois cartes, dans le style du tableau de bord des actions (bandeau
 
 - **Club** : logo, nom, SIRET, adresse, zonages QPV et FRR (voir « Zonages » et
   « Logo » ci-dessous). Tout est en lecture seule, sauf le logo.
-- **Contacts** (table `Contacts`) : prenom, nom, e-mail, telephone.
+- **Contacts** (table `Contacts`) : prenom, nom, fonction (sous le nom, si elle
+  est renseignee), e-mail, telephone. Cette carte et la carte Actions se
+  partagent la largeur a parts egales. Voir « Contacts » ci-dessous.
 - **Actions** (table `Actions`) : date, statut, dispositif, part du budget
   couverte par les `Cofinancements`, des plus recentes aux plus anciennes, les
   actions sans date en dernier, et un bouton **Voir** qui ouvre directement la fiche modifiable de l'action dans
   `actions-dashboard`, sur une autre page Grist.
+
+### Contacts
+
+Depuis la carte Contacts de la fiche d'un club, on peut :
+
+- **Ajouter** un contact (bouton « Ajouter un contact ») : une fenetre demande
+  Nom, Prenom, E-mail, Telephone et Fonction. **Nom et E-mail sont
+  obligatoires** ; une valeur faite d'espaces compte comme vide, et l'e-mail
+  doit avoir une forme valide (une arobase, du texte avant et apres, pas d'espace). Le contact est
+  rattache au club ouvert.
+- **Modifier** un contact (bouton icone crayon sur sa ligne) : memes champs,
+  pre-remplis. Le club d'un contact ne change jamais.
+- **Supprimer** un contact (bouton icone corbeille sur sa ligne) : une fenetre
+  de confirmation precise que la suppression est **definitive**. Contrairement
+  aux actions, qui vont a la corbeille, le contact est vraiment supprime de la
+  table `Contacts`.
+
+Chaque ecriture est une seule operation envoyee par `grist.docApi.applyUserActions`
+(sans jeton). Apres une reussite, la liste est relue depuis Grist et la fiche
+reste ouverte sur le meme club.
+
+**Les droits ne sont pas decides par le widget** mais par les regles d'acces
+de Grist sur la table `Contacts`. Le widget ne les devine pas : il tente
+l'ecriture et, si Grist la refuse, affiche un message qui parle de droits. Si le
+refus n'est pas reconnu, un message de repli evoque les droits possibles. Les
+boutons restent visibles pour tous, sauf « Ajouter un contact », masque quand la
+table `Contacts` ne peut pas etre lue. Les colonnes formules `DR` et `DD` de
+`Contacts`, qui servent a ces regles, ne sont jamais ecrites.
+
+Donnees personnelles : la table contient des coordonnees de personnes. La
+fenetre d'ajout et de modification demande des **coordonnees professionnelles**
+(e-mail et telephone de la structure), pas des coordonnees personnelles. Tout
+ce qui s'affiche est echappe, et ni les valeurs saisies ni le texte brut d'une
+erreur Grist ne sont ecrits dans la console ni dans un message.
 
 ### Zonages
 

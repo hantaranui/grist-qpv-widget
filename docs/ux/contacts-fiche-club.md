@@ -1,7 +1,7 @@
 # Note UX — Gérer les contacts dans la fiche d'un club
 
 Widget : clubs (src/clubs/). Écran concerné : la carte « Contacts » de la fiche d'un club (ouverte par le bouton Voir de la liste).
-Statut : validée par Hanta le 21/10/2026. Les décisions de Hanta sont intégrées ; ce qui reste à constater est listé à la fin (« À constater en recette (DEV7) »).
+Statut : validée par Hanta le 21/10/2026. Les décisions de Hanta sont intégrées ; ce qui a été constaté en recette est listé à la fin (« Constaté en recette (DEV7, 21/10/2026) »).
 Sources lues : CLAUDE.md (section « Le widget clubs »), docs/design-system-france-travail.md, src/clubs/ (index.html, script.js, style.css), src/actions-dashboard/ (index.html, script.js, style.css), pages du design system citées plus bas.
 
 ## 0. Point de départ (ce qui existe)
@@ -189,10 +189,12 @@ Tous en français simple, à la forme déjà utilisée par le tableau de bord (�
 | Enregistrement réussi — ajout | Annonce aux lecteurs d'écran (zone `sr-only`, voir §7.4) | « Le contact a bien été ajouté. » | `role="status"` |
 | Enregistrement réussi — modification | idem | « Le contact a bien été modifié. » | `role="status"` |
 | Suppression réussie | idem | « Le contact a bien été supprimé. » | `role="status"` |
-| Refus de Grist (droits insuffisants), ajout ou modification — **texte à constater en recette (DEV7)** | Alerte en haut de la fenêtre | « Vous n'avez pas les droits pour ajouter ou modifier des contacts de ce club. Vos données n'ont pas été enregistrées. Rapprochez-vous de l'équipe qui gère le document. » | `role="alert"` |
-| Refus de Grist, suppression — **texte à constater en recette (DEV7)** | Alerte dans la fenêtre de suppression | « Vous n'avez pas les droits pour supprimer ce contact. Il n'a pas été supprimé. » | `role="alert"` |
-| Échec réseau ou autre échec, ajout / modification | Alerte en haut de la fenêtre | « L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. » | `role="alert"` |
-| Échec réseau ou autre échec, suppression | Alerte dans la fenêtre de suppression | « La suppression n'a pas abouti. Vérifiez votre connexion puis réessayez. » | `role="alert"` |
+| Refus de Grist (droits insuffisants), ajout ou modification — **refus constaté en recette (DEV7) le 21/10/2026** | Alerte en haut de la fenêtre | « Vous n'avez pas les droits pour ajouter ou modifier des contacts de ce club. Vos données n'ont pas été enregistrées. Rapprochez-vous de l'équipe qui gère le document. » | `role="alert"` |
+| Refus de Grist, suppression — **refus constaté en recette (DEV7) le 21/10/2026** | Alerte dans la fenêtre de suppression | « Vous n'avez pas les droits pour supprimer ce contact. Il n'a pas été supprimé. » | `role="alert"` |
+| Échec réseau, ajout / modification | Alerte en haut de la fenêtre | « L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. » | `role="alert"` |
+| Autre échec (ni refus reconnu, ni réseau), ajout / modification : message de repli | Alerte en haut de la fenêtre | « L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de modifier les contacts de ce club. » | `role="alert"` |
+| Échec réseau, suppression | Alerte dans la fenêtre de suppression | « La suppression n'a pas abouti. Vérifiez votre connexion puis réessayez. » | `role="alert"` |
+| Autre échec (ni refus reconnu, ni réseau), suppression : message de repli | Alerte dans la fenêtre de suppression | « La suppression n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de supprimer les contacts de ce club. » | `role="alert"` |
 | Contact introuvable (supprimé entre-temps par quelqu'un d'autre) | Alerte dans la fenêtre | « Ce contact n'existe plus. La liste va être actualisée. » | `role="alert"` |
 | Liste vide | Corps de la carte | « Aucun contact enregistré pour ce club. » (texte déjà en place) | — |
 | Lecture refusée | Corps de la carte | « Vos droits ne permettent pas de lire les contacts. » (texte déjà en place) | — |
@@ -200,7 +202,8 @@ Tous en français simple, à la forme déjà utilisée par le tableau de bord (�
 
 Règles pour ces messages :
 
-- **Ne pas distinguer refus et échec réseau n'est pas acceptable** : le message de refus doit dire que ce sont les droits. Je ne sais pas quel texte ou quel code Grist renvoie dans `error.message` pour un refus (aucun exemple dans le dépôt que j'ai lu) : c'est **à constater en recette, dans DEV7** (décision de Hanta) : comment reconnaître un refus, et le texte exact à afficher. **Si le refus ne peut pas être reconnu de façon fiable, utiliser un seul message de repli** : « L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de modifier les contacts de ce club. »
+- **Ne pas distinguer refus et échec réseau n'est pas acceptable** : le message de refus doit dire que ce sont les droits. Constaté par Hanta dans DEV7 le 21/10/2026 : en « Voir en tant que » FT Départemental, sur un club hors de son département, le widget affiche bien les deux messages de refus du tableau ci-dessus (ajout : « Vous n'avez pas les droits pour ajouter ou modifier des contacts de ce club… » ; suppression : « Vous n'avez pas les droits pour supprimer ce contact… »).
+- **Message de repli : il reste un filet de sécurité.** Si un refus n'est pas reconnu comme tel, le widget affiche un seul message de repli, qui évoque les droits sans l'affirmer : « L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de modifier les contacts de ce club. » (pour la suppression, voir la ligne « message de repli » du tableau). Les refus testés sont reconnus ; ce message ne sert qu'aux cas non reconnus.
 - Le tableau de bord affiche le texte brut de l'erreur Grist (« …n'a pas abouti : détail »). Pour les contacts, **ne pas afficher ce texte brut** : une erreur Grist peut reprendre des valeurs saisies (e-mail, nom), c'est-à-dire des données personnelles, dans un message à l'écran. Le message est fixe ; le détail technique, s'il est journalisé, ne contient jamais les valeurs saisies.
 - Pas d'alerte de réussite visible (voir §7.4) : la preuve visuelle du succès est la fenêtre qui se ferme et la liste mise à jour ; le texte de réussite est annoncé aux lecteurs d'écran. La zone d'annonce reste dans la page jusqu'à l'action suivante ou jusqu'à ce qu'on quitte la fiche.
 
@@ -539,9 +542,12 @@ Décisions de Hanta (22/10/2026)
 10. Icônes des boutons de ligne : `icon-edit` (Modifier) et `icon-trash` (Supprimer), adoptées ensemble, icône seule pour les deux (§2.1, §7.2).
 11. La corbeille de la ligne reste non rouge : le rouge reste réservé au bouton de confirmation de la fenêtre de suppression (§6.2).
 
-## À constater en recette (DEV7)
+## Constaté en recette (DEV7, 21/10/2026)
 
-- **Texte et reconnaissance du refus de Grist** (§3) : comment Grist signale un refus au widget, et le texte exact à afficher. La création par un profil non propriétaire (règles avec `newRec`) n'a pas encore été testée avec le widget, d'après CLAUDE.md.
-- **Hauteur des fenêtres dans l'iframe à 400 px** (§6.1) : à tester sur une fiche courte ; si la fenêtre est rognée, à signaler à Hanta.
-- **Boutons-icônes des lignes** (§6.2, §7.2) : taille réelle de la cible (au moins 24 × 24 px), info-bulle au focus clavier, focus visible, écart entre les deux boutons à 400 px. Pour les deux boutons carrés : taille réelle (24 × 24 px minimum) et affichage de l'info-bulle au focus clavier.
-- **Carte Actions** après passage à deux moitiés égales (§6.1 bis) : ses lignes se lisent-elles bien sur un club qui a beaucoup d'actions ?
+Constats faits par Hanta dans DEV7 le 21/10/2026 :
+
+- **Droits d'un non-propriétaire** : création, modification et suppression vérifiées en « Voir en tant que » FT Régional, dans sa région.
+- **Refus** : en « Voir en tant que » FT Départemental, sur un club hors de son département, le widget affiche bien les messages de droits, pour l'ajout (« Vous n'avez pas les droits pour ajouter ou modifier des contacts de ce club… ») et pour la suppression (« Vous n'avez pas les droits pour supprimer ce contact… »). Voir §3.
+- **Hauteur des fenêtres** (§6.1) : vérifiée à l'écran, sans problème.
+- **Boutons-icônes des lignes** (§6.2, §7.2) : taille, info-bulle au survol et au clavier, vérifiées à l'écran, sans problème.
+- **Carte Actions** après passage à deux moitiés égales (§6.1 bis) : lisibilité vérifiée à l'écran, sans problème.
