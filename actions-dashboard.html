@@ -925,7 +925,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -964,15 +964,20 @@ load();
 
 async function load() {
   try {
+    // Noms des tables que Grist n'a pas laisse lire (refus ou table introuvable) :
+    // sans cette trace, une table refusee et une table vide donnent la meme liste.
+    const refusees = [];
     const data = await Promise.all(TABLES.map(async table => {
       try {
         return [table, rows(await grist.docApi.fetchTable(table))];
       } catch (error) {
         console.warn(`Accès refusé ou table introuvable : ${table}`, error);
+        refusees.push(table);
         return [table, []];
       }
     }));
     state.raw = Object.fromEntries(data);
+    state.tablesRefusees = refusees;
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
@@ -2655,6 +2660,92 @@ function conventionDocumentPdf(texte, valeurs, options) {
     document.header = {image: logo, width: mise.logo.width, alignment: 'left', margin: mise.logo.margin};
   }
   return document;
+}
+
+// ---- Convention : etat du bloc et blocage de la generation ----
+// Deux fonctions pures : ni Grist, ni DOM, ni ecriture. Elles lisent "donnees", un
+// objet { raw, tablesRefusees } : on lui passe simplement `state`. Les droits sont
+// decides par Grist (une table refusee arrive vide dans raw), jamais par ces fonctions.
+// Une action en corbeille ou annulee n'est pas traitee ici (question Q-B du backlog).
+const CONVENTION_ETATS = {
+  aGenerer: 'À générer',
+  generee: 'Générée',
+  signee: 'Signée',
+  sansModele: 'Sans modèle',
+  droits: 'Droits insuffisants'
+};
+
+// Message affiche pour chaque element manquant (le champ a remplir est la cle).
+const CONVENTION_BLOCAGES = {
+  agence: "Renseignez l'agence de l'action dans sa fiche.",
+  club: "Renseignez le club de l'action.",
+  dispositif: "Renseignez le dispositif de l'action dans sa fiche.",
+  adresse: "Renseignez l'adresse du club dans sa fiche."
+};
+
+// Une colonne de pieces jointes arrive de Grist sous la forme ['L', id, id...] ;
+// ['L'] seul, null ou une liste vide veulent dire « aucun fichier ».
+function conventionPieceJointeRemplie(valeur) {
+  if (!Array.isArray(valeur)) return false;
+  return valeur[0] === 'L' ? valeur.length > 1 : valeur.length > 0;
+}
+
+// Ligne de la table `lignes` portant l'identifiant `id` (undefined si absente).
+function conventionLigne(lignes, id) {
+  return id ? (lignes || []).find(ligne => ligne.id === id) : undefined;
+}
+
+// Etat du bloc « Convention » d'une action. Renvoie { etat, convention, modele } :
+// etat est l'une des valeurs de CONVENTION_ETATS ; convention est la ligne Conventions
+// de l'action et modele la ligne Modeles_convention concernee, ou null quand elles n'existent pas.
+function conventionEtat(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const refusees = (donnees && donnees.tablesRefusees) || [];
+  if (refusees.includes('Conventions') || refusees.includes('Modeles_convention')) {
+    return {etat: CONVENTION_ETATS.droits, convention: null, modele: null};
+  }
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  // Grist n'impose pas l'unicite de Conventions.Action : on garde la ligne la plus ancienne.
+  const convention = (raw.Conventions || [])
+    .filter(ligne => ligne.Action === actionId)
+    .reduce((plusAncienne, ligne) => (!plusAncienne || ligne.id < plusAncienne.id ? ligne : plusAncienne), null);
+  // Modele actif du dispositif de l'action (le plus ancien s'il y en a plusieurs).
+  const actif = action.Dispositif
+    ? (raw.Modeles_convention || [])
+      .filter(modele => modele.Dispositif === action.Dispositif && modele.Actif === true)
+      .reduce((plusAncien, modele) => (!plusAncien || modele.id < plusAncien.id ? modele : plusAncien), null)
+    : null;
+  // Une convention deja faite garde le modele avec lequel elle a ete faite.
+  const modeleUtilise = conventionLigne(raw.Modeles_convention, convention && convention.Modele) || actif;
+
+  if (convention && conventionPieceJointeRemplie(convention.PDF_signe)) {
+    return {etat: CONVENTION_ETATS.signee, convention, modele: modeleUtilise};
+  }
+  if (convention && conventionPieceJointeRemplie(convention.PDF_genere)) {
+    return {etat: CONVENTION_ETATS.generee, convention, modele: modeleUtilise};
+  }
+  if (actif) return {etat: CONVENTION_ETATS.aGenerer, convention: convention || null, modele: actif};
+  return {etat: CONVENTION_ETATS.sansModele, convention: convention || null, modele: null};
+}
+
+// Premier element qui empeche de generer, dans l'ordre : agence, club, dispositif,
+// adresse du club. Renvoie { element, message } (element : 'agence', 'club',
+// 'dispositif' ou 'adresse'), ou null si la generation est possible.
+// Adresse du club = Structures.Adresse + Code_postal + Ville (colonne formule de
+// Structures, calculee par Grist : le widget ne lit pas Communes).
+function conventionBlocage(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const bloque = element => ({element, message: CONVENTION_BLOCAGES[element]});
+  if (!action.Agence) return bloque('agence');
+  if (!action.Club) return bloque('club');
+  if (!action.Dispositif) return bloque('dispositif');
+
+  const club = conventionLigne(raw.Structures, action.Club) || {};
+  const texte = valeur => String(valeur ?? '').trim();
+  const codePostal = texte(club.Code_postal);
+  const adresseComplete = texte(club.Adresse) && codePostal && codePostal !== '0' && texte(club.Ville);
+  return adresseComplete ? null : bloque('adresse');
 }
 </script>
   </body>
