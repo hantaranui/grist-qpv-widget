@@ -309,3 +309,263 @@ test("tout texte entre crochets est une case (voulu) : [1] sans valeur est list�
   assert.deepStrictEqual(remplir("Article [1] du code", {}), [{text: "Article [1] du code", style: "paragraphe"}]);
   assert.deepStrictEqual(remplir("Article [1] du code", {"1": "premier"}), [{text: "Article premier du code", style: "paragraphe"}]);
 });
+
+// ---- Repères, notes renumérotées et description du PDF (tâche 2.6) ----
+
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+// CONVENTION_MISE_EN_PAGE est une `const` du script, que le bac à sable ne
+// laisse pas voir : on relit sa déclaration dans les sources, pour que les
+// tests suivent les réglages sans les recopier.
+const MISE_EN_PAGE = (() => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "src", "actions-dashboard", "script.js"), "utf8");
+  const m = /const CONVENTION_MISE_EN_PAGE = (\{[\s\S]*?\n\});/.exec(source);
+  assert.ok(m, "la déclaration de CONVENTION_MISE_EN_PAGE est introuvable dans script.js");
+  return plain(vm.runInNewContext(`(${m[1]})`));
+})();
+
+const problemesNotes = (texte) => plain(w.conventionProblemesNotes(texte));
+const documentPdf = (texte, valeurs, options) => w.conventionDocumentPdf(texte, valeurs, options);
+
+const SIGNATURES_VALEURS = {
+  "Signataire du club": "Camille Martin",
+  "Fonction du signataire": "Présidente",
+  "Représentant de l’agence": "Alex Durand",
+  "Fonction du représentant": "Directeur d’agence",
+};
+const LIEU_DATE = {text: "À ............................, le ............................", style: "paragraphe"};
+const LIGNES_VIDES = "\n".repeat(MISE_EN_PAGE.signatures.lignesVides);
+
+test("{saut-de-page} seul sur sa ligne : saut de page à cet endroit, entre les deux paragraphes", () => {
+  assert.deepStrictEqual(convertir("Avant\n\n{saut-de-page}\n\nAprès"), [
+    {text: "Avant", style: "paragraphe"},
+    {text: "", pageBreak: "after"},
+    {text: "Après", style: "paragraphe"},
+  ]);
+  // Sans ligne vide autour : le repère ferme quand même le paragraphe en cours.
+  assert.deepStrictEqual(convertir("Avant\n{saut-de-page}\nAprès"), [
+    {text: "Avant", style: "paragraphe"},
+    {text: "", pageBreak: "after"},
+    {text: "Après", style: "paragraphe"},
+  ]);
+});
+
+test("{saut-de-page} écrit au milieu d'une phrase : reste du texte, pas de saut de page", () => {
+  assert.deepStrictEqual(convertir("Avant {saut-de-page} après"), [
+    {text: "Avant {saut-de-page} après", style: "paragraphe"},
+  ]);
+});
+
+test("{signatures} avec les 4 valeurs : deux colonnes (organisation sportive à gauche, France Travail à droite), noms en gras, d'un seul tenant", () => {
+  assert.deepStrictEqual(remplir("{signatures}", SIGNATURES_VALEURS), [
+    {
+      columns: [
+        {
+          width: "*",
+          stack: [
+            {text: "Pour l'organisation sportive", style: "paragraphe"},
+            {text: "Camille Martin", bold: true, style: "paragraphe"},
+            {text: "Présidente", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+        {
+          width: "*",
+          stack: [
+            {text: "Pour France Travail", style: "paragraphe"},
+            {text: "Alex Durand", bold: true, style: "paragraphe"},
+            {text: "Directeur d’agence", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+      ],
+      columnGap: MISE_EN_PAGE.signatures.espaceEntreColonnes,
+      unbreakable: true,
+    },
+  ]);
+});
+
+test("{signatures} sans valeurs : les quatre cases restent écrites [Nom]", () => {
+  const attendu = [
+    {
+      columns: [
+        {
+          width: "*",
+          stack: [
+            {text: "Pour l'organisation sportive", style: "paragraphe"},
+            {text: "[Signataire du club]", bold: true, style: "paragraphe"},
+            {text: "[Fonction du signataire]", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+        {
+          width: "*",
+          stack: [
+            {text: "Pour France Travail", style: "paragraphe"},
+            {text: "[Représentant de l’agence]", bold: true, style: "paragraphe"},
+            {text: "[Fonction du représentant]", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+      ],
+      columnGap: MISE_EN_PAGE.signatures.espaceEntreColonnes,
+      unbreakable: true,
+    },
+  ];
+  assert.deepStrictEqual(convertir("{signatures}"), attendu);
+  assert.deepStrictEqual(remplir("{signatures}", {}), attendu);
+});
+
+test("{signatures:lieu-date} : chaque colonne commence par la ligne « À ……, le …… »", () => {
+  assert.deepStrictEqual(remplir("{signatures:lieu-date}", SIGNATURES_VALEURS), [
+    {
+      columns: [
+        {
+          width: "*",
+          stack: [
+            LIEU_DATE,
+            {text: "Pour l'organisation sportive", style: "paragraphe"},
+            {text: "Camille Martin", bold: true, style: "paragraphe"},
+            {text: "Présidente", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+        {
+          width: "*",
+          stack: [
+            LIEU_DATE,
+            {text: "Pour France Travail", style: "paragraphe"},
+            {text: "Alex Durand", bold: true, style: "paragraphe"},
+            {text: "Directeur d’agence", style: "paragraphe"},
+            {text: LIGNES_VIDES, style: "paragraphe"},
+          ],
+        },
+      ],
+      columnGap: MISE_EN_PAGE.signatures.espaceEntreColonnes,
+      unbreakable: true,
+    },
+  ]);
+});
+
+test("{saut-de-page} dans un retrait (>) : reste du texte, les repères ne marchent qu'au premier niveau (comportement voulu)", () => {
+  assert.deepStrictEqual(convertir("> {saut-de-page}"), [
+    {stack: [{text: "{saut-de-page}", style: "paragraphe"}], style: "retrait"},
+  ]);
+});
+
+test("{signatures} et {signatures:lieu-date} dans un retrait (>) : restent du texte (comportement voulu)", () => {
+  assert.deepStrictEqual(convertir("> {signatures}\n>\n> {signatures:lieu-date}"), [
+    {
+      stack: [
+        {text: "{signatures}", style: "paragraphe"},
+        {text: "{signatures:lieu-date}", style: "paragraphe"},
+      ],
+      style: "retrait",
+    },
+  ]);
+});
+
+test("notes renumérotées : [^a] puis [^2] appelées dans cet ordre deviennent 1 et 2 ; un deuxième appel garde son numéro ; textes rangés par numéro à la fin", () => {
+  const texte = "Un[^a] deux[^2] encore[^a]\n\n[^2]: Texte de la note deux\n[^a]: Texte de la note a";
+  assert.deepStrictEqual(convertir(texte), [
+    {text: ["Un", {text: "1", sup: true}, " deux", {text: "2", sup: true}, " encore", {text: "1", sup: true}], style: "paragraphe"},
+    {text: [{text: "1", sup: true}, " ", "Texte de la note a"], style: "note"},
+    {text: [{text: "2", sup: true}, " ", "Texte de la note deux"], style: "note"},
+  ]);
+});
+
+test("note définie deux fois avec la même étiquette : seule la première définition est gardée", () => {
+  assert.deepStrictEqual(convertir("Appel[^1]\n\n[^1]: Première définition\n[^1]: Seconde définition"), [
+    {text: ["Appel", {text: "1", sup: true}], style: "paragraphe"},
+    {text: [{text: "1", sup: true}, " ", "Première définition"], style: "note"},
+  ]);
+});
+
+test("conventionProblemesNotes : un appel sans texte est signalé", () => {
+  assert.deepStrictEqual(problemesNotes("Texte[^x]"), [{type: "appel sans texte", etiquette: "x"}]);
+});
+
+test("conventionProblemesNotes : un texte sans appel est signalé", () => {
+  assert.deepStrictEqual(problemesNotes("Texte\n\n[^y]: Note jamais appelée"), [{type: "texte sans appel", etiquette: "y"}]);
+});
+
+test("conventionProblemesNotes : les deux à la fois, les appels sans texte d'abord (dans l'ordre des appels), puis les textes sans appel (dans l'ordre des définitions)", () => {
+  assert.deepStrictEqual(problemesNotes("A[^b] B[^a]\n\n[^d]: D\n[^c]: C"), [
+    {type: "appel sans texte", etiquette: "b"},
+    {type: "appel sans texte", etiquette: "a"},
+    {type: "texte sans appel", etiquette: "d"},
+    {type: "texte sans appel", etiquette: "c"},
+  ]);
+});
+
+test("conventionProblemesNotes : liste vide quand tout va bien, sans note ou sans texte", () => {
+  assert.deepStrictEqual(problemesNotes("Texte[^1]\n\n[^1]: Note"), []);
+  assert.deepStrictEqual(problemesNotes("Aucune note ici"), []);
+  assert.deepStrictEqual(problemesNotes(""), []);
+  assert.deepStrictEqual(problemesNotes(null), []);
+});
+
+test("conventionDocumentPdf sans logo : A4, contenu identique à conventionVersContenuPdf, pas d'en-tête, un style pour chaque nom", () => {
+  const texte = "# Titre\n\nBonjour [Nom du club]\n\n{saut-de-page}\n\nSuite[^1]\n\n[^1]: Note";
+  const valeurs = {"Nom du club": "Club Alpha"};
+  const brut = documentPdf(texte, valeurs);
+  const doc = plain(brut);
+  assert.equal(doc.pageSize, "A4");
+  assert.deepStrictEqual(doc.content, plain(w.conventionVersContenuPdf(texte, valeurs)));
+  assert.equal(Object.hasOwn(brut, "header"), false);
+  assert.equal(Object.hasOwn(doc, "header"), false);
+  assert.deepStrictEqual(Object.keys(doc.styles).sort(), ["liste", "note", "paragraphe", "retrait", "titre", "titre1", "titre2", "titre3"]);
+  Object.keys(doc.styles).forEach(nom => {
+    assert.equal(typeof doc.styles[nom], "object", `le style ${nom} doit être un objet`);
+  });
+});
+
+test("pied de page : footer(1, 3) donne « Page 1 sur 3 », centré", () => {
+  const {footer} = documentPdf("Texte", {});
+  assert.equal(typeof footer, "function");
+  assert.deepStrictEqual(plain(footer(1, 3)), {text: "Page 1 sur 3", alignment: "center", fontSize: MISE_EN_PAGE.pied.fontSize});
+  assert.deepStrictEqual(plain(footer(2, 10)), {text: "Page 2 sur 10", alignment: "center", fontSize: MISE_EN_PAGE.pied.fontSize});
+});
+
+test("logo commençant par data:image/ : l'en-tête est créé avec l'image, la largeur et la marge de la mise en page", () => {
+  const logo = "data:image/png;base64,AAAA";
+  const doc = plain(documentPdf("Texte", {}, {logo}));
+  assert.deepStrictEqual(doc.header, {image: logo, width: MISE_EN_PAGE.logo.width, alignment: "left", margin: MISE_EN_PAGE.logo.margin});
+});
+
+test("logo qui ne commence pas par data:image/ (adresse https, autre type, vide, pas du texte) : ignoré, sans en-tête", () => {
+  [
+    {logo: "https://exemple.fr/logo.png"},
+    {logo: "data:text/html;base64,AAAA"},
+    {logo: ""},
+    {logo: 42},
+    {},
+    null,
+    undefined,
+  ].forEach(options => {
+    const brut = documentPdf("Texte", {}, options);
+    assert.equal(Object.hasOwn(brut, "header"), false, `pas d'en-tête attendu avec ${JSON.stringify(options)}`);
+  });
+});
+
+test("les valeurs de mise en page viennent de CONVENTION_MISE_EN_PAGE : marges, police, styles, logo, espace entre les colonnes de signature", () => {
+  const doc = plain(documentPdf("{signatures}", SIGNATURES_VALEURS, {logo: "data:image/png;base64,AAAA"}));
+  assert.deepStrictEqual(doc.pageMargins, MISE_EN_PAGE.pageMargins);
+  assert.deepStrictEqual(doc.defaultStyle, MISE_EN_PAGE.defaultStyle);
+  assert.deepStrictEqual(doc.styles, MISE_EN_PAGE.styles);
+  assert.equal(doc.header.width, MISE_EN_PAGE.logo.width);
+  assert.deepStrictEqual(doc.header.margin, MISE_EN_PAGE.logo.margin);
+  assert.equal(doc.content[0].columnGap, MISE_EN_PAGE.signatures.espaceEntreColonnes);
+  assert.equal(doc.content[0].columns[0].stack.at(-1).text, LIGNES_VIDES);
+});
+
+test("conventionDocumentPdf renvoie une copie des réglages : modifier le document ne change pas le suivant", () => {
+  const premier = documentPdf("Texte", {});
+  premier.styles.titre1.fontSize = 999;
+  premier.pageMargins[0] = 999;
+  const second = plain(documentPdf("Texte", {}));
+  assert.deepStrictEqual(second.styles, MISE_EN_PAGE.styles);
+  assert.deepStrictEqual(second.pageMargins, MISE_EN_PAGE.pageMargins);
+});
