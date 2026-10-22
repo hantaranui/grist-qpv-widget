@@ -1440,3 +1440,165 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#96;');
 }
+
+// ---- Convention : texte d'un modele (Markdown simple) -> contenu pdfmake ----
+// Fonction pure : ni Grist, ni DOM, ni pdfmake. Elle renvoie un tableau de blocs
+// que pdfmake sait lire ("content"). Les styles ne sont designes que par un nom :
+// titre1, titre2, titre3, titre, paragraphe, retrait, liste, note.
+//
+// Syntaxe reconnue, et rien d'autre :
+//  - paragraphes separes par une ligne vide (espaces de fin de ligne ignores) ;
+//  - titre : ligne commencant par #, ## ou ###, OU ligne entierement en gras ;
+//  - "> " en debut de ligne : bloc en retrait (son contenu se lit normalement) ;
+//  - liste a puces "- " et liste numerotee "1. " ;
+//  - **gras**, *italique*, <u>souligne</u>, <sup>exposant</sup> ;
+//  - commentaire HTML vide seul sur sa ligne : ignore (il separe deux blocs) ;
+//  - lien [texte](adresse) : ecrit "texte (adresse)" car le document est imprime ;
+//  - note : appel [^1] (exposant) et definition "[^1]: texte" (rangee a la fin) ;
+//  - cases [Nom] et pointilles : laisses tels quels.
+function conventionVersContenuPdf(texte) {
+  const lignes = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map(ligne => ligne.trimEnd());
+  const notes = [];
+  const corps = lignes.filter(ligne => {
+    const definition = /^\[\^([^\]\s]+)\]:\s*(.*)$/.exec(ligne);
+    if (definition) notes.push({etiquette: definition[1], runs: conventionRuns(definition[2])});
+    return !definition;
+  });
+  const blocs = conventionBlocs(corps, true);
+  notes.forEach(note => {
+    blocs.push({text: conventionTexte([{text: note.etiquette, sup: true}, {text: ' '}, ...note.runs]), style: 'note'});
+  });
+  return blocs;
+}
+
+// Regroupe les lignes en blocs : titre, retrait, liste ou paragraphe.
+// Le retrait n'est reconnu qu'au premier niveau : un "> " dans un retrait reste du texte.
+function conventionBlocs(lignes, retraitAutorise) {
+  const blocs = [];
+  let paragraphe = [];
+  let liste = null;
+  const fermer = () => {
+    if (paragraphe.length) {
+      const runs = [];
+      paragraphe.forEach((ligne, index) => {
+        if (index) runs.push({text: '\n'});
+        runs.push(...conventionRuns(ligne));
+      });
+      blocs.push({text: conventionTexte(runs), style: 'paragraphe'});
+    }
+    if (liste) {
+      const bloc = {[liste.type]: liste.items, style: 'liste'};
+      if (liste.type === 'ol' && liste.debut !== 1) bloc.start = liste.debut;
+      blocs.push(bloc);
+    }
+    paragraphe = [];
+    liste = null;
+  };
+  const titre = (style, runs) => {
+    // Le style du titre porte deja le gras : on ne le repete pas dans le texte.
+    const sansGras = runs.map(run => { const copie = {...run}; delete copie.bold; return copie; });
+    blocs.push({text: conventionTexte(sansGras), style});
+  };
+  const ajouterItem = (type, debut, contenu) => {
+    if (!liste || liste.type !== type) {
+      fermer();
+      liste = {type, items: [], debut};
+    }
+    liste.items.push({text: conventionTexte(conventionRuns(contenu))});
+  };
+
+  for (let i = 0; i < lignes.length; i++) {
+    const ligne = lignes[i];
+    let m;
+    if (!ligne.trim() || /^<!--\s*-->$/.test(ligne.trim())) {
+      fermer();
+    } else if (retraitAutorise && ligne.startsWith('>')) {
+      fermer();
+      const interieur = [];
+      while (i < lignes.length && lignes[i].startsWith('>')) {
+        interieur.push(lignes[i].replace(/^> ?/, ''));
+        i++;
+      }
+      i--;
+      blocs.push({stack: conventionBlocs(interieur, false), style: 'retrait'});
+    } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
+      fermer();
+      titre('titre' + m[1].length, conventionRuns(m[2]));
+    } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ul', 1, m[1]);
+    } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ol', Number(m[1]), m[2]);
+    } else {
+      const runs = conventionRuns(ligne);
+      const toutEnGras = runs.some(run => run.text.trim()) && runs.every(run => run.bold || !run.text.trim());
+      if (toutEnGras) {
+        fermer();
+        titre('titre', runs);
+      } else {
+        if (liste) fermer();
+        paragraphe.push(ligne);
+      }
+    }
+  }
+  fermer();
+  return blocs;
+}
+
+// Decoupe une ligne en morceaux de texte portant chacun leur mise en forme.
+// Un marqueur ouvrant sans marqueur fermant plus loin reste du texte.
+function conventionRuns(ligne) {
+  const runs = [];
+  const actif = {bold: false, italics: false, underline: false, sup: false};
+  let tampon = '';
+  const ajouter = (texte, supplement) => {
+    if (!texte) return;
+    const run = {text: texte};
+    if (actif.bold) run.bold = true;
+    if (actif.italics) run.italics = true;
+    if (actif.underline) run.decoration = 'underline';
+    if (actif.sup || supplement) run.sup = true;
+    const dernier = runs[runs.length - 1];
+    if (dernier && JSON.stringify({...dernier, text: ''}) === JSON.stringify({...run, text: ''})) dernier.text += texte;
+    else runs.push(run);
+  };
+  const vider = () => { ajouter(tampon); tampon = ''; };
+  const balises = [['<u>', 'underline', true], ['</u>', 'underline', false], ['<sup>', 'sup', true], ['</sup>', 'sup', false]];
+
+  let i = 0;
+  while (i < ligne.length) {
+    const reste = ligne.slice(i);
+    const balise = balises.find(([nom]) => reste.slice(0, nom.length).toLowerCase() === nom);
+    const marque = reste.startsWith('**') ? ['**', 'bold'] : reste.startsWith('*') ? ['*', 'italics'] : null;
+    let m;
+    if (balise) {
+      vider();
+      actif[balise[1]] = balise[2];
+      i += balise[0].length;
+    } else if (marque && (actif[marque[1]] || ligne.indexOf(marque[0], i + marque[0].length) !== -1)) {
+      vider();
+      actif[marque[1]] = !actif[marque[1]];
+      i += marque[0].length;
+    } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
+      vider();
+      ajouter(m[1], true);
+      i += m[0].length;
+    } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
+      vider();
+      ajouter(`${m[1]} (${m[2]})`);
+      i += m[0].length;
+    } else {
+      tampon += ligne[i];
+      i++;
+    }
+  }
+  vider();
+  return runs;
+}
+
+// Un seul morceau sans mise en forme devient une chaine ; sinon, un tableau de morceaux
+// (un morceau sans mise en forme y est une simple chaine). Le texte n'est jamais un objet seul.
+function conventionTexte(runs) {
+  const simplifies = runs.map(run => (Object.keys(run).length === 1 ? run.text : run));
+  if (!simplifies.length) return '';
+  return simplifies.length === 1 && typeof simplifies[0] === 'string' ? simplifies[0] : simplifies;
+}
