@@ -350,3 +350,31 @@ Tests : 0 lancés, 0 réussis (documentation)
 Fichiers modifiés : docs/backlog.md, .gitignore
 Build refait : pas nécessaire
 Commit : a424826 sur feature/convention
+
+## Tâche C11 — Relecture des règles d'accès de la convention
+
+Date : 2026-10-22
+Agent : @auditeur-securite
+Prompt : relire, avant de les poser dans Grist DEV7, les règles d'accès proposées pour Conventions et Modeles_convention, et dire ce qu'il faut vérifier dans Contacts, Agences, Structures et Communes ; donner les essais « Voir en tant que »
+
+Note /5 :
+Ce qui allait : défaut réel trouvé (une convention aurait pu être déplacée vers une autre région) ; garde contre les DR ou DT vides ; vérifications de Contacts, Agences, Structures et Communes listées ; essais précis.
+Ce que j'ai fait corriger : sa correction newRec.Action.DR ne marche pas (une règle Grist ne suit pas une référence) : remplacée par newRec.DR et newRec.DD, prouvés par la création d'un contact en tant que Régional.
+Tests : 0 lancés, 0 réussis (relecture en lecture seule)
+Fichiers modifiés : aucun
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
+
+## Tâche C12 — Tables, colonnes et règles d'accès de la convention dans Grist DEV7 (manuel)
+
+Date : 2026-10-22
+Agent : aucun (fait à la main dans Grist)
+Prompt : sans objet (tâches S1 du plan)
+
+Note /5 : sans objet
+Ce qui allait : tables Modeles_convention (3 lignes) et Conventions créées ; colonnes Contacts.Nom_complet et Structures.Adresse ajoutées ; règles posées sur les deux tables, avec un refus final ; 6 essais « Voir en tant que » réussis (Régional, Départemental, ANS, National).
+Ce que j'ai fait corriger : colonne Conventions.DD qui pointait vers DR au lieu de DD ; conditions newRec.Action.DR et newRec.Action.DD remplacées par newRec.DR et newRec.DD ; règle de refus final ajoutée aux deux tables.
+Tests : 6 essais manuels, 6 réussis ; lignes d'essai supprimées
+Fichiers modifiés : aucun dans le dépôt
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
