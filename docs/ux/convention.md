@@ -22,7 +22,7 @@ Parcours 1, générer (état « À générer ») :
 4. « Enregistrer les informations » (facultatif : « Générer la convention » les enregistre aussi).
 5. « Générer la convention ». La fenêtre se ferme, le bloc passe à l'état « Générée ».
 
-Parcours 2, relire (état « Générée ») : « Voir la convention » ouvre directement le PDF, sans fenêtre : 1 clic.
+Parcours 2, relire (état « Générée ») : « Voir la convention » (un bouton) récupère le PDF et l'ouvre dans un nouvel onglet, sans fenêtre : 1 clic. L'onglet porte une adresse `blob:` (le PDF est lu depuis la mémoire du navigateur) : aucun jeton n'apparaît dans une adresse visible.
 
 Parcours 3, re-générer (état « Générée ») :
 
@@ -33,7 +33,7 @@ Parcours 3, re-générer (état « Générée ») :
 Parcours 4, déposer la version signée (états « Générée » puis « Signée ») :
 
 1. Clic sur « Déposer la convention signée » : le sélecteur de fichiers du navigateur s'ouvre directement, sans fenêtre.
-2. Choix d'un fichier PDF. Si ce n'est pas un PDF : message dans le bloc, rien n'est enregistré, fin.
+2. Choix d'un fichier PDF. Si le fichier est refusé (pas un PDF, vide ou de plus de 10 Mo) : message dans le bloc, rien n'est enregistré, fin.
 3. Le fichier est enregistré tout de suite, la date de dépôt est mise à jour, un message de confirmation s'affiche, le bloc passe à l'état « Signée ».
 
 Parcours 5, remplacer le fichier signé (état « Signée ») : lien « Remplacer le fichier signé », puis les étapes 1 à 3 ci-dessus. Le nouveau fichier remplace l'ancien, sans historique, et la date de dépôt est mise à jour. Aucune vérification n'est demandée.
@@ -49,19 +49,34 @@ Contenu : en-tête « Convention » (même `section-head` que les autres blocs),
 | État | Texte | Boutons |
 |---|---|---|
 | **À générer** (A1) | « Aucune convention générée. » | « Générer la convention » (`btn btn-secondary`, `aria-haspopup="dialog"`) : ouvre la fenêtre B |
-| **Générée** (A2) | « Convention générée le [date]. » | « Voir la convention » (lien, ouvre le PDF directement dans un nouvel onglet, sans fenêtre) ; « Re-générer » (`btn btn-secondary`, `aria-haspopup="dialog"`) : rouvre la fenêtre B préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF, sans historique ; « Déposer la convention signée » : ouvre directement le choix du fichier |
-| **Signée** (A3) | « Convention signée, déposée le [date]. » | « Voir la convention signée » (lien, nouvel onglet) ; en dessous, lien « Remplacer le fichier signé » (ouvre directement le choix du fichier). Plus de régénération, ni d'accès au PDF généré : il reste gardé dans Grist mais n'est plus montré. |
+| **Générée** (A2) | « Convention générée le [date]. » | « Voir la convention » (bouton, récupère le PDF et l'ouvre dans un nouvel onglet, sans fenêtre : voir « Voir un PDF » plus bas) ; « Re-générer » (`btn btn-secondary`, `aria-haspopup="dialog"`) : rouvre la fenêtre B préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF, sans historique ; « Déposer la convention signée » : ouvre directement le choix du fichier |
+| **Signée** (A3) | « Convention signée, déposée le [date]. » | « Voir la convention signée » (bouton, même comportement que « Voir la convention ») ; en dessous, lien « Remplacer le fichier signé » (ouvre directement le choix du fichier). Plus de régénération, ni d'accès au PDF généré : il reste gardé dans Grist mais n'est plus montré. |
 | **Dispositif sans modèle** (A4) | « Pas encore de modèle de convention pour ce dispositif. » | aucun (dispositifs concernés : Aller vers, Parcours complet d'insertion par le sport) |
 
-Messages d'erreur du bloc (A5) : si le fichier choisi n'est pas un PDF, une alerte (`alert alert-error`, `role="alert"`) s'affiche en haut du bloc : « Le fichier n'a pas été enregistré : seuls les fichiers PDF sont acceptés. » L'état et la date ne changent pas.
+Messages d'erreur du bloc (A5) : si le fichier choisi est refusé, une alerte (`alert alert-error`, `role="alert"`) s'affiche en haut du bloc, avec le message du motif (liste au §4 et §5) : « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » ou « Le fichier n'a pas été enregistré : 10 Mo au maximum. » L'état et la date ne changent pas.
 
 Confirmation (A6) : après un dépôt réussi, une alerte de succès (`alert alert-success`, `role="status"`) « Convention signée enregistrée. » s'affiche en haut du bloc.
 
 Règle d'ordre des états : un dispositif sans modèle n'a jamais de bouton. L'état « Signée » l'emporte sur « Générée ». La fédération de l'action n'est plus utilisée : plus aucune règle ni message à son sujet.
 
-Voir un PDF : « Voir la convention » et « Voir la convention signée » sont des liens (`<a class="btn btn-secondary" target="_blank" rel="noopener">`) avec un texte `sr-only` « (s'ouvre dans un nouvel onglet) ». Ouvrir un onglet et télécharger un fichier depuis le cadre de Grist fonctionnent (CLAUDE.md ; confirmé par un essai dans Grist DEV).
+Voir un PDF : « Voir la convention » et « Voir la convention signée » sont des **boutons**, pas des liens `<a href target="_blank">` (décision de Hanta après l'audit de sécurité : un lien vers le fichier montrerait le jeton dans l'adresse). Au clic, le widget récupère le PDF, le garde en mémoire du navigateur et l'ouvre dans un nouvel onglet à une adresse `blob:` ; le jeton n'apparaît dans aucune adresse visible. Ouvrir un onglet depuis le cadre de Grist fonctionne (CLAUDE.md ; confirmé par un essai dans Grist DEV) ; l'ouverture depuis une adresse `blob:` après un chargement est à vérifier dans Grist DEV, voir §9.
 
-Qui voit et modifie : les règles d'accès du document décident ; le widget ne les contourne pas. Si l'utilisateur n'a pas le droit d'écrire, les boutons d'écriture (générer, déposer, remplacer) échouent proprement avec un message d'erreur (§5) ; les liens « Voir » restent utilisables.
+Structure (composant bouton du design system, §8) :
+
+```html
+<button class="btn btn-secondary" type="button" id="conventionVoir">
+  <span class="btn-content">Voir la convention<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span>
+</button>
+```
+
+Même structure pour « Voir la convention signée » (`id="conventionVoirSignee"`). Attributs d'accessibilité :
+- C'est un vrai `<button type="button">` : atteignable au clavier, activé par Entrée et Espace, annoncé « bouton » par les lecteurs d'écran (et non « lien »). Pas de `role="link"`, pas d'`aria-haspopup` (aucune fenêtre ne s'ouvre dans le widget).
+- Le texte `sr-only` « (s'ouvre dans un nouvel onglet) » reste dans le nom du bouton : il prévient que le focus quittera la page.
+- Pendant la récupération du PDF : le texte devient « Ouverture en cours… » (le `sr-only` est retiré), le bouton reste en place avec `aria-disabled="true"` (pas l'attribut `disabled`, pour garder le focus) ; les clics sont ignorés. À la fin, le texte d'origine revient et le focus reste sur le bouton.
+- Échec (PDF introuvable, réseau, droits) : alerte `alert alert-error`, `role="alert"` en haut du bloc : « Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. » L'état du bloc ne change pas.
+- Si le navigateur bloque l'ouverture de l'onglet : même alerte d'erreur ; ne jamais remplacer la page du widget par le PDF.
+
+Qui voit et modifie : les règles d'accès du document décident ; le widget ne les contourne pas. Si l'utilisateur n'a pas le droit d'écrire, les boutons d'écriture (générer, déposer, remplacer) échouent proprement avec un message d'erreur (§5) ; les boutons « Voir » restent utilisables (en lecture, si ses droits lui permettent de lire le fichier).
 
 Mobile : le bloc passe sous les autres, déjà le cas dans la fiche. Les boutons gardent leur taille normale et passent à la ligne.
 
@@ -169,7 +184,14 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 
 **Enregistrement immédiat** : dès qu'un PDF est choisi, il est enregistré, en remplaçant l'ancien fichier signé s'il y en a un (sans historique). La date de dépôt est mise à jour et le bloc passe (ou reste) à l'état « Signée ».
 
-**Fichier invalide** : seuls les PDF sont acceptés. Si le fichier n'est pas un PDF, un message le dit dans le bloc (A5) et rien n'est enregistré. Le contrôle regarde le type du fichier et son extension.
+**Fichier refusé** (dépôt et remplacement, mêmes règles). Le fichier est refusé, un message le dit dans le bloc (A5) et rien n'est enregistré, dans l'un de ces cas :
+- son extension n'est pas `.pdf` ;
+- son type n'est pas `application/pdf` ;
+- son contenu ne commence pas par « %PDF- » (contrôle des premiers octets, qui ne se fie pas au nom ni au type annoncé) ;
+- il est vide (0 octet) ;
+- il dépasse 10 Mo.
+
+Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ordre ci-dessus (la taille est vérifiée avant la lecture du contenu) : extension, type ou « %PDF- » → « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » ; vide → « Le fichier n'a pas été enregistré : le fichier est vide. » ; trop gros → « Le fichier n'a pas été enregistré : 10 Mo au maximum. » L'ancien fichier signé, s'il existe, reste en place.
 
 **Envoi en cours (C2)** : le bouton ou le lien qui a lancé le dépôt affiche « Envoi en cours… » et reste en place (`aria-disabled="true"`).
 
@@ -178,7 +200,7 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 ## 5. Textes affichés (tous, pour dev-interface)
 
 - Bloc : « Convention » ; « Aucune convention générée. » ; « Convention générée le [date]. » ; « Convention signée, déposée le [date]. » ; « Pas encore de modèle de convention pour ce dispositif. »
-- Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir ».
+- Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir » (ces deux commandes sont des boutons). Pendant l'ouverture du PDF : « Ouverture en cours… ».
 - Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires. » ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Aucun contact enregistré pour ce club. » ; « Ajouter un contact » (avec `sr-only` « (le signataire n'est pas dans la liste) ») ; valeur de départ de la fonction du représentant : « Directeur d'agence ».
 - Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération).
 - Formulaire contact (dans le bloc) : « Nouveau contact » (légende) ; « Nom » ; « Prénom » ; « Fonction » ; « Annuler » ; « Ajouter ce contact ».
@@ -187,7 +209,8 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
 - Chargement : sur le bouton, pendant la génération, « Génération en cours… » (le bouton reste en place, `aria-disabled="true"`) ; pendant l'envoi du fichier, « Envoi en cours… ».
-- Format : « Le fichier n'a pas été enregistré : seuls les fichiers PDF sont acceptés. »
+- Fichier refusé (dépôt ou remplacement) : « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » ; « Le fichier n'a pas été enregistré : le fichier est vide. » ; « Le fichier n'a pas été enregistré : 10 Mo au maximum. »
+- Ouverture d'un PDF (boutons « Voir ») : « Ouverture en cours… » ; échec : « Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. »
 
 ## 6. États
 
@@ -201,8 +224,9 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 | Ajout de contact annulé | Formulaire refermé et vidé, focus sur le bouton « Ajouter un contact ». |
 | Re-génération | Fenêtre B préremplie ; à la génération réussie, elle se ferme et l'ancien PDF est remplacé. |
 | Fichier PDF choisi | Envoi aussitôt, « Envoi en cours… », puis confirmation (A6). |
-| Fichier non PDF | Alerte dans le bloc, rien enregistré. |
-| Droits insuffisants en écriture | Message d'erreur à l'enregistrement, à la génération, au dépôt ; les liens « Voir » restent utilisables. |
+| Fichier refusé (pas un PDF, vide, plus de 10 Mo) | Alerte dans le bloc avec le motif, rien enregistré. |
+| Clic sur « Voir la convention » ou « Voir la convention signée » | Bouton en attente (« Ouverture en cours… »), puis le PDF s'ouvre dans un nouvel onglet ; en cas d'échec, alerte dans le bloc. |
+| Droits insuffisants en écriture | Message d'erreur à l'enregistrement, à la génération, au dépôt ; les boutons « Voir » restent utilisables. |
 
 ## 7. Accessibilité (RGAA), mode sombre, données personnelles
 
@@ -213,7 +237,7 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 - Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`).
 - Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; dans le formulaire de contact du bloc 2, Échap ne le referme pas séparément ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Si des informations non enregistrées existent, Échap demande confirmation [à valider avec le chef].
 - Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, boutons du pied. Les trois colonnes se lisent de gauche à droite.
-- Liens qui ouvrent un nouvel onglet : le dire dans le texte (`sr-only`).
+- Boutons qui ouvrent un nouvel onglet (« Voir ») : le dire dans le texte (`sr-only`).
 - Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`.
 - Mode clair / sombre : n'utiliser que des variables `--ft-…` ou des classes du design system, aucune couleur écrite en dur. **Constat** : style.css déclare `color-scheme: light` ; le tableau de bord n'est donc pas conçu pour le mode sombre aujourd'hui. Je n'ai pas pu vérifier le rendu en mode sombre : à tester par Hanta. La maquette n'ajoute aucune couleur.
 - Zoom 200 % : la fenêtre défile (`modal-dialog-scrollable`), rien n'est coupé ; sous 1200 px d'écran (ce qui arrive à 200 % de zoom sur un écran courant) elle passe en une colonne.
@@ -355,7 +379,7 @@ Secondaire : `btn btn-secondary` (employé dans script.js). Petit : `btn-sm`. Li
 </button>
 ```
 
-Le script `disabled-a11y.js` du design system bloque les clics sur `aria-disabled="true"` : à vérifier qu'il est bien chargé par l'autoloader dans le widget, sinon bloquer le clic dans notre script. Liens à apparence de bouton : `<a class="btn btn-secondary" href="…" target="_blank" rel="noopener">` (page button--link.html non lue : à contrôler).
+Le script `disabled-a11y.js` du design system bloque les clics sur `aria-disabled="true"` : à vérifier qu'il est bien chargé par l'autoloader dans le widget, sinon bloquer le clic dans notre script. Les commandes « Voir la convention » et « Voir la convention signée » sont des boutons `btn btn-secondary` (structure au §2), pas des liens à apparence de bouton.
 
 ### Alertes
 Page : https://designsystem.francetravail.io/components/detail/alert--default.html. La page montre le composant web `<ft-alert><p class="alert-title">…</p></ft-alert>`. Le tableau de bord utilise la forme à classes, qu'on reprend :
@@ -372,7 +396,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 ### Ce qui manque au design system (signalé, non fabriqué)
 - Pas de composant « bloc de fiche » : on reprend les classes du widget (`edit-card`, `section-head`, `edit-fields`, `edit-field`).
 - Pas de composant de dépôt de fichier (voir ci-dessus).
-- Pas de composant de téléchargement ou d'aperçu de PDF : on utilise des liens.
+- Pas de composant de téléchargement ou d'aperçu de PDF : on utilise des boutons du design system, qui ouvrent le PDF dans un nouvel onglet.
 - Classes du widget à créer par dev-interface, sans nom du design system : `convention-grid` (trois colonnes à partir de 1200 px, une colonne en dessous), `convention-part` (fieldset sans bordure), `convention-fields` (grille à deux colonnes dans une colonne de la fenêtre), `convention-actions` (rangée de boutons), `convention-file` (champ fichier caché). Leurs règles sont dans le `<style>` de la maquette ; elles n'utilisent que des variables du design system et du widget. Test à prévoir : test/styles.test.js vérifie qu'elles ne reprennent aucun nom du design system.
 
 ## 9. Risques techniques et points à vérifier avant de coder
@@ -383,6 +407,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Générer un PDF demande probablement une bibliothèque ou un service : « aucune dépendance sans l'accord de Hanta » (CLAUDE.md). À proposer avec avantages, risques et effort avant tout code.
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
 - **Zones en pointillés du PDF** : le PDF généré doit laisser de la place pour écrire à la main (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature). À vérifier sur le PDF produit, qui n'est pas dans cette note.
+- **Ouverture du PDF par bouton** : l'onglet s'ouvre après une récupération asynchrone, ce que certains navigateurs prennent pour une fenêtre non sollicitée et bloquent. L'ouverture d'un onglet depuis le cadre de Grist est confirmée (essai dans Grist DEV), mais pas avec une adresse `blob:` obtenue après chargement : à tester dans Grist DEV, sur plusieurs navigateurs, avant de livrer. Non vérifié ici.
 - La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation ni de vérification avant l'enregistrement : le fichier choisi est enregistré tout de suite.
 
 ## 10. Liste des [À CONFIRMER]
@@ -393,7 +418,7 @@ Points tranchés (dernière série de décisions du chef) :
 
 - **Corriger une erreur à l'état Générée** : bouton « Re-générer » à côté de « Voir la convention ». Il rouvre la fenêtre Convention préremplie avec les informations enregistrées ; « Générer la convention » remplace l'ancien PDF, sans historique. Le lien « Modifier et régénérer » est retiré.
 - **PDF généré après la signature** : quand la convention signée est déposée, le PDF généré (non signé) est gardé dans Grist, mais n'est plus montré. (La durée de conservation des noms de signataires reste à décider.)
-- **Dépôt et remplacement du fichier signé** : pas de système de vérification. Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le choix du fichier ; le fichier est enregistré tout de suite (en remplaçant l'ancien, sans historique) et la date de dépôt est mise à jour. Seuls les PDF sont acceptés, sinon un message le dit et rien n'est enregistré. Un message confirme le dépôt.
+- **Dépôt et remplacement du fichier signé** : pas de système de vérification. Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le choix du fichier ; le fichier est enregistré tout de suite (en remplaçant l'ancien, sans historique) et la date de dépôt est mise à jour. Seuls les PDF sont acceptés (extension .pdf, type application/pdf, début « %PDF- », non vide, 10 Mo au maximum), sinon un message le dit et rien n'est enregistré. Un message confirme le dépôt. « Voir la convention » et « Voir la convention signée » sont des boutons qui ouvrent le PDF dans un nouvel onglet depuis la mémoire du navigateur (adresse `blob:`), après l'audit de sécurité.
 
 À confirmer :
 
