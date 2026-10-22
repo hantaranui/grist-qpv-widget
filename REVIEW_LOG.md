@@ -292,3 +292,17 @@ Tests : 212 lancés, 212 réussis (npm test ; la fenêtre n'a pas encore de test
 Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : b81debf sur feature/contacts-fiche-club
+
+## Tâche 20 — Contacts : suppression d'un contact (dev-interface)
+
+Date : 21/10/2026
+Agent : dev-interface
+Prompt : bouton « Supprimer » par ligne, fenêtre de confirmation (alertdialog, bouton rouge btn-supprimer), messages, focus et clavier, en réutilisant la fenêtre d'ajout
+
+Note /5 : 5
+Ce qui allait : fenêtre d'ajout réutilisée, pas recopiée ; .btn-supprimer repris du tableau de bord ; après un échec, focus sur Annuler (geste prudent), choix de l'agent validé
+Ce que j'ai fait corriger : rien
+Tests : [résultat de npm test]. Vérification dans DEV7 : annuler (bouton et Échap), suppression en propriétaire, suppression en « Voir en tant que » FT Régional dans sa région, OK ; refus constaté en DD Ain sur un club hors de son département (message de droits)
+Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : 23f14dd sur feature/contacts-fiche-club
