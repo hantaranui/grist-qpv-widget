@@ -462,3 +462,17 @@ Tests : npm test 243/243 réussis
 Fichiers modifiés : test/convention-modele.test.js
 Build refait : pas nécessaire (src/ inchangé)
 Commit : c7a780e
+
+## Tâche C19 — Lecture des tables de la convention (S3, tâche 3.1)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 3.1 du plan, lecture seule
+
+Note /5 : sans objet
+Ce qui allait : Contacts, Conventions et Modeles_convention ajoutées à TABLES (une ligne, plus un commentaire) ; données dans state.raw ; une table refusée ou absente donne une liste vide grâce au try/catch existant de load(), sans gêner les autres tables ; aucune valeur dans la console ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; à noter pour le README (10.2) : noms, e-mails et téléphones de Contacts et texte des modèles lus à chaque chargement.
+Tests : npm test 243/243 réussis (rien de cassé) ; la lecture des 3 tables n'est pas encore testée (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 977d16b
