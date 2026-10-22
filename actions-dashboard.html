@@ -2341,25 +2341,55 @@ function escapeAttr(value) {
 //  - commentaire HTML vide seul sur sa ligne : ignore (il separe deux blocs) ;
 //  - lien [texte](adresse) : ecrit "texte (adresse)" car le document est imprime ;
 //  - note : appel [^1] (exposant) et definition "[^1]: texte" (rangee a la fin) ;
-//  - cases [Nom] et pointilles : laisses tels quels.
-function conventionVersContenuPdf(texte) {
+//  - crochet litteral : \[ donne un [ imprime, sans etre une case ;
+//  - cases [Nom] : remplacees par leur valeur si le second argument (objet
+//    { "Nom": "valeur" }) est donne, sinon laissees telles quelles. La valeur est
+//    posee comme texte, apres l'analyse : elle n'est jamais relue comme du Markdown.
+//    Une case sans valeur dans l'objet reste "[Nom]" (voir conventionCasesManquantes) ;
+//  - pointilles : laisses tels quels (vrais points tapes dans le texte).
+function conventionVersContenuPdf(texte, valeurs) {
   const lignes = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map(ligne => ligne.trimEnd());
   const notes = [];
   const corps = lignes.filter(ligne => {
     const definition = /^\[\^([^\]\s]+)\]:\s*(.*)$/.exec(ligne);
-    if (definition) notes.push({etiquette: definition[1], runs: conventionRuns(definition[2])});
+    if (definition) notes.push({etiquette: definition[1], runs: conventionRuns(definition[2], valeurs)});
     return !definition;
   });
-  const blocs = conventionBlocs(corps, true);
+  const blocs = conventionBlocs(corps, true, valeurs);
   notes.forEach(note => {
     blocs.push({text: conventionTexte([{text: note.etiquette, sup: true}, {text: ' '}, ...note.runs]), style: 'note'});
   });
   return blocs;
 }
 
+// Liste des cases [Nom] du texte qui n'ont pas de valeur (absente ou vide), sans doublon,
+// dans l'ordre d'apparition. Liste vide = tout est rempli.
+// Ne sont pas des cases : \[ , les notes [^1], les liens [texte](adresse).
+function conventionCasesManquantes(texte, valeurs) {
+  const manquantes = [];
+  const motif = /\\\[|\[\^[^\]\s]+\]|\[[^\]]*\]\([^)\s]+\)|\[([^[\]\n]+)\]/g;
+  let m;
+  while ((m = motif.exec(String(texte ?? '').replace(/\r\n?/g, '\n')))) {
+    const nom = m[1];
+    if (nom === undefined || !nom.trim()) continue;
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    if ((valeur === undefined || valeur === '') && !manquantes.includes(nom)) manquantes.push(nom);
+  }
+  return manquantes;
+}
+
+// Valeur d'une case sous forme de texte, ou undefined si elle est absente ou vide.
+// Seules les cles propres de l'objet comptent (un nom comme "constructor" n'est pas une valeur).
+function conventionValeurDeCase(valeurs, nom) {
+  if (!valeurs || typeof valeurs !== 'object' || !Object.prototype.hasOwnProperty.call(valeurs, nom)) return undefined;
+  const valeur = valeurs[nom];
+  if (valeur === null || valeur === undefined) return undefined;
+  return String(valeur);
+}
+
 // Regroupe les lignes en blocs : titre, retrait, liste ou paragraphe.
 // Le retrait n'est reconnu qu'au premier niveau : un "> " dans un retrait reste du texte.
-function conventionBlocs(lignes, retraitAutorise) {
+function conventionBlocs(lignes, retraitAutorise, valeurs) {
   const blocs = [];
   let paragraphe = [];
   let liste = null;
@@ -2368,7 +2398,7 @@ function conventionBlocs(lignes, retraitAutorise) {
       const runs = [];
       paragraphe.forEach((ligne, index) => {
         if (index) runs.push({text: '\n'});
-        runs.push(...conventionRuns(ligne));
+        runs.push(...conventionRuns(ligne, valeurs));
       });
       blocs.push({text: conventionTexte(runs), style: 'paragraphe'});
     }
@@ -2390,7 +2420,7 @@ function conventionBlocs(lignes, retraitAutorise) {
       fermer();
       liste = {type, items: [], debut};
     }
-    liste.items.push({text: conventionTexte(conventionRuns(contenu))});
+    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs))});
   };
 
   for (let i = 0; i < lignes.length; i++) {
@@ -2406,16 +2436,16 @@ function conventionBlocs(lignes, retraitAutorise) {
         i++;
       }
       i--;
-      blocs.push({stack: conventionBlocs(interieur, false), style: 'retrait'});
+      blocs.push({stack: conventionBlocs(interieur, false, valeurs), style: 'retrait'});
     } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
       fermer();
-      titre('titre' + m[1].length, conventionRuns(m[2]));
+      titre('titre' + m[1].length, conventionRuns(m[2], valeurs));
     } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
       ajouterItem('ul', 1, m[1]);
     } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
       ajouterItem('ol', Number(m[1]), m[2]);
     } else {
-      const runs = conventionRuns(ligne);
+      const runs = conventionRuns(ligne, valeurs);
       const toutEnGras = runs.some(run => run.text.trim()) && runs.every(run => run.bold || !run.text.trim());
       if (toutEnGras) {
         fermer();
@@ -2432,7 +2462,7 @@ function conventionBlocs(lignes, retraitAutorise) {
 
 // Decoupe une ligne en morceaux de texte portant chacun leur mise en forme.
 // Un marqueur ouvrant sans marqueur fermant plus loin reste du texte.
-function conventionRuns(ligne) {
+function conventionRuns(ligne, valeurs) {
   const runs = [];
   const actif = {bold: false, italics: false, underline: false, sup: false};
   let tampon = '';
@@ -2464,6 +2494,9 @@ function conventionRuns(ligne) {
       vider();
       actif[marque[1]] = !actif[marque[1]];
       i += marque[0].length;
+    } else if (reste.startsWith('\\[')) {
+      tampon += '[';
+      i += 2;
     } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
       vider();
       ajouter(m[1], true);
@@ -2471,6 +2504,11 @@ function conventionRuns(ligne) {
     } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
       vider();
       ajouter(`${m[1]} (${m[2]})`);
+      i += m[0].length;
+    } else if ((m = /^\[([^[\]]+)\]/.exec(reste)) && conventionValeurDeCase(valeurs, m[1]) !== undefined && conventionValeurDeCase(valeurs, m[1]) !== '') {
+      // Case reconnue et remplie : la valeur est posee telle quelle, avec la mise en forme en cours.
+      vider();
+      ajouter(conventionValeurDeCase(valeurs, m[1]));
       i += m[0].length;
     } else {
       tampon += ligne[i];
