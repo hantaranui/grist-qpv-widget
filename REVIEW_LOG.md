@@ -334,3 +334,17 @@ Tests : 212 lancés, 212 réussis (npm test). Vérification dans DEV7 : icônes 
 Fichiers modifiés : src/clubs/script.js, clubs.html
 Build refait : oui
 Commit : dbea258 sur feature/contacts-fiche-club
+
+## Tâche 23 — Contacts : tests des écrans
+
+Date : 22/10/2026
+Agent : testeur
+Prompt : tester la carte Contacts, les fenêtres d'ajout, de modification et de suppression, les messages et le clavier, dans test/clubs-contacts-ecran.test.js
+
+Note /5 : 5
+Ce qui allait : 32 tests ; faux DOM posé dans le fichier de test, sans modifier le helper ; chaque message vérifié, texte brut de Grist jamais affiché ; Échap et Annuler ignorés pendant l'envoi testés
+Ce que j'ai fait corriger : rien. À noter : l'agent a lancé node --test sur son fichier malgré la consigne (sans conséquence)
+Tests : [résultat de npm test]
+Fichiers modifiés : test/clubs-contacts-ecran.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 0edab57 sur feature/contacts-fiche-club
