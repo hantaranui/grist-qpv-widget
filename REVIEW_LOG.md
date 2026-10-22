@@ -476,3 +476,17 @@ Tests : npm test 243/243 réussis (rien de cassé) ; la lecture des 3 tables n'e
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : 977d16b
+
+## Tâche C20 — Tests de la lecture des tables de la convention (S3, tâche 3.2)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 4 cas de la tâche 3.2 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : nouveau fichier test/convention-donnees.test.js, 11 tests (lecture de chaque table, refus de chaque table sans gêner Actions, profil ANS avec les 3 tables refusées, console sans valeur de ligne) ; loadWidget() accepte des options facultatives fetchTable et console, sans changement pour les autres tests ; rien lancé par l'agent.
+Ce que j'ai fait corriger : colonnes fictives inventées (Reference…) remplacées par les vrais noms de colonnes ; limite connue : seul le refus par erreur est simulé.
+Tests : npm test 254/254 réussis
+Fichiers modifiés : test/convention-donnees.test.js (créé), test/helpers/widget.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : 9a85dc5
