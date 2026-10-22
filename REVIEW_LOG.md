@@ -518,3 +518,17 @@ Tests : npm test 277/277 réussis
 Fichiers modifiés : test/convention-donnees.test.js
 Build refait : pas nécessaire (src/ inchangé)
 Commit : b7b703e
+
+## Tâche C23 — Mise à jour de la note UX de la convention (S4, tâche 4.1)
+
+Date : 2026-10-22
+Agent : designer-ux
+Prompt : tâche 4.1 du plan, puis correction avec les réponses de Hanta
+
+Note /5 : sans objet
+Ce qui allait : droits des profils FT ; 5 états dont « Droits insuffisants » ; 4 messages de blocage exacts, un seul à la fois, bouton grisé avec aria-disabled et aria-describedby, help-block dans role="status" ; « Ajouter un contact » retiré, message si le club n'a aucun contact ; phrase d'aide à l'état « Générée » (imprimer, compléter, signer, déposer) ; écarts avec la maquette listés.
+Ce que j'ai fait corriger : pas de lecture du profil (tous les profils refusés, ANS compris, voient « Droits insuffisants ») ; blocage sur les données enregistrées ; « Enregistrer » actif sans contact ; la note l'emporte sur la maquette, qui n'est plus à jour ; note marquée validée ; l'agent a lancé grep et ls (lecture seule) malgré la consigne.
+Tests : sans objet (documentation)
+Fichiers modifiés : docs/ux/convention.md
+Build refait : pas nécessaire
+Commit : e47240b
