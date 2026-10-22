@@ -504,3 +504,17 @@ Tests : npm test 254/254 réussis (rien de cassé) ; les nouvelles fonctions ne 
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : 63a5d62
+
+## Tâche C22 — Tests de l'état du bloc et du blocage (S3, tâche 3.4)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 8 cas de la tâche 3.4 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : tests ajoutés dans test/convention-donnees.test.js : les 5 états, Signée l'emporte, pièces jointes vides, doublon (plus petit id gardé), blocage par élément avec message exact, ordre du blocage, tout renseigné, state.tablesRefusees après un vrai load() ; 3 tests ajoutés en plus (autre dispositif, refus de Contacts sans effet, convention d'une autre action ignorée), gardés ; données fictives avec les vrais noms de colonnes.
+Ce que j'ai fait corriger : rien ; décompte de l'agent inexact (22 annoncés, 23 de plus selon npm test) ; deux echo lancés par erreur, sans effet ; code postal « 0 » non testé (Code_postal est du texte).
+Tests : npm test 277/277 réussis
+Fichiers modifiés : test/convention-donnees.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : b7b703e
