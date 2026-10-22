@@ -393,16 +393,16 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : ccc3dcd
 
-## Tâche C14 — Tests de la conversion du texte d'un modèle vers pdfmake (S2, tâche 2.1)
+## Tâche C14 — Tests de la conversion du texte d'un modèle vers pdfmake (S2, tâche 2.2)
 
 Date : 2026-10-22
 Agent : testeur
 Prompt : 18 cas tirés des 3 modèles (préparé dans le projet Claude)
 
 Note /5 : sans objet
-Ce qui allait : nouveau fichier test/convention.test.js, 22 tests (les 18 cas demandés, dont certains en 2 ou 3 parties, plus un cas 2c ajouté et signalé) ; comparaison de la structure complète ; aucun bug trouvé ; src/ non touché.
-Ce que j'ai fait corriger : rien ; l'agent a lancé lui-même node --test, ce qui ne remplace pas npm test lancé par Hanta.
+Ce qui allait : nouveau fichier de test, 22 tests (les 18 cas demandés, dont certains en 2 ou 3 parties, plus un cas 2c ajouté et signalé) ; comparaison de la structure complète ; aucun bug trouvé ; src/ non touché.
+Ce que j'ai fait corriger : l'agent a lancé lui-même node --test, ce qui ne remplace pas npm test lancé par Hanta ; fichier renommé en test/convention-modele.test.js, nom prévu au backlog (commit 2198a5b) ; les messages des commits af85b34 et 4ae3289 disent « tâche 2.1 » au lieu de 2.2.
 Tests : npm test 202/202 réussis
-Fichiers modifiés : test/convention.test.js (créé)
+Fichiers modifiés : test/convention-modele.test.js (créé sous le nom test/convention.test.js, puis renommé)
 Build refait : pas nécessaire (src/ inchangé)
 Commit : af85b34
