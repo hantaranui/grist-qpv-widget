@@ -548,6 +548,12 @@ td:last-child {
    (meme regle que #addActionModal dans le tableau de bord). */
 #contactModal .modal { display: block; overflow-y: auto; }
 
+/* Bouton de confirmation de suppression : le design system n'a pas de bouton
+   destructeur, on colore le bouton primaire avec ses jetons d'erreur (regle
+   reprise a l'identique du tableau de bord). */
+.btn-supprimer { background-color: var(--ft-color-background-error-default); border-color: var(--ft-color-background-error-default); }
+.btn-supprimer:hover, .btn-supprimer:focus-visible { background-color: var(--ft-color-background-error-strong); border-color: var(--ft-color-background-error-strong); }
+
 .contact-required-note { margin: 0 0 8px; }
 .contact-club { margin: 0 0 8px; overflow-wrap: anywhere; }
 .contact-fields { display: grid; gap: 16px; }

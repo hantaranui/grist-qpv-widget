@@ -727,6 +727,7 @@ function renderContacts(contacts) {
     // Plusieurs lignes portent les memes mots « Modifier » : l'etiquette du
     // bouton nomme le contact pour un lecteur d'ecran.
     const libelleModifier = nomComplet ? `Modifier le contact ${nomComplet}` : 'Modifier le contact sans nom';
+    const libelleSupprimer = nomComplet ? `Supprimer le contact ${nomComplet}` : 'Supprimer le contact sans nom';
     const mail = mailHref(contact.email);
     const tel = telHref(contact.telephone);
     return `<li class="contact-item">
@@ -736,6 +737,7 @@ function renderContacts(contacts) {
       ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
       <div class="contact-buttons">
         <button class="btn btn-secondary btn-sm" type="button" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span class="btn-content">Modifier</span></button>
+        <button class="btn btn-secondary btn-sm" type="button" data-delete-contact="${contact.id}" aria-label="${escapeAttr(libelleSupprimer)}"><span class="btn-content">Supprimer</span></button>
       </div>
     </li>`;
   }).join('')}</ul>`;
@@ -772,6 +774,12 @@ const MESSAGE_CONTACT_RESEAU = "L'enregistrement n'a pas abouti. Vérifiez votre
 const MESSAGE_CONTACT_AUTRE = "L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de modifier les contacts de ce club.";
 const MESSAGE_CONTACT_INTROUVABLE = "Ce contact n'existe plus. La liste va être actualisée.";
 
+// Messages de la fenetre de suppression (memes principes : textes fixes).
+const MESSAGE_SUPPRESSION_DROITS = "Vous n'avez pas les droits pour supprimer ce contact. Il n'a pas été supprimé.";
+const MESSAGE_SUPPRESSION_RESEAU = "La suppression n'a pas abouti. Vérifiez votre connexion puis réessayez.";
+// Repli : meme message que le reseau, complete comme celui de l'ajout.
+const MESSAGE_SUPPRESSION_AUTRE = "La suppression n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de supprimer les contacts de ce club.";
+
 // Fenetre ouverte : {mode: 'add' | 'edit', contactId, busy}, sinon null.
 let contactDialog = null;
 
@@ -789,6 +797,9 @@ function bindContactButtons() {
   if (ajouter) ajouter.addEventListener('click', () => openContactDialog('add'));
   document.querySelectorAll('[data-edit-contact]').forEach(button => {
     button.addEventListener('click', () => openContactDialog('edit', Number(button.dataset.editContact)));
+  });
+  document.querySelectorAll('[data-delete-contact]').forEach(button => {
+    button.addEventListener('click', () => openDeleteContactDialog(Number(button.dataset.deleteContact)));
   });
 }
 
@@ -859,11 +870,18 @@ function openContactDialog(mode, contactId) {
 // fiche est redessinee a chaque relecture et les anciens boutons n'existent plus.
 // Un contact disparu ne laisse plus son bouton : on retombe sur « Ajouter ».
 function contactOpenerButton() {
-  if (contactDialog && contactDialog.mode === 'edit') {
-    const bouton = document.querySelector(`[data-edit-contact="${contactDialog.contactId}"]`);
+  if (contactDialog && (contactDialog.mode === 'edit' || contactDialog.mode === 'delete')) {
+    const attribut = contactDialog.mode === 'edit' ? 'data-edit-contact' : 'data-delete-contact';
+    const bouton = document.querySelector(`[${attribut}="${contactDialog.contactId}"]`);
     if (bouton) return bouton;
   }
   return document.getElementById('addContact');
+}
+
+// La fenetre ouverte (ajout / modification, ou suppression) : une seule existe
+// a la fois dans #contactModal.
+function contactDialogElement() {
+  return document.getElementById('contactDialog') || document.getElementById('deleteContactDialog');
 }
 
 function closeContactDialog(rendreLeFocus = true) {
@@ -889,12 +907,12 @@ function keepFocusInContactDialog(event) {
     return;
   }
   if (event.key !== 'Tab') return;
-  const focusable = [...document.querySelectorAll('#contactDialog input, #contactDialog button:not(:disabled)')];
+  const focusable = [...document.querySelectorAll('#contactDialog input, #contactDialog button:not(:disabled), #deleteContactDialog button:not(:disabled)')];
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
   const actif = document.activeElement;
-  if (!document.getElementById('contactDialog').contains(actif)) {
+  if (!contactDialogElement().contains(actif)) {
     event.preventDefault();
     first.focus();
   } else if (event.shiftKey && actif === first) {
@@ -927,7 +945,7 @@ function markContactProblems(saisie, problemes) {
 }
 
 function showContactMessage(texte) {
-  const message = document.getElementById('contactMessage');
+  const message = document.getElementById('contactMessage') || document.getElementById('deleteContactMessage');
   message.querySelector('.alert-content').textContent = texte;
   message.classList.remove('is-hidden');
 }
@@ -989,6 +1007,93 @@ async function submitContact(event) {
   setContactBusy(false);
   const valider = document.getElementById('submitContact');
   if (valider) valider.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Contacts : fenetre de confirmation de suppression. Elle reutilise le conteneur
+// #contactModal, l'etat contactDialog (mode 'delete'), la fermeture, le piege du
+// focus et la zone d'annonce de la fenetre d'ajout / modification.
+// ---------------------------------------------------------------------------
+
+function deleteContactDialogHtml(nomContact) {
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="deleteContactDialog" role="alertdialog" aria-modal="true" aria-labelledby="deleteContactTitle" aria-describedby="deleteContactText" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header"><h2 class="modal-title" id="deleteContactTitle">Suppression d'un contact</h2></div>
+        <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="deleteContactMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <p id="deleteContactText">Êtes-vous sûr de vouloir supprimer le contact <strong>${escapeHtml(nomContact)}</strong> ? Cette suppression est définitive : le contact ne pourra pas être récupéré.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelDeleteContact"><span class="btn-content">Annuler</span></button>
+          <button type="button" class="btn btn-primary btn-supprimer" id="confirmDeleteContact"><span class="btn-content">Supprimer</span></button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openDeleteContactDialog(contactId) {
+  const club = state.clubs.find(item => item.id === state.currentId);
+  if (!club) return;
+  const contact = buildFicheDetail(state.raw, club.id).contacts.find(item => item.id === contactId);
+  if (!contact) return;
+  const nomComplet = [contact.prenom, contact.nom].filter(Boolean).join(' ');
+  annoncerContact('');
+  contactDialog = {mode: 'delete', contactId, busy: false};
+  document.getElementById('contactModal').innerHTML = deleteContactDialogHtml(nomComplet || 'Contact sans nom');
+  document.body.classList.add('modal-open');
+  document.getElementById('cancelDeleteContact').addEventListener('click', () => closeContactDialog());
+  document.getElementById('confirmDeleteContact').addEventListener('click', confirmDeleteContact);
+  document.addEventListener('keydown', keepFocusInContactDialog);
+  // L'action prudente : le focus est sur « Annuler ».
+  document.getElementById('cancelDeleteContact').focus();
+  requestResize();
+}
+
+function setDeleteContactBusy(occupe) {
+  contactDialog.busy = occupe;
+  const bouton = document.getElementById('confirmDeleteContact');
+  bouton.disabled = occupe;
+  bouton.querySelector('.btn-content').textContent = occupe ? 'Suppression en cours…' : 'Supprimer';
+}
+
+function deleteFailureMessage(type) {
+  if (type === 'droits') return MESSAGE_SUPPRESSION_DROITS;
+  if (type === 'reseau') return MESSAGE_SUPPRESSION_RESEAU;
+  if (type === 'introuvable') return MESSAGE_CONTACT_INTROUVABLE;
+  return MESSAGE_SUPPRESSION_AUTRE;
+}
+
+async function confirmDeleteContact() {
+  if (!contactDialog || contactDialog.mode !== 'delete' || contactDialog.busy) return;
+  const {contactId} = contactDialog;
+  document.getElementById('deleteContactMessage').classList.add('is-hidden');
+  setDeleteContactBusy(true);
+  const resultat = await supprimerContact(state.currentId, contactId);
+
+  if (resultat.ok) {
+    // Meme ordre que pour l'ajout : fermer, relire, annoncer, puis placer le
+    // focus (le bouton de la ligne n'existe plus : « Ajouter un contact »).
+    contactDialog.busy = false;
+    closeContactDialog(false);
+    await load();
+    annoncerContact('Le contact a bien été supprimé.');
+    const ajouter = document.getElementById('addContact');
+    if (ajouter) ajouter.focus();
+    return;
+  }
+
+  showContactMessage(deleteFailureMessage(resultat.type));
+  if (resultat.type === 'introuvable' || resultat.type === 'autre') {
+    // La fenetre est hors de la fiche : elle reste ouverte pendant la relecture.
+    await load();
+  }
+  setDeleteContactBusy(false);
+  // Apres un echec, le focus revient sur l'action prudente.
+  const annuler = document.getElementById('cancelDeleteContact');
+  if (annuler) annuler.focus();
 }
 
 // Une valeur saisie mais inexploitable comme lien reste affichee telle quelle.
