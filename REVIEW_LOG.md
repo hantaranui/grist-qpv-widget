@@ -362,3 +362,17 @@ Tests : 244 lancés, 244 réussis (npm test)
 Fichiers modifiés : README.md, CLAUDE.md, docs/ux/contacts-fiche-club.md
 Build refait : non (src/ inchangé)
 Commit : b5cc09b sur feature/contacts-fiche-club
+
+## Tâche 25 — Contacts : cas de test de recette (recetteur)
+
+Date : 22/10/2026
+Agent : recetteur (2 corrections)
+Prompt : rédiger les cas de test de recette de la gestion des contacts au format de l'onglet Cas_de_test du carnet (18 colonnes), en .tsv pour Excel et en .md lisible
+
+Note /5 : sans objet
+Ce qui allait : 31 cas (CON-01 à CON-32, sans CON-27) ; messages exacts de la note ; tests de sécurité (HTML) et de persistance ; séparation entre ce que joue le collègue et ce que joue la développeuse ; données fictives ; points incertains signalés au lieu d'être inventés
+Ce que j'ai fait corriger : CON-21 et CON-26 impossibles à jouer (clubs invisibles pour le FT Régional hors de sa DR et pour l'ANS), réécrits ; doublon de données entre CON-10 et CON-14 ; CON-27 retiré ; CON-28 aligné sur la note ; prérequis du profil FT National du testeur ; ordre prénom puis nom constaté pour CON-17
+Tests : aucun (documentation)
+Fichiers modifiés : docs/tests/cas-de-test-contacts.tsv, docs/tests/cas-de-test-contacts.md (créés)
+Build refait : non
+Commit : 15c1258 sur feature/contacts-fiche-club
