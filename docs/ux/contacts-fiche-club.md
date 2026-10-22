@@ -26,15 +26,15 @@ Qui : un agent France Travail (National, Régional, Départemental) ou ANS, sur 
 
 ### 1.2 Modifier un contact (5 étapes)
 
-1. Sur la ligne d'un contact de la carte, l'agent clique sur « Modifier ».
+1. Sur la ligne d'un contact de la carte, l'agent clique sur le bouton-icône Modifier (crayon, nom accessible « Modifier le contact … »).
 2. La fenêtre « Modification d'un contact » s'ouvre avec les cinq champs pré-remplis ; le focus est dans Nom.
 3. L'agent change ce qu'il veut, puis « Valider ». Le club ne peut pas être changé (affiché en texte, pas en champ).
 4. Mêmes contrôles et mêmes messages que pour l'ajout.
-5. Réussite : la fenêtre se ferme, la ligne est mise à jour, annonce de réussite aux lecteurs d'écran. Le focus revient sur le bouton « Modifier » de ce contact.
+5. Réussite : la fenêtre se ferme, la ligne est mise à jour, annonce de réussite aux lecteurs d'écran. Le focus revient sur le bouton-icône Modifier de ce contact.
 
 ### 1.3 Supprimer un contact (4 étapes)
 
-1. Sur la ligne d'un contact, l'agent clique sur « Supprimer ».
+1. Sur la ligne d'un contact, l'agent clique sur le bouton-icône Supprimer (corbeille, nom accessible « Supprimer le contact … »).
 2. La fenêtre « Suppression d'un contact » s'ouvre : elle nomme le contact et dit que la suppression est définitive. Le focus est sur « Annuler » (l'action prudente), comme pour la suppression d'une action.
 3. L'agent clique sur « Supprimer » (bouton rouge) pour confirmer, ou sur « Annuler » / Échap pour renoncer.
 4. Réussite : la fenêtre se ferme, le contact disparaît de la liste, annonce de réussite aux lecteurs d'écran. Le focus va sur « Ajouter un contact » (le bouton de la ligne n'existe plus). Refus ou échec : la fenêtre reste ouverte avec une alerte.
@@ -52,18 +52,38 @@ La carte garde son en-tête actuel (`section-head`, titre « Contacts »). Le bo
 │                                                       │
 │  (annonce de réussite : voix seulement, rien à l'écran, voir §7.4)
 │                                                       │
-│  Marie Dupont                       [Modifier][Supprimer]
+│  Marie Dupont                                  [✎] [🗑]│
 │  Responsable administrative  (Fonction, voir §5)      │
 │  marie.dupont@exemple.fr   01 23 45 67 89             │
 │  ───────────────────────────────────────────────────  │
-│  Karim Martin                       [Modifier][Supprimer]
+│  Karim Martin                                  [✎] [🗑]│
 │  (Fonction non renseignée : aucune ligne)             │
 │  k.martin@exemple.fr       —                          │
 │                                                       │
 └───────────────────────────────────────────────────────┘
+(✎ = icon-edit, Modifier ; 🗑 = icon-trash, Supprimer. Icônes seules, aucun texte
+ « Modifier » / « Supprimer » dans la carte. Au survol, une info-bulle affiche
+ « Modifier » ou « Supprimer » : voir §6.2)
 ```
 
 Les noms ci-dessus sont fictifs (aucune donnée réelle dans le dépôt).
+
+Version mobile (400 px), même carte :
+
+```
+┌─ CONTACTS ─────────────────────────┐
+│  [ + Ajouter un contact ]           │
+│                                     │
+│  Marie Dupont                       │
+│  Responsable administrative         │
+│  marie.dupont@exemple.fr            │
+│  01 23 45 67 89                     │
+│  [✎] [🗑]                           │
+│  ─────────────────────────────────  │
+└─────────────────────────────────────┘
+```
+
+Sur mobile les deux boutons-icônes restent sur une dernière ligne sous les coordonnées, alignés à gauche, avec un écart entre eux (§6.1). Ils tiennent à 320 px sans passer à la ligne : c'est le gain de place recherché.
 
 Liste vide :
 
@@ -82,7 +102,7 @@ Table Contacts illisible (règles d'accès) : on garde le message actuel et on *
 └───────────────────────────────────────────────────────┘
 ```
 
-Boutons de chaque ligne : « Modifier » et « Supprimer » en `btn btn-secondary btn-sm`. Chacun porte un `aria-label` qui nomme le contact, car plusieurs lignes ont les mêmes mots : « Modifier le contact Marie Dupont », « Supprimer le contact Marie Dupont ». Le « Supprimer » de la ligne n'est **pas** rouge (la couleur d'alerte est réservée au bouton de confirmation dans la fenêtre) ; il reste identifiable par son texte.
+Boutons de chaque ligne (**révision du 22/10/2026, décision de Hanta : icônes à la place des textes**) : deux boutons « icône seule » qui passent ensemble en icône, `icon-edit` pour Modifier et `icon-trash` pour Supprimer, structures au §7.2. Source des deux noms : page « Icônes » du design system (https://designsystem.francetravail.io/docs/bibliotheque/icones.html), relevée par Hanta le 21/10/2026. Il n'y a plus de bouton texte « Modifier » ni « Supprimer » dans la carte (« Supprimer » n'existe plus que dans la fenêtre de confirmation, §2.3). Chaque bouton a un `aria-label` qui nomme le contact, car plusieurs lignes ont les mêmes mots : « Modifier le contact Marie Dupont », « Supprimer le contact Marie Dupont ». L'icône est cachée aux lecteurs d'écran ; une info-bulle visible dit « Modifier » / « Supprimer » (§6.2). Le bouton corbeille de la ligne n'est **pas** rouge (la couleur d'alerte est réservée au bouton de confirmation dans la fenêtre) : décision de Hanta, argumentée au §6.2.
 
 ### 2.2 Fenêtre d'ajout et de modification
 
@@ -212,11 +232,11 @@ Le nom de classe de cette ligne est à choisir par dev-interface (pas de nom du 
 
 ### 6.1 Mobile
 
-- Sous 560 px, le widget empile déjà les champs d'un contact (`.contact-item { flex-direction: column }`) et réduit les marges (`.card-body { padding: 16px }`). Les boutons « Modifier » et « Supprimer » forment une dernière ligne sous les coordonnées, côte à côte, alignés à gauche. Si les deux ne tiennent pas sur une ligne à 320–400 px, ils passent à la ligne (jamais de texte coupé lettre par lettre, problème déjà rencontré sur « Voir »).
+- Sous 560 px, le widget empile déjà les champs d'un contact (`.contact-item { flex-direction: column }`) et réduit les marges (`.card-body { padding: 16px }`). Les deux boutons-icônes (Modifier, Supprimer) forment une dernière ligne sous les coordonnées, côte à côte, alignés à gauche. Étant carrés et sans texte, ils tiennent sur une ligne à 320–400 px ; s'ils devaient passer à la ligne, aucun libellé ne peut être coupé (problème déjà rencontré sur « Voir »). Sur mobile il n'y a pas de survol : l'info-bulle n'est pas disponible au toucher, le sens repose sur l'icône et sur le texte pour lecteur d'écran.
 - Aucun défilement horizontal de la fiche : e-mails et noms longs passent à la ligne (`overflow-wrap: anywhere` existe déjà sur `.contact-item`).
 - Les fenêtres : un seul bloc vertical, un champ par ligne, boutons Annuler / Valider en bas, pleine largeur ou côte à côte selon ce que donne `modal-footer` du design system à 400 px (à vérifier au rendu). Les champs ne sont jamais sur deux colonnes.
 - **Risque à tester — à constater en recette (DEV7)** : le widget est dans un iframe Grist dont la hauteur est réglée sur celle du contenu (`requestResize`, `grist.setHeight`). Une fenêtre modale plus haute que cet iframe serait coupée. À 400 px de large, la fenêtre d'ajout (mention + 5 champs) est haute. Le tableau de bord a le même mécanisme avec 3 champs (`#addActionModal .modal { display: block; overflow-y: auto }`). À vérifier sur une fiche courte (club sans contact ni action) à 400 px ; si la fenêtre est rognée, c'est à signaler à Hanta, pas à contourner.
-- Cibles tactiles : les boutons `btn-sm` des lignes doivent rester espacés l'un de l'autre pour qu'on puisse en toucher un sans toucher l'autre (écart minimal de quelques pixels).
+- Cibles tactiles : les boutons-icônes des lignes doivent rester espacés l'un de l'autre pour qu'on puisse en toucher un sans toucher l'autre (écart minimal de quelques pixels), voir aussi §6.2 « Boutons-icônes ».
 
 ### 6.1 bis Largeur des cartes Contacts et Actions — DÉCIDÉ PAR HANTA
 
@@ -265,10 +285,19 @@ Chiffres arrondis, calculés à la main sans mesure à l'écran : à constater a
 - Les boutons de ligne ont un `aria-label` qui nomme le contact (§2.1).
 - Le bouton d'ajout dit ce qu'il fait : « Ajouter un contact ».
 
+Boutons-icônes de ligne (Modifier, Supprimer) — révision du 22/10/2026
+- **Nom accessible** : `aria-label="Modifier le contact Marie Dupont"` (idem Supprimer) sur le `<button>`. Le `aria-label` remplace le contenu du bouton pour les lecteurs d'écran, donc **pas de `<span class="sr-only">`** en plus (le modèle du design system en met un, « Modifier », mais il ne nomme pas le contact : ici le `aria-label` fait ce travail). Le nom accessible commence par le mot de l'info-bulle (« Modifier »), donc le texte vu et le texte lu concordent. Le nom du contact passe par `escapeAttr`. Contact sans nom : « Contact sans nom », comme ailleurs.
+- **Icône cachée** : `<span aria-hidden="true" class="icon icon-edit"></span>` pour Modifier, `<span aria-hidden="true" class="icon icon-trash"></span>` pour Supprimer (structure de la page « Bouton : Icône seule » ; noms relevés par Hanta sur la page « Icônes »).
+- **Info-bulle visible** : le design system en prévoit une, attribut `data-ft-tooltip="Modifier"` sur le bouton (pages « Bouton : Icône seule » et « Bouton : Avec une infobulle »), accompagné de `data-ft-vocalize="false"` pour que l'info-bulle ne soit pas lue en double par le lecteur d'écran. Elle est gérée par `ft-autoloader.js`, que le widget charge déjà. **Je n'ai pas pu lire** si elle s'affiche aussi au focus clavier (la page ne le dit pas) : à constater au rendu. Si elle ne s'affiche qu'au survol, ce n'est pas un défaut grave (le nom accessible existe), mais à signaler à Hanta.
+- **Taille de la cible tactile** : les pages lues ne donnent ni la taille du bouton carré (`btn-ratio-square`) ni celle de `btn-sm`. Je ne l'invente pas. Exigence à vérifier au rendu : au moins 24 × 24 px (critère WCAG 2.2, 2.5.8, niveau AA), et viser 44 × 44 px si le design system le permet sans classe nouvelle. Écart de quelques pixels entre les deux boutons. Dire à Hanta la taille mesurée.
+- **Focus visible** : le bouton garde le style de focus du design system (aucun `outline: none`, aucune règle à écrire). À vérifier au clavier sur les deux boutons, y compris au retour du focus après fermeture de la fenêtre (§6.2 « Focus et clavier » inchangé).
+- **Pas d'information portée par l'icône seule** : l'icône + l'info-bulle + le nom accessible disent la même chose.
+- **Couleur de la corbeille — DÉCIDÉ PAR HANTA : pas de rouge.** (a) Le design system n'a pas de bouton destructeur (§7.5) ; mettre la corbeille en rouge reviendrait à écrire une 2e règle de couleur `btn-supprimer` pour un bouton secondaire, que je n'ai pas vue dans le design system. (b) Une rangée de corbeilles rouges attire l'œil sur une action rare ; le rouge reste le signal « action définitive » du bouton de confirmation, ce qui garde son sens. (c) La protection réelle est la fenêtre de confirmation, pas la couleur. (d) Les deux boutons identiques en `btn-secondary` restent distinguables par la forme de l'icône, l'info-bulle et le nom accessible. Alternative si Hanta préfère du rouge : seulement des jetons de couleur d'erreur du design system déjà utilisés par `btn-supprimer`, jamais de couleur nouvelle, et vérifier le contraste de l'icône (3:1 au minimum pour un élément graphique).
+
 Focus et clavier
 - Ouverture : le focus entre dans la fenêtre (champ Nom pour l'ajout et la modification ; bouton Annuler pour la suppression).
 - Tab et Maj+Tab tournent entre les contrôles de la fenêtre sans en sortir (le tableau de bord le fait avec `keepFocusInAddAction`). Échap ferme la fenêtre sans enregistrer (pour la suppression : annule). Pas de confirmation à la fermeture : 5 champs seulement, comme l'ajout d'action.
-- Fermeture : le focus revient sur le bouton qui avait ouvert la fenêtre. Exceptions : après une modification réussie, sur « Modifier » du même contact ; après une suppression réussie, sur « Ajouter un contact » (le bouton d'origine n'existe plus).
+- Fermeture : le focus revient sur le bouton qui avait ouvert la fenêtre. Exceptions : après une modification réussie, sur le bouton-icône Modifier du même contact ; après une suppression réussie, sur « Ajouter un contact » (le bouton d'origine n'existe plus).
 - Après une erreur de saisie : le focus va sur le premier champ en erreur.
 - Tout se fait au clavier : Entrée dans un champ valide le formulaire (bouton `type="submit"`) ; Entrée sur « Annuler » l'active.
 - Le corps de la page ne défile pas sous la fenêtre ouverte (classe `modal-open` sur `body`, comme au tableau de bord).
@@ -348,16 +377,54 @@ Styles à prévoir côté clubs (src/clubs/style.css ne les a pas ; le tableau d
 
 Page (relevée dans la fiche du dépôt) : https://designsystem.francetravail.io/components/detail/button--primary.html . Les pages des variantes secondaire et petite taille n'ont pas été relues pour cette note : se fier aux classes déjà utilisées dans clubs.
 
-Structure exacte (déjà utilisée dans clubs et dans le tableau de bord) :
+Structure exacte d'un bouton avec texte (déjà utilisée dans clubs et dans le tableau de bord) :
 
 ```html
-<button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Modifier</span></button>
+<button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Ajouter un contact</span></button>
 ```
+
+**Bouton avec une icône seule (révision du 22/10/2026).** Pages lues le 22/10/2026 :
+- https://designsystem.francetravail.io/components/detail/button--icon.html (« Icône seule ») : structure recopiée ci-dessous.
+- https://designsystem.francetravail.io/components/detail/button--icon-responsive.html (« Icône seule (responsive) ») : `d-xs-btn-ratio-square`, icône + `btn-content` ; le texte est visible sur grand écran. **Non retenu** : on veut l'icône seule partout.
+- https://designsystem.francetravail.io/components/detail/button--tooltip.html (« Avec une infobulle ») : `data-ft-tooltip`, `data-ft-placement="bottom"`.
+- https://designsystem.francetravail.io/components/detail/button--small.html (« Petit ») : `btn btn-primary btn-sm`.
+
+Structure exacte de la page « Icône seule » (seul le modèle de bouton est repris ; l'icône est celle choisie par Hanta, `icon-edit`) :
+
+```html
+<button class="btn btn-secondary btn-ratio-square" id="button_149706405" type="button" data-ft-tooltip="Modifier" data-ft-vocalize="false">
+    <span aria-hidden="true" class="icon icon-edit"></span>
+    <span class="sr-only">Modifier</span>
+</button>
+```
+
+**Bouton Modifier de la ligne d'un contact** (adaptation : `aria-label` qui nomme le contact à la place du `sr-only`, pas d'`id` de démonstration) :
+
+```html
+<button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Modifier" data-ft-vocalize="false" aria-label="Modifier le contact Marie Dupont">
+  <span aria-hidden="true" class="icon icon-edit"></span>
+</button>
+```
+
+**Bouton Supprimer de la ligne d'un contact** (même modèle, même classes ; seuls l'icône, l'info-bulle et l'`aria-label` changent ; pas de rouge, voir §6.2) :
+
+```html
+<button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Supprimer" data-ft-vocalize="false" aria-label="Supprimer le contact Marie Dupont">
+  <span aria-hidden="true" class="icon icon-trash"></span>
+</button>
+```
+
+Noms d'icônes (décision de Hanta, 22/10/2026) : **Modifier : `icon-edit`** et **Supprimer : `icon-trash`**, adoptées ensemble. Source : page « Icônes » du design system (https://designsystem.francetravail.io/docs/bibliotheque/icones.html), relevée par Hanta le 21/10/2026, structure `<span aria-hidden="true" class="icon icon-edit"></span>` et `<span aria-hidden="true" class="icon icon-trash"></span>`. Je n'ai pas pu lire cette page moi-même (la liste n'apparaît pas dans le texte extrait) : les noms viennent de Hanta ; la feuille du CDN fait foi en cas de doute.
+Écarts et réserves à connaître :
+- Les classes `btn-ratio-square` et `d-xs-btn-ratio-square` sont celles de ces pages ; leur effet exact (taille) n'est pas décrit. Elles ne reprennent pas `btn-sm` : **ne pas combiner `btn-ratio-square` et `btn-sm`** sans test au rendu (non documenté). Les noms avec `ratio-square` ne sont pas à vérifier dans la liste des noms réservés de test/styles.test.js : ce sont des classes du design system, pas les nôtres.
+- Le design system met un `sr-only` « Modifier » dans le bouton. Ici le `aria-label` le remplace, pour nommer le contact (§6.2). C'est un écart voulu au modèle, pas à la page.
+- L'`id` `button_149706405` est généré par le site de démonstration : ne pas le recopier.
 
 | Bouton | Classes | Texte |
 |---|---|---|
 | Ajouter (haut de carte) | `btn btn-secondary btn-sm` | « + Ajouter un contact » (comme « + Ajouter un financeur » au tableau de bord, qui est `btn btn-secondary`) |
-| Modifier, Supprimer (ligne) | `btn btn-secondary btn-sm` | « Modifier », « Supprimer » |
+| Modifier (ligne) | `btn btn-secondary btn-ratio-square` + `icon icon-edit` | icône seule, nom accessible « Modifier le contact … » |
+| Supprimer (ligne) | `btn btn-secondary btn-ratio-square` + `icon icon-trash` (pas de rouge) | icône seule, nom accessible « Supprimer le contact … » |
 | Annuler (fenêtre) | `btn btn-secondary` | « Annuler » |
 | Valider (fenêtre) | `btn btn-primary` | « Valider » |
 | Confirmer la suppression | `btn btn-primary btn-supprimer` | « Supprimer » |
@@ -467,8 +534,14 @@ Limite à connaître : une personne qui voit l'écran n'a pas de message écrit 
 8. Pas d'alerte de succès visible : fenêtre fermée, liste mise à jour, annonce aux lecteurs d'écran (§7.4).
 9. Le Journal des évolutions de DEV7 sera rempli par Hanta à la livraison (pas DEV2).
 
+Décisions de Hanta (22/10/2026)
+
+10. Icônes des boutons de ligne : `icon-edit` (Modifier) et `icon-trash` (Supprimer), adoptées ensemble, icône seule pour les deux (§2.1, §7.2).
+11. La corbeille de la ligne reste non rouge : le rouge reste réservé au bouton de confirmation de la fenêtre de suppression (§6.2).
+
 ## À constater en recette (DEV7)
 
 - **Texte et reconnaissance du refus de Grist** (§3) : comment Grist signale un refus au widget, et le texte exact à afficher. La création par un profil non propriétaire (règles avec `newRec`) n'a pas encore été testée avec le widget, d'après CLAUDE.md.
 - **Hauteur des fenêtres dans l'iframe à 400 px** (§6.1) : à tester sur une fiche courte ; si la fenêtre est rognée, à signaler à Hanta.
+- **Boutons-icônes des lignes** (§6.2, §7.2) : taille réelle de la cible (au moins 24 × 24 px), info-bulle au focus clavier, focus visible, écart entre les deux boutons à 400 px. Pour les deux boutons carrés : taille réelle (24 × 24 px minimum) et affichage de l'info-bulle au focus clavier.
 - **Carte Actions** après passage à deux moitiés égales (§6.1 bis) : ses lignes se lisent-elles bien sur un club qui a beaucoup d'actions ?
