@@ -811,3 +811,17 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    ne la creant que pendant qu'elle est ouverte. */
 #addActionModal .modal, #deleteActionModal .modal { display: block; overflow-y: auto; }
 .add-action-fields { display: grid; gap: 16px; }
+
+/* Fenetre « Convention » : meme affichage que les deux fenetres ci-dessus, dans
+   une regle a part. Puis une colonne, puis deux colonnes cote a cote des 1200 px
+   (la note en prevoit trois quand le bloc « Informations relatives a la convention »
+   sera ajoute). Aucune couleur : tout vient du design system. */
+#conventionModal .modal { display: block; overflow-y: auto; }
+.convention-grid { display: grid; gap: 24px; }
+@media (min-width: 1200px) {
+  .convention-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.convention-part { min-width: 0; margin: 0; padding: 0; border: 0; }
+.convention-champs { display: grid; gap: 16px; }
+/* Boutons du bloc Convention : ils gardent leur taille et passent a la ligne. */
+.convention-actions { display: flex; flex-wrap: wrap; gap: 12px; }

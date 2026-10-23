@@ -39,7 +39,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -674,6 +674,7 @@ function renderEdit() {
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   document.getElementById('deleteAction').addEventListener('click', () => openDeleteAction(action));
+  bindConvention(action.id);
   focusFirstField(editView);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -1864,9 +1865,9 @@ function conventionBlocage(actionId, donnees) {
 }
 
 // ---- Convention : bloc affiche en bas de la fiche (lecture seule) ----
-// Textes de la note docs/ux/convention.md, un par etat. Aucun bouton pour l'instant
-// (ils viendront avec la fenetre, la generation et le depot), et pas de message de
-// blocage : il est lie au bouton « Generer ». Le profil de l'utilisateur n'est pas lu :
+// Textes de la note docs/ux/convention.md, un par etat. Seul l'etat « A generer » a
+// un bouton (et son message de blocage, lie a ce bouton) ; les autres viendront avec
+// la generation et le depot. Le profil de l'utilisateur n'est pas lu :
 // « Droits insuffisants » vient de conventionEtat, donc de ce que Grist a refuse.
 const CONVENTION_TEXTES = {
   aGenerer: 'Aucune convention générée.',
@@ -1897,12 +1898,175 @@ function conventionPhrases(actionId, donnees) {
 
 // Meme structure que les autres blocs de la fiche (edit-card, section-head,
 // edit-fields). Le texte porte l'information, sans couleur ni role d'alerte.
+// Seul l'etat « A generer » a un bouton pour l'instant (tache 5.1a) : celui qui
+// ouvre la fenetre. Les boutons des autres etats viendront avec leurs taches.
 function conventionBlocHtml(actionId, donnees) {
   const phrases = conventionPhrases(actionId, donnees)
     .map(({texte, aide}) => `<p${aide ? ' class="convention-aide"' : ''}>${escapeHtml(texte)}</p>`)
     .join('');
+  const aGenerer = conventionEtat(actionId, donnees).etat === CONVENTION_ETATS.aGenerer;
   return `<section class="edit-card" id="conventionBloc">
           <div class="section-head"><span>Convention</span></div>
-          <div class="edit-fields convention-fields">${phrases}</div>
+          <div class="edit-fields convention-fields">${phrases}${aGenerer ? conventionGenererHtml(actionId, donnees) : ''}</div>
         </section>`;
+}
+
+// Bouton « Générer la convention » et, au-dessus, la zone du message de blocage.
+// La zone (role="status") est toujours presente a cet etat, vide quand rien ne
+// manque : ainsi un message qui apparait ensuite est annonce par les lecteurs
+// d'ecran. Bouton grise = aria-disabled (jamais disabled, pour qu'il reste
+// atteignable au clavier) + aria-describedby vers le message. Sans blocage, il
+// annonce qu'il ouvre une fenetre (aria-haspopup).
+function conventionGenererHtml(actionId, donnees) {
+  const blocage = conventionBlocage(actionId, donnees);
+  const message = blocage
+    ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
+    : '';
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"' : ' aria-haspopup="dialog"';
+  return `<div id="conventionBlocage" role="status">${message}</div>
+            <div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionGenerer"${attributs}><span class="btn-content">Générer la convention</span></button></div>`;
+}
+
+// ---- Convention : fenetre (tache 5.1a : informations du club et de l'agence, en lecture seule) ----
+// Les valeurs viennent des donnees enregistrees (state.raw), jamais d'une saisie
+// en cours dans la fiche. Fonction pure : ni DOM, ni Grist.
+//  - siege : adresse du club sur plusieurs lignes (adresse, puis code postal et ville) ;
+//  - adresse de l'agence : adresse, complement, puis code postal et ville.
+// Un code postal a 0 est la valeur par defaut d'une colonne numerique de Grist : on l'ignore,
+// comme conventionBlocage.
+function conventionInfos(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const club = conventionLigne(raw.Structures, action.Club) || {};
+  const agence = conventionLigne(raw.Agences, action.Agence) || {};
+  const texte = valeur => String(valeur ?? '').trim();
+  const lignes = (...parties) => parties.map(texte).filter(partie => partie && partie !== '0');
+  const codePostalVille = element => lignes(element.Code_postal).concat(lignes(element.Ville)).join(' ');
+  return {
+    club: {
+      nom: texte(club.Nom),
+      siret: texte(club.SIRET),
+      siege: lignes(club.Adresse, codePostalVille(club)).join('\n')
+    },
+    agence: {
+      nom: texte(agence.Libelle_agence) || texte(agence.Code_Aurore),
+      adresse: lignes(agence.Adresse, agence.Complement_adresse, codePostalVille(agence)).join('\n')
+    }
+  };
+}
+
+// Nombre de lignes d'une zone de texte en lecture seule : au moins 2, davantage
+// si l'adresse est longue, pour qu'aucun defilement interne n'apparaisse.
+function conventionLignesZone(valeur) {
+  const lignes = String(valeur || '').split('\n').reduce((total, ligne) => total + Math.max(1, Math.ceil(ligne.length / 40)), 0);
+  return Math.max(2, lignes);
+}
+
+function conventionChampLecture(id, libelle, valeur, zone) {
+  const champ = zone
+    ? `<textarea class="form-control" id="${id}" name="${id}" readonly rows="${conventionLignesZone(valeur)}">${escapeHtml(valeur)}</textarea>`
+    : `<input class="form-control" id="${id}" name="${id}" readonly type="text" value="${escapeAttr(valeur)}">`;
+  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${champ}</div>`;
+}
+
+// Structure de la note (§3 et §8) : fenetre modal-xl defilante, titre h2 « Convention »,
+// un fieldset par bloc, pied avec « Fermer ». Seuls les blocs « Signataire club » et
+// « Signataire agence » existent ici, avec leurs champs en lecture seule.
+function conventionModalHtml(actionId, donnees) {
+  const infos = conventionInfos(actionId, donnees);
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <form class="modal-content" id="conventionForm" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
+        <div class="modal-body">
+          <div class="convention-grid">
+            <fieldset class="convention-part">
+              <legend class="form-legend">Signataire club</legend>
+              <div class="convention-champs">
+                ${conventionChampLecture('clubNom', 'Nom du club', infos.club.nom)}
+                ${conventionChampLecture('clubSiret', 'SIRET', infos.club.siret)}
+                ${conventionChampLecture('clubSiege', 'Siège', infos.club.siege, true)}
+                <p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>
+              </div>
+            </fieldset>
+            <fieldset class="convention-part">
+              <legend class="form-legend">Signataire agence</legend>
+              <div class="convention-champs">
+                ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom)}
+                ${conventionChampLecture('agenceAdresse', 'Adresse', infos.agence.adresse, true)}
+              </div>
+            </fieldset>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="conventionFermer"><span class="btn-content">Fermer</span></button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+let focusAvantConvention = null;
+
+// Appelee par renderEdit apres la construction de la fiche. Un bouton grise
+// (aria-disabled) ignore le clic ; l'ouverture reverifie le blocage, au cas ou le
+// script du design system n'aurait pas deja bloque le clic.
+function bindConvention(actionId) {
+  const bouton = document.getElementById('conventionGenerer');
+  if (!bouton) return;
+  bouton.addEventListener('click', () => {
+    if (bouton.getAttribute('aria-disabled') === 'true' || conventionBlocage(actionId, state)) return;
+    openConvention(actionId);
+  });
+}
+
+function openConvention(actionId) {
+  const host = document.getElementById('conventionModal');
+  focusAvantConvention = document.activeElement;
+  state.conventionOpen = true;
+  host.innerHTML = conventionModalHtml(actionId, state);
+  document.body.classList.add('modal-open');
+  document.getElementById('conventionForm').addEventListener('submit', event => event.preventDefault());
+  document.getElementById('conventionFermer').addEventListener('click', closeConvention);
+  host.addEventListener('keydown', keepFocusInConvention);
+  // Aucun champ modifiable pour l'instant : le focus va sur la fenetre elle-meme,
+  // qui est annoncee par son titre (aria-labelledby).
+  document.getElementById('conventionDialog').focus();
+  requestResize();
+}
+
+function closeConvention() {
+  const host = document.getElementById('conventionModal');
+  host.removeEventListener('keydown', keepFocusInConvention);
+  host.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  state.conventionOpen = false;
+  // Le bouton qui a ouvert la fenetre reprend le focus.
+  if (focusAvantConvention && document.body.contains(focusAvantConvention)) focusAvantConvention.focus();
+  focusAvantConvention = null;
+  requestResize();
+}
+
+// Echap ferme ; Tab et Maj+Tab tournent entre les controles de la fenetre.
+function keepFocusInConvention(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeConvention();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const dialog = document.getElementById('conventionDialog');
+  const focusable = [...document.querySelectorAll('#conventionDialog input, #conventionDialog textarea, #conventionDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  // Le focus d'ouverture est sur la fenetre elle-meme : Maj+Tab doit aussi y boucler.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
