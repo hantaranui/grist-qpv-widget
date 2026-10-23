@@ -532,3 +532,17 @@ Tests : sans objet (documentation)
 Fichiers modifiés : docs/ux/convention.md
 Build refait : pas nécessaire
 Commit : e47240b
+
+## Tâche C24 — Bloc « Convention » dans la fiche d'action (S4, tâche 4.2)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 4.2 du plan, lecture A (aucun bouton, aucun message de blocage)
+
+Note /5 : 5
+Ce qui allait : bloc en bas de la fiche, style des autres blocs (edit-card, section-head, edit-fields) ; conventionEtat réutilisée sans modification ; textes des 5 états copiés de la note ; aucun bouton, aucun clic, aucune lecture du profil ; classes convention-fields et convention-aide ; couleur --muted déjà définie dans le tableau de bord (variable du design system) ; aucune commande lancée par l'agent ; texte ajouté signalé.
+Ce que j'ai fait corriger : rien. Texte ajouté par l'agent et accepté : « Convention générée. » et « Convention signée. » quand la date est vide (à reporter dans docs/ux/convention.md en 10.2).
+Tests : 277 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : « Aucune convention générée » et « Pas encore de modèle » s'affichent. Non vus à l'écran : Générée, Signée (format de la date) et Droits insuffisants (l'ANS ne voit pas le tableau de bord), à couvrir en 4.3.
+Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html
+Build refait : oui
+Commit : 5a38b41
