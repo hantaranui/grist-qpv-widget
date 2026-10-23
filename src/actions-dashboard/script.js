@@ -1778,6 +1778,84 @@ function conventionDocumentPdf(texte, valeurs, options) {
   return document;
 }
 
+// ---- Convention : chargement de pdfmake (tache 7.1) ----
+// pdfmake n'est charge qu'au clic sur « Generer » (decision de l'examen de securite,
+// tache 0.3) : jamais a l'ouverture de la page ni de la fenetre. Version figee, depuis
+// cdnjs, avec empreinte SRI : si le fichier change, le navigateur le refuse.
+// Version pdfmake 0.3.3. Adresses et empreintes verifiees par Hanta le 2026-10-23
+// (reponse HTTP 200 pour les deux). Pour changer de version : refaire la verification
+// et recalculer les deux empreintes.
+// L'ordre compte : Roboto.min.js s'enregistre aupres de pdfMake (addFontContainer)
+// seulement si pdfMake existe deja ; sinon il ne fait rien et ne signale rien.
+const CONVENTION_PDFMAKE_SCRIPTS = [
+  {
+    url: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.3.3/pdfmake.min.js',
+    integrity: 'sha384-HsYB9F88cbFl+w8Pu5vyAezlEQxqQkPPj78NDtuRRjgl0t4YAfWS0Fy5pvJF80yI'
+  },
+  {
+    url: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.3.3/fonts/Roboto.min.js',
+    integrity: 'sha384-too3ol4VkM7cR44bgMJ3OfF8xS62cnE/YLdKop6uRj4q4rCMdS4SOmmrASLaCN2O'
+  }
+];
+
+// Code porte par l'erreur de chargerPdfmake (propriete `code`). La tache 7.2b le
+// traduit en message : ici, rien n'est affiche et rien n'est ecrit dans la console.
+const CONVENTION_PDFMAKE_ERREUR = 'pdfmake-non-charge';
+
+let pdfmakePromesse = null;
+
+function pdfmakePret() {
+  return !!(window.pdfMake && typeof window.pdfMake.createPdf === 'function');
+}
+
+// Ajoute un script a la page. Promesse resolue quand il est charge ; en cas d'echec
+// (reseau, empreinte refusee), le script est retire de la page et la promesse est rejetee.
+function pdfmakeAjouterScript(source) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = source.url;
+    script.integrity = source.integrity;
+    script.crossOrigin = 'anonymous';
+    script.referrerPolicy = 'no-referrer';
+    // Dans l'ordre : on n'attend le suivant qu'une fois celui-ci charge.
+    script.async = false;
+    script.onload = () => resolve(script);
+    script.onerror = () => {
+      script.remove();
+      reject(new Error('Script non charge'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// Charge pdfmake puis la police Roboto. Promesse resolue quand pdfMake peut fabriquer
+// un PDF avec Roboto, rejetee sinon par une erreur dont `code` vaut
+// CONVENTION_PDFMAKE_ERREUR. Un seul chargement par page : un deuxieme appel rend la
+// meme promesse. Apres un echec, le prochain appel recommence ; un script deja
+// charge avec succes n'est pas ajoute une deuxieme fois.
+function chargerPdfmake() {
+  if (pdfmakePromesse) return pdfmakePromesse;
+  pdfmakePromesse = (async () => {
+    const [bibliotheque, police] = CONVENTION_PDFMAKE_SCRIPTS;
+    if (!pdfmakePret()) {
+      const script = await pdfmakeAjouterScript(bibliotheque);
+      if (!pdfmakePret()) {
+        // Charge, mais n'a rien fourni : on le retire pour pouvoir recommencer.
+        script.remove();
+        throw new Error('pdfMake absent apres le chargement');
+      }
+    }
+    await pdfmakeAjouterScript(police);
+  })().catch(cause => {
+    pdfmakePromesse = null;
+    const erreur = new Error('pdfmake n\'a pas pu etre charge');
+    erreur.code = CONVENTION_PDFMAKE_ERREUR;
+    erreur.cause = cause;
+    throw erreur;
+  });
+  return pdfmakePromesse;
+}
+
 // ---- Convention : etat du bloc et blocage de la generation ----
 // Deux fonctions pures : ni Grist, ni DOM, ni ecriture. Elles lisent "donnees", un
 // objet { raw, tablesRefusees } : on lui passe simplement `state`. Les droits sont
