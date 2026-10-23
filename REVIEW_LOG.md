@@ -729,3 +729,18 @@ Tests : 304 passés, 0 échec (npm test) ; 27 passés sur 27 (node --test test/c
 Fichiers modifiés : test/convention-bloc.test.js (nouveau)
 Build refait : pas nécessaire (src/ inchangé)
 Commit : e4691fa
+
+## Tâche C26 — Recette R1 de la convention : cas de test et campagne C01
+
+Date : 2026-10-23
+Agent : recetteur (écriture des cas), puis Hanta (relecture et exécution)
+Prompt : cas de recette de R1 (affichage du bloc), puis correction des valeurs selon les listes du carnet
+
+Note /5 : 5
+Ce qui allait : 15 cas en lecture seule, textes copiés de la note UX, données d'essai précises (dates à 12:00), « Droits insuffisants » non jouable et renvoyé aux tests de C25, absence de boutons signalée comme normale.
+Ce que j'ai fait corriger : ID (CONV-01 à 15), Fonction, Type et Automatisable aux valeurs du carnet, 3 tests de fumée au lieu de 5, Rejouable_PROD à Oui, pas de nouvelle DR ni DD, pas de comptes inventés, VoiceOver. Corrigé ensuite à la main : Automatisable à Non pour CONV-08 à 15, ligne sur le mode sombre.
+Tests : campagne C01 jouée en local sur DEV7 (TEST occupé par la recette des contacts), version 7e951b4 : 15 cas OK sur 15. npm test : 368 passés sur 368, après la fusion de main.
+Fichiers modifiés : docs/tests/cas-de-test-convention.tsv, docs/tests/cas-de-test-convention.md
+Build refait : pas nécessaire
+Commit : cas de test commités avant la fusion
+Reste à faire : campagne C02 sur TEST, jouée par un autre développeur. Mode sombre du tableau de bord à traiter à part.
