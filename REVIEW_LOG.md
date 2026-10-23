@@ -856,3 +856,17 @@ Tests : 434 tests, 428 passés, 6 échecs, puis 434 passés, 0 échec après cor
 Fichiers modifiés : test/convention-enregistrement.test.js (nouveau)
 Build refait : pas nécessaire
 Commit : c5928e3
+
+## Tâche C35 — Chargement de pdfmake (S7, tâche 7.1)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 7.1, avec les adresses et les empreintes SRI calculées par Hanta (fichiers vérifiés en HTTP 200)
+
+Note /5 : sans objet
+Ce qui allait : version 0.3.3 figée, deux scripts chargés dans l'ordre avec integrity, crossorigin et referrerpolicy ; un seul chargement par page, nouvel essai possible après un échec ; erreur reconnaissable (pdfmake-non-charge), rien dans la console ; rien chargé à l'ouverture ; enregistrement de Roboto compris en lisant le fichier, sans deviner.
+Ce que j'ai fait corriger : rien. À traiter en 7.2 : délai maximum de chargement (sinon attente sans fin, Échap et Fermer étant ignorés pendant la génération). À vérifier en 7.2 : nom de la police enregistrée.
+Tests : 434 passés, 0 échec (npm test). Tests propres à 7.1 prévus en 7.3.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b7fdb57
