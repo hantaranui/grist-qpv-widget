@@ -744,3 +744,31 @@ Fichiers modifiés : docs/tests/cas-de-test-convention.tsv, docs/tests/cas-de-te
 Build refait : pas nécessaire
 Commit : cas de test commités avant la fusion
 Reste à faire : campagne C02 sur TEST, jouée par un autre développeur. Mode sombre du tableau de bord à traiter à part.
+
+## Tâche C27 — Bouton « Générer » et fenêtre Convention en lecture seule (S5, tâche 5.1a)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 5.1a (découpage de la 5.1), puis correction du style de la fenêtre
+
+Note /5 : 5
+Ce qui allait : bouton seulement à l'état À générer ; bouton grisé avec aria-disabled et aria-describedby, un seul message de blocage, texte caché ; fenêtre en lecture seule (club, SIRET, siège, agence, adresse), valeurs échappées ; fermeture par Fermer et Échap, focus rendu au bouton, focus gardé dans la fenêtre ; périmètre respecté (pas de signataires, pas de bloc Modèle et Année) ; 4 tests en échec annoncés à l'avance.
+Ce que j'ai fait corriger : la ligne CSS des fenêtres Ajout et Suppression, modifiée alors qu'un test la vérifie au caractère près ; remise à l'identique, règle séparée pour #conventionModal. Libelle_agence dite « confirmée par le backlog » à tort : la colonne était déjà utilisée dans le code (vérifié).
+Tests : 368 tests, 364 passés, 4 échecs attendus (tests de la 4.2, mis à jour en C28). Vérifié à l'écran dans DEV7 : bouton grisé et message pour A7, ouverture de la fenêtre pour A1, Échap et focus, aucun bouton pour A2 à A6.
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 5ebcf04
+
+## Tâche C28 — Tests du bouton « Générer » et de la fenêtre (S5, tâche 5.3a)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tâche 5.3a, mise à jour des 4 tests de la 4.2 et tests de la 5.1a
+
+Note /5 : 5
+Ce qui allait : 4 tests mis à jour sans suppression ; 26 tests ajoutés dans test/convention-fenetre.test.js, chacun avec son commentaire « Échoue si… » ; helpers/widget.js non modifié ; nombre annoncé égal au nombre réel.
+Ce que j'ai fait corriger : rien. Constats à traiter : message « Renseignez le dispositif » impossible à afficher (note UX, en 10.2) ; test « aucun libellé de bouton » devenu fragile (en 5.3b) ; tests Tab et Maj+Tab à adapter quand la 5.1b ajoutera des champs.
+Tests : 394 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-bloc.test.js, test/convention-fenetre.test.js (nouveau)
+Build refait : pas nécessaire (src/ inchangé)
+Commit : c937fe8
