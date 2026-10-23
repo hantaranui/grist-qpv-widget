@@ -4,6 +4,8 @@
 
 **Statut : validée le 2026-10-22** (mise à jour de la tâche 4.1, après les réponses du client et de Hanta ; la version précédente avait été validée par le chef avant ces réponses). Dev-interface peut coder le bloc (tâche 4.2).
 
+**Mis à jour le 2026-10-23 (S7)** : ajouts pour la génération du PDF, sans rien changer aux décisions antérieures : pied de la fenêtre (§3), « Générer la convention : de l'ouverture au résultat » et nom du fichier (§3), compléments sur « Voir » (§2), textes (§5), états (§6), décisions D-S7-1 à D-S7-7 (§10). Hors périmètre : « Re-générer » (S8) et dépôt du fichier signé (S9).
+
 **Mis à jour le 2026-10-23** (après les tâches 5.1a et 5.1b, avant les tests 5.3b) : la note reprend les décisions déjà appliquées par le code pour la fenêtre « Convention ». Chaque changement porte la mention « mis à jour le 2026-10-23 ». Les points qui attendent Hanta sont dans le §10, rubrique « À décider par Hanta (2026-10-23) ».
 
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
@@ -131,6 +133,14 @@ Même structure pour « Voir la convention signée » (`id="conventionVoirSignee
 - Échec (PDF introuvable, réseau, droits) : alerte `alert alert-error`, `role="alert"` en haut du bloc : « Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. » L'état du bloc ne change pas.
 - Si le navigateur bloque l'ouverture de l'onglet : même alerte d'erreur ; ne jamais remplacer la page du widget par le PDF.
 
+**Mis à jour le 2026-10-23 (S7), tâche 7.4 : relecture de la note, compléments.** La note décrivait déjà le texte caché « (s'ouvre dans un nouvel onglet) », « Ouverture en cours… » et l'alerte d'échec avec son message. Il manquait :
+- **Jeton** : la page ne contient aucun jeton avant le clic (ni dans un attribut, ni dans une adresse, ni dans le texte caché). Le jeton est demandé à Grist au clic, utilisé pour la récupération du PDF, puis jamais écrit (ni console, ni message, ni adresse). Une adresse `blob:` ne contient pas de jeton.
+- **Verrou** : pendant « Ouverture en cours… », les clics sur ce bouton sont ignorés (déjà dit) ; les autres boutons du bloc restent utilisables.
+- **Annonce** : au début de la récupération, le bouton est le seul à changer de texte (non annoncé de façon fiable) ; ce n'est pas gênant car l'action est courte et son résultat (nouvel onglet ou alerte `role="alert"`) est perceptible. Pas de région `role="status"` supplémentaire pour « Voir ».
+- **Alerte d'échec** : elle est effacée au clic suivant sur un bouton « Voir » (nouvelle tentative) ou quand l'état du bloc change ; elle n'a pas de bouton de fermeture. Elle est en haut du bloc, la même zone que les alertes A5 et A6 : une seule alerte à la fois, la plus récente remplace l'autre.
+- **Focus** : en cas de succès, le focus quitte la page avec l'onglet ; au retour sur la page, il est resté sur le bouton « Voir ». En cas d'échec, il reste sur le bouton (jamais déplacé sur l'alerte).
+- **Après une génération réussie** : « Voir la convention » reçoit le focus et l'alerte « Convention générée. » est affichée (§3, « Après une réussite »).
+
 Qui voit et modifie : les règles d'accès du document décident ; le widget ne les contourne pas. FT National, Régional et Départemental agissent chacun sur son périmètre ; si Grist refuse les tables de la convention (ANS notamment), le bloc affiche « Droits insuffisants » (voir plus haut). Si l'utilisateur n'a pas le droit d'écrire, les boutons d'écriture (générer, déposer, remplacer) échouent proprement avec un message d'erreur (§5) ; les boutons « Voir » restent utilisables (en lecture, si ses droits lui permettent de lire le fichier). Ce cas (lecture permise, écriture refusée) est différent de l'état « Droits insuffisants » (lecture refusée).
 
 Mobile : le bloc passe sous les autres, déjà le cas dans la fiche. Les boutons gardent leur taille normale et passent à la ligne.
@@ -246,6 +256,20 @@ Par la décision de Hanta (tâche 4.1) : le bouton « Ajouter un contact » et s
 
 **Mis à jour le 2026-10-23 : jusqu'à S7, le pied ne contient que « Fermer » et « Enregistrer les informations ».** « Générer la convention » y arrivera avec la génération du PDF ; la phrase « un seul bouton principal » reste vraie à ce moment-là. D'ici là, « Enregistrer les informations » est le seul bouton d'action du pied (il garde son style secondaire ; ne pas le passer en principal sans décision de Hanta).
 
+**Mis à jour le 2026-10-23 (S7) : « Générer la convention » dans le pied.**
+- **Place** : en dernier, à droite, après « Enregistrer les informations ». Ordre de Tab = ordre visuel : « Fermer », « Enregistrer les informations », « Générer la convention ». Mobile : les trois boutons gardent leur taille normale et passent à la ligne, dans le même ordre (comportement du `modal-footer` existant).
+- **Style** : `btn btn-primary`, structure de la page https://designsystem.francetravail.io/components/detail/button--primary.html. C'est le seul bouton principal de la fenêtre ; « Fermer » et « Enregistrer les informations » restent `btn btn-secondary`. Aucune icône.
+
+```html
+<button class="btn btn-primary" type="button" id="conventionGenererFenetre">
+  <span class="btn-content">Générer la convention</span>
+</button>
+```
+
+  (`id` et `type` donnés à titre d'exemple : dev-interface reprend le mécanisme et les `id` déjà employés par « Enregistrer les informations » ; je n'ai pas relu le code.) Pas d'`aria-haspopup` : le bouton n'ouvre rien.
+- **Club sans contact : grisé.** Il est affiché, avec `aria-disabled="true"` (jamais `disabled`) et `aria-describedby` pointant vers l'`id` du message « Ce club n'a aucun contact… » déjà en place (`clubSignataireAide` dans la structure du §3). Les clics sont ignorés. Il ne reprend son état normal que si le club a au moins un contact (au rechargement de la liste, c'est-à-dire à la réouverture de la fenêtre). Même règle que la génération bloquée du §2 : message visible, pas d'infobulle. Un lecteur d'écran lit « Générer la convention, bouton, estompé », puis le message.
+- **Pendant la génération**, il prend le texte « Génération en cours… » (voir « Générer la convention : de l'ouverture au résultat », plus bas).
+
 ### Fermer la fenêtre (mis à jour le 2026-10-23, question Q-H tranchée)
 
 Échap et « Fermer » ferment directement la fenêtre, **même si des champs ont été modifiés et pas enregistrés : aucune confirmation**. Ce qui n'a pas été enregistré est perdu. Le focus revient sur le bouton qui a ouvert la fenêtre (§7). Cette règle remplace la confirmation prévue dans la version du 2026-10-22.
@@ -271,6 +295,102 @@ Un champ « Année » vide est accepté (pas de message). Le message sous le cha
 Notes : le cas 3 ne s'affiche que si un signataire est choisi (sans signataire, c'est le cas 2 seul). La fonction du signataire étant en lecture seule, le message l'envoie vers la fiche du club et non vers un champ à remplir ; `is-invalid` s'applique au champ en lecture seule comme aux autres, avec `sr-only` « Erreur : » devant le texte. Club sans contact : inchangé (« Générer » grisé, §3 « Club sans contact »). Les quatre blocages du bloc (§2) restent contrôlés avant l'ouverture de la fenêtre.
 
 Ne jamais associer `help-block` et `invalid-feedback` : la règle `.help-block.invalid-feedback` du design system rend le message toujours visible (bug corrigé le 2026-10-23, fiche C30).
+
+### Générer la convention : de l'ouverture au résultat (mis à jour le 2026-10-23 (S7))
+
+Tout ce qui suit s'applique aussi à « Re-générer » (même fenêtre, même bouton) ; ce qui est propre à la re-génération (l'ancien PDF reste en cas d'échec) relève de S8 et n'est pas traité ici.
+
+**Étapes, dans cet ordre** (au clic sur « Générer la convention » du pied). La première qui échoue arrête tout ; les suivantes ne sont pas jouées.
+
+1. **Contrôle des champs obligatoires** (les six messages validés ci-dessus, tous à la fois). Rien n'est écrit, aucune attente affichée. Si tout est bon, on passe à l'étape 2.
+2. **Enregistrement des informations**, avant toute fabrication du PDF (décision D-S7-4 de Hanta), avec la même opération que « Enregistrer les informations » (année, signataire, représentant, fonction du représentant). Raison : si la suite échoue, ce que l'agent a saisi est déjà gardé, et la phrase « Vos informations sont conservées » est vraie. Cet enregistrement ne change pas l'état du bloc (« À générer » tant qu'aucun PDF n'est attaché). Il n'affiche pas son propre message de réussite « Informations enregistrées. ». S'il échoue (Grist refuse ou réseau) : le message existant « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. », et la génération s'arrête.
+3. **Modèle** : le modèle est trouvé et actif ; les cases du texte sont toutes connues (contrôle local, sans réseau). Deux échecs possibles, voir « Échecs ».
+4. **Chargement de la bibliothèque pdfmake** (quelques secondes possibles), puis fabrication du PDF.
+5. **Envoi du fichier** et **écriture dans la convention** : le fichier et la date de génération (`PDF_genere`, `Date_generation`). **Une seule opération `applyUserActions` écrit les deux, après l'envoi du fichier** (décision D-S7-1 de Hanta). Ainsi il n'existe pas d'état intermédiaire « fichier présent, date absente » : l'état « À générer » est conservé tant que tout n'est pas écrit (règle du plan).
+
+Un clic de plus sur « Générer la convention » après un échec relance tout depuis l'étape 1 (les anciens messages d'erreur sont effacés au début de chaque tentative).
+
+**Pendant la génération (étapes 2 à 5).**
+
+- **Ce que voit l'agent** : le texte du bouton devient « Génération en cours… » (même procédé que « Envoi en cours… » et « Ouverture en cours… »). Le bouton reste en place, `aria-disabled="true"`, **sans** attribut `disabled` (le focus reste dessus, il n'est pas perdu). Le texte d'origine « Générer la convention » revient en cas d'échec.
+- **Indicateur d'attente** : texte seulement, pas de `ft-spinner` pour l'instant (décision D-S7-5 de Hanta). Le design system a bien un composant Spinner (`<ft-spinner label="…">`, page https://designsystem.francetravail.io/components/detail/spinner--default.html, composant web chargé par l'autoloader ; variantes de taille : Très petit, Petit, Grand, Défaut). Je n'ai pas pu lire sa documentation développeur (attribut de taille, rôle ARIA) et le tableau de bord n'emploie aujourd'hui aucun composant web : **non vérifié, non prescrit**. Structure de la page, pour mémoire seulement :
+
+```html
+<ft-spinner label="Texte d'explication lisible par les lecteurs d'écran"></ft-spinner>
+```
+
+- **Ce que le lecteur d'écran annonce** : le changement de texte d'un bouton qui a le focus n'est pas annoncé de façon fiable. Le corps de la fenêtre contient donc une région `role="status"`, **présente dès l'ouverture, vide, et dont seul le texte change** (même principe que `#conventionBlocage`, §2). Au début de l'étape 2 son texte devient : « Génération de la convention en cours. Cela peut prendre quelques secondes. » Elle est vidée à la fin (réussite ou échec ; en cas d'échec, c'est l'alerte d'erreur qui prend le relais). Place : en haut du corps, juste sous la zone d'alerte. Texte ordinaire dans un `<p>`, sans classe d'alerte.
+
+```html
+<div role="status" id="conventionAttente">
+  <p>Génération de la convention en cours. Cela peut prendre quelques secondes.</p>
+</div>
+```
+
+  (le `<p>` n'existe que pendant l'attente ; le `div` reste, vide, le reste du temps.)
+- **Pas de deuxième clic** : dès le clic, les trois boutons du pied passent à `aria-disabled="true"` et leurs clics sont ignorés (même mécanisme que les boutons grisés du §2). Le verrou est posé **avant** la première opération asynchrone et levé seulement à la fin de la tentative ; il ne dépend pas de l'apparence du bouton. La touche Entrée dans un champ ne relance rien non plus.
+- **Fermer et Échap pendant la génération** : ignorés (exception à la règle « Fermer la fenêtre » : fermer pendant l'envoi laisserait l'agent sans savoir si le PDF existe). « Fermer » est grisé comme les deux autres ; Échap ne fait rien. Décision D-S7-2 de Hanta : écart à Q-H, limité à la durée de la génération.
+- **Saisie** (décision D-S7-7 de Hanta) : les champs ne sont plus modifiables pendant l'attente (`disabled` sur les trois `fieldset`, ce qui est un attribut natif et non une classe) pour que le PDF corresponde à ce qui est enregistré. Ils redeviennent modifiables à la fin d'un échec, avec les valeurs saisies intactes. Le focus ne bouge pas : il reste sur « Générer la convention » (hors des `fieldset`).
+
+**Après une réussite.**
+
+- La fenêtre se ferme (retrait de `modal` et de `modal-backdrop`), le bloc est recalculé : état « Générée », phrase « Convention générée le [date]. » et phrase d'aide de l'état.
+- **Focus** (décision D-S7-6 de Hanta) : sur « Voir la convention », premier bouton du nouvel état. Le bouton qui avait ouvert la fenêtre (« Générer la convention » du bloc) n'existe plus à l'état « Générée » : la règle « le focus revient sur le bouton d'ouverture » (§7) ne peut donc pas s'appliquer, et c'est l'action la plus utile qui reçoit le focus (relire le PDF). Si le bloc ne peut pas porter le focus (cas inattendu), il va sur le titre « Convention » du bloc, rendu focalisable avec `tabindex="-1"`.
+- **Message de réussite** : oui. Alerte `alert alert-success`, `role="status"`, en haut du bloc (même place et même forme que A6) : « Convention générée. » (texte déjà au §5). Elle reste affichée jusqu'à la prochaine action dans le bloc (clic sur un bouton du bloc) ou la fermeture de la fiche ; elle n'a pas de bouton de fermeture. Pour qu'elle soit annoncée, la région `role="status"` doit exister dans la page **avant** que le texte y soit placé (le bloc est refait après l'écriture : dev-interface garde la région hors de la partie refaite ou la recrée vide avant d'y mettre le texte).
+
+```html
+<div class="alert alert-success" role="status"><p class="alert-content">Convention générée.</p></div>
+```
+
+  (structure : celle de l'alerte du §8, avec la classe `alert-success` de la feuille.)
+
+**Échecs.**
+
+Règles communes à tous les échecs ci-dessous : la fenêtre **reste ouverte** ; la saisie est **gardée** (champs intacts, et déjà enregistrés puisque l'étape 2 est passée) ; l'état du bloc reste « À générer » (ou « Générée » avec l'ancien PDF en cas de re-génération) ; aucun fichier n'est attaché à la convention ; le message est l'alerte `alert alert-error`, `role="alert"` (§8) **en haut du corps de la fenêtre**, qui remplace « Certains champs sont à corriger. » (jamais les deux à la fois : les erreurs de champ et les échecs de génération ne se produisent pas dans la même tentative) ; le texte « Génération en cours… » est retiré du bouton, la région d'attente est vidée ; le focus reste sur « Générer la convention » ; le corps défile jusqu'à l'alerte si elle est hors de vue. Chaque message nomme la cause en une phrase, dit quoi faire, et se termine par « Vos informations sont conservées. » Aucun message ne contient d'adresse, de jeton ni de détail technique.
+
+| Cas | Message exact |
+|---|---|
+| Bibliothèque non chargée (réseau, site bloqué) | « La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. Vos informations sont conservées. » |
+| Une case inconnue dans le modèle | « La convention n'a pas pu être générée : le modèle contient une case inconnue, « [nom de la case] ». Contactez l'équipe du tableau de bord pour corriger le modèle. Vos informations sont conservées. » |
+| Plusieurs cases inconnues | « La convention n'a pas pu être générée : le modèle contient des cases inconnues, « [case 1] », « [case 2] ». Contactez l'équipe du tableau de bord pour corriger le modèle. Vos informations sont conservées. » |
+| Modèle inactif ou introuvable | « La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. Vos informations sont conservées. » |
+| Envoi refusé par Grist (droits) | « La convention n'a pas pu être enregistrée : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. Vos informations sont conservées. » |
+| Envoi impossible (réseau, serveur) | « La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. Vos informations sont conservées. » |
+| Fichier envoyé, écriture dans la convention (fichier et date) refusée ou échouée | « La convention n'a pas pu être enregistrée : le fichier a été fabriqué mais n'a pas pu être rattaché à l'action. Réessayez ou contactez l'équipe du tableau de bord. Vos informations sont conservées. » |
+| Autre échec inattendu (fabrication du PDF, erreur non prévue) | Message déjà au §5 : « La convention n'a pas pu être générée. Vos informations sont conservées. » |
+
+Précisions :
+
+- **Nom de la case** : écrit tel que dans le modèle, sans les crochets, entre guillemets français, **échappé** comme tout texte affiché (`textContent` ou `escapeHtml`), jamais inséré en HTML brut : le texte du modèle est saisi dans Grist. Si plusieurs cases sont inconnues, toutes sont nommées, dans l'ordre d'apparition et sans doublon ; au-delà de cinq, les cinq premières puis « et d'autres ». Un nom de case n'est pas une donnée de personne.
+- **Modèle inactif ou introuvable** : le message est le même dans les deux cas (l'agent n'a pas à distinguer). Il est détecté à l'étape 3, après l'enregistrement : ce que l'agent a saisi est gardé.
+- **Refus ou échec de l'envoi** : dev-backend distingue un refus de droits (réponse 401 ou 403 de Grist) d'un échec réseau ou serveur (toute autre erreur). Si la distinction est impossible dans un cas, on affiche le message « réseau » (le plus utile : réessayer). Aucun jeton dans le message ni dans la console.
+- **Écriture refusée à l'étape 2** : même chose, c'est le message d'enregistrement du §5 (« Les informations n'ont pas pu être enregistrées… »), car Grist refuse alors la première écriture de la chaîne.
+- **Le fichier est envoyé, mais l'écriture échoue** : comme le fichier et la date sont écrits en une seule opération (étape 5, décision D-S7-1), c'est la ligne « Fichier envoyé, écriture… » ci-dessus. Le fichier envoyé reste dans Grist sans être rattaché à la convention (pièce jointe orpheline ; ce que Grist fait d'une pièce jointe qu'aucune cellule n'utilise est **non vérifié**, voir §9) : l'état « À générer » est conservé. Il n'y a pas de cas « Générée sans date ».
+
+**Nom du fichier PDF** (réponse proposée à Q-E ; mis à jour le 2026-10-23 (S7)).
+
+Format (décision D-S7-3 de Hanta) : `Convention-[dispositif]-[club]-[année].pdf`
+
+Règles de fabrication du nom, dans cet ordre :
+
+1. [club] = nom du club de l'action (Structures), puis : retirer les accents (é → e, ç → c) ; remplacer `œ` par `oe` et `æ` par `ae` ; remplacer toute suite de caractères qui ne sont ni une lettre non accentuée (A à Z, a à z) ni un chiffre par un seul tiret `-` (espaces, apostrophes, `&`, `/`, `.`, guillemets, emoji, tout le reste) ; retirer les tirets au début et à la fin ; garder la casse d'origine ; couper à 40 caractères au plus (puis retirer un tiret final éventuel).
+2. Si [club] est vide après nettoyage (nom entièrement en caractères non latins, ou vide) : utiliser le mot `club`.
+3. [dispositif] = **forme courte** du dispositif de l'action, passée par les mêmes règles de nettoyage que le club (accents, `œ`/`æ`, tout caractère autre que lettre non accentuée ou chiffre remplacé par un seul tiret, tirets de début et de fin retirés, casse d'origine). **Forme courte proposée, à valider par Hanta** (je n'ai pas vérifié que la table Modeles_convention a une colonne Code, ni ses valeurs : si elle existe et porte déjà ces formes, dev-backend la reprend plutôt que de les écrire en dur) :
+
+   | Dispositif | Forme courte | Dans le nom |
+   |---|---|---|
+   | Du stade vers l'emploi | Stade-emploi | `Stade-emploi` |
+   | Match des métiers | Match-metiers | `Match-metiers` |
+   | Parcours de remobilisation vers l'emploi | Remobilisation | `Remobilisation` |
+
+   Les deux autres dispositifs n'ont pas de modèle : aucun PDF, donc aucun nom. Si la forme courte est introuvable ou vide après nettoyage, le nom complet du dispositif nettoyé est utilisé (jamais de nom sans dispositif).
+4. [année] = l'année de la convention (quatre chiffres) pour Du stade vers l'emploi et Le Match des Métiers.
+5. **Quand il n'y a pas d'année** (Parcours de remobilisation) : l'année et son tiret sont omis, le nom devient `Convention-[dispositif]-[club].pdf`. On n'invente pas une année (l'année en cours n'est pas celle de la convention) : le modèle n'a pas d'année.
+6. Jamais le nom d'une personne (signataire, représentant), ni le nom de l'agence, ni l'identifiant de l'action : le nom du fichier est visible dans Grist par tous ceux qui voient la table.
+
+Exemples (clubs fictifs) : « Club Sportif d'Exemple », Du stade vers l'emploi, année 2026 → `Convention-Stade-emploi-Club-Sportif-d-Exemple-2026.pdf` ; « Étoile & Cœur FC », Match des métiers, année 2026 → `Convention-Match-metiers-Etoile-Coeur-FC-2026.pdf` ; « Association Exemple », Parcours de remobilisation → `Convention-Remobilisation-Association-Exemple.pdf`.
+
+Limite connue : deux actions du même club, du même dispositif et de la même année donnent le même nom. Ce n'est pas bloquant (le fichier est rattaché à la ligne de l'action, une convention par action). Le nom donné au fichier envoyé ne contrôle pas le titre de l'onglet du navigateur, qui reste celui de l'adresse `blob:`.
 
 ## 4. Écran C : dépôt et remplacement du fichier signé (sans fenêtre, maquette C1 et C2)
 
@@ -309,6 +429,8 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
 - Chargement : sur le bouton, pendant la génération, « Génération en cours… » (le bouton reste en place, `aria-disabled="true"`) ; pendant l'envoi du fichier, « Envoi en cours… ».
+- Mis à jour le 2026-10-23 (S7), génération : région d'attente de la fenêtre : « Génération de la convention en cours. Cela peut prendre quelques secondes. » ; succès dans le bloc : « Convention générée. » ; échecs (alerte en haut de la fenêtre, textes exacts au §3, « Échecs ») : bibliothèque non chargée, une case inconnue, plusieurs cases inconnues, modèle inactif ou introuvable, envoi refusé, envoi impossible, fichier non rattaché, échec inattendu (« La convention n'a pas pu être générée. Vos informations sont conservées. »).
+- Mis à jour le 2026-10-23 (S7), nom du fichier PDF : `Convention-[dispositif]-[club]-[année].pdf`, sans année : `Convention-[dispositif]-[club].pdf` (§3).
 - Fichier refusé (dépôt ou remplacement) : « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » ; « Le fichier n'a pas été enregistré : le fichier est vide. » ; « Le fichier n'a pas été enregistré : 10 Mo au maximum. »
 - Ouverture d'un PDF (boutons « Voir ») : « Ouverture en cours… » ; échec : « Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. »
 
@@ -320,6 +442,9 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 | Champs invalides | Alerte d'erreur en haut, champs en `is-invalid`, messages sous chaque champ, focus sur le premier champ à corriger. Mis à jour le 2026-10-23 : à l'enregistrement, seule une année qui n'a pas quatre chiffres est invalide (un champ vide est accepté) ; les champs obligatoires vides ne sont contrôlés qu'au clic sur « Générer » (S7). |
 | Fermeture de la fenêtre B (mis à jour le 2026-10-23) | Échap ou « Fermer » : la fenêtre se ferme tout de suite, sans confirmation, même avec des champs modifiés ; le focus revient sur le bouton d'ouverture. |
 | Enregistrement / génération | Bouton en attente, message de succès ou d'erreur dans le corps ; à la génération réussie, la fenêtre se ferme et le bloc passe à « Générée ». |
+| Génération en cours (mis à jour le 2026-10-23 (S7)) | Bouton « Génération en cours… », les trois boutons du pied grisés, champs non modifiables, Échap sans effet, phrase d'attente annoncée. |
+| Génération réussie (mis à jour le 2026-10-23 (S7)) | Fenêtre fermée, bloc « Générée » avec la date, alerte « Convention générée. », focus sur « Voir la convention ». |
+| Génération échouée (mis à jour le 2026-10-23 (S7)) | Fenêtre ouverte, saisie gardée et enregistrée, alerte d'erreur en haut avec la cause, bouton « Générer la convention » à nouveau actif, focus sur lui, état du bloc inchangé. |
 | Bloc, tables de la convention refusées (tout profil, ANS compris) | État « Droits insuffisants » : phrase seule, aucun bouton. |
 | Bloc, génération bloquée (élément manquant) | Phrase d'état, message du premier élément manquant, bouton « Générer la convention » (ou « Re-générer ») grisé (`aria-disabled`, relié au message). La fenêtre ne s'ouvre pas. |
 | Bloc, état Générée | Phrase d'état, phrase d'aide (imprimer, signer, déposer), puis les boutons. |
@@ -512,6 +637,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
 - **Zones en pointillés du PDF** : le PDF généré doit laisser de la place pour écrire à la main (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature). À vérifier sur le PDF produit, qui n'est pas dans cette note.
 - **Ouverture du PDF par bouton** : l'onglet s'ouvre après une récupération asynchrone, ce que certains navigateurs prennent pour une fenêtre non sollicitée et bloquent. L'ouverture d'un onglet depuis le cadre de Grist est confirmée (essai dans Grist DEV), mais pas avec une adresse `blob:` obtenue après chargement : à tester dans Grist DEV, sur plusieurs navigateurs, avant de livrer. Non vérifié ici.
+- **À vérifier pour S8 (re-génération)** : Grist supprime-t-il un ancien PDF qu'aucune cellule n'utilise ? (non vérifié)
 - La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation ni de vérification avant l'enregistrement : le fichier choisi est enregistré tout de suite.
 
 ## 10. Liste des [À CONFIRMER]
@@ -534,6 +660,13 @@ Décisions de Hanta du 2026-10-23 :
 - **D-4 : année préremplie.** Décidé : on garde l'année préremplie avec l'année en cours (§3, bloc 1).
 - **D-5 : message « Renseignez le dispositif de l'action dans sa fiche. »** Décidé : on le garde dans le code, sans le retirer. Il ne s'affiche jamais en pratique (sans dispositif, l'état est « Sans modèle », voir §2).
 - **D-6 : moment où disparaît le message d'erreur de l'année.** Décidé : il disparaît au clic suivant sur « Enregistrer les informations », comme dans la fenêtre « Ajout d'une action » (§3).
+- **D-S7-1 : une seule opération pour le fichier et la date.** Décidé : une seule opération `applyUserActions` écrit `PDF_genere` et `Date_generation`, après l'envoi du fichier. Le cas de repli prévu pour deux écritures (« Générée » sans date) est retiré de la note (§3, §5).
+- **D-S7-2 : Fermer et Échap pendant la génération.** Décidé : ignorés pendant la génération. Écart à Q-H, limité à la durée de la génération.
+- **D-S7-3 : nom du fichier (Q-E).** Décidé : `Convention-[dispositif]-[club]-[année].pdf`, et `Convention-[dispositif]-[club].pdf` sans année. Le dispositif suit les mêmes règles de nettoyage que le club. La forme courte du dispositif (Stade-emploi, Match-metiers, Remobilisation) est une proposition à valider, ses valeurs dans Modeles_convention n'étant pas vérifiées (§3). Jamais de nom de personne.
+- **D-S7-4 : informations enregistrées avant la fabrication du PDF.** Décidé : oui (étape 2), sans message « Informations enregistrées. ». Une génération échouée laisse la ligne de `Conventions` créée ou mise à jour (état du bloc inchangé).
+- **D-S7-5 : indicateur d'attente.** Décidé : texte seulement (« Génération en cours… » sur le bouton + phrase annoncée), pas de `ft-spinner` pour l'instant.
+- **D-S7-6 : focus après une réussite.** Décidé : sur « Voir la convention ».
+- **D-S7-7 : champs non modifiables pendant la génération.** Décidé : oui (`disabled` sur les `fieldset`).
 
 À confirmer :
 
