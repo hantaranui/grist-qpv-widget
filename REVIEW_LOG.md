@@ -814,3 +814,17 @@ Tests : 414 passés, 0 échec (npm test).
 Fichiers modifiés : docs/ux/convention.md, test/convention-fenetre.test.js, test/convention-bloc.test.js
 Build refait : pas nécessaire
 Commit : Commit : 5872cd1 (note) et aac4996 (tests)
+
+## Tâche C32 — Écart : phrase des champs obligatoires de la fenêtre Convention
+
+Date : 2026-10-23
+Agents : testeur (test qui échoue), dev-interface (correction)
+Prompt : écart signalé en C31 entre la note et le code
+
+Note /5 : 5
+Ce qui allait : test du texte exact, en échec avant la correction (415 tests, 1 échec) ; risque de l'apostrophe signalé par le testeur et pris en compte ; correction limitée à la phrase et au commentaire de keepFocusInConvention ; test « trois blocs » renommé.
+Ce que j'ai fait corriger : rien. dev-interface a lu la note avec grep malgré la consigne (lecture seule, sans conséquence).
+Tests : 415 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-fenetre.test.js, src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : Commit : 74cafa9 (correction) et 0af812d (test)
