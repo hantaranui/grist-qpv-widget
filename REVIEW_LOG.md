@@ -772,3 +772,45 @@ Tests : 394 passés, 0 échec (npm test).
 Fichiers modifiés : test/convention-bloc.test.js, test/convention-fenetre.test.js (nouveau)
 Build refait : pas nécessaire (src/ inchangé)
 Commit : c937fe8
+
+## Tâche C29 — Champs de la fenêtre Convention, sans enregistrement (S5, tâche 5.1b)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 5.1b, plus trois réponses de Hanta (bouton Enregistrer seul, brouillon sans contrôle des champs obligatoires, « Fonction non renseignée ») et le message de l'année
+
+Note /5 : 4
+Ce qui allait : trois blocs, liste des signataires du club, fonction en lecture seule, « Directeur d'agence » prérempli, pied sans « Générer », contrôle de l'année seul, point d'appel conventionEnregistrer pour la 5.2 ; questions posées au lieu d'inventer ; 5 tests en échec annoncés à l'avance.
+Ce que j'ai fait corriger : bug du message d'erreur de l'année visible dès l'ouverture (classe help-block avec invalid-feedback), voir C30.
+Tests : 389 passés, 5 échecs annoncés (mis à jour en C31). Vérifié à l'écran dans DEV7 : trois blocs, signataires, fonction, année refusée puis acceptée au clic suivant, Échap.
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 940d8b9
+
+## Tâche C30 — Bug : message d'erreur de l'année toujours visible
+
+Date : 2026-10-23
+Agents : relecteur (cause), testeur (test qui échoue), dev-interface (correction)
+Prompt : cycle d'un bug
+
+Note /5 : 5
+Ce qui allait : cause trouvée par comparaison avec la fenêtre d'ajout (help-block en plus), alerte du haut vérifiée non concernée ; cause confirmée par Hanta dans l'inspecteur (règle .help-block.invalid-feedback) ; test en échec avant la correction (6 échecs), vert après (5 échecs restants, attendus).
+Ce que j'ai fait corriger : rien. dev-interface a affirmé « le message n'est plus visible » sans l'avoir vérifié, et a décrit à tort qu'un champ vide affiche l'erreur.
+Tests : 395 tests, 390 passés, 5 échecs attendus. Vérifié à l'écran : aucun message à l'ouverture, message seulement pour une année invalide.
+Fichiers modifiés : src/actions-dashboard/script.js, test/convention-fenetre.test.js
+Build refait : oui
+Commit : 940d8b9 (code) et aac4996 (test)
+
+## Tâche C31 — Note UX à jour et tests de la fenêtre (S5, tâche 5.3b, première partie)
+
+Date : 2026-10-23
+Agents : designer-ux (note), Claude Code sans agent (décisions D-4 à D-6), testeur (tests)
+Prompt : décisions du jour reportées dans la note, puis tests de la 5.1b
+
+Note /5 : sans objet
+Ce qui allait : note datée « mis à jour le 2026-10-23 », décisions séparées des propositions (D-3 à décider avant S7) ; 19 tests ajoutés, 6 mis à jour, 0 retiré ; test fragile « aucun libellé de bouton » vraiment corrigé ; écart code/note signalé sans être caché.
+Ce que j'ai fait corriger : rien. Le testeur a lancé ses deux fichiers de test lui-même malgré la consigne. Reste à faire : la phrase « obligatoires pour générer la convention » dans le code (écart signalé par le testeur), le nom du test « deux blocs », le commentaire de keepFocusInConvention.
+Tests : 414 passés, 0 échec (npm test).
+Fichiers modifiés : docs/ux/convention.md, test/convention-fenetre.test.js, test/convention-bloc.test.js
+Build refait : pas nécessaire
+Commit : Commit : 5872cd1 (note) et aac4996 (tests)
