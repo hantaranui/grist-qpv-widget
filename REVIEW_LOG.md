@@ -828,3 +828,31 @@ Tests : 415 passés, 0 échec (npm test).
 Fichiers modifiés : test/convention-fenetre.test.js, src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : Commit : 74cafa9 (correction) et 0af812d (test)
+
+## Tâche C33 — Enregistrement des informations de la convention (S5, tâche 5.2)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 5.2, avec le préremplissage à la réouverture
+
+Note /5 : sans objet
+Ce qui allait : une seule opération applyUserActions, mise à jour de la ligne existante (la plus ancienne en cas de doublon) sinon création ; six colonnes écrites, jamais les colonnes de PDF, de date ni DR et DD ; valeurs vides correctes (0, null, "") ; messages de la note, fenêtre laissée ouverte ; rien dans la console ; préremplissage à la réouverture.
+Ce que j'ai fait corriger : rien. À décider en S8 : quel modèle enregistrer lors d'une re-génération (celui de la génération ou le modèle actif). À regarder en R2 : message hors de l'écran sur un petit écran.
+Tests : 415 passés, 0 échec. Vérifié à l'écran dans DEV7 sur ESSAI-CONV-A1 : création d'une seule ligne, réouverture préremplie, mise à jour sans doublon, année vide écrite vide, enregistrement avec « Voir en tant que » FT Régional. L'agence d'essai a dû être rattachée à une DD et une DR existantes.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : cb52eb6
+
+## Tâche C34 — Tests de l'enregistrement de la convention (S5, tâche 5.3b, deuxième partie)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tests de la 5.2 (10 points), puis correction de 6 tests
+
+Note /5 : sans objet
+Ce qui allait : nouveau fichier test/convention-enregistrement.test.js, 19 tests, chacun avec « Échoue si… » ; helpers/widget.js non modifié ; risque d'erreur dans ses doublures annoncé à l'avance.
+Ce que j'ai fait corriger : 6 tests en échec alors que le code était bon (comparaison stricte d'objets venant du bac à sable) ; ajout d'une fonction ordinaire() avant la comparaison, sans relâcher aucune vérification, plus un contrôle explicite de l'identifiant null.
+Tests : 434 tests, 428 passés, 6 échecs, puis 434 passés, 0 échec après correction (npm test).
+Fichiers modifiés : test/convention-enregistrement.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : c5928e3
