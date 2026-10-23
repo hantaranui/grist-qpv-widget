@@ -546,3 +546,17 @@ Tests : 277 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : « A
 Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html
 Build refait : oui
 Commit : 5a38b41
+
+## Tâche C25 — Tests du bloc « Convention » (S4, tâche 4.3)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tâche 4.3 du plan, 7 points à tester, puis correction sur l'écart de comptage
+
+Note /5 : 5
+Ce qui allait : nouveau fichier test/convention-bloc.test.js ; les 7 points couverts (5 états avec textes exacts, date en jour/mois/année, date vide, Signée l'emporte, aucun élément cliquable, aucun message de blocage, classes autorisées) et la place du bloc dans la fiche ; un commentaire par test sur ce qui le ferait échouer ; jeu d'essai du blocage vérifié avant usage ; dates à midi UTC ; données fictives ; src/ non modifié ; aucune commande lancée.
+Ce que j'ai fait corriger : rien dans le code. Compte rendu faux sur le nombre de tests (28 annoncés, 27 réels) : l'agent avait retiré 2 tests sans le dire (un doublon, un test qui comparait une liste à elle-même).
+Tests : 304 passés, 0 échec (npm test) ; 27 passés sur 27 (node --test test/convention-bloc.test.js).
+Fichiers modifiés : test/convention-bloc.test.js (nouveau)
+Build refait : pas nécessaire (src/ inchangé)
+Commit : e4691fa
