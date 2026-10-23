@@ -1,7 +1,9 @@
 "use strict";
 
-// Bloc « Convention » de la fiche d'action (tache 4.2) : textes des cinq etats,
-// date en francais, absence de bouton et de message de blocage, noms de classes.
+// Bloc « Convention » de la fiche d'action (taches 4.2 et 5.1a) : textes des cinq
+// etats, date en francais, boutons et message de blocage (seulement a l'etat
+// A generer), noms de classes. Le detail du bouton, du message et de la fenetre
+// est dans test/convention-fenetre.test.js.
 // Les textes de reference sont ceux de docs/ux/convention.md. Ils sont recopies
 // ici en dur : si le code change un mot, le test doit echouer.
 // Donnees fictives uniquement.
@@ -237,7 +239,7 @@ test("une action avec un PDF généré et un PDF signé est à l'état Signée",
 });
 
 // ---------------------------------------------------------------------------
-// 5. Aucun bouton, aucun element cliquable
+// 5. Boutons et elements cliquables : un seul bouton, a l'etat A generer
 // ---------------------------------------------------------------------------
 
 const ETATS_A_TESTER = {
@@ -248,15 +250,24 @@ const ETATS_A_TESTER = {
   "Droits insuffisants": () => donnees({refusees: ["Conventions"]}),
 };
 
-// Echoue si on ajoute dans le bloc un bouton, un lien, un champ, un menu ou tout
-// autre element interactif, dans l'un des cinq etats.
-test("le bloc ne contient aucun élément interactif, dans les cinq états", () => {
+// Echoue si le bloc contient un lien, un champ, un menu ou un gestionnaire en
+// ligne dans l'un des cinq etats, un bouton ailleurs qu'a l'etat A generer, ou
+// un deuxieme bouton a cet etat (sa tache n'en prevoit qu'un).
+test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre élément interactif, dans les cinq états", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
     const bloc = blocPour(w, fabrique());
-    assert.ok(!/<(button|a|input|select|textarea|details|summary|label|form|dialog)\b/i.test(bloc), `${nom} : élément interactif`);
+    assert.ok(!/<(a|input|select|textarea|details|summary|label|form|dialog)\b/i.test(bloc), `${nom} : élément interactif autre qu'un bouton`);
     assert.ok(!/\son[a-z]+\s*=/i.test(bloc), `${nom} : gestionnaire d'événement en ligne`);
-    assert.ok(!/\s(href|tabindex|role|data-[\w-]+|aria-[\w-]+)\s*=/i.test(bloc), `${nom} : attribut de clic ou d'accessibilité interactive`);
+    assert.ok(!/\s(href|tabindex|data-[\w-]+)\s*=/i.test(bloc), `${nom} : attribut de clic ou de navigation`);
+    const boutons = bloc.match(/<button\b[^>]*>/gi) || [];
+    if (nom === "À générer") {
+      assert.equal(boutons.length, 1, `${nom} : un seul bouton`);
+      assert.match(boutons[0], /\sid="conventionGenerer"/, `${nom} : le bouton est « Générer la convention »`);
+    } else {
+      assert.equal(boutons.length, 0, `${nom} : aucun bouton`);
+      assert.ok(!/\s(role|aria-[\w-]+)\s*=/i.test(bloc), `${nom} : attribut d'accessibilité interactive`);
+    }
   }
 });
 
@@ -271,19 +282,20 @@ test("le bloc ne contient aucun libellé de bouton de la note UX", () => {
   }
 });
 
-// Echoue si le bloc contient autre chose que des phrases (<p>) dans sa zone de
-// texte : le retrait des phrases laisse le bloc vide de tout autre contenu.
-test("le bloc ne contient que des phrases : en retirant les <p>, il ne reste aucune balise de contenu", () => {
+// Echoue si le bloc contient autre chose que des phrases (<p>) et, a l'etat A generer
+// seulement, un bouton : le retrait des phrases ne laisse que des conteneurs.
+test("le bloc ne contient que des phrases (et, à l'état À générer, un bouton) : en retirant les <p>, il ne reste aucune autre balise de contenu", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
-    const sansPhrases = blocPour(w, fabrique()).replace(/<p(?: class="[^"]*")?>[\s\S]*?<\/p>/g, "");
+    const sansPhrases = blocPour(w, fabrique()).replace(/<p\b[^>]*>[\s\S]*?<\/p>/g, "");
     const balises = [...sansPhrases.matchAll(/<([a-z0-9]+)/gi)].map((m) => m[1].toLowerCase());
-    assert.deepEqual(balises.filter((b) => !["section", "div", "span"].includes(b)), [], nom);
+    const permises = nom === "À générer" ? ["section", "div", "span", "button"] : ["section", "div", "span"];
+    assert.deepEqual(balises.filter((b) => !permises.includes(b)), [], nom);
   }
 });
 
 // ---------------------------------------------------------------------------
-// 6. Aucun message de blocage, meme quand un element manque
+// 6. Message de blocage : seulement a l'etat A generer, quand un element manque
 // ---------------------------------------------------------------------------
 
 const MANQUES = {
@@ -292,20 +304,35 @@ const MANQUES = {
   "club": {action: {Club: 0}},
 };
 
-// Echoue si le bloc affiche un des quatre messages de blocage, le texte caché
-// « Convention impossible à générer », ou la region #conventionBlocage, pour un
-// element manquant. Le test verifie d'abord que conventionBlocage voit bien le manque,
-// sinon il ne prouverait rien.
-test("aucun message de blocage dans le bloc, même quand il manque l'adresse du club, l'agence ou le club", () => {
+// Echoue si, a l'etat A generer, le message de blocage (« Renseignez… », texte cache,
+// region #conventionBlocage) manque quand l'adresse du club, l'agence ou le club manque ;
+// ou si l'un des quatre autres etats l'affiche malgre un element manquant (ici l'agence).
+// Le test verifie d'abord que conventionBlocage voit bien le manque, sinon il ne prouverait rien.
+test("le message de blocage n'apparaît qu'à l'état À générer, quand il manque l'adresse du club, l'agence ou le club", () => {
   const w = loadWidget();
   for (const [manque, variante] of Object.entries(MANQUES)) {
     const jeu = donnees(variante);
     assert.notEqual(w.conventionBlocage(1, jeu), null, `${manque} : le jeu d'essai doit bloquer la génération`);
     const html = blocPour(w, jeu);
-    assert.ok(!/Renseignez/.test(html), `${manque} : message « Renseignez… »`);
-    assert.ok(!/impossible à générer/.test(html), `${manque} : texte caché de blocage`);
-    assert.ok(!/conventionBlocage/.test(html), `${manque} : région de blocage`);
+    assert.ok(/Renseignez/.test(html), `${manque} : message « Renseignez… » attendu`);
+    assert.ok(/impossible à générer/.test(html), `${manque} : texte caché de blocage attendu`);
+    assert.ok(/id="conventionBlocage"/.test(html), `${manque} : région de blocage attendue`);
     assert.deepEqual(textes(html), [TEXTES.aGenerer], `${manque} : l'état reste « À générer »`);
+  }
+
+  const AUTRES_ETATS = {
+    "Générée": {conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]},
+    "Signée": {conventions: [convention({PDF_genere: PDF, PDF_signe: PDF, Date_depot: DEPOSEE_LE})]},
+    "Sans modèle": {modeles: []},
+    "Droits insuffisants": {refusees: ["Conventions"]},
+  };
+  for (const [nom, variante] of Object.entries(AUTRES_ETATS)) {
+    const jeu = donnees({...variante, action: {Agence: 0}});
+    assert.notEqual(w.conventionBlocage(1, jeu), null, `${nom} : le jeu d'essai doit bloquer la génération`);
+    const html = blocPour(w, jeu);
+    assert.ok(!/Renseignez/.test(html), `${nom} : message « Renseignez… »`);
+    assert.ok(!/impossible à générer/.test(html), `${nom} : texte caché de blocage`);
+    assert.ok(!/conventionBlocage/.test(html), `${nom} : région de blocage`);
   }
 });
 
@@ -333,12 +360,23 @@ test("aucun message de blocage à l'état Générée ni sans dispositif", () => 
 
 const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", "convention-fields", "convention-aide"]);
 
-// Echoue si le bloc utilise une classe hors liste : classe inventee, ou classe du
-// design system (btn, alert…), ou classe de couleur.
-test("le bloc n'utilise que les classes autorisées, dans les cinq états", () => {
+// Classes de plus, permises seulement a l'etat A generer (bouton, rangee du bouton,
+// message de blocage et son texte cache) : classes du design system ou du widget.
+const CLASSES_A_GENERER = ["convention-actions", "btn", "btn-secondary", "btn-content", "help-block", "sr-only"];
+
+// Echoue si le bloc utilise une classe hors liste : classe inventee, classe de couleur,
+// ou classe du bouton / du message de blocage dans un etat autre que A generer.
+test("le bloc n'utilise que les classes autorisées, dans les cinq états (et avec un message de blocage)", () => {
   const w = loadWidget();
-  for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
-    const inconnues = [...classesDe(blocPour(w, fabrique()))].filter((c) => !CLASSES_AUTORISEES.has(c));
+  const jeux = [
+    ...Object.entries(ETATS_A_TESTER).map(([nom, fabrique]) => [nom, fabrique()]),
+    ["À générer, agence manquante", donnees({action: {Agence: 0}})],
+  ];
+  for (const [nom, jeu] of jeux) {
+    const permises = nom.startsWith("À générer")
+      ? new Set([...CLASSES_AUTORISEES, ...CLASSES_A_GENERER])
+      : CLASSES_AUTORISEES;
+    const inconnues = [...classesDe(blocPour(w, jeu))].filter((c) => !permises.has(c));
     assert.deepEqual(inconnues, [], `${nom} : classes non prévues`);
   }
 });
