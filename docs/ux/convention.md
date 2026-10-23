@@ -4,6 +4,8 @@
 
 **Statut : validée le 2026-10-22** (mise à jour de la tâche 4.1, après les réponses du client et de Hanta ; la version précédente avait été validée par le chef avant ces réponses). Dev-interface peut coder le bloc (tâche 4.2).
 
+**Mis à jour le 2026-10-23** (après les tâches 5.1a et 5.1b, avant les tests 5.3b) : la note reprend les décisions déjà appliquées par le code pour la fenêtre « Convention ». Chaque changement porte la mention « mis à jour le 2026-10-23 ». Les points qui attendent Hanta sont dans le §10, rubrique « À décider par Hanta (2026-10-23) ».
+
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
@@ -28,8 +30,8 @@ Parcours 1, générer (état « À générer ») :
 1. Ouvrir la fiche de l'action (existant).
 2. Dans le bloc **Convention**, cliquer sur « Générer la convention ». Si un élément manque (agence, club, dispositif, adresse du club), le bouton est grisé et un message dit quoi remplir : le parcours s'arrête là (voir « Génération bloquée », §2).
 3. Dans la fenêtre : choisir le signataire du club **dans la liste des contacts du club**, relire les informations préremplies, saisir le représentant de l'agence et vérifier sa fonction. Si le club n'a aucun contact, un message le dit et la génération est impossible : l'agent ajoute un contact dans la fiche du club (hors de ce widget), puis revient.
-4. « Enregistrer les informations » (facultatif : « Générer la convention » les enregistre aussi).
-5. « Générer la convention ». La fenêtre se ferme, le bloc passe à l'état « Générée ».
+4. « Enregistrer les informations » (facultatif ; mis à jour le 2026-10-23 : il garde ce qui est saisi, même incomplet, comme un brouillon ; « Générer la convention » enregistre aussi).
+5. « Générer la convention » (mis à jour le 2026-10-23 : ce bouton n'arrive qu'en S7, avec la génération du PDF ; il contrôle alors les champs obligatoires, voir §3 « Enregistrer et Générer »). La fenêtre se ferme, le bloc passe à l'état « Générée ».
 6. Hors du widget : imprimer le PDF, compléter à la main les zones en pointillés, faire signer ; puis revenir pour le parcours 4.
 
 Parcours 2, relire (état « Générée ») : « Voir la convention » (un bouton) récupère le PDF et l'ouvre dans un nouvel onglet, sans fenêtre : 1 clic. L'onglet porte une adresse `blob:` (le PDF est lu depuis la mémoire du navigateur) : aucun jeton n'apparaît dans une adresse visible.
@@ -78,6 +80,8 @@ Contenu : en-tête « Convention » (même `section-head` que les autres blocs),
 | 2 | Club de l'action | « Renseignez le club de l'action. » |
 | 3 | Dispositif de l'action | « Renseignez le dispositif de l'action dans sa fiche. » |
 | 4 | Adresse du club | « Renseignez l'adresse du club dans sa fiche. » |
+
+**Mis à jour le 2026-10-23 : le message n° 3 (« Renseignez le dispositif… ») ne peut jamais s'afficher dans le bloc.** Sans dispositif, l'état du bloc est « Sans modèle » (règle d'ordre des états plus bas : un dispositif sans modèle n'a jamais de bouton), et le bloc n'arrive donc jamais à l'état « À générer » ou « Générée » où ces messages s'affichent. **Décision D-5 de Hanta (2026-10-23) : le message est gardé dans le code, sans être retiré.** Il ne s'affiche jamais en pratique : sans dispositif, l'état est « Sans modèle », et la phrase « Pas encore de modèle de convention pour ce dispositif. » reste le seul retour visible pour un dispositif absent.
 
 - **Où** : dans le bloc Convention, **sous la phrase d'état et juste au-dessus du bouton grisé**, dans le flux de la page (jamais dans une infobulle seule, jamais dans la fenêtre B : la fenêtre ne s'ouvre pas).
 - **Quand** : dès l'affichage du bloc, sans clic. Le message suit **les données enregistrées** de l'action, du club et de l'agence, jamais une valeur en cours de saisie et pas encore enregistrée. Il reste visible tant que l'élément manque ; il disparaît (et le bouton redevient actif) quand l'élément est renseigné. Il n'y a jamais de message affiché pour un élément qui n'est pas manquant.
@@ -141,7 +145,7 @@ Structure et comportement repris de la fenêtre « Ajout d'une action » (script
 
 **Disposition (à partir de 1200 px d'écran) : trois colonnes.** Les blocs 1, 2 et 3 se placent côte à côte, sur une seule rangée (il n'y a plus de bloc « Date et lieu »). Ordre de lecture = ordre visuel. Le modèle de convention ne change que le champ « Année » du bloc 1 (voir plus bas), pas la disposition. Estimation : environ 480 px de hauteur pour la fenêtre entière (le bloc 2 est le plus haut), donc sans défilement sur un écran d'au moins 768 px de haut. Je n'ai pas pu mesurer le rendu dans un navigateur : **non vérifié**, à mesurer par Hanta sur la maquette. Sous 1200 px : une seule colonne, la fenêtre défile (la promesse « sans défilement » ne vaut qu'à partir de 1200 px).
 
-Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'un * sont obligatoires. », puis trois `fieldset` avec `legend` en `form-legend`, dans cet ordre.
+Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'un * sont obligatoires pour générer la convention. » (mis à jour le 2026-10-23 : l'ancienne phrase « Les champs marqués d'un * sont obligatoires. » laissait croire qu'« Enregistrer les informations » les exige ; il ne les exige pas, voir « Enregistrer et Générer » plus bas), puis trois `fieldset` avec `legend` en `form-legend`, dans cet ordre.
 
 ### Correspondance dispositif → modèle (décidée)
 
@@ -166,7 +170,7 @@ C'est la seule différence entre les modèles. Tout le reste de la fenêtre est 
 | Champ | Type | Obligatoire | Remarque |
 |---|---|---|---|
 | Modèle utilisé | lecture seule | non | selon le dispositif (tableau de correspondance ci-dessus) |
-| Année | nombre | oui | Du stade vers l'emploi et Match des Métiers seulement ; année en cours proposée. Absent pour Parcours de remobilisation : le bloc ne contient alors que le modèle utilisé. |
+| Année | nombre | oui, pour générer (mis à jour le 2026-10-23) | Du stade vers l'emploi et Match des Métiers seulement ; année en cours proposée (prévu par la note dès le 2026-10-22, le code l'applique : champ prérempli avec l'année en cours, mis à jour le 2026-10-23 ; décision D-4 de Hanta, 2026-10-23 : on garde l'année préremplie avec l'année en cours). Doit avoir quatre chiffres. Absent pour Parcours de remobilisation : le bloc ne contient alors que le modèle utilisé. |
 
 ### Bloc 2 : « Signataire club »
 
@@ -175,8 +179,8 @@ C'est la seule différence entre les modèles. Tout le reste de la fenêtre est 
 | Nom du club | lecture seule | non | club de l'action |
 | SIRET | lecture seule | non | repris de la fiche du club |
 | Siège | lecture seule, **sur toute la largeur de la colonne** | non | repris de la fiche du club ; l'adresse s'affiche en entier, sur plusieurs lignes si besoin |
-| Signataire | liste de choix | oui | **uniquement** les contacts du club (table Contacts) ; texte d'invite « Veuillez sélectionner » |
-| Fonction du signataire | lecture seule | non | colonne Fonction de Contacts, affichée après le choix |
+| Signataire | liste de choix | oui, pour générer (mis à jour le 2026-10-23) | **uniquement** les contacts du club (table Contacts) ; texte d'invite « Veuillez sélectionner » |
+| Fonction du signataire | lecture seule (mis à jour le 2026-10-23 : jamais modifiable ici) | non à la saisie ; **doit être renseignée pour générer** | colonne Fonction de Contacts, affichée après le choix ; « Fonction non renseignée » si elle est vide |
 
 **Il n'y a plus de bouton ni de formulaire « Ajouter un contact » dans la fenêtre.** Un signataire absent de la liste s'ajoute dans la fiche du club (hors de ce widget), puis l'agent revient.
 
@@ -188,7 +192,7 @@ Liste de choix : une entrée par contact du club, libellé « Prénom Nom » (co
 
 **Non vérifié** : la fiche du club lit les colonnes Club, Prenom, Nom, Email, Telephone de la table Contacts. La colonne **Fonction** annoncée par le chef n'apparaît pas dans src/fiche-club/. Je n'invente rien : à vérifier dans le modèle de données (dépôt model-de-donnees-aucarre) avant de coder. Idem pour les colonnes de la table Agences (agence, adresse, complément, code postal, ville) et pour le siège et le SIRET de Structures.
 
-Si un contact choisi n'a pas de fonction renseignée : la zone « Fonction du signataire » reste vide ; dev-interface doit alors afficher « Fonction non renseignée » et bloquer la génération (le modèle de convention cite la fonction). À valider avec le chef (je ne l'ajoute pas à la liste des [À CONFIRMER], c'est un détail de cohérence).
+Si un contact choisi n'a pas de fonction renseignée : la zone « Fonction du signataire » (lecture seule) affiche « Fonction non renseignée » (mis à jour le 2026-10-23 : le code le fait) ; la génération est bloquée **au clic sur « Générer la convention » (S7)**, avec le message du §3 « Enregistrer et Générer » (le modèle de convention cite la fonction). « Enregistrer les informations » reste possible. Le champ ne se corrige pas ici : la fonction se renseigne dans la fiche du club.
 
 ### Club sans contact (remplace l'ancien formulaire « Ajouter un contact »)
 
@@ -221,8 +225,8 @@ Le signataire côté France Travail est le directeur d'agence. L'agence et son a
 |---|---|---|---|
 | Agence | lecture seule | non | table Agences |
 | Adresse | lecture seule (zone de texte, plusieurs lignes) | non | table Agences (adresse, complément, code postal et ville réunis) |
-| Représentant | texte | oui | **vide** (saisi) |
-| Fonction du représentant | texte | oui | « Directeur d'agence », modifiable |
+| Représentant | texte | oui, pour générer (mis à jour le 2026-10-23) | **vide** (saisi) |
+| Fonction du représentant | texte | oui, pour générer (mis à jour le 2026-10-23) | « Directeur d'agence », modifiable |
 
 **Évolution prévue** : plus tard, le représentant sera choisi dans une liste des utilisateurs de profil « Agence » de cette agence (table Utilisateurs), comme les contacts du club dans le bloc 2. Ce profil n'est pas encore actif : ne pas coder cette liste maintenant. La saisie libre actuelle sera alors remplacée.
 
@@ -239,6 +243,32 @@ Par la décision de Hanta (tâche 4.1) : le bouton « Ajouter un contact » et s
 ### Pied de la fenêtre
 
 `modal-footer`, de gauche à droite : « Fermer » (secondaire), « Enregistrer les informations » (secondaire), « Générer la convention » (principal, un seul bouton principal).
+
+**Mis à jour le 2026-10-23 : jusqu'à S7, le pied ne contient que « Fermer » et « Enregistrer les informations ».** « Générer la convention » y arrivera avec la génération du PDF ; la phrase « un seul bouton principal » reste vraie à ce moment-là. D'ici là, « Enregistrer les informations » est le seul bouton d'action du pied (il garde son style secondaire ; ne pas le passer en principal sans décision de Hanta).
+
+### Fermer la fenêtre (mis à jour le 2026-10-23, question Q-H tranchée)
+
+Échap et « Fermer » ferment directement la fenêtre, **même si des champs ont été modifiés et pas enregistrés : aucune confirmation**. Ce qui n'a pas été enregistré est perdu. Le focus revient sur le bouton qui a ouvert la fenêtre (§7). Cette règle remplace la confirmation prévue dans la version du 2026-10-22.
+
+### Enregistrer et Générer : quels contrôles, à quel moment (mis à jour le 2026-10-23)
+
+**« Enregistrer les informations » = brouillon.** Il garde ce qui est saisi, même incomplet. Il **ne contrôle aucun champ obligatoire** : un champ vide est accepté (année, représentant, fonction du représentant, signataire). Seul contrôle : **une année saisie doit avoir quatre chiffres**. Sinon, rien n'est enregistré et deux messages s'affichent :
+- sous le champ « Année », après `sr-only` « Erreur : » : « Saisissez une année à quatre chiffres. » (champ en `is-invalid`, `aria-invalid="true"`, `aria-describedby`, structure de la page input--error.html, §8) ;
+- en haut du corps de la fenêtre, alerte `alert alert-error`, `role="alert"` : « Certains champs sont à corriger. ».
+Un champ « Année » vide est accepté (pas de message). Le message sous le champ disparaît **au clic suivant sur « Enregistrer les informations »**, pas pendant la saisie : comme dans la fenêtre « Ajout d'une action » (décision D-6 de Hanta, 2026-10-23). Je n'ai pas vérifié si l'alerte du haut suit la même règle : à confirmer dans le code par dev-interface.
+
+**« Générer la convention » (S7) contrôle les champs obligatoires**, au clic, dans cet ordre (ordre de lecture de la fenêtre). Il s'arrête sur **tous** les manques à la fois : chaque champ concerné reçoit son message, l'alerte « Certains champs sont à corriger. » s'affiche en haut, et le focus va sur le premier champ à corriger (même mécanique que les erreurs de champ du §5). Propositions de messages (nouveaux, à valider : décision D-3 au §10, à prendre avant S7) :
+
+| Ordre | Cas | Où | Message exact |
+|---|---|---|---|
+| 1 | Année absente (modèles avec année) | sous « Année » | « Saisissez l'année de la convention. » |
+| 1 bis | Année qui n'a pas quatre chiffres | sous « Année » | « Saisissez une année à quatre chiffres. » (même texte qu'à l'enregistrement) |
+| 2 | Aucun signataire choisi | sous « Signataire » | « Choisissez le signataire du club. » (déjà au §5) |
+| 3 | Signataire choisi sans fonction | sous « Fonction du signataire », `help-block` relié au champ par `aria-describedby` | « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » |
+| 4 | Représentant vide | sous « Représentant » | « Saisissez le nom du représentant. » (déjà au §5) |
+| 5 | Fonction du représentant vide | sous « Fonction du représentant » | « Saisissez la fonction du représentant. » |
+
+Notes : le cas 3 ne s'affiche que si un signataire est choisi (sans signataire, c'est le cas 2 seul). La fonction du signataire étant en lecture seule, le message l'envoie vers la fiche du club et non vers un champ à remplir ; `is-invalid` s'applique au champ en lecture seule comme aux autres, avec `sr-only` « Erreur : » devant le texte. Club sans contact : inchangé (« Générer » grisé, §3 « Club sans contact »). Les quatre blocages du bloc (§2) restent contrôlés avant l'ouverture de la fenêtre.
 
 ## 4. Écran C : dépôt et remplacement du fichier signé (sans fenêtre, maquette C1 et C2)
 
@@ -267,10 +297,12 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 - Génération bloquée (bloc, un seul à la fois, dans cet ordre ; texte caché devant : « Convention impossible à générer : ») : « Renseignez l'agence de l'action dans sa fiche. » ; « Renseignez le club de l'action. » ; « Renseignez le dispositif de l'action dans sa fiche. » ; « Renseignez l'adresse du club dans sa fiche. »
 - Club sans contact (fenêtre B, bloc Signataire club) : « Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention. »
 - Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir » (ces deux commandes sont des boutons). Pendant l'ouverture du PDF : « Ouverture en cours… ».
-- Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires. » ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; valeur de départ de la fonction du représentant : « Directeur d'agence ».
-- Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération).
+- Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires pour générer la convention. » (mis à jour le 2026-10-23) ; « Fonction non renseignée » (fonction du signataire vide, mis à jour le 2026-10-23) ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; valeur de départ de la fonction du représentant : « Directeur d'agence ».
+- Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération). Mis à jour le 2026-10-23 : jusqu'à S7, seuls « Fermer » et « Enregistrer les informations » sont dans le pied.
 - Supprimés avec le formulaire « Ajouter un contact » : « Nouveau contact », « Nom », « Prénom », « Fonction » (du formulaire), « Annuler », « Ajouter ce contact », « Ajouter un contact » et son texte caché.
 - Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Il n'y a plus de contrôle de date ni de code postal : ces champs n'existent plus dans la fenêtre.
+- Mis à jour le 2026-10-23, à l'enregistrement (seul contrôle) : « Saisissez une année à quatre chiffres. » (sous « Année »).
+- Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7, propositions à valider, détail au §3) : « Saisissez l'année de la convention. » ; « Saisissez une année à quatre chiffres. » ; « Choisissez le signataire du club. » ; « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » ; « Saisissez le nom du représentant. » ; « Saisissez la fonction du représentant. »
 - Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
@@ -283,7 +315,8 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 | État | Ce que voit l'agent |
 |---|---|
 | Ouverture de la fenêtre B | Focus sur le premier champ modifiable : « Année » (Du stade vers l'emploi, Match des Métiers) ; « Signataire » du club (Parcours de remobilisation, qui n'a pas d'année). |
-| Champs invalides | Alerte d'erreur en haut, champs en `is-invalid`, messages sous chaque champ, focus sur le premier champ à corriger. |
+| Champs invalides | Alerte d'erreur en haut, champs en `is-invalid`, messages sous chaque champ, focus sur le premier champ à corriger. Mis à jour le 2026-10-23 : à l'enregistrement, seule une année qui n'a pas quatre chiffres est invalide (un champ vide est accepté) ; les champs obligatoires vides ne sont contrôlés qu'au clic sur « Générer » (S7). |
+| Fermeture de la fenêtre B (mis à jour le 2026-10-23) | Échap ou « Fermer » : la fenêtre se ferme tout de suite, sans confirmation, même avec des champs modifiés ; le focus revient sur le bouton d'ouverture. |
 | Enregistrement / génération | Bouton en attente, message de succès ou d'erreur dans le corps ; à la génération réussie, la fenêtre se ferme et le bloc passe à « Générée ». |
 | Bloc, tables de la convention refusées (tout profil, ANS compris) | État « Droits insuffisants » : phrase seule, aucun bouton. |
 | Bloc, génération bloquée (élément manquant) | Phrase d'état, message du premier élément manquant, bouton « Générer la convention » (ou « Re-générer ») grisé (`aria-disabled`, relié au message). La fenêtre ne s'ouvre pas. |
@@ -298,11 +331,11 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 ## 7. Accessibilité (RGAA), mode sombre, données personnelles
 
 - Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les trois blocs sont des `legend` de `fieldset`.
-- Chaque champ a un `label` lié (`for` / `id`). Obligatoire : astérisque dans `span.required` **et** attribut `required` ; la phrase d'introduction explique l'astérisque.
+- Chaque champ a un `label` lié (`for` / `id`). Obligatoire : astérisque dans `span.required` **et** attribut `required` ; la phrase d'introduction explique l'astérisque (mis à jour le 2026-10-23 : « obligatoires pour générer la convention » ; le formulaire a `novalidate`, l'attribut `required` ne bloque donc pas « Enregistrer les informations »).
 - Champ en lecture seule : `readonly` (il reste atteignable au clavier et lu par les lecteurs d'écran).
 - Liste de choix : `label` lié, option d'invite désactivée « Veuillez sélectionner » ; erreur : `is-invalid`, `aria-invalid="true"`, `aria-describedby`.
 - Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`).
-- Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Si des informations non enregistrées existent, Échap demande confirmation [à valider avec le chef].
+- Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Mis à jour le 2026-10-23 : même avec des informations non enregistrées, Échap ferme directement, sans confirmation (Q-H tranchée ; la version du 2026-10-22 prévoyait une confirmation [à valider avec le chef]).
 - Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, boutons du pied. Les trois colonnes se lisent de gauche à droite.
 - Boutons qui ouvrent un nouvel onglet (« Voir ») : le dire dans le texte (`sr-only`).
 - Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`. S'applique à « Générer la convention » et « Re-générer » quand la génération est bloquée (§2) et à « Générer la convention » de la fenêtre quand le club n'a aucun contact (§3). Le message reste visible (pas d'infobulle seule) et est du texte, pas de la couleur.
@@ -490,6 +523,18 @@ Points tranchés (dernière série de décisions du chef) :
 - **Dépôt et remplacement du fichier signé** : pas de système de vérification. Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le choix du fichier ; le fichier est enregistré tout de suite (en remplaçant l'ancien, sans historique) et la date de dépôt est mise à jour. Seuls les PDF sont acceptés (extension .pdf, type application/pdf, début « %PDF- », non vide, 10 Mo au maximum), sinon un message le dit et rien n'est enregistré. Un message confirme le dépôt. « Voir la convention » et « Voir la convention signée » sont des boutons qui ouvrent le PDF dans un nouvel onglet depuis la mémoire du navigateur (adresse `blob:`), après l'audit de sécurité.
 
 Tranché pour la tâche 4.1 (décisions de Hanta) : droits des profils (National, Régional, Départemental ; tout profil refusé par Grist, ANS compris, voit « Droits insuffisants », sans lecture du profil), message de blocage fondé sur les données enregistrées, « Enregistrer les informations » actif pour un club sans contact, cinq états du bloc, génération bloquée et ses quatre messages, signataire choisi seulement parmi les contacts (plus d'ajout de contact : la question sur les champs du formulaire n'a plus d'objet), conventions imprimées et signées à la main.
+
+Tranché le 2026-10-23 (déjà appliqué par le code, mis à jour le 2026-10-23) : Q-H (Échap et « Fermer » ferment sans confirmation) ; « Enregistrer les informations » = brouillon, seul contrôle l'année à quatre chiffres ; pied limité à « Fermer » et « Enregistrer les informations » jusqu'à S7 ; fonction du signataire en lecture seule.
+
+Décisions de Hanta du 2026-10-23 :
+
+- **D-4 : année préremplie.** Décidé : on garde l'année préremplie avec l'année en cours (§3, bloc 1).
+- **D-5 : message « Renseignez le dispositif de l'action dans sa fiche. »** Décidé : on le garde dans le code, sans le retirer. Il ne s'affiche jamais en pratique (sans dispositif, l'état est « Sans modèle », voir §2).
+- **D-6 : moment où disparaît le message d'erreur de l'année.** Décidé : il disparaît au clic suivant sur « Enregistrer les informations », comme dans la fenêtre « Ajout d'une action » (§3).
+
+**À décider par Hanta, avant S7 :**
+
+- **D-3 : messages de blocage de « Générer » (S7), les six messages.** Valider ou corriger les six messages du §3 « Enregistrer et Générer », en particulier celui du signataire sans fonction, et le choix de les afficher tous à la fois plutôt qu'un seul.
 
 À confirmer :
 
