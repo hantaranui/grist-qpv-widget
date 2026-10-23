@@ -257,18 +257,20 @@ Par la décision de Hanta (tâche 4.1) : le bouton « Ajouter un contact » et s
 - en haut du corps de la fenêtre, alerte `alert alert-error`, `role="alert"` : « Certains champs sont à corriger. ».
 Un champ « Année » vide est accepté (pas de message). Le message sous le champ disparaît **au clic suivant sur « Enregistrer les informations »**, pas pendant la saisie : comme dans la fenêtre « Ajout d'une action » (décision D-6 de Hanta, 2026-10-23). Je n'ai pas vérifié si l'alerte du haut suit la même règle : à confirmer dans le code par dev-interface.
 
-**« Générer la convention » (S7) contrôle les champs obligatoires**, au clic, dans cet ordre (ordre de lecture de la fenêtre). Il s'arrête sur **tous** les manques à la fois : chaque champ concerné reçoit son message, l'alerte « Certains champs sont à corriger. » s'affiche en haut, et le focus va sur le premier champ à corriger (même mécanique que les erreurs de champ du §5). Propositions de messages (nouveaux, à valider : décision D-3 au §10, à prendre avant S7) :
+**« Générer la convention » (S7) contrôle les champs obligatoires**, au clic, dans cet ordre (ordre de lecture de la fenêtre). Il s'arrête sur **tous** les manques à la fois : chaque champ concerné reçoit son message, l'alerte « Certains champs sont à corriger. » s'affiche en haut, et le focus va sur le premier champ à corriger (même mécanique que les erreurs de champ du §5). Messages (validés tels quels, tous affichés à la fois : décision D-3 de Hanta, 2026-10-23, §10) :
 
 | Ordre | Cas | Où | Message exact |
 |---|---|---|---|
 | 1 | Année absente (modèles avec année) | sous « Année » | « Saisissez l'année de la convention. » |
 | 1 bis | Année qui n'a pas quatre chiffres | sous « Année » | « Saisissez une année à quatre chiffres. » (même texte qu'à l'enregistrement) |
 | 2 | Aucun signataire choisi | sous « Signataire » | « Choisissez le signataire du club. » (déjà au §5) |
-| 3 | Signataire choisi sans fonction | sous « Fonction du signataire », `help-block` relié au champ par `aria-describedby` | « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » |
+| 3 | Signataire choisi sans fonction | sous « Fonction du signataire », même forme que les autres messages d'erreur : `invalid-feedback`, sans `help-block`, relié au champ par `aria-describedby`, avec `sr-only` « Erreur : » | « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » |
 | 4 | Représentant vide | sous « Représentant » | « Saisissez le nom du représentant. » (déjà au §5) |
 | 5 | Fonction du représentant vide | sous « Fonction du représentant » | « Saisissez la fonction du représentant. » |
 
 Notes : le cas 3 ne s'affiche que si un signataire est choisi (sans signataire, c'est le cas 2 seul). La fonction du signataire étant en lecture seule, le message l'envoie vers la fiche du club et non vers un champ à remplir ; `is-invalid` s'applique au champ en lecture seule comme aux autres, avec `sr-only` « Erreur : » devant le texte. Club sans contact : inchangé (« Générer » grisé, §3 « Club sans contact »). Les quatre blocages du bloc (§2) restent contrôlés avant l'ouverture de la fenêtre.
+
+Ne jamais associer `help-block` et `invalid-feedback` : la règle `.help-block.invalid-feedback` du design system rend le message toujours visible (bug corrigé le 2026-10-23, fiche C30).
 
 ## 4. Écran C : dépôt et remplacement du fichier signé (sans fenêtre, maquette C1 et C2)
 
@@ -302,7 +304,7 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 - Supprimés avec le formulaire « Ajouter un contact » : « Nouveau contact », « Nom », « Prénom », « Fonction » (du formulaire), « Annuler », « Ajouter ce contact », « Ajouter un contact » et son texte caché.
 - Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Il n'y a plus de contrôle de date ni de code postal : ces champs n'existent plus dans la fenêtre.
 - Mis à jour le 2026-10-23, à l'enregistrement (seul contrôle) : « Saisissez une année à quatre chiffres. » (sous « Année »).
-- Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7, propositions à valider, détail au §3) : « Saisissez l'année de la convention. » ; « Saisissez une année à quatre chiffres. » ; « Choisissez le signataire du club. » ; « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » ; « Saisissez le nom du représentant. » ; « Saisissez la fonction du représentant. »
+- Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7, messages validés, détail au §3) : « Saisissez l'année de la convention. » ; « Saisissez une année à quatre chiffres. » ; « Choisissez le signataire du club. » ; « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » ; « Saisissez le nom du représentant. » ; « Saisissez la fonction du représentant. »
 - Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
@@ -528,13 +530,10 @@ Tranché le 2026-10-23 (déjà appliqué par le code, mis à jour le 2026-10-23)
 
 Décisions de Hanta du 2026-10-23 :
 
+- **D-3 : messages de blocage de « Générer » (S7), les six messages.** Décidé : les six messages du §3 « Enregistrer et Générer » sont validés tels quels, et ils s'affichent tous à la fois.
 - **D-4 : année préremplie.** Décidé : on garde l'année préremplie avec l'année en cours (§3, bloc 1).
 - **D-5 : message « Renseignez le dispositif de l'action dans sa fiche. »** Décidé : on le garde dans le code, sans le retirer. Il ne s'affiche jamais en pratique (sans dispositif, l'état est « Sans modèle », voir §2).
 - **D-6 : moment où disparaît le message d'erreur de l'année.** Décidé : il disparaît au clic suivant sur « Enregistrer les informations », comme dans la fenêtre « Ajout d'une action » (§3).
-
-**À décider par Hanta, avant S7 :**
-
-- **D-3 : messages de blocage de « Générer » (S7), les six messages.** Valider ou corriger les six messages du §3 « Enregistrer et Générer », en particulier celui du signataire sans fonction, et le choix de les afficher tous à la fois plutôt qu'un seul.
 
 À confirmer :
 
