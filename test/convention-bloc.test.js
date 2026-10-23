@@ -271,15 +271,32 @@ test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre 
   }
 });
 
-// Echoue si un libelle de bouton de la note UX (generer, voir, re-generer,
-// deposer, remplacer) apparait dans le bloc, meme sans balise bouton.
-test("le bloc ne contient aucun libellé de bouton de la note UX", () => {
+// Tout ce qu'on peut lire dans le bloc : le texte de toutes les balises (boutons et
+// texte cache compris) et les attributs qui portent un libelle. Contrairement a
+// textes(), qui ne lit que les <p>, aucun bouton ni attribut n'y echappe.
+function contenuLisible(bloc) {
+  const attributs = [...bloc.matchAll(/\s(?:aria-label|title|alt|value)="([^"]*)"/g)].map((m) => m[1]);
+  return decoder([bloc.replace(/<[^>]*>/g, " "), ...attributs].join(" ")).replace(/\s+/g, " ");
+}
+
+// Echoue si un libelle de bouton de la note UX (re-generer, voir, deposer, remplacer,
+// enregistrer) apparait n'importe ou dans le bloc (texte d'un bouton, texte cache,
+// attribut aria-label ou title), si « Générer la convention » apparait ailleurs qu'a
+// l'etat A generer (grise ou non), ou s'il n'y est pas une seule fois, dans son bouton.
+test("le bloc ne contient aucun libellé de bouton de la note UX, sauf « Générer la convention » dans son bouton à l'état À générer", () => {
   const w = loadWidget();
   const libelles = ["Générer la convention", "Re-générer", "Voir la convention", "Déposer", "Remplacer le fichier", "Enregistrer"];
-  for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
-    const lu = textes(blocPour(w, fabrique())).join(" ");
-    for (const libelle of libelles) assert.ok(!lu.includes(libelle), `${nom} : « ${libelle} »`);
+  const etats = {...ETATS_A_TESTER, "À générer, agence manquante": () => donnees({action: {Agence: 0}})};
+  for (const [nom, fabrique] of Object.entries(etats)) {
+    const lu = contenuLisible(blocPour(w, fabrique()));
+    for (const libelle of libelles) {
+      const attendu = nom.startsWith("À générer") && libelle === "Générer la convention" ? 1 : 0;
+      assert.equal(lu.split(libelle).length - 1, attendu, `${nom} : « ${libelle} » (${attendu} attendu)`);
+    }
   }
+  assert.match(blocPour(w, donnees()),
+    /<button\b[^>]*\sid="conventionGenerer"[^>]*>\s*<span class="btn-content">Générer la convention<\/span>\s*<\/button>/,
+    "à l'état À générer, le libellé est dans le bouton");
 });
 
 // Echoue si le bloc contient autre chose que des phrases (<p>) et, a l'etat A generer
