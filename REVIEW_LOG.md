@@ -870,3 +870,18 @@ Tests : 434 passés, 0 échec (npm test). Tests propres à 7.1 prévus en 7.3.
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : b7fdb57
+
+## Tâche C36 — Génération du PDF de la convention, sans écran (S7, tâche 7.2)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 7.2, neuf étapes dans l'ordre de la décision D-S7-4
+
+Note /5 : sans objet
+Ce qui allait : conventionGenerer suit les neuf étapes ; contrôle de tous les champs obligatoires avec les six messages validés (D-3) ; enregistrement silencieux ; délai de 20 secondes pour pdfmake ; envoi du fichier par la méthode du logo de clubs, jeton jamais affiché ; une seule opération pour PDF_genere et Date_generation (D-S7-1) ; neuf codes d'erreur ; rien d'écrit avant la dernière opération ; risques signalés honnêtement.
+Ce que j'ai fait corriger : la liste des cases n'avait jamais été décidée (une partie inventée par l'agent) : liste officielle validée par Hanta et écrite dans la note ; apostrophe droite refusée et case connue mais vide traitée comme inconnue, corrigées en C37.
+Tests : 434 passés, 0 échec (npm test). Tests propres à 7.2 prévus en 7.3.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b15f049
+Reste à vérifier au premier essai dans DEV7 : rattachement de la pièce jointe par un non-propriétaire (« Voir en tant que » FT Régional), formats de la pièce jointe et de la date, getBlob de pdfmake 0.3.3, nom de la police. Logo absent (Q-C ouverte). Colonne Modele non mise à jour à la génération (S8).
