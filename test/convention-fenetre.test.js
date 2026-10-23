@@ -512,7 +512,7 @@ test("seuls les champs prévus sont en lecture seule ; année, signataire, repr�
 
 // Echoue si le titre, l'un des deux intitules de bloc, la phrase d'aide du bloc club
 // (a sa place, entre les deux blocs) ou le libelle « Fermer » change.
-test("la fenêtre porte son titre, ses deux blocs, la phrase « Pour corriger ces informations… » et le bouton Fermer", () => {
+test("la fenêtre porte son titre, ses trois blocs, la phrase « Pour corriger ces informations… » et le bouton Fermer", () => {
   const {html} = ouvrirFenetre(donnees());
   assert.equal(texteDe(html, "h2", "conventionTitle"), "Convention");
   const club = html.indexOf('<legend class="form-legend">Signataire club</legend>');
@@ -664,9 +664,17 @@ test("style.css déclare les classes de la fenêtre et du bouton, et affiche la 
 // ---------------------------------------------------------------------------
 // 9. Tache 5.1b : les trois blocs, l'annee, les signataires, le pied, le controle
 // ---------------------------------------------------------------------------
-// Le texte d'introduction de la fenetre n'est pas teste ici : la note UX le fixe a
-// « …obligatoires pour générer la convention. » alors que le code ecrit encore
-// « …obligatoires. » (voir le rapport du testeur).
+// ---- 9.0 Note d'introduction ----
+
+// Echoue si la note sous le titre n'est pas exactement
+// « Les champs marqués d'un * sont obligatoires pour générer la convention. »
+// (texte fixé par la note UX du 2026-10-23). Echoue tant que le code ecrit
+// encore « …sont obligatoires. » (src/actions-dashboard/script.js).
+test("la note d'introduction de la fenêtre dit que les champs * sont obligatoires pour générer la convention", () => {
+  const {html} = ouvrirFenetre(donneesFenetre());
+  assert.ok(html.includes("<p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>"),
+    "la note d'introduction doit reprendre le texte exact de la note UX");
+});
 
 // ---- 9.1 Structure : blocs, champs, libelles ----
 
