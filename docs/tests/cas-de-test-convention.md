@@ -5,7 +5,7 @@
 - Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » tout en bas.
 - Branche : `feature/convention`. Tâches 4.2 et 4.3 (fiches C24 et C25 de REVIEW_LOG.md).
 - Référence : `docs/ux/convention.md` (elle fait foi). Les textes attendus en sont copiés mot pour mot.
-- Le fichier `cas-de-test-convention.tsv` contient les mêmes 15 cas, pour l'outil de suivi (18 colonnes).
+- Le fichier `cas-de-test-convention.tsv` contient ces 15 cas (CONV-01 à CONV-15), puis ceux de R2 (CONV-16 à CONV-43, plus bas), pour l'outil de suivi (18 colonnes).
 
 ## Ce que ce bloc fait et ne fait pas encore
 
@@ -176,3 +176,182 @@ En PROD, jouer ces cas sur de vraies actions dans l'état voulu, sans créer de 
 2. `Structures.Ville` (colonne formule) doit rester vide pour « Club Exemple Sans Adresse » : à vérifier pour CONV-07.
 
 Mode sombre : à traiter à part pour tout le tableau de bord (hors R1).
+
+---
+
+# Cas de test : Convention, fenêtre et enregistrement (R2)
+
+**Brouillon écrit par le recetteur. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste. Les cas CONV-01 à CONV-15 (R1) ci-dessus n'ont pas été modifiés.
+
+- Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » puis fenêtre « Convention ».
+- Branche : `feature/convention`. Tâches 5.1a, 5.1b et 5.2 (fiches C27 à C34 de REVIEW_LOG.md).
+- Référence : `docs/ux/convention.md`, mise à jour le 2026-10-23 (elle fait foi). Les textes attendus en sont copiés mot pour mot.
+- Le fichier `cas-de-test-convention.tsv` contient les 28 cas de R2 (CONV-16 à CONV-43), à la suite des 15 de R1 : 43 lignes de cas, 18 colonnes.
+
+## Ce que la fenêtre fait et ne fait pas encore
+
+- Elle permet de **voir les informations, choisir le signataire du club, saisir le représentant de l'agence et enregistrer un brouillon** dans `Conventions`.
+- Elle n'a **pas de bouton « Générer la convention »** dans son pied, et aucun PDF n'est produit. Ils arrivent avec la tâche S7. **Ne pas noter KO leur absence.**
+- « Enregistrer les informations » ne contrôle **que l'année** (quatre chiffres). Un champ vide est accepté : c'est un brouillon.
+- Hors de cette recette : génération du PDF, voir la convention, dépôt du fichier signé (R4, R5, R6).
+
+## Cas volontairement non écrits
+
+1. **Message « Renseignez le dispositif de l'action dans sa fiche. »** : il ne s'affiche jamais (décision D-5 du 2026-10-23). Sans dispositif, le bloc est à l'état « Sans modèle » (voir CONV-04), et le bouton n'existe pas. Pas de cas.
+2. **Refus d'écriture sur `Conventions`** : on ne peut pas le jouer à l'écran. Aucun profil qui voit le tableau de bord (National, Régional, Départemental) n'est privé d'écriture sur `Conventions` ; l'ANS, lui, ne voit pas le tableau de bord. Le message d'échec « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » est couvert par les tests automatiques de la fiche C34, dans `test/convention-enregistrement.test.js` :
+   - « refus ou erreur : message exact, aucun texte de l'erreur de Grist, rien dans la console, données inchangées » ;
+   - « refus sur une action sans ligne : rien n'est gardé en mémoire, le nouvel essai crée la ligne » ;
+   - « création sans identifiant renvoyé par Grist : la table est relue, le deuxième enregistrement met à jour » ;
+   - « création réussie mais relecture impossible : le message reste celui de la réussite ».
+
+   Les cas CONV-34 et CONV-35 servent de garde-fou : si le message d'échec apparaît pour un profil Régional ou Départemental dans son périmètre, c'est une anomalie des règles d'accès de `Conventions`.
+3. **Plusieurs éléments manquants à la fois** : la note dit qu'un seul message s'affiche (le premier dans l'ordre agence, club, dispositif, adresse). Il est vérifié par le test « génération bloquée par plusieurs éléments : un seul message… » (fiche C28), pas par un cas à l'écran.
+
+## Données d'essai de R2 à créer dans TEST avant de jouer
+
+Données fictives uniquement (Club Exemple, exemple.fr). Aucun nom de document Grist, aucune adresse réelle. **Les données de R1 restent en place** : les actions ESSAI-CONV-A1 à A7 ne sont pas touchées par R2.
+
+### Structures (clubs)
+
+| Club | Adresse | Code postal | Ville | SIRET | Contacts |
+| --- | --- | --- | --- | --- | --- |
+| Club Exemple (existe déjà, R1) | 1 rue Exemple | 75001 | Exemple-sur-Mer | 12345678900012 (fictif, à ajouter s'il est vide) | 2 contacts, voir plus bas |
+| Club Exemple Sans Adresse (existe déjà, R1) | (vide) | (vide) | (vide) | (au choix, fictif) | 1 contact, voir plus bas |
+| Club Exemple Sans Contact (nouveau) | 2 rue Exemple | 75002 | Exemple-sur-Mer | 12345678900020 (fictif) | AUCUN |
+
+### Contacts (table Contacts, créés depuis la fiche du club)
+
+| Prénom | Nom | Fonction | Email | Club |
+| --- | --- | --- | --- | --- |
+| Alex | Martin-Exemple | Président | alex.martin@exemple.fr | Club Exemple |
+| Sam | Test-Exemple | (vide) | sam.test@exemple.fr | Club Exemple |
+| Robin | Autre-Exemple | Trésorier | robin.autre@exemple.fr | Club Exemple Sans Adresse |
+
+Robin sert à vérifier que la liste « Signataire » ne montre que les contacts du club de l'action (CONV-23). Dans la liste, le libellé est « Prénom Nom » : « Alex Martin-Exemple », « Sam Test-Exemple ».
+
+### Agence d'essai, DR, DD
+
+- On ne crée ni DR ni DD. **On reprend l'agence d'essai de R1**, déjà rattachée à la DR et à la DD existantes de TEST (celles des profils Régional et Départemental utilisés avec « Voir en tant que »). Si une autre agence d'essai est créée, elle doit être rattachée aux mêmes DR et DD : sinon la ligne `Conventions` ne se calcule pas dans le périmètre de ces profils et CONV-34 et CONV-35 sont Bloqués.
+- L'agence d'essai doit avoir une adresse fictive complète (elle s'affiche dans la fenêtre, CONV-20).
+- Sauf ESSAI-CONV-B1, toutes les actions de R2 utilisent cette agence.
+
+### Modeles_convention
+
+Ceux de R1 suffisent. À vérifier avant de jouer : la colonne `Titre` du modèle Du stade vers l'emploi vaut « Du stade vers l'emploi », celle de Match des métiers « Le Match des Métiers », celle de Parcours de remobilisation « Parcours de remobilisation » (correspondance de la note), et `Avec_annee` vaut Non pour Parcours de remobilisation seulement.
+
+### Actions d'essai (Corbeille = non, aucune ligne dans Conventions au départ)
+
+Les cas qui **écrivent** ont **leur propre action** : aucun cas ne dépend d'un autre.
+
+| Intitulé | Dispositif | Club | Agence | Sert au cas |
+| --- | --- | --- | --- | --- |
+| ESSAI-CONV-B1 | Du stade vers l'emploi | Club Exemple | AUCUNE | CONV-16 |
+| ESSAI-CONV-B2 | Du stade vers l'emploi | AUCUN | agence d'essai | CONV-17 |
+| ESSAI-CONV-B3 | Du stade vers l'emploi | Club Exemple Sans Adresse | agence d'essai | CONV-18 |
+| ESSAI-CONV-B4 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-19, 20, 23, 24, 36, 37, 38, 39, 40, 42 (lecture seule : on n'enregistre jamais) |
+| ESSAI-CONV-B5 | Match des métiers | Club Exemple | agence d'essai | CONV-21 |
+| ESSAI-CONV-B6 | Parcours de remobilisation vers l'emploi | Club Exemple | agence d'essai | CONV-22 |
+| ESSAI-CONV-B7 | Du stade vers l'emploi | Club Exemple Sans Contact | agence d'essai | CONV-25 (écrit) |
+| ESSAI-CONV-B8 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-30 (écrit) |
+| ESSAI-CONV-B9 | Match des métiers | Club Exemple | agence d'essai | CONV-31 (écrit) |
+| ESSAI-CONV-B10 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-32 (écrit) |
+| ESSAI-CONV-B11 | Parcours de remobilisation vers l'emploi | Club Exemple | agence d'essai | CONV-33 (écrit) |
+| ESSAI-CONV-B12 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-26 (ne doit rien écrire) |
+| ESSAI-CONV-B13 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-27 |
+| ESSAI-CONV-B14 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-28 (écrit) |
+| ESSAI-CONV-B15 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-29 (écrit) |
+| ESSAI-CONV-B16 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-34 (écrit, FT Régional) |
+| ESSAI-CONV-B17 | Match des métiers | Club Exemple | agence d'essai | CONV-35 (écrit, FT Départemental) |
+| ESSAI-CONV-B18 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-41 (écrit) |
+| ESSAI-CONV-B19 | Du stade vers l'emploi | Club Exemple | agence d'essai | CONV-43 (écrit) |
+
+B6 est l'action « À générer » de dispositif Parcours de remobilisation (lecture) ; B11 en est la version qui écrit. Le représentant saisi dans les cas est toujours fictif (« Dominique Exemple », « Camille Exemple »).
+
+**Pour rejouer un cas qui écrit** : supprimer d'abord la ligne `Conventions` de son action (ou recréer l'action). Une ligne déjà là change le résultat (mise à jour au lieu de création).
+
+### Profils
+
+Prérequis commun : le profil FT [National / Régional / Départemental] est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai. CONV-34 et CONV-35 se jouent avec « Voir en tant que » (le développeur du projet). ESSAI-CONV-B1 n'a pas d'agence : seul le profil National la voit.
+
+## Les 28 cas de R2
+
+Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. « Rejouable en PROD » = Oui seulement pour les cas qui ne font que regarder. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
+
+### Bloc : bouton grisé et message (profil FT National)
+
+- **CONV-16 : agence manquante** (Erreur, Majeur) : « Renseignez l'agence de l'action dans sa fiche. », bouton grisé, la fenêtre ne s'ouvre pas.
+- **CONV-17 : club manquant** (Erreur, Majeur) : « Renseignez le club de l'action. »
+- **CONV-18 : adresse du club manquante** (Erreur, Majeur) : « Renseignez l'adresse du club dans sa fiche. »
+
+### Ouverture de la fenêtre
+
+- **CONV-19 : trois blocs, introduction, pied** (Nominal, Bloquant, fumée).
+- **CONV-20 : club et agence en lecture seule** (Nominal, Majeur).
+- **CONV-21 : modèle Match des métiers, année préremplie** (Nominal, Majeur).
+- **CONV-22 : Parcours de remobilisation, pas de champ Année** (Limite, Majeur).
+
+### Signataires
+
+- **CONV-23 : la liste ne montre que les contacts du club** (Nominal, Majeur).
+- **CONV-24 : fonction affichée après le choix, ou « Fonction non renseignée »** (Nominal, Majeur).
+- **CONV-25 : club sans contact, « Enregistrer » reste actif** (Limite, Majeur).
+
+### Année
+
+- **CONV-26 : 26 refusée** (Erreur, Majeur).
+- **CONV-27 : année à cinq chiffres (10000) refusée** (Erreur, Mineur).
+- **CONV-28 : année vide acceptée** (Limite, Majeur).
+- **CONV-29 : le message disparaît au clic suivant, après correction** (Erreur, Majeur).
+
+### Enregistrement et persistance
+
+- **CONV-30 : première sauvegarde, ligne créée** (Nominal, Bloquant, fumée).
+- **CONV-31 : réouverture préremplie, aussi après rechargement** (Persistance, Majeur).
+- **CONV-32 : deuxième enregistrement, même ligne** (Persistance, Majeur).
+- **CONV-33 : modèle sans année** (Limite, Majeur).
+
+### Droits (« Voir en tant que », par le développeur du projet)
+
+- **CONV-34 : FT Régional enregistre dans son périmètre** (Droits, Bloquant).
+- **CONV-35 : FT Départemental enregistre dans son périmètre** (Droits, Bloquant).
+
+### Fermeture
+
+- **CONV-36 : « Fermer », focus rendu au bouton** (Nominal, Majeur).
+- **CONV-37 : Échap, focus rendu au bouton** (Nominal, Majeur).
+- **CONV-38 : saisie non enregistrée perdue à la réouverture, sans confirmation** (Persistance, Majeur).
+
+### Mobile et accessibilité
+
+- **CONV-39 : clavier, Tab reste dans la fenêtre** (Majeur).
+- **CONV-40 : VoiceOver, titre et champs** (Majeur).
+- **CONV-41 : VoiceOver, message d'erreur et message de succès annoncés** (Majeur).
+- **CONV-42 : zoom 200 %** (Majeur).
+- **CONV-43 : mobile, le message après « Enregistrer » est visible ou annoncé** (Majeur).
+
+## Tests de fumée de R2 (2 sur 28)
+
+- CONV-19 : la fenêtre s'ouvre avec ses trois blocs.
+- CONV-30 : un enregistrement crée la ligne attendue dans `Conventions`.
+
+Au total, avec R1 : 5 tests de fumée sur 43 cas (CONV-01, 03, 08, 19, 30).
+
+## Cas déjà couverts par un test en code
+
+`Automatisable = Oui` pour CONV-16 à CONV-33 et CONV-36 à CONV-39 (fiches C28, C31 et C34). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist ni les droits. Le nom du test est dans la colonne `Remarques`. Pas de test en code pour les droits (CONV-34, 35), VoiceOver (CONV-40, 41), le zoom (CONV-42) et le mobile (CONV-43).
+
+## Après une correction
+
+Rejouer le cas concerné, puis ses voisins (blocs : CONV-16 à CONV-18 ; ouverture : CONV-19 à CONV-25 ; année : CONV-26 à CONV-29 ; enregistrement : CONV-30 à CONV-35), et rappeler à Hanta de relancer toute la suite automatique (npm test).
+
+## Rejouer en PROD
+
+Seuls les cas qui ne font que regarder se rejouent sur de vraies actions (CONV-16 à CONV-24, 36 à 40 et 42). Les autres écrivent dans `Conventions` et ne se jouent que dans TEST.
+
+## [À CONFIRMER] de R2
+
+1. **CONV-27** (réglé à la relecture du 2026-10-23) : le champ numérique refuse les lettres à la frappe ; le cas utilise donc 10000 au lieu de « abc ». « abc » reste couvert par les tests en code (fiche C31).
+2. **État du bloc après un enregistrement** (CONV-31) : j'ai écrit que le bloc reste à « Aucune convention générée. », parce que l'état suit les PDF et non la présence d'une ligne. Non vérifié dans le code : à confirmer en jouant le cas.
+3. **Mode de création de ESSAI-CONV-B2 (sans club)** (CONV-17) : à confirmer que l'interface permet de vider le club, sinon créer l'action directement dans la table Actions.
+4. Les colonnes `Titre` et `Avec_annee` de `Modeles_convention` ont les valeurs prévues dans TEST (voir plus haut) : à vérifier avant de jouer CONV-21 et CONV-22.
+5. Le compte du testeur « National » : même question qu'en R1 (vrai profil FT National, ou propriétaire du document ?).
