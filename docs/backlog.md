@@ -29,6 +29,7 @@ Règles du plan :
 - `Structures.Siege` contient Oui ou Non (ce n'est pas une adresse). L'adresse du club vient de `Structures.Adresse` (Text), `Structures.Code_postal` et `Structures.Ville`.
 - `Structures.Ville` : colonne formule créée dans DEV7 le 2026-10-22. À créer dans TEST, puis dans PROD avant la fusion.
 - `Actions.DR` et `Actions.DD`, en colonnes formule.
+- `Conventions.Date_generation` et `Conventions.Date_depot` : vérifiées dans DEV7 le 2026-10-23.
 
 **Règles d'accès actuelles d'Actions :**
 
@@ -38,8 +39,8 @@ Règles du plan :
 **Qui fait quoi :**
 
 - FT National, FT Régional et FT Départemental génèrent, re-génèrent et déposent les conventions, chacun dans son périmètre.
-- ANS : aucun accès aux conventions ni aux modèles.
-- Le widget ne lit pas le profil de l'utilisateur : tout profil refusé par Grist, ANS compris, voit l'état « Droits insuffisants ».
+- ANS : aucun accès aux conventions ni aux modèles. L'ANS ne voit pas le tableau de bord.
+- Le widget ne lit pas le profil de l'utilisateur : tout utilisateur qui voit le tableau de bord mais à qui Grist refuse les tables de convention voit l'état « Droits insuffisants ».
 
 **Génération bloquée** avec un message qui dit quoi remplir, s'il manque l'agence, le club, le dispositif ou l'adresse du club. Message pour l'adresse : « Renseignez l'adresse du club dans sa fiche. » Le blocage porte sur les données enregistrées. Textes exacts : `docs/ux/convention.md`.
 
@@ -47,8 +48,13 @@ Règles du plan :
 
 - Pointillés : de vrais points tapés dans le texte du modèle.
 - Pas d'ajout de contact dans la convention (S6 supprimée). Si le club n'a aucun contact, un message le dit (texte dans la note UX).
-- Tous les profils refusés, ANS compris, voient « Droits insuffisants ».
+- Tout profil refusé par Grist voit « Droits insuffisants » (le widget ne lit pas le profil).
 - La note `docs/ux/convention.md` l'emporte sur la maquette HTML.
+
+**Décisions du 2026-10-23 :**
+
+- Tâche 4.2 : bloc sans aucun bouton ni message de blocage. Boutons et message de blocage arrivent en 5.1.
+- Date vide : « Convention générée. » et « Convention signée. », sans date (textes ajoutés, à reporter dans la note UX en 10.2).
 
 **Vrais textes des modèles :**
 
@@ -94,7 +100,7 @@ Règles du plan :
 - Sinon `PDF_genere` rempli : Générée.
 - Sinon, si le dispositif a un modèle : À générer.
 - Sinon : Dispositif sans modèle.
-- Tables refusées par Grist (tout profil, ANS compris) : Droits insuffisants, avec un message dédié.
+- Tables de convention refusées par Grist : Droits insuffisants, avec un message dédié.
 
 **Règles d'accès proposées :**
 
@@ -177,21 +183,21 @@ Le texte se lit ligne par ligne.
 
 ### S4. Fonction A : afficher le bloc « Convention »
 
-| N° | Tâche                                                                                                                                                                    | Agent         | Fichiers                                                           | Ce qui est testé                                                                                                                                                      |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 | **Fait (commit e47240b). Note validée le 2026-10-22.** Relire la note UX et la corriger selon les réponses (National, ANS, blocage). La note passe avant le HTML. | designer-ux   | `docs/ux/convention.md`                                          | Note à jour.                                                                                                                                                          |
-| 4.2 | Bloc dans la fiche (5 états, dont Droits insuffisants ; textes de la note ; sans bouton actif). Classes `convention-…`, jamais un nom du design system.               | dev-interface | `src/actions-dashboard/index.html`, `script.js`, `style.css` | Tests de 4.3.                                                                                                                                                          |
-| 4.3 | Tests de 4.2.                                                                                                                                                             | testeur       | `test/render.test.js` ou nouveau test, `test/styles.test.js`   | Texte de chaque état (5 états), aucun bouton actif, noms de classes. Après build, `git status` : seul `actions-dashboard.html` change en plus des sources.      |
-| R1  | Recette de la fonction A.                                                                                                                                                 | recetteur     | `docs/tests/` (carnet)                                           | Chaque état s'affiche, pour National, Régional, Départemental ; ANS et profils hors périmètre : « Droits insuffisants ». Clavier, lecteur d'écran, zoom 200 %. |
+| N° | Tâche                                                                                                                                                                                                | Agent         | Fichiers                                           | Ce qui est testé                                                                                                                                                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 | **Fait (commit e47240b). Note validée le 2026-10-22.** Relire la note UX et la corriger selon les réponses (National, ANS, blocage). La note passe avant le HTML.                             | designer-ux   | `docs/ux/convention.md`                          | Note à jour.                                                                                                                                                                                                                                                                                     |
+| 4.2 | **Fait (fiche C24).** Bloc en bas de la fiche, 5 états, textes de la note. Aucun bouton ni message de blocage (décision du 2026-10-23). Classes `convention-fields` et `convention-aide`. | dev-interface | `src/actions-dashboard/script.js`, `style.css` | Tests de 4.3. Vu à l'écran dans DEV7 : À générer et Sans modèle.                                                                                                                                                                                                                            |
+| 4.3 | **Fait (fiche C25).** Tests de 4.2 : 27 tests.                                                                                                                                                  | testeur       | `test/convention-bloc.test.js` (nouveau)         | Texte des 5 états, date en jour/mois/année, date vide, Signée l'emporte, aucun élément cliquable, aucun message de blocage, classes, place du bloc dans la fiche.                                                                                                                            |
+| R1  | Recette de la fonction A. Prérequis : structure dans TEST (`Conventions`, `Modeles_convention`, `Structures.Ville`, règles d'accès) et lignes d'essai fictives dans `Conventions`.         | recetteur     | `docs/tests/` (carnet)                           | Pour National, Régional, Départemental, dans leur périmètre : À générer, Générée (date en français), Signée, Sans modèle. Droits insuffisants : non jouable à l'écran (l'ANS ne voit pas le tableau de bord), couvert par les tests de 4.3. Clavier, lecteur d'écran, zoom 200 %. |
 
 ### S5. Fonction B : fenêtre « Convention » et informations enregistrées
 
-| N° | Tâche                                                                                                                                                                                                       | Agent         | Fichiers                                                           | Ce qui est testé                                                                                                                              |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 5.1 | Fenêtre : 3 blocs, informations club et agence en lecture seule, liste des signataires (message si le club n'a aucun contact), représentant, fonction préremplie, validation. Pas encore de génération. | dev-interface | `src/actions-dashboard/index.html`, `script.js`, `style.css` | Tests de 5.3.                                                                                                                                  |
-| 5.2 | Enregistrer les informations dans `Conventions` (création ou mise à jour de la ligne de l'action).                                                                                                       | dev-backend   | `src/actions-dashboard/script.js`                                | Tests de 5.3.                                                                                                                                  |
-| 5.3 | Tests de 5.1 et 5.2.                                                                                                                                                                                         | testeur       | `test/convention-fenetre.test.js` (nouveau)                      | Champs obligatoires, Année absente pour Remobilisation, club sans contact, écriture refusée = message d'erreur, une seule ligne par action. |
-| R2  | Recette de la fonction B.                                                                                                                                                                                    | recetteur     | `docs/tests/`                                                    | Informations enregistrées et relues à la réouverture ; un profil sans droit d'écriture voit l'erreur prévue.                              |
+| N° | Tâche                                                                                                                                                                                                                                                                                  | Agent         | Fichiers                                                           | Ce qui est testé                                                                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.1 | Boutons du bloc et message de blocage (reportés de 4.2, voir la note UX). Fenêtre : 3 blocs, informations club et agence en lecture seule, liste des signataires (message si le club n'a aucun contact), représentant, fonction préremplie, validation. Pas encore de génération. | dev-interface | `src/actions-dashboard/index.html`, `script.js`, `style.css` | Tests de 5.3.                                                                                                                                                                                              |
+| 5.2 | Enregistrer les informations dans `Conventions` (création ou mise à jour de la ligne de l'action).                                                                                                                                                                                  | dev-backend   | `src/actions-dashboard/script.js`                                | Tests de 5.3.                                                                                                                                                                                              |
+| 5.3 | Tests de 5.1 et 5.2.                                                                                                                                                                                                                                                                    | testeur       | `test/convention-fenetre.test.js` (nouveau)                      | Boutons selon l'état, message de blocage relié au bouton, champs obligatoires, Année absente pour Remobilisation, club sans contact, écriture refusée = message d'erreur, une seule ligne par action. |
+| R2  | Recette de la fonction B.                                                                                                                                                                                                                                                               | recetteur     | `docs/tests/`                                                    | Informations enregistrées et relues à la réouverture ; message de blocage pour chaque élément manquant ; un profil sans droit d'écriture voit l'erreur prévue.                                      |
 
 S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention. Message si le club n'a aucun contact (voir docs/ux/convention.md). La numérotation S7 à S10 est gardée.
 
@@ -225,12 +231,12 @@ S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention. Message
 
 ### S10. Clôture
 
-| N°  | Tâche                                                                                                                                                                                                                    | Agent             | Fichiers                                                      | Ce qui est testé                                                          |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 10.1 | Examen de sécurité final : jeton, pdfmake, règles d'accès (ANS sans accès), contenu de `actions-dashboard.html` (aucun texte de modèle, aucun secret).                                                            | auditeur-securite | Aucun                                                         | Rapport sans point bloquant.                                               |
-| 10.2 | Documentation : README (section Convention, tables lues et écrites, données personnelles nom, prénom, fonction), carnet de tests, mention dans CLAUDE.md si Hanta le décide.                                          | documentaliste    | `README.md`, `docs/tests/`, éventuellement `CLAUDE.md` | Relecture par Hanta : aucun nom de document Grist, aucune adresse réelle. |
-| R7   | Recette complète : générer, voir, re-générer, déposer, remplacer, pour chaque profil et chaque modèle.                                                                                                             | recetteur         | `docs/tests/`                                               | Compte rendu final.                                                        |
-| 10.3 | Structure dans TEST puis PROD (dont `Structures.Ville`, `Conventions`, `Modeles_convention`, règles d'accès) avant la fusion. Journal des évolutions dans DEV2 ; fusion dans main seulement sur accord de Hanta. | Hanta             | Aucun                                                         | Page publiée vérifiée après fusion.                                    |
+| N°  | Tâche                                                                                                                                                                                                                                           | Agent             | Fichiers                                                                                 | Ce qui est testé                                                          |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 10.1 | Examen de sécurité final : jeton, pdfmake, règles d'accès (ANS sans accès), contenu de `actions-dashboard.html` (aucun texte de modèle, aucun secret).                                                                                   | auditeur-securite | Aucun                                                                                    | Rapport sans point bloquant.                                               |
+| 10.2 | Documentation : README (section Convention, tables lues et écrites, données personnelles nom, prénom, fonction), carnet de tests, note UX alignée sur le code (dont les textes « date vide »), mention dans CLAUDE.md si Hanta le décide. | documentaliste    | `README.md`, `docs/tests/`, `docs/ux/convention.md`, éventuellement `CLAUDE.md` | Relecture par Hanta : aucun nom de document Grist, aucune adresse réelle. |
+| R7   | Recette complète : générer, voir, re-générer, déposer, remplacer, pour chaque profil et chaque modèle.                                                                                                                                    | recetteur         | `docs/tests/`                                                                          | Compte rendu final.                                                        |
+| 10.3 | Structure dans PROD (dont `Structures.Ville`, `Conventions`, `Modeles_convention`, règles d'accès) avant la fusion. Journal des évolutions dans DEV2 ; fusion dans main seulement sur accord de Hanta.                                  | Hanta             | Aucun                                                                                    | Page publiée vérifiée après fusion.                                    |
 
 ## Questions encore ouvertes
 
@@ -246,7 +252,7 @@ S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention. Message
 ## Risques
 
 - Colonnes supposées dans le code (`Siege` ou `Adresse`) : tâche 0.2.
-- `Structures.Ville` absente de TEST ou de PROD au moment de la fusion : tâche 10.3.
+- Structure absente de TEST au moment de la recette, ou de PROD au moment de la fusion : prérequis de R1, tâche 10.3.
 - Fuite entre régions ou pour l'ANS si une règle est mal posée : tâches 1.4 et 1.5.
 - Droits d'écriture de Régional et Départemental sur `Conventions` : testés en R2.
 - Script externe pdfmake (même risque que le bandeau) : tâche 0.3.
