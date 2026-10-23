@@ -1889,6 +1889,15 @@ function conventionLigne(lignes, id) {
   return id ? (lignes || []).find(ligne => ligne.id === id) : undefined;
 }
 
+// Modele actif d'un dispositif (le plus ancien s'il y en a plusieurs), ou null.
+// `raw` : les tables lues (state.raw).
+function conventionModeleActif(raw, dispositifId) {
+  if (!dispositifId) return null;
+  return (raw.Modeles_convention || [])
+    .filter(modele => modele.Dispositif === dispositifId && modele.Actif === true)
+    .reduce((plusAncien, modele) => (!plusAncien || modele.id < plusAncien.id ? modele : plusAncien), null);
+}
+
 // Etat du bloc « Convention » d'une action. Renvoie { etat, convention, modele } :
 // etat est l'une des valeurs de CONVENTION_ETATS ; convention est la ligne Conventions
 // de l'action et modele la ligne Modeles_convention concernee, ou null quand elles n'existent pas.
@@ -1903,12 +1912,7 @@ function conventionEtat(actionId, donnees) {
   const convention = (raw.Conventions || [])
     .filter(ligne => ligne.Action === actionId)
     .reduce((plusAncienne, ligne) => (!plusAncienne || ligne.id < plusAncienne.id ? ligne : plusAncienne), null);
-  // Modele actif du dispositif de l'action (le plus ancien s'il y en a plusieurs).
-  const actif = action.Dispositif
-    ? (raw.Modeles_convention || [])
-      .filter(modele => modele.Dispositif === action.Dispositif && modele.Actif === true)
-      .reduce((plusAncien, modele) => (!plusAncien || modele.id < plusAncien.id ? modele : plusAncien), null)
-    : null;
+  const actif = conventionModeleActif(raw, action.Dispositif);
   // Une convention deja faite garde le modele avec lequel elle a ete faite.
   const modeleUtilise = conventionLigne(raw.Modeles_convention, convention && convention.Modele) || actif;
 
@@ -2309,22 +2313,27 @@ function conventionAEcrire(actionId, valeurs, donnees) {
 // creee vide puis remplie. Les droits sont decides par Grist : on tente l'ecriture et un
 // refus donne le meme message que toute autre erreur. Rien dans la console : l'erreur peut
 // citer des valeurs, qui contiennent des noms de personnes.
-async function conventionEnregistrer(actionId, valeurs) {
+// Renvoie true si l'ecriture a reussi, false sinon. options.silencieux (utilise par la
+// generation) : ni message, ni bouton touche ; l'appelant traduit lui-meme le resultat.
+async function conventionEnregistrer(actionId, valeurs, options) {
+  const silencieux = !!(options && options.silencieux);
   const {id, champs} = conventionAEcrire(actionId, valeurs, state);
-  const bouton = document.getElementById('conventionEnregistrer');
+  const bouton = silencieux ? null : document.getElementById('conventionEnregistrer');
   try {
     if (bouton) bouton.disabled = true;
-    const alerte = document.getElementById('conventionMessage');
+    const alerte = silencieux ? null : document.getElementById('conventionMessage');
     if (alerte) alerte.classList.add('is-hidden');
     const action = id ? ['UpdateRecord', 'Conventions', id, champs] : ['AddRecord', 'Conventions', null, champs];
     const resultat = await grist.docApi.applyUserActions([action]);
     await conventionMemoriser(id, Number(resultat && resultat.retValues && resultat.retValues[0]), champs);
     // La fenetre a pu etre fermee pendant l'ecriture (Echap) : il n'y a alors rien a afficher.
-    if (document.getElementById('conventionMessage')) afficherMessageConvention(true, CONVENTION_MESSAGES.enregistre);
+    if (!silencieux && document.getElementById('conventionMessage')) afficherMessageConvention(true, CONVENTION_MESSAGES.enregistre);
+    return true;
   } catch (error) {
-    if (document.getElementById('conventionMessage')) afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+    if (!silencieux && document.getElementById('conventionMessage')) afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+    return false;
   } finally {
-    const encore = document.getElementById('conventionEnregistrer');
+    const encore = silencieux ? null : document.getElementById('conventionEnregistrer');
     if (encore) encore.disabled = false;
   }
 }
@@ -2413,5 +2422,252 @@ function keepFocusInConvention(event) {
   } else if (!event.shiftKey && document.activeElement === last) {
     event.preventDefault();
     first.focus();
+  }
+}
+
+// ---- Convention : generation du PDF d'une action (tache 7.2, aucun ecran) ----
+// conventionGenerer n'est appelee nulle part pour l'instant : le bouton, l'attente et les
+// messages viendront avec la tache 7.2b, qui traduira chaque `code` d'erreur en message.
+// Regles communes : rien dans la console, aucun nom de personne ni jeton dans une erreur
+// (les erreurs portent un message fixe et un code), et PDF_genere / Date_generation ne sont
+// ecrits qu'a la toute fin, en une seule operation : a tout echec, l'etat reste « A generer ».
+
+// Codes des erreurs de conventionGenerer (propriete `code`).
+//  champs-a-corriger     : champs obligatoires manquants (erreur.problemes : [{id, message}])
+//  enregistrement-echoue : les informations n'ont pas pu etre enregistrees
+//  modele-indisponible   : modele introuvable, inactif ou sans texte
+//  cases-inconnues       : cases du modele sans valeur (erreur.cases : noms, sans doublon)
+//  pdfmake-non-charge    : pdfmake absent ou trop long a charger (code de chargerPdfmake)
+//  envoi-refuse          : Grist refuse l'envoi du fichier (droits : reponse 401 ou 403)
+//  envoi-impossible      : envoi du fichier impossible (reseau, serveur, jeton, reponse illisible)
+//  rattachement-echoue   : fichier envoye, mais PDF_genere / Date_generation non ecrits
+//  echec-inattendu       : tout autre echec (fabrication du PDF comprise)
+const CONVENTION_GENERATION_ERREURS = {
+  champs: 'champs-a-corriger',
+  enregistrement: 'enregistrement-echoue',
+  modele: 'modele-indisponible',
+  cases: 'cases-inconnues',
+  pdfmake: CONVENTION_PDFMAKE_ERREUR,
+  envoiRefuse: 'envoi-refuse',
+  envoiImpossible: 'envoi-impossible',
+  rattachement: 'rattachement-echoue',
+  inattendu: 'echec-inattendu'
+};
+
+// Delai maximum du chargement de pdfmake (decision de la tache 7.2).
+const CONVENTION_PDFMAKE_DELAI_MS = 20000;
+
+// Messages valides (note UX, §3 « Enregistrer et Generer », decision D-3), un par probleme.
+// Les deux messages de l'annee (absente, pas a quatre chiffres) : le second est celui de
+// CONVENTION_ERREURS.annee, repris par conventionProblemes.
+const CONVENTION_ERREURS_GENERER = {
+  anneeAbsente: "Saisissez l'année de la convention.",
+  signataire: 'Choisissez le signataire du club.',
+  signataireSansFonction: "Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention.",
+  representant: 'Saisissez le nom du représentant.',
+  fonctionRepresentant: 'Saisissez la fonction du représentant.'
+};
+
+// Noms des cases [Nom] que le widget remplit. Les quatre cases du bloc de signature sont
+// celles de conventionSignatures ; « Nom du club » et « Siège du club » sont celles des
+// tests du modele. Les autres noms sont a faire correspondre au texte des modeles de Grist :
+// une case du modele qui n'est pas dans cette liste (ou dont la valeur est vide) bloque la
+// generation (cases-inconnues) ; une entree que le modele n'utilise pas ne gene pas.
+const CONVENTION_CASES = {
+  annee: 'Année',
+  clubNom: 'Nom du club',
+  clubSiret: 'SIRET du club',
+  clubSiege: 'Siège du club',
+  signataire: 'Signataire du club',
+  fonctionSignataire: 'Fonction du signataire',
+  agenceNom: 'Nom de l’agence',
+  agenceAdresse: 'Adresse de l’agence',
+  representant: 'Représentant de l’agence',
+  fonctionRepresentant: 'Fonction du représentant'
+};
+
+// Forme courte du dispositif dans le nom du fichier (note UX, D-S7-3 : proposition a valider
+// par Hanta). Cle : nom du dispositif sans accent ni majuscule. Un dispositif absent d'ici
+// garde son nom complet nettoye.
+const CONVENTION_NOMS_COURTS = {
+  "du stade vers l'emploi": 'Stade-emploi',
+  'match des metiers': 'Match-metiers',
+  "parcours de remobilisation vers l'emploi": 'Remobilisation'
+};
+
+const CONVENTION_NOM_CLUB_MAX = 40;
+
+function conventionErreur(code, complements) {
+  const erreur = new Error(`Generation de la convention impossible : ${code}`);
+  erreur.code = code;
+  return complements ? Object.assign(erreur, complements) : erreur;
+}
+
+// Controle des champs obligatoires de « Generer ». Renvoie TOUS les problemes, dans l'ordre
+// de la fenetre : [{id, message}] (id : champ de la fenetre), liste vide si tout est bon.
+// `valeurs` vient de lireConventionForm. Fonction pure : ni DOM, ni Grist.
+function conventionProblemesGenerer(actionId, valeurs, donnees) {
+  const problemes = [];
+  if (conventionModeleInfos(actionId, donnees).avecAnnee) {
+    const annee = String(valeurs.annee ?? '').trim();
+    if (annee === '' && !valeurs.anneeIllisible) problemes.push({id: 'conventionAnnee', message: CONVENTION_ERREURS_GENERER.anneeAbsente});
+    else problemes.push(...conventionProblemes({...valeurs, annee}));
+  }
+  const signataire = conventionContacts(actionId, donnees).find(contact => contact.id === valeurs.signataire);
+  if (!signataire) problemes.push({id: 'clubSignataire', message: CONVENTION_ERREURS_GENERER.signataire});
+  else if (!signataire.fonction) problemes.push({id: 'clubFonction', message: CONVENTION_ERREURS_GENERER.signataireSansFonction});
+  if (!String(valeurs.representant ?? '').trim()) problemes.push({id: 'agenceRepresentant', message: CONVENTION_ERREURS_GENERER.representant});
+  if (!String(valeurs.fonctionRepresentant ?? '').trim()) problemes.push({id: 'agenceFonction', message: CONVENTION_ERREURS_GENERER.fonctionRepresentant});
+  return problemes;
+}
+
+// Valeur de chaque case connue, pour conventionVersContenuPdf. Fonction pure.
+// Une adresse sur plusieurs lignes devient une seule ligne : elle se lit dans une phrase.
+function conventionValeursCases(actionId, valeurs, donnees) {
+  const infos = conventionInfos(actionId, donnees);
+  const signataire = conventionContacts(actionId, donnees).find(contact => contact.id === valeurs.signataire);
+  const surUneLigne = texte => String(texte || '').split('\n').join(', ');
+  const cases = {};
+  if (conventionModeleInfos(actionId, donnees).avecAnnee) cases[CONVENTION_CASES.annee] = String(valeurs.annee ?? '').trim();
+  cases[CONVENTION_CASES.clubNom] = infos.club.nom;
+  cases[CONVENTION_CASES.clubSiret] = infos.club.siret;
+  cases[CONVENTION_CASES.clubSiege] = surUneLigne(infos.club.siege);
+  cases[CONVENTION_CASES.signataire] = signataire ? signataire.libelle : '';
+  cases[CONVENTION_CASES.fonctionSignataire] = signataire ? signataire.fonction : '';
+  cases[CONVENTION_CASES.agenceNom] = infos.agence.nom;
+  cases[CONVENTION_CASES.agenceAdresse] = surUneLigne(infos.agence.adresse);
+  cases[CONVENTION_CASES.representant] = String(valeurs.representant ?? '').trim();
+  cases[CONVENTION_CASES.fonctionRepresentant] = String(valeurs.fonctionRepresentant ?? '').trim();
+  return cases;
+}
+
+// Nettoyage d'un morceau de nom de fichier (note UX, D-S7-3) : accents retires, œ → oe et
+// æ → ae, toute suite d'autres caracteres que A-Z a-z 0-9 remplacee par un tiret, tirets de
+// debut et de fin retires, casse gardee. longueurMax (facultatif) : coupe, puis retire un
+// tiret final.
+function conventionNomNettoye(texte, longueurMax) {
+  let nettoye = String(texte ?? '')
+    .replace(/œ/g, 'oe').replace(/Œ/g, 'Oe').replace(/æ/g, 'ae').replace(/Æ/g, 'Ae')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (longueurMax && nettoye.length > longueurMax) nettoye = nettoye.slice(0, longueurMax).replace(/-+$/, '');
+  return nettoye;
+}
+
+// Nom du fichier : Convention-[dispositif]-[club]-[annee].pdf, sans « -[annee] » quand le
+// modele n'a pas d'annee. Jamais de nom de personne. Fonction pure.
+function conventionNomFichier(actionId, valeurs, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
+  const nomDispositif = String(dispositif.Dispositif || dispositif.Code || '').trim();
+  const court = CONVENTION_NOMS_COURTS[normalizeText(nomDispositif.replace(/[’‘]/g, "'"))];
+  const partDispositif = conventionNomNettoye(court || nomDispositif) || conventionNomNettoye(nomDispositif);
+  const partClub = conventionNomNettoye(conventionInfos(actionId, donnees).club.nom, CONVENTION_NOM_CLUB_MAX) || 'club';
+  const annee = conventionModeleInfos(actionId, donnees).avecAnnee ? String(valeurs.annee ?? '').trim() : '';
+  return ['Convention', partDispositif, partClub, annee].filter(Boolean).join('-') + '.pdf';
+}
+
+// chargerPdfmake avec un delai maximum : au-dela, meme erreur que pdfmake-non-charge.
+function conventionChargerPdfmake() {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(conventionErreur(CONVENTION_GENERATION_ERREURS.pdfmake)), CONVENTION_PDFMAKE_DELAI_MS);
+    chargerPdfmake().then(
+      () => { clearTimeout(minuteur); resolve(); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
+}
+
+// Envoie le PDF comme piece jointe, par la methode du logo de clubs : jeton d'ecriture dans
+// l'adresse, credentials 'omit', en-tete X-Requested-With. Renvoie l'identifiant de la piece
+// jointe. Le jeton n'est lu qu'ici, vit dans ces variables locales et n'est mis dans aucune
+// erreur : les erreurs ne portent qu'un code (une erreur de fetch peut recopier l'adresse).
+async function conventionEnvoyerPdf(blob, nomFichier) {
+  const impossible = () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  let acces;
+  try {
+    acces = await grist.docApi.getAccessToken({readOnly: false});
+  } catch (error) {
+    throw impossible();
+  }
+  if (!acces || !acces.token || !acces.baseUrl) throw impossible();
+  const formulaire = new FormData();
+  formulaire.append('upload', blob, nomFichier);
+  let reponse;
+  try {
+    reponse = await fetch(`${acces.baseUrl}/attachments?auth=${encodeURIComponent(acces.token)}`, {
+      method: 'POST',
+      body: formulaire,
+      credentials: 'omit',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+  } catch (error) {
+    throw impossible();
+  }
+  if (!reponse.ok) {
+    const refus = reponse.status === 401 || reponse.status === 403;
+    throw conventionErreur(refus ? CONVENTION_GENERATION_ERREURS.envoiRefuse : CONVENTION_GENERATION_ERREURS.envoiImpossible, {status: reponse.status});
+  }
+  let ids;
+  try {
+    ids = await reponse.json();
+  } catch (error) {
+    throw impossible();
+  }
+  const id = Array.isArray(ids) ? ids[0] : undefined;
+  if (!Number.isInteger(id) || id <= 0) throw impossible();
+  return id;
+}
+
+// Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
+// Les etapes se suivent, la premiere qui echoue arrete tout (note UX, §3 et D-S7-4) :
+//  1. controle des champs obligatoires ; 2. enregistrement des informations (sans message) ;
+//  3. modele actif ; 4. remplissage des cases ; 5. chargement de pdfmake (20 s au plus) ;
+//  6. fabrication du PDF et nom du fichier ; 7. envoi du fichier ;
+//  8. UNE operation applyUserActions pour PDF_genere et Date_generation ;
+//  9. mise a jour de state.raw.Conventions (le bloc peut passer a « Generee »).
+// Reussite : renvoie {nomFichier}. Echec : rejette une Error portant `code`
+// (voir CONVENTION_GENERATION_ERREURS) ; rien n'est alors ecrit dans PDF_genere ni Date_generation.
+async function conventionGenerer(actionId, valeurs) {
+  try {
+    const problemes = conventionProblemesGenerer(actionId, valeurs, state);
+    if (problemes.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.champs, {problemes});
+
+    const enregistre = await conventionEnregistrer(actionId, valeurs, {silencieux: true});
+    const convention = conventionEtat(actionId, state).convention;
+    if (!enregistre || !convention) throw conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+
+    const action = conventionLigne(state.raw.Actions, actionId) || {};
+    const modele = conventionModeleActif(state.raw, action.Dispositif);
+    const contenu = modele ? String(modele.Contenu ?? '') : '';
+    if (!modele || !contenu.trim()) throw conventionErreur(CONVENTION_GENERATION_ERREURS.modele);
+
+    const cases = conventionValeursCases(actionId, valeurs, state);
+    const inconnues = conventionCasesManquantes(contenu, cases);
+    if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
+
+    await conventionChargerPdfmake();
+    const blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases)).getBlob();
+    if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
+    const nomFichier = conventionNomFichier(actionId, valeurs, state);
+
+    const pieceJointe = await conventionEnvoyerPdf(blob, nomFichier);
+
+    const champs = {PDF_genere: ['L', pieceJointe], Date_generation: Math.floor(Date.now() / 1000)};
+    try {
+      await grist.docApi.applyUserActions([['UpdateRecord', 'Conventions', convention.id, champs]]);
+    } catch (error) {
+      throw conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement);
+    }
+    // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
+    const ligne = conventionLigne(state.raw.Conventions, convention.id);
+    if (ligne) Object.assign(ligne, champs);
+    return {nomFichier};
+  } catch (error) {
+    if (error && typeof error.code === 'string') throw error;
+    throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
   }
 }
