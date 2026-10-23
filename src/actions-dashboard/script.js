@@ -2126,6 +2126,7 @@ function openConvention(actionId) {
   document.getElementById('conventionFermer').addEventListener('click', closeConvention);
   document.getElementById('clubSignataire').addEventListener('change', () => majFonctionSignataire(actionId));
   host.addEventListener('keydown', keepFocusInConvention);
+  conventionPrerempli(actionId);
   // Le focus va sur le premier champ modifiable : l'annee, ou le signataire du club
   // quand le modele n'a pas d'annee (Parcours de remobilisation).
   (document.getElementById('conventionAnnee') || document.getElementById('clubSignataire')).focus();
@@ -2152,10 +2153,23 @@ function lireConventionForm() {
   };
 }
 
+// Message en haut du corps de la fenetre (zone #conventionMessage, deja dans la page).
+// Erreur : alert-error, annoncee tout de suite. Succes : alert-success, annoncee
+// poliment (role status), comme le demande la note.
+function afficherMessageConvention(succes, texte) {
+  const alerte = document.getElementById('conventionMessage');
+  alerte.classList.remove(succes ? 'alert-error' : 'alert-success');
+  alerte.classList.add(succes ? 'alert-success' : 'alert-error');
+  alerte.setAttribute('role', succes ? 'status' : 'alert');
+  alerte.setAttribute('aria-live', succes ? 'polite' : 'assertive');
+  alerte.querySelector('.alert-content').textContent = texte;
+  alerte.classList.remove('is-hidden');
+}
+
 // Alerte en haut de la fenetre, champs en is-invalid et lies a leur message.
 function marquerProblemesConvention(problemes) {
   const alerte = document.getElementById('conventionMessage');
-  if (problemes.length) alerte.querySelector('.alert-content').textContent = CONVENTION_ERREURS.alerte;
+  if (problemes.length) afficherMessageConvention(false, CONVENTION_ERREURS.alerte);
   alerte.classList.toggle('is-hidden', !problemes.length);
   CONVENTION_CHAMPS_CONTROLES.forEach(id => {
     const champ = document.getElementById(id);
@@ -2185,13 +2199,107 @@ function submitConvention(event, actionId) {
   conventionEnregistrer(actionId, valeurs);
 }
 
-// POINT D'APPEL DE LA TACHE 5.2 (dev-backend) : enregistrer ces informations dans
-// la table Conventions (une ligne par action : creation ou mise a jour), en une
-// seule operation applyUserActions. `valeurs` : { annee (texte, ou null sans annee),
-// signataire (id du contact, 0 si aucun), representant, fonctionRepresentant }.
-// Ne rien ecrire dans la console : ces valeurs contiennent des noms de personnes.
-// Pour l'instant elle ne fait rien.
-function conventionEnregistrer(actionId, valeurs) {}
+// ---- Convention : enregistrement des informations (tache 5.2) ----
+const CONVENTION_MESSAGES = {
+  enregistre: 'Informations enregistrées.',
+  echec: "Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord."
+};
+
+// Ce qu'il faut ecrire dans Conventions pour une action. Fonction pure : ni DOM, ni Grist.
+// `valeurs` : { annee (texte, ou null sans annee), signataire (id du contact, 0 si aucun),
+// representant, fonctionRepresentant }. Renvoie { id, champs } : id est la ligne Conventions
+// existante de l'action (la plus ancienne en cas de doublon), ou 0 s'il faut en creer une.
+// Valeurs vides : reference = 0, entier = null, texte = ''.
+// Jamais ecrit : PDF_genere, Date_generation, PDF_signe, Date_depot, DR et DD (formules).
+function conventionAEcrire(actionId, valeurs, donnees) {
+  const {convention, modele} = conventionEtat(actionId, donnees);
+  const annee = valeurs.annee === null || String(valeurs.annee).trim() === '' ? null : Number(valeurs.annee);
+  return {
+    id: convention ? convention.id : 0,
+    champs: {
+      Action: actionId,
+      Modele: modele ? modele.id : 0,
+      Annee: annee,
+      Signataire_club: valeurs.signataire || 0,
+      Representant_agence: valeurs.representant,
+      Fonction_representant: valeurs.fonctionRepresentant
+    }
+  };
+}
+
+// Une seule operation applyUserActions, avec toutes les valeurs : une ligne n'est jamais
+// creee vide puis remplie. Les droits sont decides par Grist : on tente l'ecriture et un
+// refus donne le meme message que toute autre erreur. Rien dans la console : l'erreur peut
+// citer des valeurs, qui contiennent des noms de personnes.
+async function conventionEnregistrer(actionId, valeurs) {
+  const {id, champs} = conventionAEcrire(actionId, valeurs, state);
+  const bouton = document.getElementById('conventionEnregistrer');
+  try {
+    if (bouton) bouton.disabled = true;
+    const alerte = document.getElementById('conventionMessage');
+    if (alerte) alerte.classList.add('is-hidden');
+    const action = id ? ['UpdateRecord', 'Conventions', id, champs] : ['AddRecord', 'Conventions', null, champs];
+    const resultat = await grist.docApi.applyUserActions([action]);
+    await conventionMemoriser(id, Number(resultat && resultat.retValues && resultat.retValues[0]), champs);
+    // La fenetre a pu etre fermee pendant l'ecriture (Echap) : il n'y a alors rien a afficher.
+    if (document.getElementById('conventionMessage')) afficherMessageConvention(true, CONVENTION_MESSAGES.enregistre);
+  } catch (error) {
+    if (document.getElementById('conventionMessage')) afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+  } finally {
+    const encore = document.getElementById('conventionEnregistrer');
+    if (encore) encore.disabled = false;
+  }
+}
+
+// Met state.raw.Conventions a jour sans recharger la fiche (un rechargement effacerait
+// ce que l'agent a saisi dans la fiche et pas encore enregistre). Ainsi, la reouverture
+// de la fenetre relit ce qui vient d'etre enregistre, et un deuxieme enregistrement met
+// la ligne a jour au lieu d'en creer une autre. Sans identifiant de la nouvelle ligne,
+// on relit la table.
+async function conventionMemoriser(idExistant, idCree, champs) {
+  const lignes = state.raw.Conventions || (state.raw.Conventions = []);
+  if (idExistant) {
+    const ligne = lignes.find(item => item.id === idExistant);
+    if (ligne) Object.assign(ligne, champs);
+  } else if (idCree) {
+    lignes.push({id: idCree, ...champs});
+  } else {
+    // L'ecriture a reussi : une relecture qui echoue ne doit pas passer pour un echec.
+    try {
+      state.raw.Conventions = rows(await grist.docApi.fetchTable('Conventions'));
+    } catch (error) {
+      // Les donnees en memoire restent celles d'avant ; la fiche les relira au prochain chargement.
+    }
+  }
+}
+
+// Valeurs deja enregistrees de l'action (pour preremplir la fenetre), ou null si elle
+// n'a pas de ligne dans Conventions. Fonction pure : ni DOM, ni Grist.
+function conventionValeursEnregistrees(actionId, donnees) {
+  const {convention} = conventionEtat(actionId, donnees);
+  if (!convention) return null;
+  return {
+    annee: convention.Annee ? String(convention.Annee) : '',
+    signataire: Number(convention.Signataire_club || 0),
+    representant: String(convention.Representant_agence ?? ''),
+    fonctionRepresentant: String(convention.Fonction_representant ?? '')
+  };
+}
+
+// Pose ces valeurs dans les champs de la fenetre. Un signataire qui n'est plus parmi les
+// contacts du club (contact supprime depuis) n'est pas choisi : la liste reste a l'invite.
+function conventionPrerempli(actionId) {
+  const enregistrees = conventionValeursEnregistrees(actionId, state);
+  if (!enregistrees) return;
+  const annee = document.getElementById('conventionAnnee');
+  if (annee) annee.value = enregistrees.annee;
+  if (conventionContacts(actionId, state).some(contact => contact.id === enregistrees.signataire)) {
+    document.getElementById('clubSignataire').value = String(enregistrees.signataire);
+    majFonctionSignataire(actionId);
+  }
+  document.getElementById('agenceRepresentant').value = enregistrees.representant;
+  document.getElementById('agenceFonction').value = enregistrees.fonctionRepresentant;
+}
 
 function closeConvention() {
   const host = document.getElementById('conventionModal');
