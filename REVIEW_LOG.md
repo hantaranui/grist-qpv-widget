@@ -885,3 +885,18 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : b15f049
 Reste à vérifier au premier essai dans DEV7 : rattachement de la pièce jointe par un non-propriétaire (« Voir en tant que » FT Régional), formats de la pièce jointe et de la date, getBlob de pdfmake 0.3.3, nom de la police. Logo absent (Q-C ouverte). Colonne Modele non mise à jour à la génération (S8).
+
+## Tâche C37 — Cases du modèle : apostrophes et cases vides (S7, correction de la 7.2)
+
+Date : 2026-10-23
+Agents : dev-backend (code), testeur (tests)
+Prompt : liste officielle des cases décidée par Hanta et écrite dans la note ; deux règles à appliquer
+
+Note /5 : sans objet
+Ce qui allait : les deux apostrophes acceptées dans conventionValeurDeCase, qui sert aussi au remplacement et au bloc de signature ; case connue mais vide remplacée par 28 points (longueur reprise du bloc de signature, CONVENTION_POINTILLES) ; case inconnue toujours bloquante avec son nom d'origine ; [Année] dans un modèle sans année reste bloquante (gardé volontairement). Côté tests : l'ancien test de la règle 2.4 mis à jour, nouvelles règles couvertes.
+Ce que j'ai fait corriger : rien. Le testeur a annoncé 9 tests ajoutés pour 10 réels.
+Tests : 434 tests, 433 passés, 1 échec attendu (ancienne règle), puis 444 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : 65059ce (code) et 1d5b2d8 test (tests)
+Reste à faire : longueur des pointillés à vérifier sur papier (7.6).
