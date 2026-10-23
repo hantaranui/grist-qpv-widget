@@ -28,4 +28,4 @@ Puis : la commande pour relancer les tests, bugs trouvés, fichiers lus, fichier
 
 ## Dans ce projet
 
-npm test lance les tests des quatre widgets du dépôt : donne le résultat affiché (nombre de tests, réussis, échoués) et tout doit rester vert. Les tests du tableau de bord réutilisent test/helpers/widget.js. Si test/build.test.js échoue, signale que le build n'a pas été refait, sans le relancer toi-même.
+npm test lance les tests des trois widgets du dépôt (actions-dashboard, clubs, qpv-widget). Tu ne lances pas npm test toi-même (Claude Code te le refuse depuis l'ajout du script externe du bandeau) : tu demandes à Hanta de le lancer et de te coller le résultat, puis tu donnes le nombre de tests, réussis et échoués. Tout doit rester vert, sauf un test écrit volontairement pour échouer avant une correction, que tu signales comme tel. Les tests du tableau de bord réutilisent test/helpers/widget.js, ceux de clubs test/helpers/clubs.js. Si test/build.test.js échoue, signale que le build n'a pas été refait. Aucun vrai jeton, aucune adresse de document réelle, aucune donnée réelle de personne dans les tests : uniquement des valeurs fictives.

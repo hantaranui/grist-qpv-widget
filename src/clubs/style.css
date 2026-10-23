@@ -317,7 +317,7 @@ td:last-child {
    des listes qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
 .edit-row-lists {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -351,6 +351,24 @@ td:last-child {
 }
 
 .contact-name { flex: 0 1 auto; font-weight: 700; }
+
+/* La fonction prend sa propre ligne sous le nom (pleine largeur dans la ligne
+   qui passe a la ligne). Une <div>, pas un <span> : la regle ci-dessous donne
+   aux <span> une largeur selon leur contenu. */
+.contact-fonction { width: 100%; }
+
+/* Boutons Modifier / Supprimer de la ligne : groupes, a droite de la ligne ; ils
+   passent a la ligne suivante si la carte est etroite, et restent espaces pour
+   qu'on puisse en toucher un sans toucher l'autre. */
+.contact-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Bouton d'ajout, en haut du corps de la carte Contacts. */
+.contact-add { margin-bottom: 16px; }
 .contact-item a,
 .contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
 
@@ -516,6 +534,27 @@ td:last-child {
      presque plus de place a chacun. */
   .contact-item,
   .action-item { flex-direction: column; align-items: stretch; }
+  /* En colonne, margin-left: auto pousserait le groupe de boutons a droite : on
+     veut une derniere ligne alignee a gauche. */
+  .contact-buttons { margin-left: 0; }
   .action-dispositif,
   .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
 }
+
+/* Fenetre d'ajout / modification d'un contact : la structure (.modal,
+   .modal-dialog, .modal-content, .modal-header, .modal-body, .modal-footer) et
+   son habillage viennent du design system. Sa feuille masque .modal par defaut :
+   nous l'affichons nous-memes en ne la creant que pendant qu'elle est ouverte
+   (meme regle que #addActionModal dans le tableau de bord). */
+#contactModal .modal { display: block; overflow-y: auto; }
+
+/* Bouton de confirmation de suppression : le design system n'a pas de bouton
+   destructeur, on colore le bouton primaire avec ses jetons d'erreur (regle
+   reprise a l'identique du tableau de bord). */
+.btn-supprimer { background-color: var(--ft-color-background-error-default); border-color: var(--ft-color-background-error-default); }
+.btn-supprimer:hover, .btn-supprimer:focus-visible { background-color: var(--ft-color-background-error-strong); border-color: var(--ft-color-background-error-strong); }
+
+.contact-required-note { margin: 0 0 8px; }
+.contact-club { margin: 0 0 8px; overflow-wrap: anywhere; }
+.contact-fields { display: grid; gap: 16px; }
+.contact-field { display: grid; gap: 6px; }
