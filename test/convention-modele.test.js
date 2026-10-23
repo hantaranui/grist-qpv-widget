@@ -230,10 +230,109 @@ test("apostrophe typographique : [Adresse de l’agence] est remplie avec la cl�
   ]);
 });
 
-test("apostrophe typographique : une clé écrite avec l'apostrophe droite ' ne remplit pas la case", () => {
+// Échoue si l'apostrophe droite ' et l'apostrophe courbe ’ ne sont plus la même lettre dans une clé.
+test("apostrophe : une clé écrite avec l'apostrophe droite ' remplit la case écrite avec ’", () => {
   assert.deepStrictEqual(remplir("Adresse : [Adresse de l’agence]", {"Adresse de l'agence": "3 rue B"}), [
-    {text: "Adresse : [Adresse de l’agence]", style: "paragraphe"},
+    {text: "Adresse : 3 rue B", style: "paragraphe"},
   ]);
+  assert.deepStrictEqual(manquantes("Adresse : [Adresse de l’agence]", {"Adresse de l'agence": "3 rue B"}), []);
+});
+
+// Échoue si une case tapée avec l'apostrophe droite ne trouve plus la clé écrite avec ’.
+test("apostrophe : une case écrite avec ' dans le modèle est remplie par la clé écrite avec ’", () => {
+  assert.deepStrictEqual(remplir("Adresse : [Adresse de l'agence]", {"Adresse de l’agence": "3 rue B"}), [
+    {text: "Adresse : 3 rue B", style: "paragraphe"},
+  ]);
+  assert.deepStrictEqual(manquantes("Adresse : [Adresse de l'agence]", {"Adresse de l’agence": "3 rue B"}), []);
+});
+
+// Échoue si un autre caractère que l'apostrophe (ici l'accent grave) est confondu avec elle.
+test("apostrophe : une clé avec une autre ponctuation (accent grave) ne remplit pas la case", () => {
+  assert.deepStrictEqual(manquantes("Adresse : [Adresse de l’agence]", {"Adresse de l`agence": "3 rue B"}), ["Adresse de l’agence"]);
+});
+
+// ---- Cases connues mais vides, cases inconnues (décision du 2026-10-23) ----
+
+const POINTILLES = ".".repeat(28);
+const CASES_CONNUES = [
+  "Année", "Nom du club", "SIRET du club", "Siège du club", "Signataire du club", "Fonction du signataire",
+  "Nom de l’agence", "Adresse de l’agence", "Représentant de l’agence", "Fonction du représentant",
+];
+
+// Jeu d'essai fictif : une action, un club, une agence, un contact. `club` et `modele` changent un détail.
+function donneesCases({club = {}, modele = {}} = {}) {
+  return {
+    raw: {
+      Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
+      Structures: [{id: 7, Nom: "Club Exemple", SIRET: "12345678901234", Adresse: "1 rue Exemple", Code_postal: "75001", Ville: "Exemple-sur-Mer", ...club}],
+      Agences: [{id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Code_postal: "75002", Ville: "Exemple-Ville"}],
+      Modeles_convention: [{id: 10, Dispositif: 3, Actif: true, Avec_annee: true, ...modele}],
+      Contacts: [{id: 31, Club: 7, Prenom: "Camille", Nom: "Exemple", Fonction: "Présidente"}],
+      Conventions: [],
+    },
+    tablesRefusees: [],
+  };
+}
+const VALEURS_FORMULAIRE = {annee: "2026", signataire: 31, representant: "Alex Test", fonctionRepresentant: "Directeur"};
+const valeursCases = (donnees, valeurs = VALEURS_FORMULAIRE) => plain(w.conventionValeursCases(1, valeurs, donnees));
+
+// Échoue si une case connue remplie n'a plus sa valeur, ou si une case est laissée sans valeur.
+test("cases connues toutes remplies : aucun pointillé, aucune case manquante", () => {
+  const cases = valeursCases(donneesCases());
+  assert.equal(cases["SIRET du club"], "12345678901234");
+  assert.equal(cases["Signataire du club"], "Camille Exemple");
+  assert.deepStrictEqual(Object.keys(cases).sort(), [...CASES_CONNUES].sort());
+  assert.ok(Object.values(cases).every(valeur => valeur !== POINTILLES));
+  assert.deepStrictEqual(manquantes(CASES_CONNUES.map(nom => `[${nom}]`).join(" "), cases), []);
+});
+
+// Échoue si une case connue mais vide (club sans SIRET) n'est plus remplacée par 28 points.
+test("case connue mais vide (club sans SIRET) : valeur = 28 points, les autres cases gardent leur valeur", () => {
+  const cases = valeursCases(donneesCases({club: {SIRET: ""}}));
+  assert.equal(POINTILLES.length, 28);
+  assert.equal(cases["SIRET du club"], POINTILLES);
+  assert.equal(cases["Nom du club"], "Club Exemple");
+});
+
+// Échoue si une case connue mais vide bloque encore la génération (case listée comme manquante).
+test("case connue mais vide : pas de blocage (aucune case manquante) et le PDF reçoit les points", () => {
+  const cases = valeursCases(donneesCases({club: {SIRET: ""}}));
+  assert.deepStrictEqual(manquantes("SIRET : [SIRET du club]", cases), []);
+  assert.deepStrictEqual(remplir("SIRET : [SIRET du club]", cases), [{text: `SIRET : ${POINTILLES}`, style: "paragraphe"}]);
+});
+
+// Échoue si un champ du formulaire laissé vide (ou espaces) ne devient plus des points.
+test("cases du formulaire vides ou faites d'espaces (représentant, fonction) : 28 points", () => {
+  const cases = valeursCases(donneesCases(), {...VALEURS_FORMULAIRE, representant: "   ", fonctionRepresentant: ""});
+  assert.equal(cases["Représentant de l’agence"], POINTILLES);
+  assert.equal(cases["Fonction du représentant"], POINTILLES);
+});
+
+// Échoue si une case inconnue ne bloque plus, ou si son nom change (l'apostrophe doit rester celle du modèle).
+test("case inconnue : reste bloquante, avec son nom tel qu'écrit dans le modèle", () => {
+  const cases = valeursCases(donneesCases());
+  assert.deepStrictEqual(manquantes("Voir [Numéro de dossier] et [Code de l'agence]", cases), ["Numéro de dossier", "Code de l'agence"]);
+  assert.deepStrictEqual(manquantes("Voir [Code de l’agence]", cases), ["Code de l’agence"]);
+});
+
+// Échoue si une case inconnue est remplacée par des points au lieu de rester écrite entre crochets.
+test("case inconnue : reste écrite [Nom] dans le PDF, jamais remplacée par des points", () => {
+  const cases = valeursCases(donneesCases());
+  assert.deepStrictEqual(remplir("Dossier : [Numéro de dossier]", cases), [{text: "Dossier : [Numéro de dossier]", style: "paragraphe"}]);
+});
+
+// Échoue si [Année] est reconnue dans un modèle sans année (Avec_annee = faux).
+test("[Année] dans un modèle sans année : case inconnue, donc bloquante", () => {
+  const cases = valeursCases(donneesCases({modele: {Avec_annee: false}}));
+  assert.ok(!("Année" in cases));
+  assert.deepStrictEqual(manquantes("Année : [Année]", cases), ["Année"]);
+});
+
+// Échoue si [Année] cesse d'être une case connue dans un modèle qui demande une année.
+test("[Année] dans un modèle avec année : case connue et remplie", () => {
+  const cases = valeursCases(donneesCases());
+  assert.deepStrictEqual(manquantes("Année : [Année]", cases), []);
+  assert.deepStrictEqual(remplir("Année : [Année]", cases), [{text: "Année : 2026", style: "paragraphe"}]);
 });
 
 test("case sans valeur (clé absente) : reste écrite [Nom] dans le texte", () => {
