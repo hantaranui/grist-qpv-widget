@@ -2062,7 +2062,7 @@ function conventionModalHtml(actionId, donnees) {
         <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
         <div class="modal-body">
           <div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
-          <p>Les champs marqués d'un * sont obligatoires.</p>
+          <p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>
           <div class="convention-grid">
             <fieldset class="convention-part">
               <legend class="form-legend">Informations relatives à la convention</legend>
@@ -2218,7 +2218,9 @@ function keepFocusInConvention(event) {
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
-  // Le focus d'ouverture est sur la fenetre elle-meme : Maj+Tab doit aussi y boucler.
+  // Le focus d'ouverture est sur Annee, ou sur Signataire s'il n'y a pas d'annee.
+  // Maj+Tab depuis le premier champ boucle sur le dernier ; on garde aussi le cas
+  // ou le focus serait encore sur la fenetre elle-meme.
   if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
     event.preventDefault();
     last.focus();
