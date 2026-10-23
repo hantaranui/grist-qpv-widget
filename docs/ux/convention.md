@@ -175,6 +175,31 @@ Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'u
 
 C'est la seule différence entre les modèles. Tout le reste de la fenêtre est identique. Le nombre d'opérations ou de parcours, la date de fin, « Fait à » et les dates de signature ne sont plus demandés : ils sont remplis à la main sur le PDF imprimé.
 
+### Cases du modèle (décision de Hanta du 2026-10-23)
+
+Le texte d'un modèle de convention contient des **cases** : un nom entre crochets, que le widget remplace par une donnée au moment de fabriquer le PDF. Liste officielle (nom exact entre crochets, puis donnée utilisée) :
+
+| Case | Donnée utilisée |
+|---|---|
+| [Année] | année saisie dans la fenêtre ; absente pour les modèles sans année (Parcours de remobilisation) |
+| [Nom du club] | nom du club de l'action |
+| [SIRET du club] | SIRET du club |
+| [Siège du club] | adresse, code postal et ville du club, sur une ligne |
+| [Signataire du club] | Prénom Nom du contact choisi |
+| [Fonction du signataire] | fonction du contact choisi |
+| [Nom de l'agence] | nom de l'agence de l'action |
+| [Adresse de l'agence] | adresse complète de l'agence, sur une ligne |
+| [Représentant de l'agence] | représentant saisi dans la fenêtre |
+| [Fonction du représentant] | fonction du représentant saisie dans la fenêtre |
+
+Règles :
+
+1. **Apostrophe.** Le widget accepte l'apostrophe droite (') et l'apostrophe courbe (’) dans les noms de cases : « [Fonction de l'agence] » et « [Fonction de l’agence] » sont lues de la même façon. Cela vaut pour tous les noms de la liste qui contiennent une apostrophe.
+2. **Case connue mais vide** (par exemple un club sans SIRET). Le widget écrit des **pointillés** à la place, à compléter à la main sur le PDF imprimé. La génération n'est **pas bloquée**.
+3. **Case inconnue** (nom absent de la liste ci-dessus). Elle reste **bloquante** : la génération s'arrête avec le message « Échecs » du §3, qui donne le nom de la case.
+4. **Ce qui n'a pas de donnée dans Grist** (SIRET de l'agence, fédération) n'a **pas de case** : le modèle l'écrit en pointillés directement dans son texte. Le widget n'a rien à remplacer.
+5. **Noms courts des dispositifs dans le nom du fichier (D-S7-3)** : Stade-emploi (Du stade vers l'emploi), Match-metiers (Match des métiers), Remobilisation (Parcours de remobilisation vers l'emploi). Voir « Nom du fichier PDF », plus bas.
+
 ### Bloc 1 : « Informations relatives à la convention »
 
 | Champ | Type | Obligatoire | Remarque |
