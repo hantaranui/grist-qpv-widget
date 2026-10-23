@@ -667,6 +667,7 @@ function renderEdit() {
           </div>
         </section>
         </div>
+        ${conventionBlocHtml(action.id, state)}
       </div>
     </form>
   </div>
@@ -1860,4 +1861,48 @@ function conventionBlocage(actionId, donnees) {
   const codePostal = texte(club.Code_postal);
   const adresseComplete = texte(club.Adresse) && codePostal && codePostal !== '0' && texte(club.Ville);
   return adresseComplete ? null : bloque('adresse');
+}
+
+// ---- Convention : bloc affiche en bas de la fiche (lecture seule) ----
+// Textes de la note docs/ux/convention.md, un par etat. Aucun bouton pour l'instant
+// (ils viendront avec la fenetre, la generation et le depot), et pas de message de
+// blocage : il est lie au bouton « Generer ». Le profil de l'utilisateur n'est pas lu :
+// « Droits insuffisants » vient de conventionEtat, donc de ce que Grist a refuse.
+const CONVENTION_TEXTES = {
+  aGenerer: 'Aucune convention générée.',
+  sansModele: 'Pas encore de modèle de convention pour ce dispositif.',
+  droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord.",
+  aide: 'Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.'
+};
+
+// Phrases d'etat d'une action, dans l'ordre d'affichage : [{texte, aide}, ...].
+// La date vient de Conventions.Date_generation (etat Generee) ou Date_depot (etat Signee).
+function conventionPhrases(actionId, donnees) {
+  const {etat, convention} = conventionEtat(actionId, donnees);
+  const date = colonne => formatDate(convention && convention[colonne]);
+  switch (etat) {
+    case CONVENTION_ETATS.droits: return [{texte: CONVENTION_TEXTES.droits}];
+    case CONVENTION_ETATS.sansModele: return [{texte: CONVENTION_TEXTES.sansModele}];
+    case CONVENTION_ETATS.aGenerer: return [{texte: CONVENTION_TEXTES.aGenerer}];
+    case CONVENTION_ETATS.generee: {
+      const quand = date('Date_generation');
+      return [{texte: quand ? `Convention générée le ${quand}.` : 'Convention générée.'}, {texte: CONVENTION_TEXTES.aide, aide: true}];
+    }
+    default: {
+      const quand = date('Date_depot');
+      return [{texte: quand ? `Convention signée, déposée le ${quand}.` : 'Convention signée.'}];
+    }
+  }
+}
+
+// Meme structure que les autres blocs de la fiche (edit-card, section-head,
+// edit-fields). Le texte porte l'information, sans couleur ni role d'alerte.
+function conventionBlocHtml(actionId, donnees) {
+  const phrases = conventionPhrases(actionId, donnees)
+    .map(({texte, aide}) => `<p${aide ? ' class="convention-aide"' : ''}>${escapeHtml(texte)}</p>`)
+    .join('');
+  return `<section class="edit-card" id="conventionBloc">
+          <div class="section-head"><span>Convention</span></div>
+          <div class="edit-fields convention-fields">${phrases}</div>
+        </section>`;
 }
