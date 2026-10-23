@@ -836,6 +836,11 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .convention-champs { display: grid; gap: 16px; }
 /* Boutons du bloc Convention : ils gardent leur taille et passent a la ligne. */
 .convention-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+/* Trois blocs (informations, signataire club, signataire agence) : trois colonnes des
+   1200 px. Regle separee, placee apres celle des deux colonnes qu'elle remplace. */
+@media (min-width: 1200px) {
+  .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 </style>
   </head>
   <body class="outil-agent">
@@ -2873,18 +2878,108 @@ function conventionChampLecture(id, libelle, valeur, zone) {
   return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${champ}</div>`;
 }
 
+// ---- Convention : champs de la fenetre (tache 5.1b : saisie et controle, sans enregistrement) ----
+const CONVENTION_FONCTION_AGENCE = "Directeur d'agence";
+const CONVENTION_FONCTION_VIDE = 'Fonction non renseignée';
+const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention.";
+const CONVENTION_ERREURS = {
+  alerte: 'Certains champs sont à corriger.',
+  annee: 'Saisissez une année à quatre chiffres.'
+};
+// Champs qui ont un message d'erreur sous eux (leur message a pour id « <champ>Erreur »).
+// Seule l'annee est controlee pour l'instant ; « Generer » ajoutera les champs obligatoires.
+const CONVENTION_CHAMPS_CONTROLES = ['conventionAnnee'];
+
+// Titre du modele de l'action et indication « le modele demande une annee ».
+// Seule une colonne Avec_annee a non retire l'annee (Parcours de remobilisation).
+// Fonction pure : ni DOM, ni Grist.
+function conventionModeleInfos(actionId, donnees) {
+  const {modele} = conventionEtat(actionId, donnees);
+  return {
+    titre: String((modele && modele.Titre) ?? '').trim(),
+    avecAnnee: !modele || modele.Avec_annee !== false
+  };
+}
+
+// Contacts du club de l'action (table Contacts, colonne Club) : les seuls signataires
+// possibles. Un contact sans prenom ni nom ne peut designer personne : il est ignore.
+// Fonction pure ; la fonction du contact n'est lue qu'au choix, jamais mise dans la page avant.
+function conventionContacts(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  if (!action.Club) return [];
+  const texte = valeur => String(valeur ?? '').trim();
+  return (raw.Contacts || [])
+    .filter(contact => contact.Club === action.Club)
+    .map(contact => ({id: contact.id, libelle: [contact.Prenom, contact.Nom].map(texte).filter(Boolean).join(' '), fonction: texte(contact.Fonction)}))
+    .filter(contact => contact.libelle)
+    .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'));
+}
+
+// Controle des champs, sans toucher au DOM. `valeurs` vient de lireConventionForm.
+// Renvoie les champs a corriger, dans l'ordre de la fenetre : [{id, message}].
+// Pour l'instant : l'annee, si elle est saisie, doit etre un nombre de quatre chiffres
+// (un champ vide est accepte). Les champs obligatoires seront controles par
+// « Generer » (S7), qui pourra reutiliser cette fonction en y ajoutant ses controles.
+function conventionProblemes(valeurs) {
+  const problemes = [];
+  if (valeurs.annee !== null) {
+    const annee = String(valeurs.annee).trim();
+    // Un champ numerique dont le texte n'est pas un nombre rend une valeur vide :
+    // anneeIllisible permet de ne pas le prendre pour un champ laisse vide.
+    if (valeurs.anneeIllisible || (annee !== '' && !/^[1-9]\d{3}$/.test(annee))) {
+      problemes.push({id: 'conventionAnnee', message: CONVENTION_ERREURS.annee});
+    }
+  }
+  return problemes;
+}
+
+function conventionChampSaisie(id, libelle, controle, erreur) {
+  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}<span class="required">&nbsp;*</span></label>${controle}${erreur || ''}</div>`;
+}
+
+// Message d'erreur sous un champ : le design system ne l'affiche que si le champ
+// porte is-invalid. Le texte cache « Erreur : » evite que la couleur soit seule a informer.
+// Meme forme que la fenetre d'ajout (div invalid-feedback) : surtout pas de help-block,
+// car la regle .help-block.invalid-feedback du design system rend le message toujours visible.
+function conventionErreurHtml(id, message) {
+  return `<div class="invalid-feedback" id="${id}Erreur"><span class="sr-only">Erreur : </span>${escapeHtml(message)}</div>`;
+}
+
+function conventionSignataireHtml(contacts) {
+  const options = contacts.map(contact => `<option value="${contact.id}">${escapeHtml(contact.libelle)}</option>`).join('');
+  const aide = contacts.length ? '' : `<p class="help-block" id="clubSignataireAide">${escapeHtml(CONVENTION_SANS_CONTACT)}</p>`;
+  const lien = contacts.length ? '' : ' aria-describedby="clubSignataireAide"';
+  const liste = `<select class="form-control" id="clubSignataire" name="clubSignataire" required${lien}><option selected disabled value="">Veuillez sélectionner</option>${options}</select>`;
+  return conventionChampSaisie('clubSignataire', 'Signataire', liste, aide);
+}
+
 // Structure de la note (§3 et §8) : fenetre modal-xl defilante, titre h2 « Convention »,
-// un fieldset par bloc, pied avec « Fermer ». Seuls les blocs « Signataire club » et
-// « Signataire agence » existent ici, avec leurs champs en lecture seule.
+// un fieldset par bloc (informations, signataire club, signataire agence), pied avec
+// « Fermer » et « Enregistrer les informations ».
 function conventionModalHtml(actionId, donnees) {
   const infos = conventionInfos(actionId, donnees);
+  const modele = conventionModeleInfos(actionId, donnees);
+  const contacts = conventionContacts(actionId, donnees);
+  const annee = modele.avecAnnee
+    ? conventionChampSaisie('conventionAnnee', 'Année', `<input class="form-control" id="conventionAnnee" name="conventionAnnee" type="number" required value="${new Date().getFullYear()}">`, conventionErreurHtml('conventionAnnee', CONVENTION_ERREURS.annee))
+    : '';
   return `<div class="modal-backdrop fade show"></div>
   <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <form class="modal-content" id="conventionForm" novalidate>
         <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
         <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <p>Les champs marqués d'un * sont obligatoires.</p>
           <div class="convention-grid">
+            <fieldset class="convention-part">
+              <legend class="form-legend">Informations relatives à la convention</legend>
+              <div class="convention-champs">
+                ${conventionChampLecture('conventionModele', 'Modèle utilisé', modele.titre)}
+                ${annee}
+              </div>
+            </fieldset>
             <fieldset class="convention-part">
               <legend class="form-legend">Signataire club</legend>
               <div class="convention-champs">
@@ -2892,6 +2987,8 @@ function conventionModalHtml(actionId, donnees) {
                 ${conventionChampLecture('clubSiret', 'SIRET', infos.club.siret)}
                 ${conventionChampLecture('clubSiege', 'Siège', infos.club.siege, true)}
                 <p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>
+                ${conventionSignataireHtml(contacts)}
+                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '')}
               </div>
             </fieldset>
             <fieldset class="convention-part">
@@ -2899,12 +2996,15 @@ function conventionModalHtml(actionId, donnees) {
               <div class="convention-champs">
                 ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom)}
                 ${conventionChampLecture('agenceAdresse', 'Adresse', infos.agence.adresse, true)}
+                ${conventionChampSaisie('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" required autocomplete="off">')}
+                ${conventionChampSaisie('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" required autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`)}
               </div>
             </fieldset>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="conventionFermer"><span class="btn-content">Fermer</span></button>
+          <button type="submit" class="btn btn-secondary" id="conventionEnregistrer"><span class="btn-content">Enregistrer les informations</span></button>
         </div>
       </form>
     </div>
@@ -2931,14 +3031,76 @@ function openConvention(actionId) {
   state.conventionOpen = true;
   host.innerHTML = conventionModalHtml(actionId, state);
   document.body.classList.add('modal-open');
-  document.getElementById('conventionForm').addEventListener('submit', event => event.preventDefault());
+  document.getElementById('conventionForm').addEventListener('submit', event => submitConvention(event, actionId));
   document.getElementById('conventionFermer').addEventListener('click', closeConvention);
+  document.getElementById('clubSignataire').addEventListener('change', () => majFonctionSignataire(actionId));
   host.addEventListener('keydown', keepFocusInConvention);
-  // Aucun champ modifiable pour l'instant : le focus va sur la fenetre elle-meme,
-  // qui est annoncee par son titre (aria-labelledby).
-  document.getElementById('conventionDialog').focus();
+  // Le focus va sur le premier champ modifiable : l'annee, ou le signataire du club
+  // quand le modele n'a pas d'annee (Parcours de remobilisation).
+  (document.getElementById('conventionAnnee') || document.getElementById('clubSignataire')).focus();
   requestResize();
 }
+
+// Affiche la fonction du contact choisi (lecture seule). Un contact sans fonction
+// donne « Fonction non renseignee » ; sans choix, la zone reste vide.
+function majFonctionSignataire(actionId) {
+  const id = Number(document.getElementById('clubSignataire').value || 0);
+  const contact = conventionContacts(actionId, state).find(item => item.id === id);
+  document.getElementById('clubFonction').value = contact ? (contact.fonction || CONVENTION_FONCTION_VIDE) : '';
+}
+
+// Les valeurs saisies, sans controle. annee vaut null quand le modele n'en a pas.
+function lireConventionForm() {
+  const annee = document.getElementById('conventionAnnee');
+  return {
+    annee: annee ? annee.value : null,
+    anneeIllisible: !!(annee && annee.validity && annee.validity.badInput),
+    signataire: Number(document.getElementById('clubSignataire').value || 0),
+    representant: document.getElementById('agenceRepresentant').value.trim(),
+    fonctionRepresentant: document.getElementById('agenceFonction').value.trim()
+  };
+}
+
+// Alerte en haut de la fenetre, champs en is-invalid et lies a leur message.
+function marquerProblemesConvention(problemes) {
+  const alerte = document.getElementById('conventionMessage');
+  if (problemes.length) alerte.querySelector('.alert-content').textContent = CONVENTION_ERREURS.alerte;
+  alerte.classList.toggle('is-hidden', !problemes.length);
+  CONVENTION_CHAMPS_CONTROLES.forEach(id => {
+    const champ = document.getElementById(id);
+    if (!champ) return;
+    if (problemes.some(probleme => probleme.id === id)) {
+      champ.classList.add('is-invalid');
+      champ.setAttribute('aria-invalid', 'true');
+      champ.setAttribute('aria-describedby', `${id}Erreur`);
+    } else {
+      champ.classList.remove('is-invalid');
+      champ.removeAttribute('aria-invalid');
+      champ.removeAttribute('aria-describedby');
+    }
+  });
+}
+
+// « Enregistrer les informations » : controle, puis (plus tard) enregistrement.
+function submitConvention(event, actionId) {
+  event.preventDefault();
+  const valeurs = lireConventionForm();
+  const problemes = conventionProblemes(valeurs);
+  marquerProblemesConvention(problemes);
+  if (problemes.length) {
+    document.getElementById(problemes[0].id).focus();
+    return;
+  }
+  conventionEnregistrer(actionId, valeurs);
+}
+
+// POINT D'APPEL DE LA TACHE 5.2 (dev-backend) : enregistrer ces informations dans
+// la table Conventions (une ligne par action : creation ou mise a jour), en une
+// seule operation applyUserActions. `valeurs` : { annee (texte, ou null sans annee),
+// signataire (id du contact, 0 si aucun), representant, fonctionRepresentant }.
+// Ne rien ecrire dans la console : ces valeurs contiennent des noms de personnes.
+// Pour l'instant elle ne fait rien.
+function conventionEnregistrer(actionId, valeurs) {}
 
 function closeConvention() {
   const host = document.getElementById('conventionModal');
@@ -2961,7 +3123,7 @@ function keepFocusInConvention(event) {
   }
   if (event.key !== 'Tab') return;
   const dialog = document.getElementById('conventionDialog');
-  const focusable = [...document.querySelectorAll('#conventionDialog input, #conventionDialog textarea, #conventionDialog button:not(:disabled)')];
+  const focusable = [...document.querySelectorAll('#conventionDialog input, #conventionDialog textarea, #conventionDialog select, #conventionDialog button:not(:disabled)')];
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
