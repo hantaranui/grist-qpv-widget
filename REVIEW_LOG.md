@@ -208,6 +208,175 @@ Fichiers modifiés : test/clubs-fiche.test.js
 Build refait : non (src/ inchangé)
 Commit : 14f49d1 sur fix/jeton-console-clubs
 
+## Tâche 14 — Fuite du jeton d'écriture dans la console (clubs), étape 2 : correction
+
+Date : 21/10/2026
+Agent : dev-backend
+Prompt : corriger la cause seule pour que les 3 tests de la tâche 13 passent ; supprimer le console.info qui affichait la commande curl avec le jeton, et corriger le console.error seulement s'il fuyait aussi ; uniquement src/clubs/script.js
+
+Note /5 : sans objet
+Ce qui allait : console.info supprimé ; fuite du console.error confirmée et corrigée par une fonction sansJeton qui masque ?auth= ou &auth= tout en gardant un message d'erreur utile ; rien d'autre changé au téléversement
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 180 réussis (npm test)
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : 9334db8 sur fix/jeton-console-clubs
+
+## Tâche 15 — Contacts : règles d'accès dans DEV7 (manuel)
+
+Date : 21/10/2026
+Agent : aucun (fait à la main dans Grist DEV7, règle relue par auditeur-securite)
+Prompt : sans objet
+
+Note /5 : sans objet
+Ce qui allait : colonnes formules DR = $Club.DR et DD = $Club.DD ajoutées dans Contacts (type Référence) ; règles sur Contacts : propriétaire en tête, pas de création sans club, club non modifiable, FT National sur tout, FT Régional et FT Départemental sur leur périmètre (rec pour modifier et supprimer, newRec pour créer), lecture actuelle inchangée en dernier
+Ce que j'ai fait corriger : règle du Départemental écrite avec newRec au lieu de rec (corrigé) ; identifiant de colonne DD
+Tests : « Voir en tant que » : modification acceptée dans le périmètre et refusée hors périmètre (Régional, Départemental), National sur tout, ANS en lecture seule, changement de club refusé, suppression acceptée. Création non testable dans le tableau (ligne vide refusée) : à tester avec le widget
+Fichiers modifiés : aucun (document Grist DEV7 uniquement)
+Build refait : non
+Commit : aucun (configuration Grist)
+
+## Tâche 16 — Contacts : note UX de la carte Contacts
+
+Date : 21/10/2026
+Agent : designer-ux (2 corrections)
+Prompt : écrire docs/ux/contacts-fiche-club.md (parcours, maquettes, messages, mention coordonnées professionnelles, mobile, accessibilité, HTML du design system, règles pour dev-interface), puis intégrer les décisions de Hanta et corriger les détails relevés
+
+Note /5 : sans objet
+Ce qui allait : note complète, structures HTML recopiées, existant mesuré (règle .edit-row-lists citée avec ses lignes), ce qui n'est pas vérifié clairement signalé (alert-success, refus de Grist) ; texte brut des erreurs Grist volontairement non affiché
+Ce que j'ai fait corriger : décisions intégrées (Fonction affichée, bouton d'ajout masqué si lecture refusée, « Supprimer », règle mailHref, erreurs du design system, « * champ obligatoire », cartes à moitiés égales, pas d'alerte de succès) ; balise abîmée par VS Code, type de l'e-mail, nom de classe contact-required-note, « Erreur : » uniformisé, DEV2 corrigé en DEV7
+Tests : aucun (documentation)
+Fichiers modifiés : docs/ux/contacts-fiche-club.md (créé)
+Build refait : non
+Commit : 2a0d61f sur feature/contacts-fiche-club
+
+## Tâche 17 — Contacts : partie données (dev-backend)
+
+Date : 21/10/2026
+Agent : dev-backend
+Prompt : lire Fonction dans buildFicheDetail ; contrôler les saisies ; ajouter, modifier et supprimer un contact par applyUserActions, une opération chacune ; classer les erreurs ; sans aucun écran
+
+Note /5 : 5
+Ce qui allait : fonctions emailBienForme, controlerContact, contactDuClubOuvert, classerErreurEcriture, ecrireContacts, ajouterContact, modifierContact, supprimerContact, ressembleAUnRefus ; retours clairs par cas ; aucune valeur saisie ni texte brut de Grist dans la console ; pas de jeton d'écriture ; DR et DD jamais écrites ; règles de mailHref et du refus du logo mises en commun sans changer leur comportement
+Ce que j'ai fait corriger : rien
+Tests : 180 lancés, 180 réussis (npm test) ; les nouvelles fonctions n'ont pas encore de test
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : dc2e898 sur feature/contacts-fiche-club
+Risques : reconnaissance du refus et de l'échec réseau par mots supposés (à constater en recette) ; contact supprimé entre-temps classé « autre »
+
+## Tâche 18 — Contacts : tests de la partie données
+
+Date : 21/10/2026
+Agent : testeur (2 corrections)
+Prompt : tester controlerContact, ajouterContact, modifierContact, supprimerContact, classerErreurEcriture, la console et buildFicheDetail, dans test/clubs-contacts.test.js
+
+Note /5 : sans objet
+Ce qui allait : 32 tests couvrant chaque règle de la note UX, dont les cas où rien n'est envoyé ; un test qui passait par hasard (console en réussite) repéré et renforcé par l'agent
+Ce que j'ai fait corriger : 1) activité en arrière-plan après la fin de 4 tests (doublure sans fetchTable) ; 2) le chargement de départ effaçait les contacts préparés, d'où un « introuvable » au lieu de « droits » ; les tests attendent désormais la fin du chargement et vérifient que chaque écriture est réellement partie
+Tests : 212 lancés, 212 réussis (npm test)
+Fichiers modifiés : test/clubs-contacts.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 68301b1 sur feature/contacts-fiche-club
+
+## Tâche 19 — Contacts : écran d'ajout et de modification (dev-interface)
+
+Date : 21/10/2026
+Agent : dev-interface
+Prompt : carte Contacts (fonction sous le nom, « + Ajouter un contact », « Modifier » par ligne), fenêtre d'ajout et de modification selon la note UX, messages, focus et clavier, cartes à moitiés égales ; sans la suppression
+
+Note /5 : 4
+Ce qui allait : note UX suivie ; écarts justifiés et signalés (zone d'annonce hors de la fiche pour qu'elle survive au rechargement, Annuler et Échap ignorés pendant l'envoi, type « club » avec le message de repli) ; aucun texte brut de Grist affiché
+Ce que j'ai fait corriger : rien
+Tests : 212 lancés, 212 réussis (npm test ; la fenêtre n'a pas encore de test automatique). Vérification dans DEV7 avec la version locale : erreurs de saisie, ajout, modification, clavier, affichage, OK en propriétaire ; en « Voir en tant que » FT Régional, création et modification d'un contact de sa région OK (règle de création newRec confirmée) ; refus en ANS : refus constaté en « Voir en tant que » FT Départemental sur un club hors de son département : message de droits affiché, sans texte brut (l'ANS ne voit pas les clubs)
+Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : b81debf sur feature/contacts-fiche-club
+
+## Tâche 20 — Contacts : suppression d'un contact (dev-interface)
+
+Date : 21/10/2026
+Agent : dev-interface
+Prompt : bouton « Supprimer » par ligne, fenêtre de confirmation (alertdialog, bouton rouge btn-supprimer), messages, focus et clavier, en réutilisant la fenêtre d'ajout
+
+Note /5 : 5
+Ce qui allait : fenêtre d'ajout réutilisée, pas recopiée ; .btn-supprimer repris du tableau de bord ; après un échec, focus sur Annuler (geste prudent), choix de l'agent validé
+Ce que j'ai fait corriger : rien
+Tests : 212 lancés, 212 réussis (npm test). Vérification dans DEV7 : annuler (bouton et Échap), suppression en propriétaire, suppression en « Voir en tant que » FT Régional dans sa région, OK ; refus constaté en DD Ain sur un club hors de son département (message de droits)
+Fichiers modifiés : src/clubs/index.html, src/clubs/style.css, src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : 23f14dd sur feature/contacts-fiche-club
+
+## Tâche 21 — Contacts : note UX, boutons icônes
+
+Date : 22/10/2026
+Agent : designer-ux
+Prompt : remplacer les boutons texte « Modifier » et « Supprimer » de la carte Contacts par des boutons icône seule (icon-edit, icon-trash), avec aria-label et info-bulle
+
+Note /5 : 5
+Ce qui allait : structure du bouton « Icône seule » du design system recopiée ; note relue (plus d'icon-pencil ni de bouton texte dans la carte) ; risques signalés (taille des boutons, info-bulle au clavier, pas d'info-bulle sur mobile)
+Ce que j'ai fait corriger : nom de l'icône corbeille introuvable par l'agent, trouvé par Hanta sur la page Icônes ; icon-edit préféré à icon-pencil
+Tests : aucun (documentation)
+Fichiers modifiés : docs/ux/contacts-fiche-club.md
+Build refait : non
+Commit : 25ba1f3 sur feature/contacts-fiche-club
+
+## Tâche 22 — Contacts : boutons icônes (dev-interface)
+
+Date : 22/10/2026
+Agent : dev-interface
+Prompt : remplacer les boutons texte Modifier et Supprimer de chaque ligne par les boutons icône seule du §7.2 (icon-edit, icon-trash), sans changer leur comportement
+
+Note /5 : 5
+Ce qui allait : changement minimal dans renderContacts ; attributs de fonctionnement gardés (ouverture des fenêtres, retour du focus) ; aucun CSS ajouté sans besoin ; bouton rouge de la fenêtre non touché
+Ce que j'ai fait corriger : rien
+Tests : 212 lancés, 212 réussis (npm test). Vérification dans DEV7 : icônes affichées, info-bulle au survol et au clavier, focus visible, bonnes fenêtres ouvertes, retour du focus, boutons bien espacés en rétrécissant, OK
+Fichiers modifiés : src/clubs/script.js, clubs.html
+Build refait : oui
+Commit : dbea258 sur feature/contacts-fiche-club
+
+## Tâche 23 — Contacts : tests des écrans
+
+Date : 22/10/2026
+Agent : testeur
+Prompt : tester la carte Contacts, les fenêtres d'ajout, de modification et de suppression, les messages et le clavier, dans test/clubs-contacts-ecran.test.js
+
+Note /5 : 5
+Ce qui allait : 32 tests ; faux DOM posé dans le fichier de test, sans modifier le helper ; chaque message vérifié, texte brut de Grist jamais affiché ; Échap et Annuler ignorés pendant l'envoi testés
+Ce que j'ai fait corriger : rien. À noter : l'agent a lancé node --test sur son fichier malgré la consigne (sans conséquence)
+Tests : 244 lancés, 244 réussis (npm test)
+Fichiers modifiés : test/clubs-contacts-ecran.test.js (créé)
+Build refait : non (src/ inchangé)
+Commit : 0edab57 sur feature/contacts-fiche-club
+
+## Tâche 24 — Contacts : documentation (documentaliste)
+
+Date : 22/10/2026
+Agent : documentaliste (1 correction)
+Prompt : documenter la gestion des contacts dans README.md (section Widget clubs) et CLAUDE.md, aligner le tableau des messages de la note UX sur le code
+
+Note /5 : sans objet
+Ce qui allait : noms de fonctions, constantes et colonnes vérifiés dans le code avant d'écrire ; message de repli de la suppression aligné sur le code ; décalages restants signalés par l'agent
+Ce que j'ai fait corriger : note UX mise à jour avec les constats de DEV7 (création par un non-propriétaire, refus, affichage)
+Tests : 244 lancés, 244 réussis (npm test)
+Fichiers modifiés : README.md, CLAUDE.md, docs/ux/contacts-fiche-club.md
+Build refait : non (src/ inchangé)
+Commit : b5cc09b sur feature/contacts-fiche-club
+
+## Tâche 25 — Contacts : cas de test de recette (recetteur)
+
+Date : 22/10/2026
+Agent : recetteur (2 corrections)
+Prompt : rédiger les cas de test de recette de la gestion des contacts au format de l'onglet Cas_de_test du carnet (18 colonnes), en .tsv pour Excel et en .md lisible
+
+Note /5 : sans objet
+Ce qui allait : 31 cas (CON-01 à CON-32, sans CON-27) ; messages exacts de la note ; tests de sécurité (HTML) et de persistance ; séparation entre ce que joue le collègue et ce que joue la développeuse ; données fictives ; points incertains signalés au lieu d'être inventés
+Ce que j'ai fait corriger : CON-21 et CON-26 impossibles à jouer (clubs invisibles pour le FT Régional hors de sa DR et pour l'ANS), réécrits ; doublon de données entre CON-10 et CON-14 ; CON-27 retiré ; CON-28 aligné sur la note ; prérequis du profil FT National du testeur ; ordre prénom puis nom constaté pour CON-17
+Tests : aucun (documentation)
+Fichiers modifiés : docs/tests/cas-de-test-contacts.tsv, docs/tests/cas-de-test-contacts.md (créés)
+Build refait : non
+Commit : 15c1258 sur feature/contacts-fiche-club
+
 ## Tâche C1 — Maquette de la convention de partenariat
 
 Date : 2026-10-20
