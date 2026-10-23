@@ -1555,9 +1555,17 @@ function conventionCasesManquantes(texte, valeurs) {
 
 // Valeur d'une case sous forme de texte, ou undefined si elle est absente ou vide.
 // Seules les cles propres de l'objet comptent (un nom comme "constructor" n'est pas une valeur).
+// L'apostrophe droite (') et l'apostrophe courbe (’) sont la meme lettre dans un nom de case :
+// « [Nom de l'agence] » tape au clavier trouve la case « Nom de l’agence ».
 function conventionValeurDeCase(valeurs, nom) {
-  if (!valeurs || typeof valeurs !== 'object' || !Object.prototype.hasOwnProperty.call(valeurs, nom)) return undefined;
-  const valeur = valeurs[nom];
+  if (!valeurs || typeof valeurs !== 'object') return undefined;
+  let cle = nom;
+  if (!Object.prototype.hasOwnProperty.call(valeurs, cle)) {
+    const courbe = String(nom).replace(/'/g, '’');
+    cle = Object.keys(valeurs).find(autre => autre.replace(/'/g, '’') === courbe);
+    if (cle === undefined) return undefined;
+  }
+  const valeur = valeurs[cle];
   if (valeur === null || valeur === undefined) return undefined;
   return String(valeur);
 }
@@ -2470,9 +2478,10 @@ const CONVENTION_ERREURS_GENERER = {
 
 // Noms des cases [Nom] que le widget remplit. Les quatre cases du bloc de signature sont
 // celles de conventionSignatures ; « Nom du club » et « Siège du club » sont celles des
-// tests du modele. Les autres noms sont a faire correspondre au texte des modeles de Grist :
-// une case du modele qui n'est pas dans cette liste (ou dont la valeur est vide) bloque la
-// generation (cases-inconnues) ; une entree que le modele n'utilise pas ne gene pas.
+// tests du modele. Cette liste est la liste officielle des cases (decision de Hanta) :
+// une case du modele qui n'est pas dans cette liste bloque la generation (cases-inconnues) ;
+// une case de la liste dont la valeur est vide est remplacee par des pointilles ; une entree
+// que le modele n'utilise pas ne gene pas.
 const CONVENTION_CASES = {
   annee: 'Année',
   clubNom: 'Nom du club',
@@ -2485,6 +2494,10 @@ const CONVENTION_CASES = {
   representant: 'Représentant de l’agence',
   fonctionRepresentant: 'Fonction du représentant'
 };
+
+// Pointilles d'une case connue mais vide : meme longueur (28 points) que les zones
+// « À ........, le ........ » du bloc de signature.
+const CONVENTION_POINTILLES = '............................';
 
 // Forme courte du dispositif dans le nom du fichier (note UX, D-S7-3 : proposition a valider
 // par Hanta). Cle : nom du dispositif sans accent ni majuscule. Un dispositif absent d'ici
@@ -2538,6 +2551,11 @@ function conventionValeursCases(actionId, valeurs, donnees) {
   cases[CONVENTION_CASES.agenceAdresse] = surUneLigne(infos.agence.adresse);
   cases[CONVENTION_CASES.representant] = String(valeurs.representant ?? '').trim();
   cases[CONVENTION_CASES.fonctionRepresentant] = String(valeurs.fonctionRepresentant ?? '').trim();
+  // Une case connue mais vide (un club sans SIRET, par exemple) devient des pointilles :
+  // elle se complete a la main sur le papier et ne bloque pas la generation.
+  Object.keys(cases).forEach(nom => {
+    if (cases[nom] === null || cases[nom] === undefined || !String(cases[nom]).trim()) cases[nom] = CONVENTION_POINTILLES;
+  });
   return cases;
 }
 
