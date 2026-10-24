@@ -900,3 +900,46 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : 65059ce (code) et 1d5b2d8 test (tests)
 Reste à faire : longueur des pointillés à vérifier sur papier (7.6).
+
+## Tâche C38 — Bouton « Générer » dans la fenêtre Convention (S7, tâche 7.2b)
+
+Date : 2026-10-24
+Agent : dev-interface
+Prompt : tâche 7.2b, décisions D-S7-1 à D-S7-7 de la note
+
+Note /5 : 5
+Ce qui allait : bouton principal en dernier dans le pied, grisé sans contact ; verrouillage avant toute opération asynchrone, Échap et Fermer ignorés pendant l'attente ; message exact par code d'échec, saisie gardée, focus sur le bouton ; réussite : fenêtre fermée, seul le bloc refait, message « Convention générée. », focus provisoire sur ce message ; 6 tests en échec annoncés à l'avance ; deux fonctions existantes adaptées et signalées.
+Ce que j'ai fait corriger : rien. À reprendre en finition : espacement écrit en dur (-16px), espace en trop au-dessus du texte du bloc (vu à l'écran).
+Tests : 444 tests, 438 passés, 6 échecs attendus (mis à jour en C40). Premier vrai PDF dans DEV7 en propriétaire : 10 cases remplies, nom du fichier, saut de page, numéros de page, signatures sur deux colonnes, gras. Logo absent (Q-C). Note placée en fin de document (Q-A).
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 64a62ef (avec la correction C39)
+
+## Tâche C39 — Bug : un FT Régional ne pouvait pas générer (rattachement du PDF)
+
+Date : 2026-10-24
+Agents : relecteur (cause), testeur (tests qui échouent), dev-backend (correction)
+Prompt : cycle d'un bug, message rattachement-echoue en « Voir en tant que » FT Régional
+
+Note /5 : 5
+Ce qui allait : cause confirmée par comparaison avec le logo de clubs (applyUserActions refusé à un non-propriétaire pour une pièce jointe neuve), cause probable et cause prouvée bien distinguées ; 11 tests, dont 10 en échec avant la correction ; correction par une seule requête PATCH REST qui écrit PDF_genere et Date_generation (D-S7-1 respectée), même jeton que l'envoi, jamais affiché, sans repli.
+Ce que j'ai fait corriger : rien.
+Tests : 455 tests, 6 échecs attendus de la 7.2b et 10 du rattachement, puis 449 passés (seuls les 6 de la 7.2b restants). Vérifié dans DEV7 : génération réussie en « Voir en tant que » FT Régional.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-generation.test.js (nouveau)
+Build refait : oui
+Commit : 64a62ef (code) et 8bbec31 (tests)
+Reste à faire : fichier envoyé mais non rattaché si l'écriture échoue (fichier orphelin, à voir avec S8).
+
+## Tâche C40 — Tests de l'écran du bouton « Générer » (S7, tâche 7.3, première partie)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : mise à jour des 6 tests de la 7.2b et tests de l'écran
+
+Note /5 : 5
+Ce qui allait : 6 tests mis à jour sans retrait ; 26 tests ajoutés, dont un nouveau fichier test/convention-generer-ecran.test.js (choix expliqué) ; un message exact vérifié par code d'échec ; noms de cases avec HTML affichés comme du texte ; compte annoncé exact (481).
+Ce que j'ai fait corriger : rien. Le testeur a lancé des commandes de lecture malgré la consigne.
+Tests : 481 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-fenetre.test.js, test/convention-bloc.test.js, test/convention-generer-ecran.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 66c6a40
