@@ -1991,14 +1991,22 @@ function conventionPhrases(actionId, donnees) {
 // Seul l'etat « A generer » a un bouton pour l'instant (tache 5.1a) : celui qui
 // ouvre la fenetre. Les boutons des autres etats viendront avec leurs taches.
 function conventionBlocHtml(actionId, donnees) {
+  // Deux parties dans la carte : la zone de message (role="status"), qui n'est jamais
+  // refaite pour que « Convention generee. » soit annoncee, et le contenu (phrases et
+  // boutons), que conventionRafraichirBloc peut refaire seul apres une generation.
+  return `<section class="edit-card" id="conventionBloc">
+          <div class="section-head"><span>Convention</span></div>
+          <div class="edit-fields convention-fields"><div class="convention-alerte" id="conventionAlerte" role="status"></div><div class="convention-contenu" id="conventionBlocContenu">${conventionBlocContenuHtml(actionId, donnees)}</div></div>
+        </section>`;
+}
+
+// Phrases d'etat et boutons du bloc (tout sauf la zone de message).
+function conventionBlocContenuHtml(actionId, donnees) {
   const phrases = conventionPhrases(actionId, donnees)
     .map(({texte, aide}) => `<p${aide ? ' class="convention-aide"' : ''}>${escapeHtml(texte)}</p>`)
     .join('');
   const aGenerer = conventionEtat(actionId, donnees).etat === CONVENTION_ETATS.aGenerer;
-  return `<section class="edit-card" id="conventionBloc">
-          <div class="section-head"><span>Convention</span></div>
-          <div class="edit-fields convention-fields">${phrases}${aGenerer ? conventionGenererHtml(actionId, donnees) : ''}</div>
-        </section>`;
+  return `${phrases}${aGenerer ? conventionGenererHtml(actionId, donnees) : ''}`;
 }
 
 // Bouton « Générer la convention » et, au-dessus, la zone du message de blocage.
@@ -2052,11 +2060,12 @@ function conventionLignesZone(valeur) {
   return Math.max(2, lignes);
 }
 
-function conventionChampLecture(id, libelle, valeur, zone) {
+// `erreur` (facultatif) : message d'erreur place sous le champ, comme pour les champs de saisie.
+function conventionChampLecture(id, libelle, valeur, zone, erreur) {
   const champ = zone
     ? `<textarea class="form-control" id="${id}" name="${id}" readonly rows="${conventionLignesZone(valeur)}">${escapeHtml(valeur)}</textarea>`
     : `<input class="form-control" id="${id}" name="${id}" readonly type="text" value="${escapeAttr(valeur)}">`;
-  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${champ}</div>`;
+  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${champ}${erreur || ''}</div>`;
 }
 
 // ---- Convention : champs de la fenetre (tache 5.1b : saisie et controle, sans enregistrement) ----
@@ -2067,9 +2076,10 @@ const CONVENTION_ERREURS = {
   alerte: 'Certains champs sont à corriger.',
   annee: 'Saisissez une année à quatre chiffres.'
 };
-// Champs qui ont un message d'erreur sous eux (leur message a pour id « <champ>Erreur »).
-// Seule l'annee est controlee pour l'instant ; « Generer » ajoutera les champs obligatoires.
-const CONVENTION_CHAMPS_CONTROLES = ['conventionAnnee'];
+// Champs qui ont un message d'erreur sous eux (leur message a pour id « <champ>Erreur »),
+// dans l'ordre de la fenetre. « Enregistrer » ne controle que l'annee ; « Generer »
+// controle aussi les champs obligatoires.
+const CONVENTION_CHAMPS_CONTROLES = ['conventionAnnee', 'clubSignataire', 'clubFonction', 'agenceRepresentant', 'agenceFonction'];
 
 // Titre du modele de l'action et indication « le modele demande une annee ».
 // Seule une colonne Avec_annee a non retire l'annee (Parcours de remobilisation).
@@ -2127,17 +2137,24 @@ function conventionErreurHtml(id, message) {
   return `<div class="invalid-feedback" id="${id}Erreur"><span class="sr-only">Erreur : </span>${escapeHtml(message)}</div>`;
 }
 
+// Contenu d'un message d'erreur : le texte cache « Erreur : », puis le message (echappe).
+function conventionErreurTexteHtml(message) {
+  return `<span class="sr-only">Erreur : </span>${escapeHtml(message)}`;
+}
+
 function conventionSignataireHtml(contacts) {
   const options = contacts.map(contact => `<option value="${contact.id}">${escapeHtml(contact.libelle)}</option>`).join('');
   const aide = contacts.length ? '' : `<p class="help-block" id="clubSignataireAide">${escapeHtml(CONVENTION_SANS_CONTACT)}</p>`;
   const lien = contacts.length ? '' : ' aria-describedby="clubSignataireAide"';
   const liste = `<select class="form-control" id="clubSignataire" name="clubSignataire" required${lien}><option selected disabled value="">Veuillez sélectionner</option>${options}</select>`;
-  return conventionChampSaisie('clubSignataire', 'Signataire', liste, aide);
+  // Le message d'aide (club sans contact) et le message d'erreur sont deux elements
+  // distincts : jamais help-block et invalid-feedback sur le meme element.
+  return conventionChampSaisie('clubSignataire', 'Signataire', liste, aide + conventionErreurHtml('clubSignataire', CONVENTION_ERREURS_GENERER.signataire));
 }
 
 // Structure de la note (§3 et §8) : fenetre modal-xl defilante, titre h2 « Convention »,
 // un fieldset par bloc (informations, signataire club, signataire agence), pied avec
-// « Fermer » et « Enregistrer les informations ».
+// « Fermer », « Enregistrer les informations » et « Generer la convention » (principal).
 function conventionModalHtml(actionId, donnees) {
   const infos = conventionInfos(actionId, donnees);
   const modele = conventionModeleInfos(actionId, donnees);
@@ -2152,6 +2169,7 @@ function conventionModalHtml(actionId, donnees) {
         <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
         <div class="modal-body">
           <div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <div id="conventionAttente" role="status"></div>
           <p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>
           <div class="convention-grid">
             <fieldset class="convention-part">
@@ -2169,7 +2187,7 @@ function conventionModalHtml(actionId, donnees) {
                 ${conventionChampLecture('clubSiege', 'Siège', infos.club.siege, true)}
                 <p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>
                 ${conventionSignataireHtml(contacts)}
-                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '')}
+                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '', false, conventionErreurHtml('clubFonction', CONVENTION_ERREURS_GENERER.signataireSansFonction))}
               </div>
             </fieldset>
             <fieldset class="convention-part">
@@ -2177,8 +2195,8 @@ function conventionModalHtml(actionId, donnees) {
               <div class="convention-champs">
                 ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom)}
                 ${conventionChampLecture('agenceAdresse', 'Adresse', infos.agence.adresse, true)}
-                ${conventionChampSaisie('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" required autocomplete="off">')}
-                ${conventionChampSaisie('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" required autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`)}
+                ${conventionChampSaisie('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" required autocomplete="off">', conventionErreurHtml('agenceRepresentant', CONVENTION_ERREURS_GENERER.representant))}
+                ${conventionChampSaisie('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" required autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`, conventionErreurHtml('agenceFonction', CONVENTION_ERREURS_GENERER.fonctionRepresentant))}
               </div>
             </fieldset>
           </div>
@@ -2186,6 +2204,7 @@ function conventionModalHtml(actionId, donnees) {
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="conventionFermer"><span class="btn-content">Fermer</span></button>
           <button type="submit" class="btn btn-secondary" id="conventionEnregistrer"><span class="btn-content">Enregistrer les informations</span></button>
+          <button type="button" class="btn btn-primary" id="conventionGenererFenetre"${contacts.length ? '' : ' aria-disabled="true" aria-describedby="clubSignataireAide"'}><span class="btn-content">Générer la convention</span></button>
         </div>
       </form>
     </div>
@@ -2193,6 +2212,9 @@ function conventionModalHtml(actionId, donnees) {
 }
 
 let focusAvantConvention = null;
+// Vrai pendant « Generer la convention » (decision D-S7-2) : Fermer, Echap, Enregistrer et un
+// deuxieme clic sur Generer sont alors ignores. Pose avant la premiere operation asynchrone.
+let conventionGenerationEnCours = false;
 
 // Appelee par renderEdit apres la construction de la fiche. Un bouton grise
 // (aria-disabled) ignore le clic ; l'ouverture reverifie le blocage, au cas ou le
@@ -2213,7 +2235,11 @@ function openConvention(actionId) {
   host.innerHTML = conventionModalHtml(actionId, state);
   document.body.classList.add('modal-open');
   document.getElementById('conventionForm').addEventListener('submit', event => submitConvention(event, actionId));
-  document.getElementById('conventionFermer').addEventListener('click', closeConvention);
+  // Pendant la generation, « Fermer » est ignore (comme Echap).
+  document.getElementById('conventionFermer').addEventListener('click', () => {
+    if (!conventionGenerationEnCours) closeConvention();
+  });
+  document.getElementById('conventionGenererFenetre').addEventListener('click', () => lancerGenerationConvention(actionId));
   document.getElementById('clubSignataire').addEventListener('change', () => majFonctionSignataire(actionId));
   host.addEventListener('keydown', keepFocusInConvention);
   conventionPrerempli(actionId);
@@ -2264,14 +2290,20 @@ function marquerProblemesConvention(problemes) {
   CONVENTION_CHAMPS_CONTROLES.forEach(id => {
     const champ = document.getElementById(id);
     if (!champ) return;
-    if (problemes.some(probleme => probleme.id === id)) {
+    const probleme = problemes.find(item => item.id === id);
+    if (probleme) {
       champ.classList.add('is-invalid');
       champ.setAttribute('aria-invalid', 'true');
       champ.setAttribute('aria-describedby', `${id}Erreur`);
+      // Le texte suit le probleme : l'annee a deux messages (absente, pas a quatre chiffres).
+      const erreur = document.getElementById(`${id}Erreur`);
+      if (erreur && probleme.message) erreur.innerHTML = conventionErreurTexteHtml(probleme.message);
     } else {
       champ.classList.remove('is-invalid');
       champ.removeAttribute('aria-invalid');
-      champ.removeAttribute('aria-describedby');
+      // On ne retire que le lien vers le message d'erreur : le signataire d'un club sans
+      // contact garde son lien vers l'aide « Ce club n'a aucun contact… ».
+      if (champ.getAttribute('aria-describedby') === `${id}Erreur`) champ.removeAttribute('aria-describedby');
     }
   });
 }
@@ -2279,6 +2311,8 @@ function marquerProblemesConvention(problemes) {
 // « Enregistrer les informations » : controle, puis (plus tard) enregistrement.
 function submitConvention(event, actionId) {
   event.preventDefault();
+  // Pendant la generation, ni le bouton ni la touche Entree ne relancent un enregistrement.
+  if (conventionGenerationEnCours) return;
   const valeurs = lireConventionForm();
   const problemes = conventionProblemes(valeurs);
   marquerProblemesConvention(problemes);
@@ -2412,7 +2446,8 @@ function closeConvention() {
 function keepFocusInConvention(event) {
   if (event.key === 'Escape') {
     event.preventDefault();
-    closeConvention();
+    // Pendant la generation, Echap ne ferme pas (decision D-S7-2).
+    if (!conventionGenerationEnCours) closeConvention();
     return;
   }
   if (event.key !== 'Tab') return;
@@ -2637,7 +2672,28 @@ async function conventionEnvoyerPdf(blob, nomFichier) {
   }
   const id = Array.isArray(ids) ? ids[0] : undefined;
   if (!Number.isInteger(id) || id <= 0) throw impossible();
-  return id;
+  // On rend aussi l'acces : le rattachement reutilise le meme jeton, sans en redemander un.
+  return {id, acces};
+}
+
+// Ecrit PDF_genere et Date_generation en UNE requete PATCH REST, avec le jeton de l'envoi
+// (meme methode que uploadLogo dans clubs : applyUserActions est refuse a un non-proprietaire
+// pour une piece jointe). Aucun repli sur applyUserActions : un refus de Grist est transmis
+// tel quel. Les erreurs ne portent qu'un code : ni jeton, ni texte de la reponse.
+async function conventionRattacherPdf(acces, conventionId, champs) {
+  const echec = () => conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement);
+  let reponse;
+  try {
+    reponse = await fetch(`${acces.baseUrl}/tables/Conventions/records?auth=${encodeURIComponent(acces.token)}`, {
+      method: 'PATCH',
+      credentials: 'omit',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+      body: JSON.stringify({records: [{id: conventionId, fields: champs}]})
+    });
+  } catch (error) {
+    throw echec();
+  }
+  if (!reponse.ok) throw echec();
 }
 
 // Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
@@ -2645,7 +2701,7 @@ async function conventionEnvoyerPdf(blob, nomFichier) {
 //  1. controle des champs obligatoires ; 2. enregistrement des informations (sans message) ;
 //  3. modele actif ; 4. remplissage des cases ; 5. chargement de pdfmake (20 s au plus) ;
 //  6. fabrication du PDF et nom du fichier ; 7. envoi du fichier ;
-//  8. UNE operation applyUserActions pour PDF_genere et Date_generation ;
+//  8. UNE requete PATCH REST pour PDF_genere et Date_generation ;
 //  9. mise a jour de state.raw.Conventions (le bloc peut passer a « Generee »).
 // Reussite : renvoie {nomFichier}. Echec : rejette une Error portant `code`
 // (voir CONVENTION_GENERATION_ERREURS) ; rien n'est alors ecrit dans PDF_genere ni Date_generation.
@@ -2672,14 +2728,10 @@ async function conventionGenerer(actionId, valeurs) {
     if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
     const nomFichier = conventionNomFichier(actionId, valeurs, state);
 
-    const pieceJointe = await conventionEnvoyerPdf(blob, nomFichier);
+    const {id: pieceJointe, acces} = await conventionEnvoyerPdf(blob, nomFichier);
 
     const champs = {PDF_genere: ['L', pieceJointe], Date_generation: Math.floor(Date.now() / 1000)};
-    try {
-      await grist.docApi.applyUserActions([['UpdateRecord', 'Conventions', convention.id, champs]]);
-    } catch (error) {
-      throw conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement);
-    }
+    await conventionRattacherPdf(acces, convention.id, champs);
     // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
     const ligne = conventionLigne(state.raw.Conventions, convention.id);
     if (ligne) Object.assign(ligne, champs);
@@ -2688,4 +2740,130 @@ async function conventionGenerer(actionId, valeurs) {
     if (error && typeof error.code === 'string') throw error;
     throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
   }
+}
+
+// ---- Convention : bouton « Generer la convention » de la fenetre (tache 7.2b) ----
+// Branche conventionGenerer sur l'ecran : verrou et attente, puis fermeture de la fenetre
+// (reussite) ou message (echec). Rien dans la console : une erreur peut citer des valeurs
+// qui contiennent des noms de personnes.
+
+const CONVENTION_TEXTE_GENERER = 'Générer la convention';
+const CONVENTION_TEXTE_EN_COURS = 'Génération en cours…';
+const CONVENTION_ATTENTE = 'Génération de la convention en cours. Cela peut prendre quelques secondes.';
+const CONVENTION_MESSAGE_GENEREE = 'Convention générée.';
+const CONVENTION_SUITE = 'Vos informations sont conservées.';
+
+// Messages des echecs (note UX, §3 « Echecs »), un par code. Les codes champs-a-corriger,
+// enregistrement-echoue et cases-inconnues ont leur propre traitement (voir plus bas).
+const CONVENTION_MESSAGES_ECHEC = {
+  [CONVENTION_GENERATION_ERREURS.pdfmake]: `La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.modele]: `La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.envoiRefuse]: `La convention n'a pas pu être enregistrée : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.envoiImpossible]: `La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.rattachement]: `La convention n'a pas pu être enregistrée : le fichier a été fabriqué mais n'a pas pu être rattaché à l'action. Réessayez ou contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.inattendu]: `La convention n'a pas pu être générée. ${CONVENTION_SUITE}`
+};
+
+// Nombre de cases inconnues nommees dans le message ; au-dela : « et d'autres ».
+const CONVENTION_CASES_CITEES_MAX = 5;
+
+// Message des cases inconnues. Les noms viennent du modele saisi dans Grist : ils sont
+// affiches par textContent (afficherMessageConvention), jamais inseres en HTML.
+function conventionMessageCases(cases) {
+  const noms = (Array.isArray(cases) ? cases : []).map(nom => String(nom)).filter(nom => nom.trim());
+  if (!noms.length) return CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+  const cites = noms.slice(0, CONVENTION_CASES_CITEES_MAX).map(nom => `« ${nom} »`).join(', ') + (noms.length > CONVENTION_CASES_CITEES_MAX ? " et d'autres" : '');
+  const debut = noms.length === 1 ? 'le modèle contient une case inconnue, ' : 'le modèle contient des cases inconnues, ';
+  return `La convention n'a pas pu être générée : ${debut}${cites}. Contactez l'équipe du tableau de bord pour corriger le modèle. ${CONVENTION_SUITE}`;
+}
+
+// Message d'une erreur de conventionGenerer. Un code inconnu donne le message « inattendu ».
+function conventionMessageEchec(erreur) {
+  const code = erreur && erreur.code;
+  if (code === CONVENTION_GENERATION_ERREURS.enregistrement) return CONVENTION_MESSAGES.echec;
+  if (code === CONVENTION_GENERATION_ERREURS.cases) return conventionMessageCases(erreur.cases);
+  return CONVENTION_MESSAGES_ECHEC[code] || CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+}
+
+// Verrouille ou deverrouille la fenetre. aria-disabled (jamais disabled) sur les trois
+// boutons du pied : le focus ne se perd pas ; les clics sont ignores par les gestionnaires
+// (conventionGenerationEnCours). Les trois fieldset passent en disabled (decision D-S7-7).
+function conventionVerrouiller(verrou) {
+  conventionGenerationEnCours = verrou;
+  ['conventionFermer', 'conventionEnregistrer', 'conventionGenererFenetre'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
+    if (verrou) bouton.setAttribute('aria-disabled', 'true');
+    else bouton.removeAttribute('aria-disabled');
+  });
+  document.querySelectorAll('#conventionDialog fieldset').forEach(zone => { zone.disabled = verrou; });
+  buttonLabel('conventionGenererFenetre', verrou ? CONVENTION_TEXTE_EN_COURS : CONVENTION_TEXTE_GENERER);
+  document.getElementById('conventionAttente').innerHTML = verrou ? `<p>${escapeHtml(CONVENTION_ATTENTE)}</p>` : '';
+}
+
+// Refait les phrases et les boutons du bloc (pas la zone de message, pas le reste de la
+// fiche : un rechargement de la fiche effacerait ce que l'agent a saisi et pas enregistre).
+function conventionRafraichirBloc(actionId) {
+  const contenu = document.getElementById('conventionBlocContenu');
+  if (!contenu) return;
+  contenu.innerHTML = conventionBlocContenuHtml(actionId, state);
+  bindConvention(actionId);
+}
+
+// Clic sur « Generer la convention » dans le pied de la fenetre.
+async function lancerGenerationConvention(actionId) {
+  const bouton = document.getElementById('conventionGenererFenetre');
+  // Bouton grise (club sans contact) ou generation deja en cours : le clic ne fait rien.
+  if (!bouton || conventionGenerationEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
+  const valeurs = lireConventionForm();
+  // Le verrou est pose tout de suite, avant la premiere operation asynchrone. Les anciens
+  // messages d'erreur sont effaces au debut de chaque tentative.
+  conventionVerrouiller(true);
+  marquerProblemesConvention([]);
+  let echec = null;
+  try {
+    await conventionGenerer(actionId, valeurs);
+  } catch (erreur) {
+    echec = erreur || new Error('echec');
+  }
+  // La fenetre ne peut pas etre fermee pendant l'attente ; garde-fou si elle l'etait quand meme.
+  if (!state.conventionOpen) {
+    conventionGenerationEnCours = false;
+    return;
+  }
+  if (!echec) {
+    conventionVerrouiller(false);
+    // Le bouton d'ouverture du bloc disparait avec l'etat « Generee » : rien a refocaliser.
+    focusAvantConvention = null;
+    closeConvention();
+    conventionRafraichirBloc(actionId);
+    conventionAnnoncerReussite();
+    return;
+  }
+  conventionVerrouiller(false);
+  const problemes = Array.isArray(echec.problemes) ? echec.problemes : [];
+  if (echec.code === CONVENTION_GENERATION_ERREURS.champs && problemes.length) {
+    // Tous les manques a la fois : messages sous les champs, alerte en haut, focus sur le premier.
+    marquerProblemesConvention(problemes);
+    document.getElementById(problemes[0].id).focus();
+    return;
+  }
+  afficherMessageConvention(false, conventionMessageEchec(echec));
+  bouton.focus();
+  const alerte = document.getElementById('conventionMessage');
+  // Le corps de la fenetre defile : l'alerte, en haut, peut etre hors de vue.
+  if (alerte && typeof alerte.scrollIntoView === 'function') alerte.scrollIntoView({block: 'nearest'});
+}
+
+// « Convention generee. » en haut du bloc (alert-success). La zone role="status" existe deja,
+// vide, dans la page (conventionBlocHtml) : le texte qu'on y met est annonce.
+// Le focus va sur ce message. TACHE 7.4 : le bouton « Voir la convention » existera ; c'est
+// lui qui devra recevoir le focus (decision D-S7-6), et ce focus-ci sera deplace.
+function conventionAnnoncerReussite() {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite" tabindex="-1"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p></div>`;
+  const message = document.getElementById('conventionReussite');
+  if (message) message.focus();
+  requestResize();
 }

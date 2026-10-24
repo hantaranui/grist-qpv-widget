@@ -830,3 +830,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 @media (min-width: 1200px) {
   .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* Bloc « Convention » : le contenu (phrases et boutons) est refait seul apres une generation,
+   dans un conteneur qui ne change pas la grille de .edit-fields. La zone de message
+   (role="status") reste dans la page ; vide, elle ne prend pas de place. */
+.convention-contenu { display: contents; }
+.convention-alerte:empty { margin-bottom: -16px; }
