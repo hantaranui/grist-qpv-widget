@@ -6,7 +6,9 @@
 // echappement des valeurs venant de Grist, focus (Echap, Tab, Maj+Tab) ; puis, pour
 // la 5.1b, les trois blocs, l'annee, la liste des signataires, la fonction du
 // signataire, le representant, le pied, et le controle de l'annee a « Enregistrer
-// les informations » (section 9).
+// les informations » (section 9). Depuis la 7.2b, le pied a un troisieme bouton,
+// « Générer la convention » : son comportement (verrou, echecs, reussite) est dans
+// test/convention-generer-ecran.test.js.
 // Les textes de reference sont ceux de docs/ux/convention.md. Ils sont recopies
 // ici en dur : si le code change un mot, le test doit echouer.
 // Donnees fictives uniquement.
@@ -595,37 +597,52 @@ test("une autre touche ne ferme pas la fenêtre", () => {
 // ---------------------------------------------------------------------------
 // Depuis la 5.1b, les controles de la fenetre sont, dans l'ordre : Modele utilise,
 // Annee, Nom du club, SIRET, Siege, Signataire, Fonction du signataire, Agence,
-// Adresse, Representant, Fonction du representant, puis les boutons Fermer et
-// Enregistrer les informations. Le premier est donc « Modèle utilisé » (en lecture
-// seule, mais atteignable au clavier) et le dernier « Enregistrer les informations ».
+// Adresse, Representant, Fonction du representant, puis les trois boutons du pied :
+// Fermer, Enregistrer les informations et (depuis la 7.2b) Generer la convention. Le
+// premier est donc « Modèle utilisé » (en lecture seule, mais atteignable au clavier) et
+// le dernier « Générer la convention » (aria-disabled ne le retire pas de la liste :
+// seul l'attribut disabled le ferait).
 // Si une tache ajoute un champ ou un bouton aux extremites, ces tests seront a adapter.
 
-// Echoue si Tab sur le dernier controle (Enregistrer les informations) ne revient
-// plus au premier (Modele utilise), ou si la touche n'est plus retenue (preventDefault).
-test("Tab sur le dernier élément de la fenêtre (Enregistrer les informations) revient au premier (Modèle utilisé)", () => {
+// Echoue si Tab sur le dernier controle (Generer la convention) ne revient plus au
+// premier (Modele utilise), ou si la touche n'est plus retenue (preventDefault).
+test("Tab sur le dernier élément de la fenêtre (Générer la convention) revient au premier (Modèle utilisé)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
-  element("conventionEnregistrer").focus();
+  element("conventionGenererFenetre").focus();
   assert.equal(touche("Tab"), true, "preventDefault est appelé");
   assert.equal(actif(), element("conventionModele"));
 });
 
 // Echoue si Maj+Tab sur le premier controle (Modele utilise) ne va plus au dernier
-// (Enregistrer les informations), ou si la touche n'est plus retenue (preventDefault).
-test("Maj+Tab sur le premier élément de la fenêtre (Modèle utilisé) va au dernier (Enregistrer les informations)", () => {
+// (Generer la convention), ou si la touche n'est plus retenue (preventDefault).
+test("Maj+Tab sur le premier élément de la fenêtre (Modèle utilisé) va au dernier (Générer la convention)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
   element("conventionModele").focus();
   assert.equal(touche("Tab", {shift: true}), true, "preventDefault est appelé");
-  assert.equal(actif(), element("conventionEnregistrer"));
+  assert.equal(actif(), element("conventionGenererFenetre"));
 });
 
 // Echoue si Maj+Tab depuis la fenetre elle-meme (le focus peut y revenir, par exemple
 // apres un clic dans la fenetre) ne va plus au dernier controle : le focus sortirait
 // de la fenetre. A l'ouverture, le focus n'y est plus (il est sur « Année ») : on l'y met.
-test("Maj+Tab, quand le focus est sur la fenêtre elle-même, va au dernier élément", () => {
+test("Maj+Tab, quand le focus est sur la fenêtre elle-même, va au dernier élément (Générer la convention)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
   element("conventionDialog").focus();
   assert.equal(touche("Tab", {shift: true}), true, "preventDefault est appelé");
-  assert.equal(actif(), element("conventionEnregistrer"));
+  assert.equal(actif(), element("conventionGenererFenetre"));
+});
+
+// Echoue si « Enregistrer les informations » (devenu l'avant-dernier controle) est encore
+// pris pour le dernier : Tab dessus ne doit rien intercepter. Echoue aussi si Maj+Tab sur
+// « Générer la convention » (le dernier, mais pas le premier) est intercepte.
+test("Tab sur « Enregistrer les informations » et Maj+Tab sur « Générer la convention » ne sont pas interceptés", () => {
+  const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
+  element("conventionEnregistrer").focus();
+  assert.equal(touche("Tab"), false, "Tab sur « Enregistrer » n'est pas retenue");
+  assert.equal(actif(), element("conventionEnregistrer"), "le script ne déplace pas le focus");
+  element("conventionGenererFenetre").focus();
+  assert.equal(touche("Tab", {shift: true}), false, "Maj+Tab sur « Générer » n'est pas retenue");
+  assert.equal(actif(), element("conventionGenererFenetre"), "le script ne déplace pas le focus");
 });
 
 // Echoue si le message d'erreur de l'annee, a l'ouverture de la fenetre, n'a pas la
@@ -856,25 +873,30 @@ test("« Représentant » vide, « Fonction du représentant » préremplie avec
 
 // ---- 9.5 Pied de la fenetre ----
 
-// Echoue si le pied n'a plus que deux boutons, « Fermer » (type button) puis
-// « Enregistrer les informations » (type submit), dans cet ordre ; ou si un bouton
-// « Générer la convention » (ou un second #conventionGenerer, deja pris par le bloc de
-// la fiche) apparait dans la fenetre avant la tache 7.
-test("le pied de la fenêtre contient « Fermer » puis « Enregistrer les informations », et pas de « Générer »", () => {
+// Echoue si le pied n'a plus exactement trois boutons, « Fermer » (type button, secondaire),
+// « Enregistrer les informations » (type submit, secondaire) puis « Générer la convention »
+// (type button, principal, en dernier), dans cet ordre ; si un second bouton principal
+// apparait dans la fenetre ; si le bouton du pied reprend l'id du bouton du bloc de la
+// fiche (#conventionGenerer) ; ou si le libelle « Générer la convention » apparait ailleurs que dans ce bouton.
+test("le pied de la fenêtre contient « Fermer », « Enregistrer les informations » puis « Générer la convention » (seul bouton principal, en dernier)", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   const pied = /<div class="modal-footer">([\s\S]*?)<\/div>/.exec(html);
   assert.ok(pied, "le pied existe");
   const boutons = [...pied[1].matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].map((m) => ({
     id: attribut(`<button${m[1]}>`, "id"),
     type: attribut(`<button${m[1]}>`, "type"),
+    classe: attribut(`<button${m[1]}>`, "class"),
     texte: decoder(m[2].replace(/<[^>]+>/g, "")),
   }));
   assert.deepEqual(boutons, [
-    {id: "conventionFermer", type: "button", texte: "Fermer"},
-    {id: "conventionEnregistrer", type: "submit", texte: "Enregistrer les informations"},
+    {id: "conventionFermer", type: "button", classe: "btn btn-secondary", texte: "Fermer"},
+    {id: "conventionEnregistrer", type: "submit", classe: "btn btn-secondary", texte: "Enregistrer les informations"},
+    {id: "conventionGenererFenetre", type: "button", classe: "btn btn-primary", texte: LIBELLE},
   ]);
-  assert.equal(compte(html, /id="conventionGenerer"/g), 0, "pas de second bouton Générer");
-  assert.ok(!html.includes("Générer"), "aucun libellé « Générer » dans la fenêtre");
+  assert.equal(compte(html, /btn-primary/g), 1, "un seul bouton principal dans la fenêtre");
+  assert.equal(compte(html, /id="conventionGenerer"/g), 0, "pas de second #conventionGenerer (celui du bloc)");
+  assert.equal(compte(html, /Générer la convention/g), 1, "le libellé n'est que dans le bouton du pied");
+  assert.equal(attribut(balise(html, "conventionGenererFenetre"), "aria-haspopup"), null, "le bouton n'ouvre rien : pas d'aria-haspopup");
 });
 
 // ---- 9.6 Controle de l'annee a « Enregistrer les informations » ----

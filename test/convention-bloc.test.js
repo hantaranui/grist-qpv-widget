@@ -80,6 +80,9 @@ function classesDe(bloc) {
 
 const blocPour = (w, jeu) => w.conventionBlocHtml(1, jeu);
 
+// La zone de message du bloc (7.2b) : toujours presente, vide, jamais refaite apres une generation.
+const ZONE_MESSAGE_VIDE = '<div class="convention-alerte" id="conventionAlerte" role="status"></div>';
+
 // ---------------------------------------------------------------------------
 // 1. Le texte exact de chacun des cinq etats
 // ---------------------------------------------------------------------------
@@ -252,11 +255,14 @@ const ETATS_A_TESTER = {
 
 // Echoue si le bloc contient un lien, un champ, un menu ou un gestionnaire en
 // ligne dans l'un des cinq etats, un bouton ailleurs qu'a l'etat A generer, ou
-// un deuxieme bouton a cet etat (sa tache n'en prevoit qu'un).
+// un deuxieme bouton a cet etat (sa tache n'en prevoit qu'un). Depuis la 7.2b, la zone de
+// message (#conventionAlerte, role="status", vide) est dans les cinq etats : c'est le seul
+// role permis hors de l'etat A generer, et elle doit etre vide ; le reste du bloc n'a ni role ni aria-*.
 test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre élément interactif, dans les cinq états", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
     const bloc = blocPour(w, fabrique());
+    assert.equal(bloc.split(ZONE_MESSAGE_VIDE).length - 1, 1, `${nom} : une seule zone de message vide (role="status")`);
     assert.ok(!/<(a|input|select|textarea|details|summary|label|form|dialog)\b/i.test(bloc), `${nom} : élément interactif autre qu'un bouton`);
     assert.ok(!/\son[a-z]+\s*=/i.test(bloc), `${nom} : gestionnaire d'événement en ligne`);
     assert.ok(!/\s(href|tabindex|data-[\w-]+)\s*=/i.test(bloc), `${nom} : attribut de clic ou de navigation`);
@@ -266,7 +272,7 @@ test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre 
       assert.match(boutons[0], /\sid="conventionGenerer"/, `${nom} : le bouton est « Générer la convention »`);
     } else {
       assert.equal(boutons.length, 0, `${nom} : aucun bouton`);
-      assert.ok(!/\s(role|aria-[\w-]+)\s*=/i.test(bloc), `${nom} : attribut d'accessibilité interactive`);
+      assert.ok(!/\s(role|aria-[\w-]+)\s*=/i.test(bloc.replace(ZONE_MESSAGE_VIDE, "")), `${nom} : attribut d'accessibilité interactive`);
     }
   }
 });
@@ -375,7 +381,9 @@ test("aucun message de blocage à l'état Générée ni sans dispositif", () => 
 // 7. Noms de classes
 // ---------------------------------------------------------------------------
 
-const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", "convention-fields", "convention-aide"]);
+// convention-alerte (zone de message) et convention-contenu (partie refaite apres une
+// generation) viennent de la 7.2b : elles sont dans tous les etats.
+const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", "convention-fields", "convention-aide", "convention-alerte", "convention-contenu"]);
 
 // Classes de plus, permises seulement a l'etat A generer (bouton, rangee du bouton,
 // message de blocage et son texte cache) : classes du design system ou du widget.
@@ -424,6 +432,53 @@ test("style.css déclare convention-fields et convention-aide", () => {
   for (const nom of ["convention-fields", "convention-aide"]) {
     assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
   }
+});
+
+// Echoue si convention-alerte ou convention-contenu (7.2b) n'est plus declaree dans
+// style.css : la zone de message prendrait de la place quand elle est vide, ou la partie
+// refaite du bloc casserait la mise en page de la carte.
+test("style.css déclare convention-alerte et convention-contenu", () => {
+  for (const nom of ["convention-alerte", "convention-contenu"]) {
+    assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 8. Structure en deux parties (7.2b) : zone de message, puis contenu refaisable
+// ---------------------------------------------------------------------------
+
+// Echoue si, dans l'un des cinq etats, la zone de message (#conventionAlerte) est apres le
+// contenu ou a l'interieur de #conventionBlocContenu (un rafraichissement la viderait et le
+// message « Convention générée. » ne serait plus annonce), si #conventionBlocContenu n'est
+// pas present une seule fois, ou si son contenu n'est pas exactement celui de conventionBlocContenuHtml.
+test("le bloc a une zone de message vide, puis #conventionBlocContenu qui reprend exactement conventionBlocContenuHtml", () => {
+  const w = loadWidget();
+  for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
+    const jeu = fabrique();
+    const bloc = blocPour(w, jeu);
+    const zone = bloc.indexOf('id="conventionAlerte"');
+    const contenu = bloc.indexOf('id="conventionBlocContenu"');
+    assert.equal(bloc.split('id="conventionBlocContenu"').length - 1, 1, `${nom} : un seul contenu`);
+    assert.ok(zone !== -1 && zone < contenu, `${nom} : la zone de message est avant le contenu`);
+    assert.ok(bloc.includes(`<div class="convention-contenu" id="conventionBlocContenu">${w.conventionBlocContenuHtml(1, jeu)}</div>`),
+      `${nom} : le contenu est celui de conventionBlocContenuHtml`);
+    assert.ok(!w.conventionBlocContenuHtml(1, jeu).includes("conventionAlerte"), `${nom} : la zone de message n'est pas dans la partie refaite`);
+  }
+});
+
+// Echoue si conventionBlocContenuHtml (la partie que conventionRafraichirBloc remet a jour)
+// ne donne pas les phrases de l'etat et, a l'etat A generer seulement, le bouton et sa zone
+// de blocage : apres une generation reussie, le bouton doit disparaitre avec l'etat « Générée ».
+test("conventionBlocContenuHtml : les phrases de l'état, et le bouton seulement à l'état À générer", () => {
+  const w = loadWidget();
+  const aGenerer = w.conventionBlocContenuHtml(1, donnees());
+  assert.deepEqual(textes(aGenerer), [TEXTES.aGenerer]);
+  assert.match(aGenerer, /id="conventionGenerer"/);
+  assert.match(aGenerer, /id="conventionBlocage"/);
+  const generee = w.conventionBlocContenuHtml(1, donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
+  assert.deepEqual(textes(generee), ["Convention générée le 14/03/2026.", TEXTES.aide]);
+  assert.ok(!/<button\b/.test(generee) && !generee.includes("conventionGenerer"), "aucun bouton à l'état Générée");
+  assert.ok(!/<section\b/.test(generee) && !generee.includes("edit-card"), "ni la carte ni son titre : seulement le contenu");
 });
 
 // ---------------------------------------------------------------------------
