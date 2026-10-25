@@ -988,3 +988,33 @@ Fichiers modifiés : test/convention-generation.test.js, test/convention-pdfmake
 Build refait : pas nécessaire
 Commit : 7b378e5
 À faire plus tard : après un délai de 20 s dépassé, un nouvel essai échoue tant que la page n'est pas rechargée, alors que le message dit « Réessayez » (petite tâche dev-backend). Commentaire d'en-tête périmé dans convention-generation.test.js.
+
+## Tâche C44 — Mise en page du PDF (S7, tâche 7.7a) et bug de pageBreakBefore
+
+Date : 2026-10-25
+Agents : designer-ux (§11 de la note), Claude Code sans agent (mesures et décisions D-MEP), dev-backend (code et correction)
+Prompt : §11 « Mise en page du PDF » d'après le Word officiel, hors logos ; puis correction de pageBreakBefore
+
+Note /5 : sans objet
+Ce qui allait : §11 sans mesure inventée, mesures manquantes relevées dans le Word et décisions D-MEP-1 à 7 ; code : marges 2,5 cm, Roboto 11 pt justifié, titres, retraits et espaces, numéro de page seul absent de la page 1, bloc « Fait à… » + signatures insécable, nouveau marqueur {signatures:ft-gauche}. Questions posées au lieu d'inventer (puce, ordre des signatures).
+Ce que j'ai fait corriger : génération impossible (echec-inattendu) : pageBreakBefore écrite pour pdfmake 0.2, plantait en 0.3.3 (« Cannot read properties of undefined (reading 'length') », relevé par Hanta avec la pause sur exception du navigateur) ; corrigée et rendue robuste (renvoie false si un argument manque).
+Décisions de Hanta : puce ronde acceptée ; ordre intitulé, nom, fonction, espace pour signer ; un titre suivi d'au moins une ligne suffit.
+Tests : 476 tests, 1 fichier en échec au chargement (corrigé en C45), puis 582 passés, 0 échec. Vérifié à l'écran dans DEV7 : titre centré, texte justifié, sous-titres en retrait, numéros de page, « Fait à… » collé aux signatures avec France Travail à gauche.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : e8ab27a
+Reste à faire : logos (7.7b) ; longueur des pointillés (« Fait à », SIRET, cases vides) après l'essai sur papier (7.6) ; vérifier sur un vrai PDF qu'un titre en bas de page passe à la suivante. Agent : nouvelles commandes de lecture malgré la consigne.
+
+## Tâche C45 — Tests de la mise en page du PDF (S7, tâche 7.7a)
+
+Date : 2026-10-25
+Agent : testeur
+Prompt : réparer le chargement de convention-modele.test.js, mettre à jour l'ancienne mise en page, tester le §11 et pageBreakBefore
+
+Note /5 : sans objet
+Ce qui allait : chargement réparé sans toucher à script.js ; valeurs attendues écrites en clair (pas relues dans le réglage) ; pageBreakBefore testée avec des arguments absents ou à la façon de pdfmake 0.2 ; compte annoncé exact (582).
+Ce que j'ai fait corriger : rien.
+Tests : 582 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire
+Commit : 96f9185
