@@ -1092,3 +1092,19 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : 007c603 (code) et cdf540a (tests)
 Reste à faire (tâche 8.2) : modèle actif enregistré dans Modele, remplacement du PDF en une seule écriture, PDF_signe et Date_depot jamais touchés, ancien PDF jamais supprimé, robustesse si la réponse réseau se perd après une écriture réussie.
+
+## Tâche C51 — Re-génération : modèle actif, relecture de secours, et bug du blocage réseau (S8, tâche 8.2)
+
+Date : 2026-10-26
+Agents : dev-backend (code, deux passes), relecteur (deux diagnostics), testeur (tests, plusieurs passes)
+Prompt : tâche 8.2 (D-S8-4 à D-S8-7), puis cycle d'un bug (fenêtre bloquée en coupure réseau)
+
+Note /5 : 5
+Ce qui allait : modèle actif toujours enregistré dans Modele (D-S8-4) ; une seule écriture par re-génération, aucune suppression de pièce jointe (D-S8-5) ; PDF_signe et Date_depot jamais touchés ; ancien PDF intact en cas d'échec à toute étape (D-S8-6) ; relecture de secours (conventionPdfRattache) si le rattachement échoue sans refus clair ; incohérence signalée honnêtement (la fenêtre suit encore le modèle enregistré, pas l'actif, jusqu'au rechargement) et laissée de côté par décision de Hanta.
+Ce que j'ai fait corriger : bug grave trouvé par Hanta à l'écran : coupure réseau pendant une re-génération → fenêtre bloquée indéfiniment, aucun message, obligation de recharger la page. Deux enquêtes du relecteur : 1) aucun appel réseau n'avait de délai maximum sauf pdfmake → ajout de conventionAvecDelai, appliqué au jeton, aux logos, à l'envoi, au PATCH et à la relecture ; 2) le blocage persistait encore (conventionEnregistrer, le tout premier appel de la chaîne, n'était pas protégé) → corrigé. Côté tests : clearTimeout manquant dans le bac à sable (33 échecs), corrigé en une ligne (test/helpers/widget.js) ; 7 tests de minuterie ensuite mis à jour pour la minuterie supplémentaire de l'enregistrement.
+Tests : plusieurs cycles (682 → 1 échec → 697 avec 33 échecs clearTimeout → 697 avec 7 échecs de minuterie → 697 passés, 0 échec).
+Vérifié à l'écran dans DEV7 : re-génération réussie (nouveau PDF, même fichier remplacé, ancien absent de Grist en double) ; coupure réseau (Offline) : message d'échec affiché tout seul après l'attente, boutons déverrouillés, ancien PDF resté accessible par « Voir la convention ».
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-generation.test.js, test/convention-delais.test.js (nouveau), test/helpers/widget.js
+Build refait : oui
+Commit : 2b82bf3 (code) et c17b574 (tests)
+Reste à faire : D-S8-7 (vérifier si Grist nettoie seul les pièces jointes orphelines, avant R5) ; incohérence fenêtre/modèle actif après re-génération (amélioration possible, non urgente) ; aucun test ne déclenche directement le délai de 20 s de l'enregistrement lui-même (signalé par le testeur).
