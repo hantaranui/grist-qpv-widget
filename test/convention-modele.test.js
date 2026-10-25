@@ -258,16 +258,16 @@ test("apostrophe : une clé avec une autre ponctuation (accent grave) ne remplit
 const POINTILLES = ".".repeat(28);
 const CASES_CONNUES = [
   "Année", "Nom du club", "SIRET du club", "Siège du club", "Signataire du club", "Fonction du signataire",
-  "Nom de l’agence", "Adresse de l’agence", "Représentant de l’agence", "Fonction du représentant",
+  "Nom de l’agence", "Adresse de l’agence", "SIRET de l’agence", "Représentant de l’agence", "Fonction du représentant",
 ];
 
-// Jeu d'essai fictif : une action, un club, une agence, un contact. `club` et `modele` changent un détail.
-function donneesCases({club = {}, modele = {}} = {}) {
+// Jeu d'essai fictif : une action, un club, une agence, un contact. `club`, `agence` et `modele` changent un détail.
+function donneesCases({club = {}, agence = {}, modele = {}} = {}) {
   return {
     raw: {
       Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
       Structures: [{id: 7, Nom: "Club Exemple", SIRET: "12345678901234", Adresse: "1 rue Exemple", Code_postal: "75001", Ville: "Exemple-sur-Mer", ...club}],
-      Agences: [{id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Code_postal: "75002", Ville: "Exemple-Ville"}],
+      Agences: [{id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Code_postal: "75002", Ville: "Exemple-Ville", Siret: "98765432109876", ...agence}],
       Modeles_convention: [{id: 10, Dispositif: 3, Actif: true, Avec_annee: true, ...modele}],
       Contacts: [{id: 31, Club: 7, Prenom: "Camille", Nom: "Exemple", Fonction: "Présidente"}],
       Conventions: [],
@@ -283,6 +283,8 @@ test("cases connues toutes remplies : aucun pointillé, aucune case manquante", 
   const cases = valeursCases(donneesCases());
   assert.equal(cases["SIRET du club"], "12345678901234");
   assert.equal(cases["Signataire du club"], "Camille Exemple");
+  assert.equal(cases["SIRET de l’agence"], "98765432109876");
+  assert.equal(CASES_CONNUES.length, 11);
   assert.deepStrictEqual(Object.keys(cases).sort(), [...CASES_CONNUES].sort());
   assert.ok(Object.values(cases).every(valeur => valeur !== POINTILLES));
   assert.deepStrictEqual(manquantes(CASES_CONNUES.map(nom => `[${nom}]`).join(" "), cases), []);
@@ -301,6 +303,34 @@ test("case connue mais vide : pas de blocage (aucune case manquante) et le PDF r
   const cases = valeursCases(donneesCases({club: {SIRET: ""}}));
   assert.deepStrictEqual(manquantes("SIRET : [SIRET du club]", cases), []);
   assert.deepStrictEqual(remplir("SIRET : [SIRET du club]", cases), [{text: `SIRET : ${POINTILLES}`, style: "paragraphe"}]);
+});
+
+// Échoue si [SIRET de l’agence] n'est plus remplie par Agences.Siret (ou prend le SIRET du club).
+test("[SIRET de l’agence] : remplie par le SIRET de l'agence, distinct de celui du club", () => {
+  const cases = valeursCases(donneesCases());
+  assert.equal(cases["SIRET de l’agence"], "98765432109876");
+  assert.notEqual(cases["SIRET de l’agence"], cases["SIRET du club"]);
+  assert.deepStrictEqual(remplir("SIRET : [SIRET de l’agence]", cases), [{text: "SIRET : 98765432109876", style: "paragraphe"}]);
+});
+
+// Échoue si un SIRET d'agence vide (ou fait d'espaces) ne devient plus 28 points, ou bloque la génération.
+test("[SIRET de l’agence] vide ou faite d'espaces : 28 points, aucune case manquante, génération non bloquée", () => {
+  ["", "   "].forEach(vide => {
+    const cases = valeursCases(donneesCases({agence: {Siret: vide}}));
+    assert.equal(cases["SIRET de l’agence"], POINTILLES);
+    assert.deepStrictEqual(manquantes("SIRET : [SIRET de l’agence]", cases), []);
+    assert.deepStrictEqual(remplir("SIRET : [SIRET de l’agence]", cases), [{text: `SIRET : ${POINTILLES}`, style: "paragraphe"}]);
+    assert.equal(cases["Nom de l’agence"], "Agence Exemple");
+  });
+});
+
+// Échoue si la case écrite avec l'apostrophe droite ' ou courbe ’ n'est plus reconnue et remplie.
+test("[SIRET de l'agence] : apostrophe droite ou courbe dans le modèle, la case est remplie dans les deux cas", () => {
+  const cases = valeursCases(donneesCases());
+  ["SIRET de l'agence", "SIRET de l’agence"].forEach(nom => {
+    assert.deepStrictEqual(manquantes(`SIRET : [${nom}]`, cases), []);
+    assert.deepStrictEqual(remplir(`SIRET : [${nom}]`, cases), [{text: "SIRET : 98765432109876", style: "paragraphe"}]);
+  });
 });
 
 // Échoue si un champ du formulaire laissé vide (ou espaces) ne devient plus des points.
