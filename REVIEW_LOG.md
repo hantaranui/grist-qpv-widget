@@ -1048,3 +1048,18 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : b613b39 (code) et a29b460 (tests)
 Reste à faire : le vrai gras (partie B, auditeur-securite puis dev-backend) ; position exacte du numéro de page (1,25 cm) à vérifier à l'écran ; écart de 0,2 pt sous les logos, invisible, signalé pour mémoire.
+
+## Tâche C48 — Message d'information quand un logo manque (S7, tâche 7.7c)
+
+Date : 2026-10-25
+Agent : dev-interface
+Prompt : tâche 7.7c, afficher le message de la décision D-MEP-3 quand logosManquants n'est pas vide
+
+Note /5 : 5
+Ce qui allait : deux messages exacts selon le logo concerné ; les deux textes cohabitent dans la même alerte (deux lignes), pour respecter la règle « une seule alerte à la fois » de la note, sans écraser « Convention générée. » ; aucune classe inventée ; les textes du §5 déjà présents dans la note, vérifiés plutôt que dupliqués ; 634 tests toujours verts du premier coup.
+Ce que j'ai fait corriger : rien.
+Tests : 634 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : message affiché sans Logo, absent avec Logo rempli, lisible.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 96b4596
+Reste à faire : revoir si une alerte « succès » convient à un message qui demande de vérifier le modèle, une fois une variante d'alerte d'information confirmée dans le design system (§10 de la note).
