@@ -333,11 +333,13 @@ test("le bouton « Générer la convention » n'existe qu'à l'état À génére
   }
 });
 
-// Echoue si la zone #conventionBlocage (role="status") apparait hors de l'etat A generer,
-// disparait de cet etat quand rien ne manque, ou n'est pas vide quand rien ne manque.
-test("la zone #conventionBlocage (role=status) n'existe qu'à l'état À générer et reste vide quand rien ne manque", () => {
+// Echoue si la zone #conventionBlocage (role="status") apparait hors des etats A generer et
+// Generee (depuis la 8.1, pour « Re-générer »), disparait de ces etats quand rien ne manque, ou
+// n'est pas vide quand rien ne manque.
+test("la zone #conventionBlocage (role=status) n'existe qu'aux états À générer et Générée et reste vide quand rien ne manque", () => {
   const w = loadWidget();
-  for (const [nom, {bouton, jeu}] of Object.entries(ETATS)) {
+  for (const [nom, {jeu}] of Object.entries(ETATS)) {
+    const bouton = nom === "À générer" || nom === "Générée";
     const html = w.conventionBlocHtml(1, jeu());
     assert.equal(compte(html, /id="conventionBlocage"/g), bouton ? 1 : 0, nom);
     if (bouton) {
@@ -1044,4 +1046,78 @@ test("des caractères spéciaux dans le titre du modèle ou le nom d'un contact 
   m.choisir(41);
   assert.equal(m.element("clubFonction").value, "<i>Présidente</i> & Cie", "la fonction s'affiche telle quelle, comme du texte");
   assert.ok(!m.hote.innerHTML.includes("<i>"), "la fonction n'est pas écrite dans la page comme du HTML");
+});
+
+// ---------------------------------------------------------------------------
+// 10. Tache 8.1 : phrase « Le nouveau PDF remplacera… » a la re-generation
+// ---------------------------------------------------------------------------
+// La phrase se lit dans le HTML de la fenetre (conventionModalHtml) : fonction pure, sans
+// faux navigateur. Elle est presente seulement quand la ligne Conventions porte deja un
+// PDF genere (D-S8-2, note UX §12.3).
+
+const REMPLACEMENT = /<p>(Le nouveau PDF remplacera[^<]*)<\/p>/;
+const fenetreHtml = (conventions) => {
+  const w = loadWidget();
+  return w.conventionModalHtml(1, donneesFenetre({conventions}));
+};
+
+// Echoue si la phrase manque a la re-generation, n'est pas un <p> ordinaire (sans classe
+// d'alerte ni role), est apres l'alerte d'erreur ou apres la phrase sur les champs obligatoires
+// (elle doit etre tout en haut du corps), apparait plus d'une fois, ou n'a pas le texte exact.
+test("re-génération : « Le nouveau PDF remplacera la convention générée le … » est un paragraphe ordinaire, tout en haut du corps de la fenêtre", () => {
+  const html = fenetreHtml([convention({PDF_genere: PDF, Date_generation: secondes(2026, 3, 14)})]);
+  const trouve = REMPLACEMENT.exec(html);
+  assert.ok(trouve, "la phrase est présente");
+  assert.equal(trouve[1], "Le nouveau PDF remplacera la convention générée le 14/03/2026.");
+  assert.equal(compte(html, /Le nouveau PDF remplacera/g), 1, "une seule fois");
+  const corps = html.indexOf('<div class="modal-body">');
+  const phrase = html.indexOf("Le nouveau PDF remplacera");
+  const alerte = html.indexOf('id="conventionMessage"');
+  const obligatoires = html.indexOf("Les champs marqués d'un * sont obligatoires");
+  assert.ok(corps !== -1 && corps < phrase && phrase < alerte && phrase < obligatoires, "tout en haut du corps, avant l'alerte et avant la phrase sur les champs obligatoires");
+  assert.match(html.slice(corps, phrase), /^<div class="modal-body">\s*<p>$/, "rien entre le début du corps et la phrase, et le <p> n'a ni classe ni role (ni alerte, ni région annoncée)");
+});
+
+// Echoue si la date n'est pas au format jour/mois/annee avec les zeros (05/03/2026, pas 3/5/2026
+// ni 2026-03-05 ni 03/05/2026), ou si elle ne vient pas de Date_generation (la colonne Date_depot
+// d'un PDF signe ne doit pas etre lue).
+test("re-génération : la date de la phrase est au format jour/mois/année avec les zéros, et vient de Date_generation", () => {
+  const cas = [[secondes(2026, 3, 5), "05/03/2026"], [secondes(2026, 11, 27), "27/11/2026"], [secondes(2027, 1, 31), "31/01/2027"]];
+  for (const [valeur, attendu] of cas) {
+    const trouve = REMPLACEMENT.exec(fenetreHtml([convention({PDF_genere: PDF, Date_generation: valeur, Date_depot: secondes(2030, 9, 9)})]));
+    assert.equal(trouve[1], `Le nouveau PDF remplacera la convention générée le ${attendu}.`, attendu);
+  }
+});
+
+// Echoue si une date vide (null, 0, texte vide ou absente) laisse « le . », « le undefined » ou
+// « le 01/01/1970 » dans la phrase, ou fait disparaitre la phrase (le PDF existe quand meme).
+test("re-génération sans date (Date_generation vide) : « Le nouveau PDF remplacera la convention générée. », sans date", () => {
+  for (const vide of [null, 0, "", undefined]) {
+    const champs = {PDF_genere: PDF};
+    if (vide !== undefined) champs.Date_generation = vide;
+    const trouve = REMPLACEMENT.exec(fenetreHtml([convention(champs)]));
+    assert.ok(trouve, `date vide (${String(vide)}) : la phrase est présente`);
+    assert.equal(trouve[1], "Le nouveau PDF remplacera la convention générée.", `date vide : ${String(vide)}`);
+  }
+});
+
+// Echoue si la phrase apparait alors qu'il n'y a pas encore de PDF genere : aucune ligne
+// Conventions, ligne sans PDF_genere (informations seulement enregistrees), PDF_genere vide
+// (liste vide ou « ["L"] » seul), meme avec une Date_generation. conventionEstRegeneration doit
+// dire faux dans ces cas, vrai quand un PDF est rattache.
+test("première génération (aucun PDF généré) : pas de phrase « Le nouveau PDF remplacera… »", () => {
+  const w = loadWidget();
+  const cas = {
+    "aucune ligne Conventions": [],
+    "ligne sans PDF_genere": [convention({Annee: 2029})],
+    "PDF_genere vide (liste vide)": [convention({PDF_genere: [], Date_generation: secondes(2026, 3, 14)})],
+    "PDF_genere vide ([\"L\"] seul)": [convention({PDF_genere: ["L"], Date_generation: secondes(2026, 3, 14)})],
+    "PDF_genere null": [convention({PDF_genere: null})],
+  };
+  for (const [nom, conventions] of Object.entries(cas)) {
+    const jeu = donneesFenetre({conventions});
+    assert.equal(w.conventionEstRegeneration(1, jeu), false, `${nom} : pas une re-génération`);
+    assert.ok(!w.conventionModalHtml(1, jeu).includes("remplacera"), `${nom} : pas de phrase`);
+  }
+  assert.equal(w.conventionEstRegeneration(1, donneesFenetre({conventions: [convention({PDF_genere: PDF})]})), true, "avec un PDF généré : une re-génération");
 });

@@ -121,18 +121,23 @@ function enAttente() {
 // restent dans la page quand la fenêtre se ferme.
 // On attend la fin du chargement du widget AVANT de poser le jeu d'essai : sinon il
 // remplacerait state.raw en plein test.
+// Options : `conventions` (lignes de la table Conventions ; avec un PDF genere, le bloc est a
+// l'etat « Générée » et la fenetre s'ouvre pour une RE-generation), `action` (champs de l'action,
+// ex. {Agence: 0} pour bloquer la generation) et `ouverture` : "direct" (par defaut, la fenetre
+// est ouverte par openConvention), "regenerer" (le bouton « Re-générer » du bloc a le focus et
+// on clique dessus, comme la personne) ou "aucune" (la fenetre n'est pas ouverte).
 
-async function preparer({contacts = CONTACTS} = {}) {
+async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouverture = "direct"} = {}) {
   const w = loadWidget();
   await attendre();
   await attendre();
   w.state.raw = {
-    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
+    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, ...action}],
     Structures: [{...CLUB}],
     Agences: [{...AGENCE}],
     Modeles_convention: [{...MODELE}],
     Contacts: contacts.map((contact) => ({...contact})),
-    Conventions: [],
+    Conventions: conventions.map((ligne) => ({...ligne})),
   };
   w.state.tablesRefusees = [];
 
@@ -143,7 +148,7 @@ async function preparer({contacts = CONTACTS} = {}) {
   const enregistrements = [];
   const rendus = {fiche: 0};
   const ecritures = {alerte: 0, contenu: 0};
-  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionVoir"];
+  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionVoir", "conventionRegenerer"];
   let actif = null;
   let contenu = "";
   let fieldsets = [];
@@ -217,15 +222,21 @@ async function preparer({contacts = CONTACTS} = {}) {
 
   const zoneContenu = fabriquer("conventionBlocContenu", balise(blocHtml, "conventionBlocContenu"));
   let htmlContenu = w.conventionBlocContenuHtml(1, w.state);
+  // Les boutons « Voir la convention » et « Re-générer » (etat « Générée ») deviennent des elements
+  // de la page, qui peuvent recevoir le focus ; ils disparaissent quand le contenu n'en a plus.
+  const enregistrerBoutonsDuBloc = (valeur) => {
+    for (const id of ["conventionVoir", "conventionRegenerer"]) {
+      if (valeur.includes(`id="${id}"`)) registre.set(id, fabriquer(id, balise(valeur, id)));
+      else registre.delete(id);
+    }
+  };
+  enregistrerBoutonsDuBloc(htmlContenu);
   Object.defineProperty(zoneContenu, "innerHTML", {
     get: () => htmlContenu,
     set: (valeur) => {
       htmlContenu = valeur;
       ecritures.contenu += 1;
-      // Le bouton « Voir la convention » (etat « Générée ») devient un element de la page, qui peut
-      // recevoir le focus ; il disparait quand le contenu n'en a plus.
-      if (valeur.includes('id="conventionVoir"')) registre.set("conventionVoir", fabriquer("conventionVoir", balise(valeur, "conventionVoir")));
-      else registre.delete("conventionVoir");
+      enregistrerBoutonsDuBloc(valeur);
     },
   });
   registre.set("conventionBlocContenu", zoneContenu);
@@ -294,7 +305,15 @@ async function preparer({contacts = CONTACTS} = {}) {
     fonction: element("agenceFonction").value,
   });
 
-  w.openConvention(1);
+  if (ouverture === "direct") {
+    w.openConvention(1);
+  } else if (ouverture === "regenerer") {
+    w.bindConvention(1);
+    element("conventionRegenerer").focus();
+    element("conventionRegenerer").click();
+  } else {
+    w.bindConvention(1);
+  }
 
   return {
     w, hote, generation, enregistrements, ecritures, rendus, defilements, touche, soumettre, element, remplir, saisie,
@@ -703,12 +722,13 @@ function reussiteAvecPdf(m) {
 }
 
 // Echoue si, apres une reussite, la fenetre reste ouverte (state.conventionOpen, modal-open),
-// si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, puis le
-// bouton « Voir la convention » avec son texte cache, et plus le bouton « Générer la convention »),
-// si le message « Convention générée. » n'est pas dans une alerte alert-success placee dans la
-// zone role="status" du bloc, ou si le focus n'est pas sur « Voir la convention » (decision D-S7-6) :
-// le message de reussite, lui, ne recoit plus le focus.
-test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention », message « Convention générée. », focus sur « Voir la convention »", async () => {
+// si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, puis les
+// boutons « Voir la convention » (avec son texte cache) et « Re-générer », dans cet ordre, et plus
+// le bouton « Générer la convention »), si le message « Convention générée. » n'est pas dans une
+// alerte alert-success placee dans la zone role="status" du bloc, ou si le focus n'est pas sur
+// « Voir la convention » (decision D-S7-6, et note UX §12.1 : « Re-générer » existe mais ne recoit
+// pas le focus) : le message de reussite, lui, ne recoit plus le focus.
+test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention » puis « Re-générer », message « Convention générée. », focus sur « Voir la convention »", async () => {
   const m = await preparer();
   m.generation.comportement = reussiteAvecPdf(m);
   m.remplir();
@@ -723,8 +743,10 @@ test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la conven
     "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
   ]);
   const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
-  assert.equal(boutons.length, 1, "un seul bouton dans le bloc");
-  assert.match(boutons[0], /\sid="conventionVoir"/, "c'est « Voir la convention »");
+  assert.equal(boutons.length, 2, "deux boutons dans le bloc");
+  assert.match(boutons[0], /\sid="conventionVoir"/, "le premier est « Voir la convention »");
+  assert.match(boutons[1], /\sid="conventionRegenerer"/, "le deuxième est « Re-générer »");
+  assert.equal(texteDe(m.htmlContenu(), "button", "conventionRegenerer"), "Re-générer", "libellé de « Re-générer »");
   assert.equal(texteDe(m.htmlContenu(), "button", "conventionVoir"), "Voir la convention (s'ouvre dans un nouvel onglet)", "texte, puis texte caché");
   assert.match(decoder(m.htmlContenu()), /<span class="btn-content">Voir la convention<span class="sr-only"> \(s'ouvre dans un nouvel onglet\)<\/span><\/span>/, "le texte caché est dans un sr-only");
   assert.ok(!m.htmlContenu().includes("conventionGenerer"), "le bouton « Générer la convention » du bloc a disparu");
@@ -733,6 +755,7 @@ test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la conven
   assert.match(m.htmlZone(), /<div class="alert alert-success"/, "alerte de succès");
   assert.equal(lire(m.htmlZone()), MESSAGE_REUSSITE);
   assert.equal(m.actif(), m.element("conventionVoir"), "le focus est sur « Voir la convention »");
+  assert.notEqual(m.actif(), m.element("conventionRegenerer"), "le focus n'est pas sur « Re-générer »");
   assert.notEqual(m.actif(), m.element("conventionReussite"), "le focus n'est plus sur le message de réussite");
 });
 
@@ -754,4 +777,182 @@ test("réussite : seul le contenu du bloc est refait (la fiche n'est pas recharg
   assert.notEqual(m.hote.innerHTML, "", "la fenêtre se rouvre");
   assert.equal(m.touche("Escape"), true);
   assert.equal(m.hote.innerHTML, "", "Échap ferme : le verrou de la génération est levé");
+});
+
+// ---------------------------------------------------------------------------
+// 7. Tache 8.1 : « Re-générer » (fenetre ouverte depuis l'etat « Générée »)
+// ---------------------------------------------------------------------------
+// preparer({conventions: [CONVENTION_EXISTANTE], ouverture: "regenerer"}) : le bloc est a l'etat
+// « Générée », la personne met le focus sur « Re-générer » et clique. Sans `conventions`, c'est la
+// premiere generation. La generation elle-meme reste une doublure (comme plus haut).
+
+const GENEREE_LE = secondes(2026, 3, 14);
+const CONVENTION_EXISTANTE = {
+  id: 20, Action: 1, PDF_genere: ["L", 41], Date_generation: GENEREE_LE,
+  Annee: 2029, Signataire_club: 31, Representant_agence: "Dana Exemple", Fonction_representant: "Directrice adjointe",
+};
+const ANCIENNE_DISPONIBLE = "L'ancienne convention reste disponible.";
+const regeneration = () => preparer({conventions: [CONVENTION_EXISTANTE], ouverture: "regenerer"});
+
+// Echoue si le clic sur « Re-générer » n'ouvre pas la fenetre (state.conventionOpen, modal-open),
+// si elle n'est pas prerempli avec l'annee ENREGISTREE (2029, pas l'annee en cours), le signataire
+// (et sa fonction), le representant et sa fonction, si la phrase « Le nouveau PDF remplacera… »
+// manque dans la fenetre ouverte, si le pied cesse de dire « Générer la convention » (D-S8-1), ou
+// si le focus ne va pas sur le premier champ modifiable (« Année »).
+test("« Re-générer » : un clic ouvre la fenêtre préremplie (année enregistrée, signataire, représentant), avec la phrase de remplacement", async () => {
+  const m = await regeneration();
+  assert.notEqual(m.hote.innerHTML, "", "la fenêtre est ouverte");
+  assert.equal(m.w.state.conventionOpen, true, "state.conventionOpen");
+  assert.equal(m.corpsAClasse("modal-open"), true, "modal-open posé");
+  assert.ok(m.hote.innerHTML.includes("<p>Le nouveau PDF remplacera la convention générée le 14/03/2026.</p>"), "la phrase de remplacement est dans la fenêtre");
+  assert.equal(m.element("conventionAnnee").value, "2029", "l'année enregistrée, pas l'année en cours");
+  assert.equal(m.element("clubSignataire").value, "31", "le signataire enregistré");
+  assert.equal(m.element("clubFonction").value, "Présidente", "la fonction du signataire s'affiche");
+  assert.equal(m.element("agenceRepresentant").value, "Dana Exemple", "le représentant enregistré");
+  assert.equal(m.element("agenceFonction").value, "Directrice adjointe", "la fonction du représentant enregistrée");
+  assert.equal(texteDe(m.hote.innerHTML, "button", "conventionGenererFenetre"), LIBELLE, "le pied dit toujours « Générer la convention »");
+  assert.equal(m.actif(), m.element("conventionAnnee"), "le focus est sur « Année »");
+  assert.equal(m.generation.appels.length, 0, "ouvrir la fenêtre ne génère rien");
+});
+
+// Echoue si un clic sur « Re-générer » grise (agence manquante) ouvre quand meme la fenetre,
+// ou si le bouton grise n'est pas aria-disabled="true".
+test("« Re-générer » grisé (agence manquante) : un clic n'ouvre pas la fenêtre", async () => {
+  const m = await preparer({conventions: [CONVENTION_EXISTANTE], action: {Agence: 0}, ouverture: "aucune"});
+  assert.equal(m.element("conventionRegenerer").getAttribute("aria-disabled"), "true", "le bouton est grisé");
+  m.element("conventionRegenerer").focus();
+  m.element("conventionRegenerer").click();
+  assert.equal(m.hote.innerHTML, "", "la fenêtre ne s'ouvre pas");
+  assert.ok(!m.w.state.conventionOpen, "state.conventionOpen");
+  assert.equal(m.corpsAClasse("modal-open"), false, "modal-open absent");
+});
+
+// Echoue si « Fermer » ou Echap (sans avoir lance de generation) ne ferme pas la fenetre, ne rend
+// pas le focus a « Re-générer » (le bouton qui l'a ouverte), le rend a « Voir la convention », ou
+// touche a la convention enregistree (l'ancien PDF reste, rien n'est genere).
+test("« Re-générer » : « Fermer » ou Échap sans génération ferme la fenêtre et le focus revient sur « Re-générer »", async () => {
+  const fermetures = {
+    "« Fermer »": (m) => m.element("conventionFermer").click(),
+    "Échap": (m) => m.touche("Escape"),
+  };
+  for (const [nom, fermer] of Object.entries(fermetures)) {
+    const m = await regeneration();
+    assert.notEqual(m.hote.innerHTML, "", `${nom} : la fenêtre est ouverte avant`);
+    fermer(m);
+    assert.equal(m.hote.innerHTML, "", `${nom} : la fenêtre est fermée`);
+    assert.equal(m.w.state.conventionOpen, false, `${nom} : state.conventionOpen`);
+    assert.equal(m.corpsAClasse("modal-open"), false, `${nom} : modal-open retiré`);
+    assert.equal(m.actif(), m.element("conventionRegenerer"), `${nom} : le focus est revenu sur « Re-générer »`);
+    assert.notEqual(m.actif(), m.element("conventionVoir"), `${nom} : pas sur « Voir la convention »`);
+    assert.equal(m.generation.appels.length, 0, `${nom} : aucune génération`);
+    assert.deepEqual(m.w.state.raw.Conventions[0].PDF_genere, ["L", 41], `${nom} : l'ancien PDF reste rattaché`);
+    assert.equal(m.w.state.raw.Conventions[0].Date_generation, GENEREE_LE, `${nom} : l'ancienne date reste`);
+  }
+});
+
+// Un test par code. Echoue si, a la re-generation, le message de ce code (celui de la premiere
+// generation, mot pour mot) n'est pas suivi de « L'ancienne convention reste disponible. », ou si
+// le reste du comportement de l'echec change (fenetre ouverte, saisie gardee, tout deverrouille,
+// focus sur le bouton, defilement, nouveau clic possible, « Fermer » ferme).
+for (const [code, message] of Object.entries(ECHECS)) {
+  test(`re-génération, échec « ${code} » : le message habituel, puis « L'ancienne convention reste disponible. »`, async () => {
+    const m = await regeneration();
+    m.generation.comportement = echoue(code);
+    m.remplir();
+    await m.cliquerGenerer();
+    await verifierEchec(m, `${message} ${ANCIENNE_DISPONIBLE}`, code);
+  });
+}
+
+// Echoue si, a la re-generation, les messages de cases inconnues (une case, plusieurs, plus de
+// cinq) ne finissent pas par la phrase, ou si elle est ajoutee a un autre endroit que la fin.
+test("re-génération, échec « cases-inconnues » (une case, plusieurs, plus de cinq) : le message habituel, puis « L'ancienne convention reste disponible. »", async () => {
+  const cas = [
+    [["Case Exemple"], `La convention n'a pas pu être générée : le modèle contient une case inconnue, « Case Exemple ». ${FIN_CASES}`],
+    [["Case B", "Case A"], `La convention n'a pas pu être générée : le modèle contient des cases inconnues, « Case B », « Case A ». ${FIN_CASES}`],
+    [["C1", "C2", "C3", "C4", "C5", "C6", "C7"], `La convention n'a pas pu être générée : le modèle contient des cases inconnues, « C1 », « C2 », « C3 », « C4 », « C5 » et d'autres. ${FIN_CASES}`],
+  ];
+  for (const [cases, message] of cas) {
+    const m = await regeneration();
+    m.generation.comportement = echoue("cases-inconnues", {cases});
+    m.remplir();
+    await m.cliquerGenerer();
+    await verifierEchec(m, `${message} ${ANCIENNE_DISPONIBLE}`, `${cases.length} case(s)`);
+  }
+});
+
+// Echoue si, a la re-generation, un code inconnu, une erreur sans code, un rejet sans valeur ou
+// une liste de cases vide n'affichent pas le message de l'echec inattendu suivi de la phrase.
+test("re-génération : code inconnu, erreur sans code, rejet sans valeur ou cases sans nom lisible : message de l'échec inattendu, puis « L'ancienne convention reste disponible. »", async () => {
+  const cas = {
+    "code inconnu": () => Promise.reject(Object.assign(new Error("échec fictif"), {code: "code-que-personne-ne-connait"})),
+    "erreur sans code": () => Promise.reject(new Error("échec fictif")),
+    "rejet sans valeur": () => Promise.reject(undefined),
+    "cases sans nom lisible": echoue("cases-inconnues", {cases: []}),
+  };
+  for (const [nom, comportement] of Object.entries(cas)) {
+    const m = await regeneration();
+    m.generation.comportement = comportement;
+    m.remplir();
+    await m.cliquerGenerer();
+    await verifierEchec(m, `${ECHECS["echec-inattendu"]} ${ANCIENNE_DISPONIBLE}`, nom);
+  }
+});
+
+// Echoue si la phrase « L'ancienne convention reste disponible. » apparait dans un echec de PREMIERE
+// generation (il n'y a pas d'ancienne convention) : sans aucune ligne Conventions, ou avec une
+// ligne dont seules les informations sont enregistrees (pas de PDF genere), pour tous les codes d'echec.
+test("première génération : aucun message d'échec ne contient « L'ancienne convention reste disponible. »", async () => {
+  const contextes = {
+    "aucune ligne Conventions": [],
+    "ligne avec les informations enregistrées, sans PDF": [{id: 20, Action: 1, Annee: 2029, Signataire_club: 31}],
+  };
+  const echecs = {
+    ...Object.fromEntries(Object.keys(ECHECS).map((code) => [code, echoue(code)])),
+    "cases-inconnues": echoue("cases-inconnues", {cases: ["Case Exemple"]}),
+    "code inconnu": echoue("code-que-personne-ne-connait"),
+    "rejet sans valeur": () => Promise.reject(undefined),
+  };
+  for (const [contexte, conventions] of Object.entries(contextes)) {
+    for (const [code, comportement] of Object.entries(echecs)) {
+      const m = await preparer({conventions});
+      m.generation.comportement = comportement;
+      m.remplir();
+      await m.cliquerGenerer();
+      const texte = alerte(m).texte;
+      assert.ok(texte.length > 0, `${contexte}, ${code} : un message est affiché`);
+      assert.ok(!texte.includes("ancienne convention"), `${contexte}, ${code} : pas de phrase sur l'ancienne convention (« ${texte} »)`);
+    }
+  }
+});
+
+// Echoue si, a la re-generation, les champs a corriger affichent la phrase (dans l'alerte du haut ou
+// sous un champ), ou si l'alerte n'est plus « Certains champs sont à corriger. » mot pour mot.
+test("re-génération, champs à corriger : ni l'alerte ni les messages sous les champs ne contiennent « L'ancienne convention reste disponible. »", async () => {
+  for (const [nom, problemes] of Object.entries(CAS_CHAMPS)) {
+    const m = await regeneration();
+    m.generation.comportement = echoue("champs-a-corriger", {problemes});
+    m.remplir();
+    await m.cliquerGenerer();
+    const a = alerte(m);
+    assert.equal(a.visible, true, `${nom} : alerte visible`);
+    assert.equal(a.texte, ALERTE_CHAMPS, `${nom} : texte de l'alerte, sans la phrase`);
+    for (const {id, message} of problemes) {
+      assert.equal(lire(m.element(`${id}Erreur`).innerHTML), `Erreur : ${message}`, `${nom} : message sous ${id}, sans la phrase`);
+    }
+    assert.ok(!m.hote.innerHTML.includes("ancienne convention"), `${nom} : rien dans la fenêtre`);
+    assert.equal(m.element("conventionMessage").querySelector(".alert-content").textContent.includes("ancienne convention"), false, `${nom} : rien dans l'alerte`);
+  }
+});
+
+// Echoue si, a la re-generation, l'echec d'enregistrement des informations (etape 2) n'affiche pas
+// le message d'enregistrement existant tel quel (il ne parle pas de generation) : avec la phrase
+// ajoutee, l'egalite exacte echouerait.
+test("re-génération, échec d'enregistrement des informations (étape 2) : le message d'enregistrement tel quel, sans « L'ancienne convention reste disponible. »", async () => {
+  const m = await regeneration();
+  m.generation.comportement = echoue("enregistrement-echoue");
+  m.remplir();
+  await m.cliquerGenerer();
+  assert.ok(!alerte(m).texte.includes("ancienne convention"), "pas de phrase sur l'ancienne convention");
+  await verifierEchec(m, MESSAGE_ENREGISTREMENT, "enregistrement-echoue");
 });
