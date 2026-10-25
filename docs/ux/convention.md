@@ -721,7 +721,7 @@ Conversion utilisée : 1 cm = 28,35 pt, donc 2,5 cm = 70,9 pt. Page A4 (21 × 29
 | Police | Marianne (voir §11.6) | Roboto |
 | Taille du texte | 11 pt | 11 pt (identique) |
 | Alignement du texte | justifié | non justifié |
-| Interligne | simple | non précisé dans le code (réglé à « simple », décision de Hanta du 2026-10-25) |
+| Interligne (mis à jour le 2026-10-25 (lisibilité)) | simple | **1,2 pour tout le texte** (au lieu de simple), décision de Hanta du 2026-10-25 : le PDF est volontairement plus aéré que le Word, pour les personnes qui voient mal (on ne peut pas changer la police d'un document imprimé) |
 
 **Éléments du format des modèles** (la syntaxe des modèles ne change pas, voir le commentaire de `conventionVersContenuPdf`) :
 
@@ -731,18 +731,18 @@ Conversion utilisée : 1 cm = 28,35 pt, donc 2,5 cm = 70,9 pt. Page A4 (21 × 29
 | `##` titre d'article | 11 pt | gras | à gauche | 18 pt | 8 pt |
 | Ligne entièrement en gras, seule (par exemple « En amont de l'opération, France Travail : ») | 11 pt | gras | justifié, comme le texte | 0 pt | 8 pt |
 | `###` sous-titre (« 4.1 »…) | 11 pt | gras | à gauche, retrait à gauche de 1,25 cm | 12 pt | 8 pt |
-| Paragraphe | 11 pt | normal | justifié | 6 pt | 0 |
-| Élément de liste (à puces ou numérotée) | 11 pt | normal | justifié | 0 pt | 4 pt après chaque élément |
+| Paragraphe (mis à jour le 2026-10-25 (lisibilité)) | 11 pt | normal | justifié | 6 pt | 10 pt (au lieu de 0) |
+| Élément de liste (à puces ou numérotée) (mis à jour le 2026-10-25 (lisibilité)) | 11 pt | normal | justifié | 0 pt | 6 pt après chaque élément (au lieu de 4) |
 | Citation (`> `) : absente des modèles officiels (choix de Hanta) | 11 pt | normal | justifié, retrait à gauche de 1,25 cm, comme les listes (choix de Hanta) | 6 pt, comme un paragraphe (choix de Hanta) | 0 pt, comme un paragraphe (choix de Hanta) |
-| Note (`[^1]`) : regroupées à la fin du document (question Q-A) | 10 pt | normal | non relevé | 12 pt avant le bloc des notes (choix de Hanta) | 0 pt (interligne simple) |
+| Note (`[^1]`) : regroupées à la fin du document (question Q-A) | 10 pt | normal | non relevé | 12 pt avant le bloc des notes (choix de Hanta) | 0 pt (interligne 1,2 comme tout le texte, mis à jour le 2026-10-25 (lisibilité)) |
 | `{saut-de-page}` | sans objet | sans objet | sans objet | sans objet | sans objet |
 | Bloc de signature | 11 pt | voir §11.5 | voir §11.5 | voir §11.4 | voir §11.4 |
 
 Règles à retenir :
 
 1. **Les titres `##` et `###` rapprochés.** Les espaces avant et après des `##` et `###` s'additionnent, comme dans Word (décision de Hanta du 2026-10-25) : entre un titre d'article et son premier sous-titre, 8 pt après + 12 pt avant, plus les autres espaces éventuels.
-2. **Gras dans le texte** (`**gras**`) : même taille que le texte, police grasse. Italique, souligné et exposant : inchangés, rien n'a été relevé sur eux.
-3. **Liste.** Liste à puces : puce « - », retrait à gauche de 1,25 cm, 0,63 cm entre la puce et le texte, 4 pt après chaque élément. Liste numérotée : même retrait, numérotation « 1. ». 0 pt avant, texte justifié (décision de Hanta du 2026-10-25).
+2. **Gras dans le texte** (`**gras**`) : même taille que le texte, police grasse (mis à jour le 2026-10-25 (lisibilité)) : un vrai gras (Roboto Bold) au lieu de la graisse « medium » de Roboto fournie avec pdfmake, qui se distingue mal du texte. La source du fichier de police sera choisie par auditeur-securite (version figée, empreinte SRI), comme pour pdfmake ; en attendant, le gras actuel reste en place. Italique, souligné et exposant : inchangés, rien n'a été relevé sur eux.
+3. **Liste.** Liste à puces : puce « - », retrait à gauche de 1,25 cm, 0,63 cm entre la puce et le texte, 6 pt après chaque élément (au lieu de 4, mis à jour le 2026-10-25 (lisibilité)). Liste numérotée : même retrait, numérotation « 1. ». 0 pt avant, texte justifié (décision de Hanta du 2026-10-25).
 4. **Début de page.** Word garde l'espace avant d'un paragraphe en haut de la première page, mais pas toujours après un saut de page. Écart minime, à regarder sur le PDF.
 5. **Texte justifié et pointillés.** Une longue suite de points est un seul « mot » : sur une ligne justifiée, elle peut créer de grands vides. À vérifier sur le premier PDF, avec une zone en pointillés réelle.
 
