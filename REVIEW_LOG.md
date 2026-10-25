@@ -1063,3 +1063,17 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
 Build refait : oui
 Commit : 96b4596
 Reste à faire : revoir si une alerte « succès » convient à un message qui demande de vérifier le modèle, une fois une variante d'alerte d'information confirmée dans le design system (§10 de la note).
+
+## Tâche C49 — Case [SIRET de l'agence] (S7, suite des cases officielles)
+
+Date : 2026-10-25
+Agents : Claude Code sans agent (note), dev-backend (code), testeur (tests)
+Prompt : ajout d'une 11e case officielle, SIRET de l'agence lu dans Agences.Siret, suite à la comparaison des modèles avec le Word officiel
+
+Note /5 : sans objet
+Ce qui allait : case ajoutée à CONVENTION_CASES, conventionInfos et conventionValeursCases ; apostrophe droite et courbe acceptées, comme les autres cases ; SIRET vide traité comme les autres cases connues mais vides (pointillés, pas de blocage) ; jamais écrit dans la console ; questions posées plutôt que deviner.
+Ce que j'ai fait corriger : 1 test cassé par le jeu de données qui ne donnait pas de SIRET d'agence (comportement attendu, pas un bug).
+Tests : 634 tests, 1 échec attendu, puis 637 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : f95e87c (code) et f6578ab (tests)
