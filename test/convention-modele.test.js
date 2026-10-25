@@ -13,7 +13,7 @@ const w = loadWidget();
 // l'hote : on les ramene a des valeurs simples avant de comparer.
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const convertir = (texte) => plain(w.conventionVersContenuPdf(texte));
-// Un élément de liste porte le style elementListe (les 4 pt d'espace après), voir §11.
+// Un élément de liste porte le style elementListe (les 6 pt d'espace après), voir §11.
 const ITEM = (text) => ({text, style: "elementListe"});
 
 test("deux paragraphes séparés par une ligne vide ; un retour à la ligne simple reste dans le paragraphe", () => {
@@ -741,9 +741,19 @@ test("marges de la page : 2,5 cm partout (gauche, haut, droite, bas), page A4", 
   doc.pageMargins.forEach(marge => assert.ok(Math.abs(marge - CM(2.5)) < 1e-9, `marge ${marge}`));
 });
 
-// Échoue si la police, la taille, la justification ou l'interligne simple changent.
-test("texte courant : Roboto 11 pt, justifié, interligne simple", () => {
-  assert.deepStrictEqual(PDF_VIDE().defaultStyle, {font: "Roboto", fontSize: 11, alignment: "justify", lineHeight: 1});
+// Échoue si la police, la taille, la justification ou l'interligne de 1,2 (§11.1, mis à jour le 2026-10-25) changent.
+test("texte courant : Roboto 11 pt, justifié, interligne 1,2", () => {
+  assert.deepStrictEqual(PDF_VIDE().defaultStyle, {font: "Roboto", fontSize: 11, alignment: "justify", lineHeight: 1.2});
+});
+
+// Échoue si le numéro de page perd lineHeight: 1 : avec l'interligne 1,2 du texte, la place de sa
+// ligne grandirait et il ne serait plus à 1,25 cm du bas de la page.
+test("pied de page : le numéro garde l'interligne simple (lineHeight 1), malgré l'interligne 1,2 du texte", () => {
+  const doc = documentPdf("Texte", {});
+  assert.equal(plain(doc.defaultStyle).lineHeight, 1.2, "le texte courant est bien à 1,2");
+  [2, 3, 10].forEach(page => {
+    assert.equal(plain(doc.footer(page, 12)).lineHeight, 1, `numéro de la page ${page}`);
+  });
 });
 
 // Échoue si la taille, le gras, l'alignement ou les espaces d'un style s'écartent du tableau du §11.1.
@@ -754,10 +764,10 @@ test("styles : tailles, gras, alignements, retraits et espaces avant/après des 
   assert.deepStrictEqual(styles.titre2, {fontSize: 11, bold: true, alignment: "left", margin: [0, 18, 0, 8]});
   assert.deepStrictEqual(styles.titre3, {fontSize: 11, bold: true, alignment: "left", margin: [RETRAIT, 12, 0, 8]});
   assert.deepStrictEqual(styles.titre, {fontSize: 11, bold: true, margin: [0, 0, 0, 8]});
-  assert.deepStrictEqual(styles.paragraphe, {margin: [0, 6, 0, 0]});
+  assert.deepStrictEqual(styles.paragraphe, {margin: [0, 6, 0, 10]});
   assert.deepStrictEqual(styles.retrait, {margin: [RETRAIT, 0, 0, 0]});
   assert.deepStrictEqual(styles.liste, {margin: [RETRAIT, 0, 0, 0]});
-  assert.deepStrictEqual(styles.elementListe, {margin: [0, 0, 0, 4]});
+  assert.deepStrictEqual(styles.elementListe, {margin: [0, 0, 0, 6]});
   assert.deepStrictEqual(styles.note, {fontSize: 10, margin: [0, 0, 0, 0]});
 });
 
@@ -785,7 +795,7 @@ test("les trois titres et la ligne en gras portent headlineLevel 1 ; paragraphes
   blocs.filter(b => !titres.includes(b)).forEach(b => assert.equal(Object.hasOwn(b, "headlineLevel"), false));
 });
 
-// Échoue si un élément de liste perd son style elementListe (les 4 pt après chaque élément viennent de lui).
+// Échoue si un élément de liste perd son style elementListe (les 6 pt après chaque élément viennent de lui).
 test("liste à puces et liste numérotée : chaque élément porte le style elementListe, la liste porte le style liste", () => {
   const [puces, numerotee] = convertir("- a\n- b\n\n1. un\n2. deux");
   assert.equal(puces.style, "liste");
