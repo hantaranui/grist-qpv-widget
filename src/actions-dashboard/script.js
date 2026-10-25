@@ -1475,7 +1475,9 @@ function escapeAttr(value) {
 //  - reperes, chacun seul sur sa ligne (au premier niveau, pas dans un retrait) :
 //      {saut-de-page}         saut de page ;
 //      {signatures}           bloc de signature a deux colonnes (club a gauche, agence a droite) ;
-//      {signatures:lieu-date} pareil, avec "A ..., le ..." en tete de chaque colonne.
+//      {signatures:lieu-date} pareil, avec "A ..., le ..." en tete de chaque colonne ;
+//      {signatures:ft-gauche} une ligne "Fait a ..., le ..." au-dessus, puis France Travail
+//                             a gauche et le club a droite (le tout sur la meme page).
 //  - notes renumerotees 1, 2, 3 dans l'ordre du premier appel, quelle que soit l'etiquette ecrite.
 //    Une note definie mais jamais citee est numerotee apres les autres (voir conventionProblemesNotes).
 function conventionVersContenuPdf(texte, valeurs) {
@@ -1485,9 +1487,12 @@ function conventionVersContenuPdf(texte, valeurs) {
   definitions
     .slice()
     .sort((a, b) => numeros.get(a.etiquette) - numeros.get(b.etiquette))
-    .forEach(note => {
+    .forEach((note, index) => {
       const runs = conventionRuns(note.texte, valeurs, numeros);
-      blocs.push({text: conventionTexte([{text: String(numeros.get(note.etiquette)), sup: true}, {text: ' '}, ...runs]), style: 'note'});
+      const bloc = {text: conventionTexte([{text: String(numeros.get(note.etiquette)), sup: true}, {text: ' '}, ...runs]), style: 'note'};
+      // Seule la premiere note porte l'espace avant : il separe le bloc des notes du texte.
+      if (index === 0) bloc.margin = [0, CONVENTION_MISE_EN_PAGE.notes.espaceAvant, 0, 0];
+      blocs.push(bloc);
     });
   return blocs;
 }
@@ -1570,6 +1575,13 @@ function conventionValeurDeCase(valeurs, nom) {
   return String(valeur);
 }
 
+// Reperes de signature (chacun seul sur sa ligne) et ce qu'ils demandent a conventionSignatures.
+const CONVENTION_REPERES_SIGNATURES = new Map([
+  ['{signatures}', {avecLieuDate: false, ftAGauche: false}],
+  ['{signatures:lieu-date}', {avecLieuDate: true, ftAGauche: false}],
+  ['{signatures:ft-gauche}', {avecLieuDate: false, ftAGauche: true}],
+]);
+
 // Regroupe les lignes en blocs : titre, retrait, liste ou paragraphe.
 // Le retrait n'est reconnu qu'au premier niveau : un "> " dans un retrait reste du texte.
 function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
@@ -1596,14 +1608,17 @@ function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
   const titre = (style, runs) => {
     // Le style du titre porte deja le gras : on ne le repete pas dans le texte.
     const sansGras = runs.map(run => { const copie = {...run}; delete copie.bold; return copie; });
-    blocs.push({text: conventionTexte(sansGras), style});
+    // headlineLevel ne change rien a l'aspect : il permet seulement de reperer les titres
+    // pour ne jamais en laisser un seul en bas de page (voir pageBreakBefore plus bas).
+    blocs.push({text: conventionTexte(sansGras), style, headlineLevel: 1});
   };
   const ajouterItem = (type, debut, contenu) => {
     if (!liste || liste.type !== type) {
       fermer();
       liste = {type, items: [], debut};
     }
-    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs, numeros))});
+    // Le style donne les 4 pt d'espace apres chaque element (la marge n'est pas heritee de la liste).
+    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs, numeros)), style: 'elementListe'});
   };
 
   for (let i = 0; i < lignes.length; i++) {
@@ -1614,9 +1629,10 @@ function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
     } else if (retraitAutorise && ligne.trim() === '{saut-de-page}') {
       fermer();
       blocs.push({text: '', pageBreak: 'after'});
-    } else if (retraitAutorise && (ligne.trim() === '{signatures}' || ligne.trim() === '{signatures:lieu-date}')) {
+    } else if (retraitAutorise && CONVENTION_REPERES_SIGNATURES.has(ligne.trim())) {
       fermer();
-      blocs.push(conventionSignatures(ligne.trim() === '{signatures:lieu-date}', valeurs));
+      const repere = CONVENTION_REPERES_SIGNATURES.get(ligne.trim());
+      blocs.push(conventionSignatures(repere.avecLieuDate, valeurs, repere.ftAGauche));
     } else if (retraitAutorise && ligne.startsWith('>')) {
       fermer();
       const interieur = [];
@@ -1718,29 +1734,48 @@ function conventionTexte(runs) {
 }
 
 // ---- Convention : mise en page du PDF (tout ce qui se regle sur papier est ici) ----
-// Les valeurs seront ajustees sur papier (tache 7.6) : on ne change que cet objet.
+// Les valeurs viennent de docs/ux/convention.md, section 11 (mesures du Word officiel).
 // Tailles en points (1 pt = 1/72 pouce), marges [gauche, haut, droite, bas].
+// Dans un style, "margin" se lit [gauche, haut, droite, bas] : le 2e chiffre est l'espace
+// avant, le 4e l'espace apres. pdfmake additionne les espaces de deux blocs qui se suivent.
+const CONVENTION_POINTS_PAR_CM = 28.35;
 const CONVENTION_MISE_EN_PAGE = {
-  pageMargins: [56, 72, 56, 64],
-  defaultStyle: {fontSize: 11},
+  pageMargins: [2.5, 2.5, 2.5, 2.5].map(cm => cm * CONVENTION_POINTS_PAR_CM),
+  // Texte courant : Roboto 11 pt, justifie, interligne simple (lineHeight 1).
+  // Les autres styles heritent de ces reglages, sauf ceux qu'ils redefinissent.
+  defaultStyle: {font: 'Roboto', fontSize: 11, alignment: 'justify', lineHeight: 1},
   logo: {width: 90, margin: [56, 24, 0, 0]},
-  pied: {fontSize: 9},
-  signatures: {lignesVides: 4, espaceEntreColonnes: 24},
+  // Numero de page : 9 pt, a droite, a 1,25 cm du bas de la page.
+  pied: {fontSize: 9, distanceBas: 1.25 * CONVENTION_POINTS_PAR_CM},
+  notes: {espaceAvant: 12},
+  signatures: {
+    lignesVides: 4,
+    espaceEntreColonnes: 24,
+    // Seulement pour {signatures:ft-gauche} :
+    espaceSousIntitules: 3 * CONVENTION_POINTS_PAR_CM,
+    espaceAvantLieuDate: 18,
+  },
   styles: {
-    titre1: {fontSize: 18, bold: true, margin: [0, 0, 0, 12]},
-    titre2: {fontSize: 14, bold: true, margin: [0, 12, 0, 6]},
-    titre3: {fontSize: 12, bold: true, margin: [0, 8, 0, 4]},
-    titre: {fontSize: 11, bold: true, margin: [0, 8, 0, 4]},
-    paragraphe: {margin: [0, 0, 0, 8]},
-    retrait: {margin: [28, 0, 0, 8]},
-    liste: {margin: [14, 0, 0, 8]},
-    note: {fontSize: 9, margin: [0, 0, 0, 2]},
+    titre1: {fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 8]},
+    titre2: {fontSize: 11, bold: true, alignment: 'left', margin: [0, 18, 0, 8]},
+    titre3: {fontSize: 11, bold: true, alignment: 'left', margin: [1.25 * CONVENTION_POINTS_PAR_CM, 12, 0, 8]},
+    // Ligne entierement en gras : justifiee comme le texte.
+    titre: {fontSize: 11, bold: true, margin: [0, 0, 0, 8]},
+    paragraphe: {margin: [0, 6, 0, 0]},
+    // Citation : l'espace avant vient du paragraphe qu'elle contient (6 pt), pas du retrait.
+    retrait: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
+    liste: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
+    elementListe: {margin: [0, 0, 0, 4]},
+    note: {fontSize: 10, margin: [0, 0, 0, 0]},
   },
 };
 
-// Bloc de signature a deux colonnes : club a gauche, agence a droite.
+// Bloc de signature a deux colonnes de meme largeur : club a gauche, agence a droite.
+// Avec ftAGauche : une ligne "Fait a ..., le ..." au-dessus, France Travail a gauche, club a droite,
+// intitules en gras, 3 cm d'espace pour la signature ; ligne et colonnes forment un seul bloc
+// qui ne se coupe jamais (s'il ne tient pas en bas de page, il passe en entier a la suivante).
 // Une case sans valeur reste ecrite [Nom], comme dans le reste du texte.
-function conventionSignatures(avecLieuDate, valeurs) {
+function conventionSignatures(avecLieuDate, valeurs, ftAGauche) {
   const reglages = CONVENTION_MISE_EN_PAGE.signatures;
   const valeurOuCase = nom => {
     const valeur = conventionValeurDeCase(valeurs, nom);
@@ -1750,19 +1785,30 @@ function conventionSignatures(avecLieuDate, valeurs) {
     const lignes = [];
     if (avecLieuDate) lignes.push({text: 'À ............................, le ............................', style: 'paragraphe'});
     lignes.push(
-      {text: titre, style: 'paragraphe'},
+      ftAGauche ? {text: titre, bold: true, style: 'paragraphe'} : {text: titre, style: 'paragraphe'},
       {text: valeurOuCase(nomPersonne), bold: true, style: 'paragraphe'},
       {text: valeurOuCase(nomFonction), style: 'paragraphe'},
-      {text: '\n'.repeat(reglages.lignesVides), style: 'paragraphe'}
+      // Espace pour la signature manuscrite. Une ligne de 1 pt (texte d'un espace) porte la marge :
+      // une marge seule, sans ligne de texte, ne serait pas assez sure.
+      ftAGauche
+        ? {text: ' ', fontSize: 1, margin: [0, 0, 0, reglages.espaceSousIntitules]}
+        : {text: '\n'.repeat(reglages.lignesVides), style: 'paragraphe'}
     );
     return {width: '*', stack: lignes};
   };
-  return {
-    columns: [
-      colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire'),
-      colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant'),
-    ],
+  const club = colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire');
+  const agence = colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant');
+  const colonnes = {
+    columns: ftAGauche ? [agence, club] : [club, agence],
     columnGap: reglages.espaceEntreColonnes,
+    unbreakable: true,
+  };
+  if (!ftAGauche) return colonnes;
+  return {
+    stack: [
+      {text: 'Fait à ............................, le ............................', margin: [0, reglages.espaceAvantLieuDate, 0, 0]},
+      colonnes,
+    ],
     unbreakable: true,
   };
 }
@@ -1777,7 +1823,32 @@ function conventionDocumentPdf(texte, valeurs, options) {
     pageMargins: mise.pageMargins,
     defaultStyle: mise.defaultStyle,
     content: conventionVersContenuPdf(texte, valeurs),
-    footer: (page, total) => ({text: `Page ${page} sur ${total}`, alignment: 'center', fontSize: mise.pied.fontSize}),
+    // Numero de page seul, a droite, absent de la premiere page. Le pied de page commence au
+    // bord de la marge du bas : on le descend pour que le bas du numero soit a 1,25 cm du bas
+    // de la page (1,17 = hauteur d'une ligne de Roboto, en multiples de la taille du texte).
+    footer: page => {
+      if (page === 1) return {text: ''};
+      const espaceAvant = mise.pageMargins[3] - mise.pied.distanceBas - mise.pied.fontSize * 1.17;
+      return {text: String(page), alignment: 'right', fontSize: mise.pied.fontSize, margin: [mise.pageMargins[0], espaceAvant, mise.pageMargins[2], 0]};
+    },
+    // Un titre n'est jamais seul en bas de page : s'il n'est suivi, sur sa page, que d'autres
+    // titres (ou de rien), il passe a la page suivante avec ce qui le suit. On ne saute pas
+    // un titre deja tout en haut d'une page (sinon il sauterait sans fin).
+    // pdfmake 0.3 appelle pageBreakBefore(noeud, aides) : « aides » est un objet qui porte
+    // deux FONCTIONS, getFollowingNodesOnPage() et getPreviousNodesOnPage(), qui renvoient les
+    // listes. En cas de souci (argument absent, liste illisible), on renvoie false : pas de saut
+    // de page, et la generation n'est jamais bloquee par la mise en page.
+    pageBreakBefore: (noeud, aides) => {
+      try {
+        if (!noeud || !noeud.headlineLevel || !aides) return false;
+        const suivants = aides.getFollowingNodesOnPage();
+        const precedents = aides.getPreviousNodesOnPage();
+        if (!Array.isArray(suivants) || !Array.isArray(precedents)) return false;
+        return precedents.length > 0 && suivants.every(autre => autre.headlineLevel);
+      } catch (erreur) {
+        return false;
+      }
+    },
     styles: mise.styles,
   };
   if (logo) {
