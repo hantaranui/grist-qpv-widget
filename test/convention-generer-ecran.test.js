@@ -143,7 +143,7 @@ async function preparer({contacts = CONTACTS} = {}) {
   const enregistrements = [];
   const rendus = {fiche: 0};
   const ecritures = {alerte: 0, contenu: 0};
-  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite"];
+  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionVoir"];
   let actif = null;
   let contenu = "";
   let fieldsets = [];
@@ -219,7 +219,14 @@ async function preparer({contacts = CONTACTS} = {}) {
   let htmlContenu = w.conventionBlocContenuHtml(1, w.state);
   Object.defineProperty(zoneContenu, "innerHTML", {
     get: () => htmlContenu,
-    set: (valeur) => { htmlContenu = valeur; ecritures.contenu += 1; },
+    set: (valeur) => {
+      htmlContenu = valeur;
+      ecritures.contenu += 1;
+      // Le bouton « Voir la convention » (etat « Générée ») devient un element de la page, qui peut
+      // recevoir le focus ; il disparait quand le contenu n'en a plus.
+      if (valeur.includes('id="conventionVoir"')) registre.set("conventionVoir", fabriquer("conventionVoir", balise(valeur, "conventionVoir")));
+      else registre.delete("conventionVoir");
+    },
   });
   registre.set("conventionBlocContenu", zoneContenu);
 
@@ -696,10 +703,12 @@ function reussiteAvecPdf(m) {
 }
 
 // Echoue si, apres une reussite, la fenetre reste ouverte (state.conventionOpen, modal-open),
-// si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, sans
-// bouton « Générer la convention »), si le message « Convention générée. » n'est pas dans une
-// alerte alert-success placee dans la zone role="status" du bloc, ou si le focus n'est pas sur ce message.
-test("réussite : fenêtre fermée, bloc « Générée » sans bouton, message « Convention générée. », focus sur le message", async () => {
+// si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, puis le
+// bouton « Voir la convention » avec son texte cache, et plus le bouton « Générer la convention »),
+// si le message « Convention générée. » n'est pas dans une alerte alert-success placee dans la
+// zone role="status" du bloc, ou si le focus n'est pas sur « Voir la convention » (decision D-S7-6) :
+// le message de reussite, lui, ne recoit plus le focus.
+test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention », message « Convention générée. », focus sur « Voir la convention »", async () => {
   const m = await preparer();
   m.generation.comportement = reussiteAvecPdf(m);
   m.remplir();
@@ -713,13 +722,18 @@ test("réussite : fenêtre fermée, bloc « Générée » sans bouton, message �
     "Convention générée le 14/03/2026.",
     "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
   ]);
-  assert.ok(!/<button\b/.test(m.htmlContenu()) && !m.htmlContenu().includes("conventionGenerer"), "le bouton « Générer la convention » du bloc a disparu");
+  const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
+  assert.equal(boutons.length, 1, "un seul bouton dans le bloc");
+  assert.match(boutons[0], /\sid="conventionVoir"/, "c'est « Voir la convention »");
+  assert.equal(texteDe(m.htmlContenu(), "button", "conventionVoir"), "Voir la convention (s'ouvre dans un nouvel onglet)", "texte, puis texte caché");
+  assert.match(decoder(m.htmlContenu()), /<span class="btn-content">Voir la convention<span class="sr-only"> \(s'ouvre dans un nouvel onglet\)<\/span><\/span>/, "le texte caché est dans un sr-only");
+  assert.ok(!m.htmlContenu().includes("conventionGenerer"), "le bouton « Générer la convention » du bloc a disparu");
 
   assert.equal(m.zoneMessage.getAttribute("role"), "status", "la zone de message est la région role=status du bloc");
   assert.match(m.htmlZone(), /<div class="alert alert-success"/, "alerte de succès");
   assert.equal(lire(m.htmlZone()), MESSAGE_REUSSITE);
-  assert.equal(m.actif(), m.element("conventionReussite"), "le focus est sur le message de réussite");
-  assert.equal(m.element("conventionReussite").getAttribute("tabindex"), "-1", "le message peut recevoir le focus sans entrer dans l'ordre de Tab");
+  assert.equal(m.actif(), m.element("conventionVoir"), "le focus est sur « Voir la convention »");
+  assert.notEqual(m.actif(), m.element("conventionReussite"), "le focus n'est plus sur le message de réussite");
 });
 
 // Echoue si la reussite recharge la fiche (renderEdit : ce qui est saisi et pas enregistre

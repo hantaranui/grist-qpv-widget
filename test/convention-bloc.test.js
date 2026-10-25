@@ -253,12 +253,21 @@ const ETATS_A_TESTER = {
   "Droits insuffisants": () => donnees({refusees: ["Conventions"]}),
 };
 
+// Le bouton de l'etat Generee (tache 7.4) : « Voir la convention », puis son texte cache pour
+// les lecteurs d'ecran, dans un <span class="sr-only">. Le HTML est lu sans les entites
+// (l'apostrophe est ecrite &#39; dans la page).
+const TEXTE_VOIR = "Voir la convention";
+const TEXTE_VOIR_CACHE = " (s'ouvre dans un nouvel onglet)";
+const BOUTON_VOIR = /<button\b[^>]*\sid="conventionVoir"[^>]*>\s*<span class="btn-content">([\s\S]*?)<\/span>\s*<\/button>/;
+
 // Echoue si le bloc contient un lien, un champ, un menu ou un gestionnaire en
-// ligne dans l'un des cinq etats, un bouton ailleurs qu'a l'etat A generer, ou
-// un deuxieme bouton a cet etat (sa tache n'en prevoit qu'un). Depuis la 7.2b, la zone de
-// message (#conventionAlerte, role="status", vide) est dans les cinq etats : c'est le seul
-// role permis hors de l'etat A generer, et elle doit etre vide ; le reste du bloc n'a ni role ni aria-*.
-test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre élément interactif, dans les cinq états", () => {
+// ligne dans l'un des cinq etats, un bouton ailleurs qu'a l'etat A generer (« Générer la
+// convention ») et a l'etat Generee (« Voir la convention »), ou un deuxieme bouton dans l'un
+// de ces deux etats (la tache 7.4 n'en ajoute qu'un). La zone de message (#conventionAlerte,
+// role="status", vide) est dans les cinq etats : c'est le seul role permis hors de ces deux
+// etats, et elle doit etre vide ; le reste du bloc n'a ni role ni aria-*, boutons compris
+// (« Voir » n'a ni aria-haspopup, ni aria-disabled avant le clic).
+test("le bloc n'a de bouton qu'aux états À générer (« Générer ») et Générée (« Voir »), un seul à chaque fois, et aucun autre élément interactif, dans les cinq états", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
     const bloc = blocPour(w, fabrique());
@@ -270,6 +279,15 @@ test("le bloc n'a de bouton qu'à l'état À générer (un seul) et aucun autre 
     if (nom === "À générer") {
       assert.equal(boutons.length, 1, `${nom} : un seul bouton`);
       assert.match(boutons[0], /\sid="conventionGenerer"/, `${nom} : le bouton est « Générer la convention »`);
+    } else if (nom === "Générée") {
+      assert.equal(boutons.length, 1, `${nom} : un seul bouton`);
+      assert.match(boutons[0], /\sid="conventionVoir"/, `${nom} : le bouton est « Voir la convention »`);
+      assert.match(boutons[0], /\stype="button"/, `${nom} : un bouton qui n'envoie rien`);
+      assert.ok(!/\s(role|aria-[\w-]+|disabled)\b/i.test(boutons[0]), `${nom} : ni role, ni aria-*, ni disabled avant le clic`);
+      const libelle = BOUTON_VOIR.exec(bloc);
+      assert.ok(libelle, `${nom} : le libellé est dans <span class="btn-content">`);
+      assert.equal(decoder(libelle[1]), `${TEXTE_VOIR}<span class="sr-only">${TEXTE_VOIR_CACHE}</span>`, `${nom} : texte, puis texte caché pour les lecteurs d'écran`);
+      assert.ok(!/\s(role|aria-[\w-]+)\s*=/i.test(bloc.replace(ZONE_MESSAGE_VIDE, "")), `${nom} : attribut d'accessibilité interactive`);
     } else {
       assert.equal(boutons.length, 0, `${nom} : aucun bouton`);
       assert.ok(!/\s(role|aria-[\w-]+)\s*=/i.test(bloc.replace(ZONE_MESSAGE_VIDE, "")), `${nom} : attribut d'accessibilité interactive`);
@@ -285,34 +303,40 @@ function contenuLisible(bloc) {
   return decoder([bloc.replace(/<[^>]*>/g, " "), ...attributs].join(" ")).replace(/\s+/g, " ");
 }
 
-// Echoue si un libelle de bouton de la note UX (re-generer, voir, deposer, remplacer,
-// enregistrer) apparait n'importe ou dans le bloc (texte d'un bouton, texte cache,
-// attribut aria-label ou title), si « Générer la convention » apparait ailleurs qu'a
-// l'etat A generer (grise ou non), ou s'il n'y est pas une seule fois, dans son bouton.
-test("le bloc ne contient aucun libellé de bouton de la note UX, sauf « Générer la convention » dans son bouton à l'état À générer", () => {
+// Echoue si un libelle de bouton de la note UX (re-generer, deposer, remplacer, enregistrer)
+// apparait n'importe ou dans le bloc (texte d'un bouton, texte cache, attribut aria-label ou
+// title) ; si « Générer la convention » apparait ailleurs qu'a l'etat A generer (grise ou non)
+// ou n'y est pas une seule fois, dans son bouton ; si « Voir la convention » apparait ailleurs
+// qu'a l'etat Generee ou n'y est pas une seule fois, dans son bouton, suivi de son texte cache.
+test("le bloc ne contient aucun libellé de bouton de la note UX, sauf « Générer la convention » à l'état À générer et « Voir la convention » à l'état Générée, chacun dans son bouton", () => {
   const w = loadWidget();
   const libelles = ["Générer la convention", "Re-générer", "Voir la convention", "Déposer", "Remplacer le fichier", "Enregistrer"];
   const etats = {...ETATS_A_TESTER, "À générer, agence manquante": () => donnees({action: {Agence: 0}})};
   for (const [nom, fabrique] of Object.entries(etats)) {
     const lu = contenuLisible(blocPour(w, fabrique()));
     for (const libelle of libelles) {
-      const attendu = nom.startsWith("À générer") && libelle === "Générer la convention" ? 1 : 0;
+      const attendu = (nom.startsWith("À générer") && libelle === "Générer la convention") || (nom === "Générée" && libelle === "Voir la convention") ? 1 : 0;
       assert.equal(lu.split(libelle).length - 1, attendu, `${nom} : « ${libelle} » (${attendu} attendu)`);
     }
+    assert.equal(lu.split("s'ouvre dans un nouvel onglet").length - 1, nom === "Générée" ? 1 : 0, `${nom} : texte caché du bouton « Voir »`);
   }
   assert.match(blocPour(w, donnees()),
     /<button\b[^>]*\sid="conventionGenerer"[^>]*>\s*<span class="btn-content">Générer la convention<\/span>\s*<\/button>/,
     "à l'état À générer, le libellé est dans le bouton");
+  assert.match(decoder(blocPour(w, ETATS_A_TESTER["Générée"]())),
+    /<button\b[^>]*\sid="conventionVoir"[^>]*>\s*<span class="btn-content">Voir la convention<span class="sr-only"> \(s'ouvre dans un nouvel onglet\)<\/span><\/span>\s*<\/button>/,
+    "à l'état Générée, le libellé et son texte caché sont dans le bouton");
 });
 
-// Echoue si le bloc contient autre chose que des phrases (<p>) et, a l'etat A generer
-// seulement, un bouton : le retrait des phrases ne laisse que des conteneurs.
-test("le bloc ne contient que des phrases (et, à l'état À générer, un bouton) : en retirant les <p>, il ne reste aucune autre balise de contenu", () => {
+// Echoue si le bloc contient autre chose que des phrases (<p>) et, aux etats A generer et
+// Generee seulement, un bouton (avec, a l'etat Generee, son texte cache dans un <span>) : le
+// retrait des phrases ne laisse que des conteneurs.
+test("le bloc ne contient que des phrases (et, aux états À générer et Générée, un bouton) : en retirant les <p>, il ne reste aucune autre balise de contenu", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
     const sansPhrases = blocPour(w, fabrique()).replace(/<p\b[^>]*>[\s\S]*?<\/p>/g, "");
     const balises = [...sansPhrases.matchAll(/<([a-z0-9]+)/gi)].map((m) => m[1].toLowerCase());
-    const permises = nom === "À générer" ? ["section", "div", "span", "button"] : ["section", "div", "span"];
+    const permises = nom === "À générer" || nom === "Générée" ? ["section", "div", "span", "button"] : ["section", "div", "span"];
     assert.deepEqual(balises.filter((b) => !permises.includes(b)), [], nom);
   }
 });
@@ -389,8 +413,13 @@ const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", 
 // message de blocage et son texte cache) : classes du design system ou du widget.
 const CLASSES_A_GENERER = ["convention-actions", "btn", "btn-secondary", "btn-content", "help-block", "sr-only"];
 
+// Classes de plus, permises seulement a l'etat Generee (bouton « Voir la convention », sa
+// rangee et son texte cache) : pas de message de blocage (help-block) a cet etat.
+const CLASSES_GENEREE = ["convention-actions", "btn", "btn-secondary", "btn-content", "sr-only"];
+
 // Echoue si le bloc utilise une classe hors liste : classe inventee, classe de couleur,
-// ou classe du bouton / du message de blocage dans un etat autre que A generer.
+// classe du bouton / du message de blocage dans un etat autre que A generer, classe du
+// bouton « Voir » dans un etat autre que Generee, ou help-block a l'etat Generee.
 test("le bloc n'utilise que les classes autorisées, dans les cinq états (et avec un message de blocage)", () => {
   const w = loadWidget();
   const jeux = [
@@ -400,7 +429,9 @@ test("le bloc n'utilise que les classes autorisées, dans les cinq états (et av
   for (const [nom, jeu] of jeux) {
     const permises = nom.startsWith("À générer")
       ? new Set([...CLASSES_AUTORISEES, ...CLASSES_A_GENERER])
-      : CLASSES_AUTORISEES;
+      : nom === "Générée"
+        ? new Set([...CLASSES_AUTORISEES, ...CLASSES_GENEREE])
+        : CLASSES_AUTORISEES;
     const inconnues = [...classesDe(blocPour(w, jeu))].filter((c) => !permises.has(c));
     assert.deepEqual(inconnues, [], `${nom} : classes non prévues`);
   }
@@ -467,17 +498,21 @@ test("le bloc a une zone de message vide, puis #conventionBlocContenu qui repren
 });
 
 // Echoue si conventionBlocContenuHtml (la partie que conventionRafraichirBloc remet a jour)
-// ne donne pas les phrases de l'etat et, a l'etat A generer seulement, le bouton et sa zone
-// de blocage : apres une generation reussie, le bouton doit disparaitre avec l'etat « Générée ».
-test("conventionBlocContenuHtml : les phrases de l'état, et le bouton seulement à l'état À générer", () => {
+// ne donne pas les phrases de l'etat et le bouton de l'etat : « Générer la convention » et sa
+// zone de blocage a l'etat A generer, « Voir la convention » (sans « Générer ») a l'etat
+// Generee. Apres une generation reussie, le bouton « Générer » disparait et « Voir » le remplace.
+test("conventionBlocContenuHtml : les phrases de l'état, le bouton « Générer » à l'état À générer et le bouton « Voir » à l'état Générée", () => {
   const w = loadWidget();
   const aGenerer = w.conventionBlocContenuHtml(1, donnees());
   assert.deepEqual(textes(aGenerer), [TEXTES.aGenerer]);
   assert.match(aGenerer, /id="conventionGenerer"/);
   assert.match(aGenerer, /id="conventionBlocage"/);
+  assert.ok(!aGenerer.includes("conventionVoir"), "pas de bouton « Voir » à l'état À générer");
   const generee = w.conventionBlocContenuHtml(1, donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
   assert.deepEqual(textes(generee), ["Convention générée le 14/03/2026.", TEXTES.aide]);
-  assert.ok(!/<button\b/.test(generee) && !generee.includes("conventionGenerer"), "aucun bouton à l'état Générée");
+  assert.equal((generee.match(/<button\b/g) || []).length, 1, "un seul bouton à l'état Générée");
+  assert.match(generee, /<button\b[^>]*\sid="conventionVoir"/, "le bouton est « Voir la convention »");
+  assert.ok(!generee.includes("conventionGenerer") && !generee.includes("conventionBlocage"), "ni le bouton « Générer la convention » ni son message de blocage");
   assert.ok(!/<section\b/.test(generee) && !generee.includes("edit-card"), "ni la carte ni son titre : seulement le contenu");
 });
 
