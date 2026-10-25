@@ -1077,3 +1077,18 @@ Tests : 634 tests, 1 échec attendu, puis 637 passés, 0 échec (npm test).
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
 Build refait : oui
 Commit : f95e87c (code) et f6578ab (tests)
+
+## Tâche C50 — Bouton « Re-générer » et phrases de la fenêtre (S8, tâche 8.1)
+
+Date : 2026-10-26
+Agents : designer-ux (§12 de la note), Claude Code sans agent (décisions D-S8), dev-interface (code), testeur (tests)
+Prompt : tâche 8.1, décisions D-S8-1 à D-S8-3 de la note
+
+Note /5 : sans objet
+Ce qui allait : bouton « Re-générer » après « Voir la convention », à l'état « Générée » seulement, même règle de blocage que « Générer » ; phrase de remplacement en tête de fenêtre, seulement à la re-génération, sans date si absente ; « L'ancienne convention reste disponible. » ajoutée aux messages d'échec de re-génération seulement ; questions posées (place de la phrase, date absente) plutôt que deviner ; D-S8-4 (modèle actif) correctement laissée pour la 8.2 ; test fragile trouvé et corrigé par le testeur.
+Ce que j'ai fait corriger : rien.
+Tests : 637 tests, 6 échecs attendus, puis 658 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-bloc.test.js, test/convention-fenetre.test.js, test/convention-generer-ecran.test.js
+Build refait : oui
+Commit : 007c603 (code) et cdf540a (tests)
+Reste à faire (tâche 8.2) : modèle actif enregistré dans Modele, remplacement du PDF en une seule écriture, PDF_signe et Date_depot jamais touchés, ancien PDF jamais supprimé, robustesse si la réponse réseau se perd après une écriture réussie.
