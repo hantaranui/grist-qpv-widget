@@ -3450,8 +3450,15 @@ const CONVENTION_MESSAGES = {
 // existante de l'action (la plus ancienne en cas de doublon), ou 0 s'il faut en creer une.
 // Valeurs vides : reference = 0, entier = null, texte = ''.
 // Jamais ecrit : PDF_genere, Date_generation, PDF_signe, Date_depot, DR et DD (formules).
-function conventionAEcrire(actionId, valeurs, donnees) {
-  const {convention, modele} = conventionEtat(actionId, donnees);
+// options.modeleActif (utilise par la generation, decision D-S8-4) : Modele recoit le modele
+// actif du dispositif a cet instant, meme si la convention en avait un autre. Sans cette
+// option (« Enregistrer les informations »), la convention deja faite garde son modele.
+function conventionAEcrire(actionId, valeurs, donnees, options) {
+  const {convention, modele: modeleEtat} = conventionEtat(actionId, donnees);
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  // Sans modele actif, on ne vide pas Modele : la generation s'arretera de toute facon a l'etape 3.
+  const modele = (options && options.modeleActif && conventionModeleActif(raw, action.Dispositif)) || modeleEtat;
   const annee = valeurs.annee === null || String(valeurs.annee).trim() === '' ? null : Number(valeurs.annee);
   return {
     id: convention ? convention.id : 0,
@@ -3474,14 +3481,21 @@ function conventionAEcrire(actionId, valeurs, donnees) {
 // generation) : ni message, ni bouton touche ; l'appelant traduit lui-meme le resultat.
 async function conventionEnregistrer(actionId, valeurs, options) {
   const silencieux = !!(options && options.silencieux);
-  const {id, champs} = conventionAEcrire(actionId, valeurs, state);
+  const {id, champs} = conventionAEcrire(actionId, valeurs, state, options);
   const bouton = silencieux ? null : document.getElementById('conventionEnregistrer');
   try {
     if (bouton) bouton.disabled = true;
     const alerte = silencieux ? null : document.getElementById('conventionMessage');
     if (alerte) alerte.classList.add('is-hidden');
     const action = id ? ['UpdateRecord', 'Conventions', id, champs] : ['AddRecord', 'Conventions', null, champs];
-    const resultat = await grist.docApi.applyUserActions([action]);
+    // Delai depasse (reseau coupe avant le clic, par exemple) = echec d'enregistrement : le catch
+    // ci-dessous donne le message habituel. Sans delai, c'est le tout premier appel de la
+    // generation et la fenetre restait bloquee sur « Generation en cours… ».
+    const resultat = await conventionAvecDelai(
+      grist.docApi.applyUserActions([action]),
+      CONVENTION_ENREGISTREMENT_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement)
+    );
     await conventionMemoriser(id, Number(resultat && resultat.retValues && resultat.retValues[0]), champs);
     // La fenetre a pu etre fermee pendant l'ecriture (Echap) : il n'y a alors rien a afficher.
     if (!silencieux && document.getElementById('conventionMessage')) afficherMessageConvention(true, CONVENTION_MESSAGES.enregistre);
@@ -3510,7 +3524,12 @@ async function conventionMemoriser(idExistant, idCree, champs) {
   } else {
     // L'ecriture a reussi : une relecture qui echoue ne doit pas passer pour un echec.
     try {
-      state.raw.Conventions = rows(await grist.docApi.fetchTable('Conventions'));
+      // Delai depasse = relecture impossible : meme cas que toute autre erreur ci-dessous.
+      state.raw.Conventions = rows(await conventionAvecDelai(
+        grist.docApi.fetchTable('Conventions'),
+        CONVENTION_MEMORISATION_DELAI_MS,
+        () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+      ));
     } catch (error) {
       // Les donnees en memoire restent celles d'avant ; la fiche les relira au prochain chargement.
     }
@@ -3615,6 +3634,23 @@ const CONVENTION_GENERATION_ERREURS = {
 // Delai maximum du chargement de pdfmake (decision de la tache 7.2).
 const CONVENTION_PDFMAKE_DELAI_MS = 20000;
 
+// Delais maximum des autres appels reseau de la generation. Sans eux, un reseau coupe au mauvais
+// moment laissait la fenetre bloquee sur « Generation en cours… » pour toujours.
+//  - jeton, logos, relecture de secours : petites requetes, 15 s suffisent ;
+//  - envoi du PDF et rattachement : on laisse 20 s, comme pdfmake (un PDF avec logos pese plus
+//    lourd, et une reponse du serveur peut etre lente sans etre perdue).
+const CONVENTION_ACCES_DELAI_MS = 15000;
+const CONVENTION_LOGO_DELAI_MS = 15000;
+const CONVENTION_ENVOI_DELAI_MS = 20000;
+const CONVENTION_RATTACHEMENT_DELAI_MS = 20000;
+const CONVENTION_RELECTURE_DELAI_MS = 15000;
+//  - enregistrement des informations : une ecriture, 20 s comme le rattachement ;
+//    relecture apres cet enregistrement : petite requete, 15 s ;
+//  - ouverture de « Voir la convention » (jeton puis telechargement du PDF) : 20 s.
+const CONVENTION_ENREGISTREMENT_DELAI_MS = 20000;
+const CONVENTION_MEMORISATION_DELAI_MS = 15000;
+const CONVENTION_TELECHARGEMENT_DELAI_MS = 20000;
+
 // Messages valides (note UX, §3 « Enregistrer et Generer », decision D-3), un par probleme.
 // Les deux messages de l'annee (absente, pas a quatre chiffres) : le second est celui de
 // CONVENTION_ERREURS.annee, repris par conventionProblemes.
@@ -3665,6 +3701,20 @@ function conventionErreur(code, complements) {
   const erreur = new Error(`Generation de la convention impossible : ${code}`);
   erreur.code = code;
   return complements ? Object.assign(erreur, complements) : erreur;
+}
+
+// Attend `promesse` au plus `delaiMs` millisecondes. Au-dela, rejette avec l'erreur que renvoie
+// `creerErreur` : chaque appel choisit le code deja prevu pour son cas (pas de nouveau code, donc
+// pas de nouveau message). Le minuteur est toujours arrete des que la promesse se termine.
+// L'appel reseau lui-meme n'est pas interrompu : sa reponse tardive est simplement ignoree.
+function conventionAvecDelai(promesse, delaiMs, creerErreur) {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(creerErreur()), delaiMs);
+    Promise.resolve(promesse).then(
+      valeur => { clearTimeout(minuteur); resolve(valeur); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
 }
 
 // Controle des champs obligatoires de « Generer ». Renvoie TOUS les problemes, dans l'ordre
@@ -3794,7 +3844,11 @@ async function conventionEnvoyerPdf(acces, blob, nomFichier) {
 async function conventionDemanderAcces() {
   let acces;
   try {
-    acces = await grist.docApi.getAccessToken({readOnly: false});
+    acces = await conventionAvecDelai(
+      grist.docApi.getAccessToken({readOnly: false}),
+      CONVENTION_ACCES_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
   } catch (error) {
     throw conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
   }
@@ -3820,7 +3874,13 @@ async function conventionChargerLogo(acces, valeur) {
   const id = conventionPieceJointeId(valeur);
   if (!id) return null;
   try {
-    return conventionImageLogo(await conventionTelechargerPieceJointe(acces, id));
+    // Delai depasse = logo absent comme un telechargement qui echoue : la generation continue.
+    const octets = await conventionAvecDelai(
+      conventionTelechargerPieceJointe(acces, id),
+      CONVENTION_LOGO_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    return conventionImageLogo(octets);
   } catch (erreur) {
     return null;
   }
@@ -3854,9 +3914,34 @@ async function conventionRattacherPdf(acces, conventionId, champs) {
       body: JSON.stringify({records: [{id: conventionId, fields: champs}]})
     });
   } catch (error) {
-    throw echec();
+    // Reseau coupe : on ne sait pas si Grist a ecrit (relire = verifier avant de conclure).
+    throw Object.assign(echec(), {relire: true});
   }
-  if (!reponse.ok) throw echec();
+  if (!reponse.ok) {
+    // 4xx (droits, regle d'acces, requete refusee) : refus clair, rien n'est ecrit. 408 et 5xx
+    // (delai, passerelle) : la reponse ne dit pas si l'ecriture a eu lieu.
+    const incertain = reponse.status === 408 || reponse.status >= 500;
+    throw incertain ? Object.assign(echec(), {relire: true}) : echec();
+  }
+}
+
+// Apres un echec incertain du rattachement : la ligne Conventions porte-t-elle deja le fichier
+// qu'on vient d'envoyer ? Relecture par l'API du widget (sans jeton). Vrai seulement si
+// PDF_genere contient CE fichier ; faux dans tous les autres cas, relecture impossible comprise
+// (le message d'echec habituel s'affiche alors, il peut etre inexact). Rien dans la console.
+async function conventionPdfRattache(conventionId, pieceJointe) {
+  try {
+    // Delai depasse = relecture impossible : on repond faux, comme pour toute autre erreur.
+    const table = await conventionAvecDelai(
+      grist.docApi.fetchTable('Conventions'),
+      CONVENTION_RELECTURE_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    const ligne = rows(table).find(item => item.id === conventionId);
+    return !!ligne && conventionPieceJointeId(ligne.PDF_genere) === pieceJointe;
+  } catch (error) {
+    return false;
+  }
 }
 
 // Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
@@ -3876,7 +3961,8 @@ async function conventionGenerer(actionId, valeurs) {
     const problemes = conventionProblemesGenerer(actionId, valeurs, state);
     if (problemes.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.champs, {problemes});
 
-    const enregistre = await conventionEnregistrer(actionId, valeurs, {silencieux: true});
+    // Modele = modele actif au moment du clic, premiere generation ou re-generation (D-S8-4).
+    const enregistre = await conventionEnregistrer(actionId, valeurs, {silencieux: true, modeleActif: true});
     const convention = conventionEtat(actionId, state).convention;
     if (!enregistre || !convention) throw conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
 
@@ -3907,10 +3993,27 @@ async function conventionGenerer(actionId, valeurs) {
     if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
     const nomFichier = conventionNomFichier(actionId, valeurs, state);
 
-    const pieceJointe = await conventionEnvoyerPdf(acces, blob, nomFichier);
+    // Le delai couvre toute la fonction (envoi puis lecture de la reponse), pas seulement fetch.
+    const pieceJointe = await conventionAvecDelai(
+      conventionEnvoyerPdf(acces, blob, nomFichier),
+      CONVENTION_ENVOI_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
 
     const champs = {PDF_genere: ['L', pieceJointe], Date_generation: Math.floor(Date.now() / 1000)};
-    await conventionRattacherPdf(acces, convention.id, champs);
+    // Remplacement sans historique (D-S8-5) : une seule ecriture, qui remplace la cellule
+    // PDF_genere. Le widget ne supprime jamais l'ancien fichier. Si la reponse s'est perdue
+    // (reseau, erreur serveur), l'ecriture a peut-etre eu lieu : on relit avant de conclure a un echec.
+    try {
+      // Delai depasse = reponse perdue : meme cas que « reseau coupe » (relire avant de conclure).
+      await conventionAvecDelai(
+        conventionRattacherPdf(acces, convention.id, champs),
+        CONVENTION_RATTACHEMENT_DELAI_MS,
+        () => Object.assign(conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement), {relire: true})
+      );
+    } catch (erreur) {
+      if (!(erreur && erreur.relire && await conventionPdfRattache(convention.id, pieceJointe))) throw erreur;
+    }
     // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
     const ligne = conventionLigne(state.raw.Conventions, convention.id);
     if (ligne) Object.assign(ligne, champs);
@@ -4185,7 +4288,13 @@ async function conventionVoir(actionId) {
     const {convention} = conventionEtat(actionId, state);
     const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
     if (!pieceJointe) throw new Error('pas de fichier');
-    const pdf = await conventionTelechargerPdf(pieceJointe);
+    // Delai depasse (reseau coupe) = echec d'ouverture : sans lui, le bouton restait sur
+    // « Ouverture en cours… » et les clics suivants etaient ignores pour toujours.
+    const pdf = await conventionAvecDelai(
+      conventionTelechargerPdf(pieceJointe),
+      CONVENTION_TELECHARGEMENT_DELAI_MS,
+      () => new Error('delai')
+    );
     adresse = URL.createObjectURL(pdf);
     // L'onglet ne doit pas pouvoir agir sur la page du widget.
     try { onglet.opener = null; } catch (erreur) { /* sans effet : on continue */ }
