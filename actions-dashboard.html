@@ -2902,8 +2902,9 @@ function conventionPhrases(actionId, donnees) {
 
 // Meme structure que les autres blocs de la fiche (edit-card, section-head,
 // edit-fields). Le texte porte l'information, sans couleur ni role d'alerte.
-// Seul l'etat « A generer » a un bouton pour l'instant (tache 5.1a) : celui qui
-// ouvre la fenetre. Les boutons des autres etats viendront avec leurs taches.
+// Boutons pour l'instant : « Generer la convention » a l'etat « A generer » (il ouvre la
+// fenetre) et « Voir la convention » a l'etat « Generee » (tache 7.4). Les autres
+// boutons viendront avec leurs taches.
 function conventionBlocHtml(actionId, donnees) {
   // Deux parties dans la carte : la zone de message (role="status"), qui n'est jamais
   // refaite pour que « Convention generee. » soit annoncee, et le contenu (phrases et
@@ -2919,8 +2920,11 @@ function conventionBlocContenuHtml(actionId, donnees) {
   const phrases = conventionPhrases(actionId, donnees)
     .map(({texte, aide}) => `<p${aide ? ' class="convention-aide"' : ''}>${escapeHtml(texte)}</p>`)
     .join('');
-  const aGenerer = conventionEtat(actionId, donnees).etat === CONVENTION_ETATS.aGenerer;
-  return `${phrases}${aGenerer ? conventionGenererHtml(actionId, donnees) : ''}`;
+  const etat = conventionEtat(actionId, donnees).etat;
+  const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
+    : etat === CONVENTION_ETATS.generee ? conventionVoirHtml()
+    : '';
+  return `${phrases}${boutons}`;
 }
 
 // Bouton « Générer la convention » et, au-dessus, la zone du message de blocage.
@@ -3135,11 +3139,15 @@ let conventionGenerationEnCours = false;
 // script du design system n'aurait pas deja bloque le clic.
 function bindConvention(actionId) {
   const bouton = document.getElementById('conventionGenerer');
-  if (!bouton) return;
-  bouton.addEventListener('click', () => {
-    if (bouton.getAttribute('aria-disabled') === 'true' || conventionBlocage(actionId, state)) return;
-    openConvention(actionId);
-  });
+  if (bouton) {
+    bouton.addEventListener('click', () => {
+      if (bouton.getAttribute('aria-disabled') === 'true' || conventionBlocage(actionId, state)) return;
+      openConvention(actionId);
+    });
+  }
+  // « Voir la convention » n'existe qu'a l'etat « Generee ».
+  const voir = document.getElementById('conventionVoir');
+  if (voir) voir.addEventListener('click', () => conventionVoir(actionId));
 }
 
 function openConvention(actionId) {
@@ -3771,15 +3779,143 @@ async function lancerGenerationConvention(actionId) {
 
 // « Convention generee. » en haut du bloc (alert-success). La zone role="status" existe deja,
 // vide, dans la page (conventionBlocHtml) : le texte qu'on y met est annonce.
-// Le focus va sur ce message. TACHE 7.4 : le bouton « Voir la convention » existera ; c'est
-// lui qui devra recevoir le focus (decision D-S7-6), et ce focus-ci sera deplace.
+// Le focus va sur « Voir la convention » (decision D-S7-6), premier bouton de l'etat
+// « Generee ». Si le bloc n'a pas ce bouton (cas inattendu), il va sur le titre
+// « Convention » du bloc, rendu focalisable avec tabindex="-1".
 function conventionAnnoncerReussite() {
   const zone = document.getElementById('conventionAlerte');
   if (!zone) return;
-  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite" tabindex="-1"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p></div>`;
-  const message = document.getElementById('conventionReussite');
-  if (message) message.focus();
+  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p></div>`;
+  let cible = document.getElementById('conventionVoir');
+  if (!cible) {
+    cible = document.querySelector('#conventionBloc .section-head span');
+    if (cible) cible.setAttribute('tabindex', '-1');
+  }
+  if (cible) cible.focus();
   requestResize();
+}
+
+// ---- Convention : bouton « Voir la convention » (tache 7.4) ----
+// Au clic : on lit un jeton de LECTURE, on telecharge la piece jointe PDF_genere par l'API
+// REST, puis on l'ouvre dans un nouvel onglet a une adresse blob: (le PDF est lu depuis la
+// memoire du navigateur). Le jeton n'est lu qu'au clic, vit dans des variables locales et
+// n'est ni garde, ni ecrit dans la page, la console, un message ou une adresse visible.
+// Rien n'est ecrit dans la console : une erreur de reseau peut recopier l'adresse.
+const CONVENTION_TEXTE_VOIR = 'Voir la convention';
+const CONVENTION_TEXTE_VOIR_CACHE = " (s'ouvre dans un nouvel onglet)";
+const CONVENTION_TEXTE_OUVERTURE = 'Ouverture en cours…';
+const CONVENTION_MESSAGE_VOIR_ECHEC = "Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord.";
+// L'adresse blob: est liberee apres ce delai : l'onglet a alors fini de lire le PDF.
+const CONVENTION_VOIR_LIBERATION_MS = 60000;
+
+// Vrai pendant l'ouverture : les clics sur le bouton sont alors ignores.
+let conventionOuvertureEnCours = false;
+
+// Libelle du bouton : le texte, puis le texte cache pour les lecteurs d'ecran.
+function conventionVoirLibelleHtml() {
+  return `${escapeHtml(CONVENTION_TEXTE_VOIR)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
+}
+
+function conventionVoirHtml() {
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button></div>`;
+}
+
+// Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
+function conventionPieceJointeId(valeur) {
+  if (!Array.isArray(valeur)) return 0;
+  const id = Number(valeur[0] === 'L' ? valeur[1] : valeur[0]);
+  return Number.isInteger(id) && id > 0 ? id : 0;
+}
+
+// Telecharge la piece jointe. Echoue (sans detail) si le jeton est refuse, si le fichier est
+// introuvable ou vide, ou si le reseau coupe. Meme methode que l'envoi : credentials 'omit' et
+// en-tete X-Requested-With.
+async function conventionTelechargerPdf(pieceJointe) {
+  // Jeton d'ecriture voulu : un jeton en lecture seule met le proprietaire au niveau lecteur, et les
+  // regles par defaut du document refusent tout aux lecteurs (403). Ne pas le remettre en readOnly: true.
+  const acces = await grist.docApi.getAccessToken({readOnly: false});
+  if (!acces || !acces.token || !acces.baseUrl) throw new Error('acces');
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}/download?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('telechargement');
+  const octets = await reponse.arrayBuffer();
+  if (!octets.byteLength) throw new Error('fichier vide');
+  // Le type est pose ici : l'onglet affiche ainsi le PDF au lieu de le telecharger.
+  return new Blob([octets], {type: 'application/pdf'});
+}
+
+// Texte du bouton pendant (ou apres) l'ouverture. aria-disabled, jamais disabled : le focus
+// reste sur le bouton. Le texte cache est retire pendant l'attente et revient ensuite.
+function conventionVoirAttente(attente) {
+  const bouton = document.getElementById('conventionVoir');
+  if (!bouton) return;
+  const libelle = bouton.querySelector('.btn-content') || bouton;
+  if (attente) {
+    bouton.setAttribute('aria-disabled', 'true');
+    libelle.textContent = CONVENTION_TEXTE_OUVERTURE;
+  } else {
+    bouton.removeAttribute('aria-disabled');
+    libelle.innerHTML = conventionVoirLibelleHtml();
+  }
+}
+
+// Une seule alerte a la fois en haut du bloc : la plus recente remplace l'autre.
+function conventionAlerteVoirEffacer() {
+  const zone = document.getElementById('conventionAlerte');
+  if (zone) zone.innerHTML = '';
+}
+
+function conventionAlerteVoirEchec() {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_VOIR_ECHEC)}</p></div>`;
+  requestResize();
+}
+
+// Clic sur « Voir la convention ». L'onglet est ouvert tout de suite, pendant le clic (avant
+// toute attente), sinon le navigateur le prend pour une fenetre non sollicitee et le bloque ;
+// il recoit l'adresse blob: quand le PDF est pret. La page du widget n'est jamais remplacee.
+// Le focus ne bouge pas : il reste sur le bouton, en cas de reussite comme d'echec.
+async function conventionVoir(actionId) {
+  const bouton = document.getElementById('conventionVoir');
+  if (!bouton || conventionOuvertureEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
+  conventionAlerteVoirEffacer();
+  conventionOuvertureEnCours = true;
+  let onglet = null;
+  try {
+    onglet = window.open('', '_blank');
+  } catch (erreur) {
+    onglet = null;
+  }
+  conventionVoirAttente(true);
+  let adresse = '';
+  let reussi = false;
+  try {
+    // Onglet refuse par le navigateur : on s'arrete avant de telecharger.
+    if (!onglet) throw new Error('onglet bloque');
+    const {convention} = conventionEtat(actionId, state);
+    const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
+    if (!pieceJointe) throw new Error('pas de fichier');
+    const pdf = await conventionTelechargerPdf(pieceJointe);
+    adresse = URL.createObjectURL(pdf);
+    // L'onglet ne doit pas pouvoir agir sur la page du widget.
+    try { onglet.opener = null; } catch (erreur) { /* sans effet : on continue */ }
+    onglet.location.href = adresse;
+    reussi = true;
+    setTimeout(() => URL.revokeObjectURL(adresse), CONVENTION_VOIR_LIBERATION_MS);
+  } catch (erreur) {
+    if (adresse && !reussi) URL.revokeObjectURL(adresse);
+    // L'onglet vide ouvert pour rien est referme.
+    if (onglet) {
+      try { onglet.close(); } catch (autre) { /* deja ferme */ }
+    }
+    conventionAlerteVoirEchec();
+  } finally {
+    conventionOuvertureEnCours = false;
+    conventionVoirAttente(false);
+  }
 }
 </script>
   </body>
