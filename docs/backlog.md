@@ -1,11 +1,15 @@
-
 # Backlog — Widgets Grist — Partenariat simplifié
 
-| Priorité | Tâche                                                                                                                                                                  | Agent                                                               | Statut   |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------- |
-| Haute     | clubs : gérer les contacts dans la fiche du club (ajouter, modifier, supprimer avec confirmation), chacun sur son périmètre ; règle d'accès à créer sur Contacts | auditeur-securite, designer-ux, dev-backend, dev-interface, testeur | Fait (en production le 2026-10-23) |
-| Moyenne   | clubs : filtres Région → Département dépendants, sur le modèle des filtres DR → DD → agence du tableau de bord (remarqué le 21/10/2026)                         | relecteur, testeur, dev-interface                                   | À faire |
-| Basse     | clubs : corriger les commentaires de src/clubs/ qui parlent encore de fiche-club (à faire pendant la gestion des contacts)                                             | dev-interface                                                       | À faire |
+| Priorité | Tâche | Agent | Statut |
+| --- | --- | --- | --- |
+| Haute | clubs : gérer les contacts dans la fiche du club (ajouter, modifier, supprimer avec confirmation), chacun sur son périmètre ; règle d'accès à créer sur Contacts | auditeur-securite, designer-ux, dev-backend, dev-interface, testeur | Fait (en production le 2026-10-23) |
+| Haute | Convention de partenariat : voir le plan ci-dessous | voir le plan | En cours (S7) |
+| Moyenne | clubs : filtres Région → Département dépendants, sur le modèle des filtres DR → DD → agence du tableau de bord (remarqué le 21/10/2026) | relecteur, testeur, dev-interface | À faire |
+| Moyenne | tableau de bord : requestTableColumns (choix de Statut, Public, Format) demande un jeton en lecture seule ; pour un propriétaire, Grist refuse probablement et le widget se rabat sur la liste de secours (constat du 2026-10-24, fiche C41) | relecteur, puis dev-backend, testeur | À faire |
+| Moyenne | tableau de bord : mode sombre ; le tableau de bord est en color-scheme: light, alors que tout widget doit fonctionner en mode sombre (règle de Hanta, à écrire dans CLAUDE.md et dans la squad de base) | designer-ux, dev-interface, testeur | À faire |
+| Basse | tableau de bord : espacement du bloc Convention (-16px écrit en dur, espace en trop au-dessus du texte, zone de message vide toujours présente) | dev-interface | À faire |
+| Basse | clubs : corriger les commentaires de src/clubs/ qui parlent encore de fiche-club | dev-interface | À faire |
+| Basse | squad : les agents lancent des commandes de lecture (grep, ls, git status) malgré la consigne ; décider de les autoriser explicitement ou de les interdire dans leurs fichiers | Hanta | À décider |
 
 ---
 
@@ -53,10 +57,21 @@ Règles du plan :
 - Tout profil refusé par Grist voit « Droits insuffisants » (le widget ne lit pas le profil).
 - La note `docs/ux/convention.md` l'emporte sur la maquette HTML.
 
-**Décisions du 2026-10-23 :**
+**Décisions du 2026-10-23 et du 2026-10-24 :**
 
-- Tâche 4.2 : bloc sans aucun bouton ni message de blocage. Boutons et message de blocage arrivent en 5.1.
+- Tâche 4.2 : bloc sans aucun bouton ni message de blocage. Boutons et message de blocage arrivent en 5.1a.
 - Date vide : « Convention générée. » et « Convention signée. », sans date (textes ajoutés, à reporter dans la note UX en 10.2).
+- Q-H : Échap et « Fermer » ferment directement la fenêtre, sans confirmation (option A).
+- « Enregistrer les informations » est un brouillon : il garde ce qui est saisi, même incomplet ; seule l'année est contrôlée (« Saisissez une année à quatre chiffres. »). Les champs obligatoires sont contrôlés par « Générer ».
+- D-3 : les six messages de blocage de « Générer » sont validés et s'affichent tous à la fois. Ne jamais associer help-block et invalid-feedback (bug C30).
+- D-4 : l'année est préremplie avec l'année en cours. D-5 : le message « Renseignez le dispositif… » reste dans le code, mais ne s'affiche jamais en pratique. D-6 : le message d'erreur de l'année disparaît au clic suivant sur « Enregistrer ».
+- D-S7-1 : PDF_genere et Date_generation écrits en une seule requête (PATCH REST, comme le logo de clubs ; applyUserActions est refusé à un non-propriétaire pour une pièce jointe neuve, fiche C39).
+- D-S7-2 : Échap et « Fermer » ignorés pendant la génération. D-S7-4 : informations enregistrées avant la fabrication du PDF. D-S7-5 : attente en texte seulement. D-S7-6 : focus sur « Voir la convention » après une réussite. D-S7-7 : champs non modifiables pendant la génération.
+- D-S7-3 (Q-E) : nom du fichier « Convention-[dispositif]-[club]-[année].pdf », sans année pour Remobilisation ; noms courts Stade-emploi, Match-metiers, Remobilisation.
+- Cases du modèle : liste officielle de 10 cases dans la note UX (section « Cases du modèle ») ; les deux apostrophes (' et ’) sont acceptées ; une case connue mais vide devient des pointillés (28 points) ; une case inconnue bloque, avec son nom.
+- pdfmake 0.3.3 depuis cdnjs, empreintes SRI vérifiées le 2026-10-23, chargé au clic, délai de 20 secondes.
+- « Voir la convention » utilise le jeton d'écriture : un jeton en lecture seule fait passer le propriétaire au niveau lecteur, refusé par les règles par défaut (fiche C41).
+- Recette : « Voir en tant que » ne simule pas l'utilisateur pour les jetons du widget (génération, « Voir », dépôt). Ces cas se jouent avec un vrai compte non propriétaire (éditeur, profil complet dans Utilisateurs : Profil, DR ou DT).
 
 **Vrais textes des modèles :**
 
@@ -69,7 +84,7 @@ Règles du plan :
 
 **Widget fiche-club retiré :** partout où le plan cite `src/fiche-club/`, lire `src/clubs/`. Le `console.info` du jeton est supprimé de clubs dans main (fusion #5). Main a été ramené dans la branche `feature/convention` (tâche 0.4, faite) : `src/fiche-club/` est retiré et `src/clubs/script.js` ne contient plus ce `console.info`.
 
-## Structure Grist proposée (à créer)
+## Structure Grist (créée dans DEV7 et dans TEST, à créer dans PROD)
 
 **Table `Modeles_convention`** (proposé, 3 lignes) :
 
@@ -156,10 +171,10 @@ Le texte se lit ligne par ligne.
 
 | N° | Tâche                                                                                                              | Agent             | Fichiers             | Ce qui est vérifié                                                                         |
 | --- | ------------------------------------------------------------------------------------------------------------------- | ----------------- | -------------------- | -------------------------------------------------------------------------------------------- |
-| 1.1 | Vérifier que `Contacts.Fonction` est remplie pour 2 contacts d'essai.                                            | Hanta             | Aucun                | Colonne visible et remplie.                                                                  |
-| 1.2 | Créer `Modeles_convention` avec 3 lignes factices (texte d'essai court, jamais le vrai).                         | Hanta             | Aucun                | Table visible, `Dispositif` bien relié.                                                   |
-| 1.3 | Créer `Conventions` avec `DR` et `DD`.                                                                       | Hanta             | Aucun                | Table vide, `DR` et `DD` calculées sur une ligne d'essai.                               |
-| 1.4 | Poser les règles d'accès du tableau ci-dessus (National, Régional, Départemental ; ANS et anonyme sans accès). | Hanta             | Aucun                | « Voir en tant que » pour chaque profil, y compris ANS = rien. Notes sans nom de document. |
+| 1.1 | **Fait (DEV7, puis TEST par le script).** Vérifier que `Contacts.Fonction` est remplie pour 2 contacts d'essai.                                            | Hanta             | Aucun                | Colonne visible et remplie.                                                                  |
+| 1.2 | **Fait (DEV7, puis TEST par le script).** Créer `Modeles_convention` avec 3 lignes factices (texte d'essai court, jamais le vrai).                         | Hanta             | Aucun                | Table visible, `Dispositif` bien relié.                                                   |
+| 1.3 | **Fait (DEV7, puis TEST par le script).** Créer `Conventions` avec `DR` et `DD`.                                                                       | Hanta             | Aucun                | Table vide, `DR` et `DD` calculées sur une ligne d'essai.                               |
+| 1.4 | **Fait (DEV7, puis TEST par le script).** Poser les règles d'accès du tableau ci-dessus (National, Régional, Départemental ; ANS et anonyme sans accès). | Hanta             | Aucun                | « Voir en tant que » pour chaque profil, y compris ANS = rien. Notes sans nom de document. |
 | 1.5 | Relecture des règles posées : pas de fuite entre régions ni pour l'ANS, pièces jointes, table Contacts.         | auditeur-securite | Aucun                | Rapport sans fuite.                                                                          |
 | 1.6 | Remplir plus tard les vrais textes des modèles.                                                                    | Hanta             | Aucun (hors dépôt) | Les 3 modèles réels sont dans Grist, rien dans le dépôt.                                 |
 
@@ -185,82 +200,89 @@ Le texte se lit ligne par ligne.
 
 ### S4. Fonction A : afficher le bloc « Convention »
 
-| N° | Tâche                                                                                                                                                                                                | Agent         | Fichiers                                           | Ce qui est testé                                                                                                                                                                                                                                                                                 |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 | **Fait (commit e47240b). Note validée le 2026-10-22.** Relire la note UX et la corriger selon les réponses (National, ANS, blocage). La note passe avant le HTML.                             | designer-ux   | `docs/ux/convention.md`                          | Note à jour.                                                                                                                                                                                                                                                                                     |
-| 4.2 | **Fait (fiche C24).** Bloc en bas de la fiche, 5 états, textes de la note. Aucun bouton ni message de blocage (décision du 2026-10-23). Classes `convention-fields` et `convention-aide`. | dev-interface | `src/actions-dashboard/script.js`, `style.css` | Tests de 4.3. Vu à l'écran dans DEV7 : À générer et Sans modèle.                                                                                                                                                                                                                            |
-| 4.3 | **Fait (fiche C25).** Tests de 4.2 : 27 tests.                                                                                                                                                  | testeur       | `test/convention-bloc.test.js` (nouveau)         | Texte des 5 états, date en jour/mois/année, date vide, Signée l'emporte, aucun élément cliquable, aucun message de blocage, classes, place du bloc dans la fiche.                                                                                                                            |
-| R1  | Recette de la fonction A. Prérequis : structure dans TEST (`Conventions`, `Modeles_convention`, `Structures.Ville`, règles d'accès) et lignes d'essai fictives dans `Conventions`.         | recetteur     | `docs/tests/` (carnet)                           | Pour National, Régional, Départemental, dans leur périmètre : À générer, Générée (date en français), Signée, Sans modèle. Droits insuffisants : non jouable à l'écran (l'ANS ne voit pas le tableau de bord), couvert par les tests de 4.3. Clavier, lecteur d'écran, zoom 200 %. |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 4.1 | **Fait (commit e47240b). Note validée le 2026-10-22.** | designer-ux | `docs/ux/convention.md` | Note à jour. |
+| 4.2 | **Fait (fiche C24).** Bloc en bas de la fiche, 5 états, textes de la note, sans bouton. | dev-interface | `src/actions-dashboard/script.js`, `style.css` | Tests de 4.3. |
+| 4.3 | **Fait (fiche C25).** 27 tests. | testeur | `test/convention-bloc.test.js` | Textes des 5 états, dates, classes, place du bloc. |
+| R1 | **Jouée en local (campagne C01, DEV7, version 7e951b4, fiche C26) : 15 cas OK.** À rejouer sur TEST par un autre développeur (campagne C03). | recetteur, puis Hanta | `docs/tests/cas-de-test-convention.*`, carnet | Droits insuffisants : non jouable à l'écran, couvert par les tests de 4.3. |
 
 ### S5. Fonction B : fenêtre « Convention » et informations enregistrées
 
-| N° | Tâche                                                                                                                                                                                                                                                                                  | Agent         | Fichiers                                                           | Ce qui est testé                                                                                                                                                                                          |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 5.1 | Boutons du bloc et message de blocage (reportés de 4.2, voir la note UX). Fenêtre : 3 blocs, informations club et agence en lecture seule, liste des signataires (message si le club n'a aucun contact), représentant, fonction préremplie, validation. Pas encore de génération. | dev-interface | `src/actions-dashboard/index.html`, `script.js`, `style.css` | Tests de 5.3.                                                                                                                                                                                              |
-| 5.2 | Enregistrer les informations dans `Conventions` (création ou mise à jour de la ligne de l'action).                                                                                                                                                                                  | dev-backend   | `src/actions-dashboard/script.js`                                | Tests de 5.3.                                                                                                                                                                                              |
-| 5.3 | Tests de 5.1 et 5.2.                                                                                                                                                                                                                                                                    | testeur       | `test/convention-fenetre.test.js` (nouveau)                      | Boutons selon l'état, message de blocage relié au bouton, champs obligatoires, Année absente pour Remobilisation, club sans contact, écriture refusée = message d'erreur, une seule ligne par action. |
-| R2  | Recette de la fonction B.                                                                                                                                                                                                                                                               | recetteur     | `docs/tests/`                                                    | Informations enregistrées et relues à la réouverture ; message de blocage pour chaque élément manquant ; un profil sans droit d'écriture voit l'erreur prévue.                                      |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 5.1a | **Fait (fiche C27).** Bouton du bloc, grisé avec son message de blocage ; fenêtre en lecture seule ; fermeture par Fermer et Échap. | dev-interface | `src/actions-dashboard/` | Tests de 5.3a. |
+| 5.3a | **Fait (fiche C28).** 26 tests, 4 mis à jour. | testeur | `test/convention-fenetre.test.js` | Bouton, blocage, fenêtre, focus. |
+| 5.1b | **Fait (fiches C29 à C32).** Trois blocs, signataires, représentant, fonction préremplie, contrôle de l'année ; bug du message d'erreur toujours visible corrigé (C30). | dev-interface | `src/actions-dashboard/` | Tests de 5.3b. |
+| 5.2 | **Fait (fiche C33).** Enregistrement dans Conventions (une opération, mise à jour ou création), préremplissage à la réouverture. | dev-backend | `src/actions-dashboard/script.js` | Tests de 5.3b. |
+| 5.3b | **Fait (fiches C31, C34).** Tests de 5.1b et 5.2. | testeur | `test/convention-fenetre.test.js`, `test/convention-enregistrement.test.js` | Champs, année, brouillon, création, mise à jour, doublon, refus, réouverture. |
+| R2 | **Cas écrits (28 cas, CONV-16 à 43). Campagne C02 en local : 13 cas vérifiés pendant les contrôles à l'écran, les autres à jouer.** À rejouer sur TEST par un autre développeur (C03). | recetteur, puis Hanta | `docs/tests/cas-de-test-convention.*`, carnet | Refus d'écriture : non jouable à l'écran, couvert par les tests de C34. |
 
-S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention. Message si le club n'a aucun contact (voir docs/ux/convention.md). La numérotation S7 à S10 est gardée.
+S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention. La numérotation S7 à S10 est gardée.
 
 ### S7. Fonction D : générer le PDF et le voir
 
-| N° | Tâche                                                                                                                                                                                                                                                        | Agent         | Fichiers                                                                     | Ce qui est testé                                                                                                                                                                                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 7.1 | Charger pdfmake au clic sur « Générer » (version figée, SRI si 0.3 l'accepte), erreur claire si le chargement échoue.                                                                                                                                   | dev-backend   | `src/actions-dashboard/script.js`                                          | Tests de 7.3, avec doublure de pdfmake.                                                                                                                                                                                     |
-| 7.2 | Génération : lire le modèle, remplir, fabriquer le PDF, l'envoyer (méthode de `src/clubs/` : jeton dans l'adresse, `credentials 'omit'`, en-tête `X-Requested-With`, sans trace du jeton), l'attacher par l'API REST, écrire `Date_generation`. | dev-backend   | `src/actions-dashboard/script.js`                                          | Tests de 7.3.                                                                                                                                                                                                               |
-| 7.3 | Tests de 7.1 et 7.2.                                                                                                                                                                                                                                          | testeur       | `test/convention-generation.test.js` (nouveau), `test/helpers/widget.js` | Jeton jamais dans la console (test explicite), échec à chaque étape, état « À générer » conservé en cas d'échec.                                                                                                 |
-| 7.4 | « Voir la convention » : ouverture dans un nouvel onglet, jeton lu au clic.                                                                                                                                                                                 | dev-interface | `src/actions-dashboard/index.html`, `script.js`                          | Tests de 7.5.                                                                                                                                                                                                               |
-| 7.5 | Tests de 7.4.                                                                                                                                                                                                                                                 | testeur       | `test/convention-generation.test.js`                                       | Texte caché « nouvel onglet », aucun jeton dans la page avant le clic.                                                                                                                                                   |
-| 7.6 | Réglage des pointillés, du logo et de la mise en page sur un PDF imprimé (faux texte).                                                                                                                                                                     | Hanta         | Aucun                                                                        | Elle écrit à la main dans chaque zone sans être gênée ; logo, numéros de page et saut de page corrects.                                                                                                               |
-| R4  | Recette de la fonction D.                                                                                                                                                                                                                                     | recetteur     | `docs/tests/`                                                              | Un PDF est généré et s'ouvre pour chaque modèle ; cases correctes ; génération bloquée avec message s'il manque agence, club, dispositif ou adresse du club. Le texte réel n'est pas recopié dans le compte rendu. |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 7.0 | **Fait.** Note UX complétée pour la génération ; décisions D-3 et D-S7-1 à D-S7-7 ; liste officielle des cases. | designer-ux, Hanta | `docs/ux/convention.md` | Note à jour. |
+| 7.1 | **Fait (fiche C35).** Chargement de pdfmake 0.3.3 au clic, empreintes SRI. | dev-backend | `src/actions-dashboard/script.js` | Tests de 7.3. |
+| 7.2 | **Fait (fiches C36, C37).** conventionGenerer : contrôle, enregistrement, modèle, cases, pdfmake (20 s), PDF, envoi, rattachement, neuf codes d'erreur ; cases officielles. | dev-backend | `src/actions-dashboard/script.js` | Tests de 7.3. |
+| 7.2b | **Fait (fiches C38 à C40).** Bouton « Générer la convention » dans la fenêtre, attente, messages, focus ; rattachement par PATCH REST (C39). | dev-interface, dev-backend | `src/actions-dashboard/` | Tests de 7.3. |
+| 7.3 | **En partie.** Fait : rattachement (11 tests, C39), écran du bouton (26 tests, C40), cases (C37). Reste : chargement de pdfmake (ordre, empreintes, un seul chargement, nouvel essai, délai de 20 s), nom du fichier, contrôle des champs, codes d'erreur de conventionGenerer. | testeur | `test/convention-generation.test.js` | Jeton jamais dans la console, échec à chaque étape, « À générer » conservé. |
+| 7.4 | **Fait (fiche C41).** « Voir la convention » : onglet au clic, adresse blob:, jeton d'écriture (bug du propriétaire corrigé). | dev-interface | `src/actions-dashboard/script.js` | Tests de 7.5. |
+| 7.5 | **Fait (fiche C42).** 14 tests, 6 mis à jour. | testeur | `test/convention-voir.test.js` | Texte caché, aucun jeton avant le clic, échecs. |
+| 7.6 | Réglage sur un PDF imprimé (faux texte) : pointillés (28 points), mise en page, saut de page, signatures, place des notes (Q-A). Logo : attend Q-C. | Hanta | Aucun | Elle écrit à la main dans chaque zone sans être gênée. |
+| R4 | Recette de la fonction D, avec un vrai compte non propriétaire (jamais seulement « Voir en tant que »). | recetteur | `docs/tests/` | PDF généré et ouvert pour chaque modèle ; cases correctes ; chaque message de blocage ; propriétaire et FT Régional. Le texte réel n'est pas recopié dans le compte rendu. |
+
+Vérifié dans DEV7 le 2026-10-24 : génération et « Voir » en propriétaire et avec un vrai compte FT Régional (non propriétaire).
 
 ### S8. Fonction E : re-générer
 
-| N° | Tâche                                                                                           | Agent                      | Fichiers                                            | Ce qui est testé                                                                               |
-| --- | ------------------------------------------------------------------------------------------------ | -------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 8.1 | « Re-générer » : fenêtre préremplie, nouveau PDF qui remplace l'ancien, date mise à jour. | dev-interface, dev-backend | `src/actions-dashboard/index.html`, `script.js` | Tests de 8.2.                                                                                   |
-| 8.2 | Tests de 8.1.                                                                                    | testeur                    | `test/convention-generation.test.js`              | Un seul fichier après re-génération, informations préremplies, échec = l'ancien PDF reste. |
-| R5  | Recette de la fonction E.                                                                        | recetteur                  | `docs/tests/`                                     | La liste des pièces jointes ne contient qu'un fichier.                                         |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 8.0 | Note UX de la re-génération, et deux décisions : le modèle enregistré (celui de la génération ou le modèle actif) ; l'ancien PDF (Grist supprime-t-il un fichier qu'aucune cellule n'utilise ?). | designer-ux, Hanta | `docs/ux/convention.md` | Note à jour. |
+| 8.1 | « Re-générer » : fenêtre préremplie, nouveau PDF qui remplace l'ancien, date mise à jour. | dev-interface, dev-backend | `src/actions-dashboard/` | Tests de 8.2. |
+| 8.2 | Tests de 8.1. | testeur | `test/convention-generation.test.js` | Un seul fichier après re-génération, informations préremplies, échec = l'ancien PDF reste. |
+| R5 | Recette de la fonction E, avec un vrai compte non propriétaire. | recetteur | `docs/tests/` | La liste des pièces jointes ne contient qu'un fichier. |
 
 ### S9. Fonction F : déposer et remplacer le fichier signé
 
-| N° | Tâche                                                                                                  | Agent                      | Fichiers                                            | Ce qui est testé                                                                                                      |
-| --- | ------------------------------------------------------------------------------------------------------- | -------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 9.1 | Dépôt : choix du fichier, contrôle PDF (type et extension), envoi, rattachement, date, confirmation. | dev-backend, dev-interface | `src/actions-dashboard/index.html`, `script.js` | Tests de 9.2.                                                                                                          |
-| 9.2 | Tests de 9.1.                                                                                           | testeur                    | `test/convention-depot.test.js` (nouveau)         | Fichier non PDF refusé sans rien écrire, remplacement du signé, état « Signée » après dépôt, échec d'envoi. |
-| R6  | Recette de la fonction F.                                                                               | recetteur                  | `docs/tests/`                                     | Essai avec un vrai PDF, un fichier non PDF, un profil sans droit d'écriture.                                          |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 9.0 | Note UX du dépôt (designer-ux avant dev-interface). | designer-ux | `docs/ux/convention.md` | Note à jour. |
+| 9.1 | Dépôt : choix du fichier, contrôle dans l'ordre vide → taille (10 Mo) → extension .pdf → type application/pdf → début %PDF-, envoi, rattachement par PATCH REST (comme C39), date, confirmation. | dev-backend, dev-interface | `src/actions-dashboard/` | Tests de 9.2. |
+| 9.2 | Tests de 9.1. | testeur | `test/convention-depot.test.js` (nouveau) | Fichier non PDF refusé sans rien écrire, remplacement du signé, état « Signée » après dépôt, échec d'envoi. |
+| R6 | Recette de la fonction F, avec un vrai compte non propriétaire. | recetteur | `docs/tests/` | Essai avec un vrai PDF, un fichier non PDF, un profil sans droit d'écriture. |
 
 ### S10. Clôture
 
-| N°  | Tâche                                                                                                                                                                                                                                           | Agent             | Fichiers                                                                                 | Ce qui est testé                                                          |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 10.1 | Examen de sécurité final : jeton, pdfmake, règles d'accès (ANS sans accès), contenu de `actions-dashboard.html` (aucun texte de modèle, aucun secret).                                                                                   | auditeur-securite | Aucun                                                                                    | Rapport sans point bloquant.                                               |
-| 10.2 | Documentation : README (section Convention, tables lues et écrites, données personnelles nom, prénom, fonction), carnet de tests, note UX alignée sur le code (dont les textes « date vide »), mention dans CLAUDE.md si Hanta le décide. | documentaliste    | `README.md`, `docs/tests/`, `docs/ux/convention.md`, éventuellement `CLAUDE.md` | Relecture par Hanta : aucun nom de document Grist, aucune adresse réelle. |
-| R7   | Recette complète : générer, voir, re-générer, déposer, remplacer, pour chaque profil et chaque modèle.                                                                                                                                    | recetteur         | `docs/tests/`                                                                          | Compte rendu final.                                                        |
-| 10.3 | Structure dans PROD (dont `Structures.Ville`, `Conventions`, `Modeles_convention`, règles d'accès) avant la fusion. Journal des évolutions dans DEV2 ; fusion dans main seulement sur accord de Hanta.                                  | Hanta             | Aucun                                                                                    | Page publiée vérifiée après fusion.                                    |
+| N° | Tâche | Agent | Fichiers | Ce qui est testé |
+| --- | --- | --- | --- | --- |
+| 10.1 | Examen de sécurité final : jeton (écriture pour « Voir » et le rattachement), pdfmake et empreintes, règles d'accès (ANS sans accès), contenu de `actions-dashboard.html` (aucun texte de modèle, aucun secret). | auditeur-securite | Aucun | Rapport sans point bloquant. |
+| 10.2 | Documentation : README (section Convention, tables lues et écrites, données personnelles), carnet de tests, note UX alignée sur le code (textes « date vide », message de l'alerte d'année), CLAUDE.md (règle du mode sombre, recette avec un vrai compte non propriétaire). | documentaliste | `README.md`, `docs/tests/`, `docs/ux/convention.md`, `CLAUDE.md` | Relecture par Hanta : aucun nom de document Grist, aucune adresse réelle. |
+| R7 | Recette complète sur TEST : générer, voir, re-générer, déposer, remplacer, pour chaque profil et chaque modèle, avec de vrais comptes. | recetteur | `docs/tests/` | Compte rendu final. |
+| 10.3 | Structure dans PROD (dont `Structures.Ville`, `Conventions`, `Modeles_convention`, règles d'accès) avant la fusion. Journal des évolutions dans DEV2 ; fusion dans main seulement sur accord de Hanta. | Hanta | Aucun | Page publiée vérifiée après fusion. |
 
 ## Questions encore ouvertes
 
-- **Q-A** : note de bas de page regroupée à la fin de l'article, au lieu du bas de page (pdfmake ne gère pas les vraies notes de bas de page). À faire valider par le client.
+- **Q-A** : notes de bas de page. Aujourd'hui, elles sont regroupées à la fin du document (pdfmake ne gère pas les vraies notes de bas de page). À faire valider par le client : fin de l'article ou fin du document.
 - **Q-B** : une action en corbeille ou annulée garde-t-elle sa convention ? La génération est-elle interdite pour ces statuts ?
-- **Q-C** : d'où viennent les fichiers du logo (République française, France Travail) et comment les embarquer sans alourdir le dépôt public ?
-- **Q-D** : taille maximale du PDF signé.
-- **Q-E** : nom du fichier téléchargé (proposé : nom du club et année, jamais un nom de personne).
+- **Q-C** : d'où viennent les fichiers du logo (République française, France Travail) et comment les embarquer sans alourdir le dépôt public ? Le PDF sort sans logo en attendant.
 - **Q-F** : garder `Modele_version` ? Une branche par tâche ou par fonction ?
 - **Q-G** : qui corrige l'adresse d'une agence dans Agences ?
-- **Q-H** (pour le chef) : demander une confirmation avant de fermer la fenêtre « Convention » avec Échap si des champs ont été remplis (note UX, §7) ?
+- **Q-I** (S8) : quel modèle enregistrer lors d'une re-génération : celui de la génération ou le modèle actif ?
+- **Q-J** (S8) : que devient l'ancien PDF, et un fichier envoyé mais non rattaché (échec du PATCH) ? Grist supprime-t-il les fichiers qu'aucune cellule n'utilise ?
+
+Questions réglées : Q-D (10 Mo, tâche 0.3), Q-E (D-S7-3), Q-H (option A).
 
 ## Risques
 
-- Colonnes supposées dans le code (`Siege` ou `Adresse`) : tâche 0.2.
-- Structure absente de TEST au moment de la recette, ou de PROD au moment de la fusion : prérequis de R1, tâche 10.3.
 - Fuite entre régions ou pour l'ANS si une règle est mal posée : tâches 1.4 et 1.5.
-- Droits d'écriture de Régional et Départemental sur `Conventions` : testés en R2.
-- Script externe pdfmake (même risque que le bandeau) : tâche 0.3.
-- Jeton dans l'adresse du lien « Voir » : tâche 0.3.
+- Recette faussée par « Voir en tant que » pour tout ce qui passe par un jeton : toujours un vrai compte non propriétaire.
+- Structure ou modèles absents de TEST ou de PROD : un modèle avec une case hors de la liste officielle bloque la génération.
+- Script externe pdfmake : version figée et empreintes SRI ; une mise à jour demande de recalculer les empreintes.
 - Doublons de `Conventions.Action` : Grist n'impose pas l'unicité, le widget garde la plus ancienne ligne.
-- `script.js` dépasse 1300 lignes : les tests existants doivent rester verts à chaque tâche.
-- Pointillés, logo et saut de page : réglage seulement sur papier (7.6).
+- `script.js` dépasse 3000 lignes : les tests existants doivent rester verts à chaque tâche.
+- Pointillés et mise en page : réglage seulement sur papier (7.6).
 - Dépôt public : aucun texte de modèle, aucun secret, aucune donnée réelle.
 - Données personnelles : nom, prénom, fonction du signataire, signatures sur le PDF signé. Durée de conservation à traiter dans la démarche RGPD globale.
