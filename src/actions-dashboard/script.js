@@ -2982,6 +2982,10 @@ const CONVENTION_TEXTE_GENERER = 'Générer la convention';
 const CONVENTION_TEXTE_EN_COURS = 'Génération en cours…';
 const CONVENTION_ATTENTE = 'Génération de la convention en cours. Cela peut prendre quelques secondes.';
 const CONVENTION_MESSAGE_GENEREE = 'Convention générée.';
+// Messages d'information (decision D-MEP-3, note UX §11.2) : un logo manquant ou illisible ne
+// bloque jamais la generation, il est signale avec la reussite. Ce ne sont pas des erreurs.
+const CONVENTION_MESSAGE_SANS_LOGO = "La convention a été générée sans le logo France Travail. Vérifiez le modèle avant de l'imprimer.";
+const CONVENTION_MESSAGE_SANS_LOGO_PARTENAIRE = "La convention a été générée sans le logo du partenaire. Vérifiez le modèle avant de l'imprimer.";
 const CONVENTION_SUITE = 'Vos informations sont conservées.';
 
 // Messages des echecs (note UX, §3 « Echecs »), un par code. Les codes champs-a-corriger,
@@ -3052,8 +3056,9 @@ async function lancerGenerationConvention(actionId) {
   conventionVerrouiller(true);
   marquerProblemesConvention([]);
   let echec = null;
+  let resultat = null;
   try {
-    await conventionGenerer(actionId, valeurs);
+    resultat = await conventionGenerer(actionId, valeurs);
   } catch (erreur) {
     echec = erreur || new Error('echec');
   }
@@ -3068,7 +3073,7 @@ async function lancerGenerationConvention(actionId) {
     focusAvantConvention = null;
     closeConvention();
     conventionRafraichirBloc(actionId);
-    conventionAnnoncerReussite();
+    conventionAnnoncerReussite(resultat && resultat.logosManquants);
     return;
   }
   conventionVerrouiller(false);
@@ -3086,15 +3091,29 @@ async function lancerGenerationConvention(actionId) {
   if (alerte && typeof alerte.scrollIntoView === 'function') alerte.scrollIntoView({block: 'nearest'});
 }
 
+// Message d'information sur les logos, d'apres `logosManquants` (resultat de conventionGenerer).
+// 'Logo' manquant (avec ou sans Logo_partenaire) : message France Travail ; seulement
+// 'Logo_partenaire' : message du partenaire ; liste vide ou absente : '' (rien de plus).
+function conventionMessageLogos(logosManquants) {
+  if (!Array.isArray(logosManquants)) return '';
+  if (logosManquants.includes('Logo')) return CONVENTION_MESSAGE_SANS_LOGO;
+  if (logosManquants.includes('Logo_partenaire')) return CONVENTION_MESSAGE_SANS_LOGO_PARTENAIRE;
+  return '';
+}
+
 // « Convention generee. » en haut du bloc (alert-success). La zone role="status" existe deja,
 // vide, dans la page (conventionBlocHtml) : le texte qu'on y met est annonce.
 // Le focus va sur « Voir la convention » (decision D-S7-6), premier bouton de l'etat
 // « Generee ». Si le bloc n'a pas ce bouton (cas inattendu), il va sur le titre
 // « Convention » du bloc, rendu focalisable avec tabindex="-1".
-function conventionAnnoncerReussite() {
+function conventionAnnoncerReussite(logosManquants) {
   const zone = document.getElementById('conventionAlerte');
   if (!zone) return;
-  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p></div>`;
+  // Le message de logo s'ajoute sous « Convention generee. », dans la meme alerte : une seule
+  // alerte a la fois en haut du bloc, et « Convention generee. » n'est jamais cachee.
+  const logo = conventionMessageLogos(logosManquants);
+  const infoLogo = logo ? `<p class="alert-content">${escapeHtml(logo)}</p>` : '';
+  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p>${infoLogo}</div>`;
   let cible = document.getElementById('conventionVoir');
   if (!cible) {
     cible = document.querySelector('#conventionBloc .section-head span');
