@@ -2213,6 +2213,7 @@ function conventionInfos(actionId, donnees) {
     },
     agence: {
       nom: texte(agence.Libelle_agence) || texte(agence.Code_Aurore),
+      siret: texte(agence.Siret),
       adresse: lignes(agence.Adresse, agence.Complement_adresse, codePostalVille(agence)).join('\n')
     }
   };
@@ -2695,6 +2696,7 @@ const CONVENTION_CASES = {
   fonctionSignataire: 'Fonction du signataire',
   agenceNom: 'Nom de l’agence',
   agenceAdresse: 'Adresse de l’agence',
+  agenceSiret: 'SIRET de l’agence',
   representant: 'Représentant de l’agence',
   fonctionRepresentant: 'Fonction du représentant'
 };
@@ -2753,6 +2755,7 @@ function conventionValeursCases(actionId, valeurs, donnees) {
   cases[CONVENTION_CASES.fonctionSignataire] = signataire ? signataire.fonction : '';
   cases[CONVENTION_CASES.agenceNom] = infos.agence.nom;
   cases[CONVENTION_CASES.agenceAdresse] = surUneLigne(infos.agence.adresse);
+  cases[CONVENTION_CASES.agenceSiret] = infos.agence.siret;
   cases[CONVENTION_CASES.representant] = String(valeurs.representant ?? '').trim();
   cases[CONVENTION_CASES.fonctionRepresentant] = String(valeurs.fonctionRepresentant ?? '').trim();
   // Une case connue mais vide (un club sans SIRET, par exemple) devient des pointilles :
