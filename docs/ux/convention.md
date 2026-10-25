@@ -10,6 +10,8 @@
 
 **Mis à jour le 2026-10-25 (mise en page)** : nouvelle section §11 « Mise en page du PDF » (ce que dev-backend doit reproduire d'après les Word officiels), décisions D-MEP-1 à D-MEP-7 à la fin du §11. Rien d'antérieur n'est changé.
 
+**Mis à jour le 2026-10-26 (S8)** : nouvelle section §12 « Re-générer » (bouton, fenêtre, ce qui change, réponses proposées à Q-I et Q-J, échec sans perte de l'ancien PDF), décisions D-S8-1 à D-S8-7 tranchées par Hanta le 2026-10-26 (tableau au §12.10 ; seule la vérification D-S8-7 reste à faire par Hanta dans DEV7, avant la recette R5). Rien d'antérieur n'est changé ; trois renvois ont été ajoutés (§3, §9, §10).
+
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
@@ -326,7 +328,7 @@ Ne jamais associer `help-block` et `invalid-feedback` : la règle `.help-block.i
 
 ### Générer la convention : de l'ouverture au résultat (mis à jour le 2026-10-23 (S7))
 
-Tout ce qui suit s'applique aussi à « Re-générer » (même fenêtre, même bouton) ; ce qui est propre à la re-génération (l'ancien PDF reste en cas d'échec) relève de S8 et n'est pas traité ici.
+Tout ce qui suit s'applique aussi à « Re-générer » (même fenêtre, même bouton) ; ce qui est propre à la re-génération (l'ancien PDF reste en cas d'échec) relève de S8 et n'est pas traité ici : voir le §12 (mis à jour le 2026-10-26 (S8)).
 
 **Étapes, dans cet ordre** (au clic sur « Générer la convention » du pied). La première qui échoue arrête tout ; les suivantes ne sont pas jouées.
 
@@ -666,7 +668,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
 - **Zones en pointillés du PDF** : le PDF généré doit laisser de la place pour écrire à la main (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature). À vérifier sur le PDF produit, qui n'est pas dans cette note.
 - **Ouverture du PDF par bouton** : l'onglet s'ouvre après une récupération asynchrone, ce que certains navigateurs prennent pour une fenêtre non sollicitée et bloquent. L'ouverture d'un onglet depuis le cadre de Grist est confirmée (essai dans Grist DEV), mais pas avec une adresse `blob:` obtenue après chargement : à tester dans Grist DEV, sur plusieurs navigateurs, avant de livrer. Non vérifié ici.
-- **À vérifier pour S8 (re-génération)** : Grist supprime-t-il un ancien PDF qu'aucune cellule n'utilise ? (non vérifié)
+- **À vérifier pour S8 (re-génération)** : Grist supprime-t-il un ancien PDF qu'aucune cellule n'utilise ? (non vérifié ; mis à jour le 2026-10-26 (S8) : la façon de le vérifier est au §12.6, la question reste ouverte. C'est la décision D-S8-7 : à vérifier par Hanta dans DEV7 avant la recette R5.)
 - La suppression de l'ancien fichier signé est définitive : elle suit la décision du chef (« sans historique »). Pas de confirmation ni de vérification avant l'enregistrement : le fichier choisi est enregistré tout de suite.
 
 ## 10. Liste des [À CONFIRMER]
@@ -696,6 +698,8 @@ Décisions de Hanta du 2026-10-23 :
 - **D-S7-5 : indicateur d'attente.** Décidé : texte seulement (« Génération en cours… » sur le bouton + phrase annoncée), pas de `ft-spinner` pour l'instant.
 - **D-S7-6 : focus après une réussite.** Décidé : sur « Voir la convention ».
 - **D-S7-7 : champs non modifiables pendant la génération.** Décidé : oui (`disabled` sur les `fieldset`).
+
+Mis à jour le 2026-10-26 (S8) : les décisions D-S8-1 à D-S8-7 (dont Q-I et Q-J) sont prises par Hanta le 2026-10-26 ; elles sont au §12.10. Seule D-S8-7 reste à faire (vérification par Hanta dans DEV7, avant la recette R5).
 
 À confirmer :
 
@@ -838,3 +842,160 @@ Aucune mesure manquante (2026-10-25).
 | D-MEP-7 | Numéro de page (9 pt, à 1,25 cm du bas, absent de la première page) | Réglé |
 
 Rappel de périmètre : cette section ne change ni la fenêtre « Convention » ni les textes des §3 et §5, hormis le message de logo du §11.2, ajouté à la liste des textes du §5.
+
+## 12. Re-générer (S8) (mis à jour le 2026-10-26 (S8))
+
+Public : Hanta (pour décider), puis dev-interface et dev-backend (tâche 8.1), puis le testeur (8.2).
+**Où cette partie est placée, et pourquoi.** Dans une section à part, à la fin de la note, et non dans le §3 : le §3 décrit déjà la fenêtre et la génération en détail, et la re-génération réutilise tout cela. Une section à part dit en un seul endroit ce qui change, sans toucher aux numéros ni aux renvois existants. Le §3 (« Générer la convention : de l'ouverture au résultat ») y renvoie.
+Sources lues : ce fichier en entier, `docs/backlog.md` (S8, Q-I, Q-J), `REVIEW_LOG.md` (fiche C33) et `src/actions-dashboard/script.js` (`conventionEtat`, `conventionAEcrire`, `conventionGenerer`, `conventionModeleActif`, `conventionModeleInfos`). Aucune commande lancée, rien exécuté.
+
+### 12.1 Ce qui ne change pas : tout ce qui est écrit pour « Générer » s'applique à l'identique
+
+« Re-générer » **n'ajoute aucune règle** à celles de la génération. Ne pas les réécrire ; lire :
+
+| Sujet | Où c'est décrit | À la re-génération |
+|---|---|---|
+| Génération bloquée (agence, club, dispositif, adresse du club) et ses messages | §2 | identique : « Re-générer » est grisé avec le message du premier élément manquant (déjà écrit au §2) |
+| Contrôle des champs obligatoires, les six messages, tous à la fois | §3 « Enregistrer et Générer » | identique |
+| Enregistrement des informations avant la fabrication du PDF (D-S7-4) | §3 « Générer la convention : de l'ouverture au résultat », étape 2 | identique |
+| Attente : texte « Génération en cours… », région `role="status"`, verrou des trois boutons, Fermer et Échap ignorés, champs non modifiables | §3 (D-S7-2, D-S7-5, D-S7-7) | identique |
+| Cases du modèle, pointillés, case inconnue bloquante | §3 « Cases du modèle » | identique |
+| Logos, message d'information si un logo manque | §11.2 | identique |
+| Mise en page du PDF | §11 | identique |
+| Nom du fichier PDF | §3 « Nom du fichier PDF » | identique, calculé avec les valeurs du moment (une année corrigée change le nom) |
+| Messages d'échec | §3 « Échecs » | identiques, avec une phrase en plus (§12.7) |
+| Après une réussite : fenêtre fermée, alerte « Convention générée. », focus sur « Voir la convention » | §3 « Après une réussite » (D-S7-6) | identique : le bouton « Re-générer » existe toujours à l'état « Générée », mais le focus va quand même sur « Voir la convention », comme à la première génération |
+| Droits, ANS, tables refusées | §2 | identique : « Droits insuffisants » l'emporte |
+
+« Re-générer » n'existe qu'à l'état **« Générée »**. À l'état « Signée », il n'y a ni « Re-générer » ni accès au PDF généré (§2, A3) : pas de changement.
+
+### 12.2 Le bouton « Re-générer » dans le bloc (état « Générée »)
+
+- **Place.** Sur la même rangée de boutons que « Voir la convention », **juste après lui** (ordre de Tab = ordre visuel : « Voir la convention », « Re-générer », « Déposer la convention signée »). Cet ordre est celui du tableau des états du §2, qui ne change pas.
+- **Style.** `btn btn-secondary`, comme « Voir la convention » : même taille, sans icône, pas de `btn-sm`. Un seul bouton ne devient pas principal ici : la rangée n'a aucun bouton principal.
+- **Texte.** « Re-générer » (déjà décidé, §5). Pas de texte caché supplémentaire : le bouton ouvre une fenêtre, ce que dit `aria-haspopup="dialog"`.
+- **Actif** : `aria-haspopup="dialog"` ; **grisé** (génération bloquée) : `aria-disabled="true"`, `aria-describedby` vers le message du bloc, pas d'`aria-haspopup` (règle du §2, sans changement).
+- **Mobile.** Les boutons gardent leur taille normale et passent à la ligne, dans le même ordre (§2).
+- **Ce qui est interdit** : un deuxième bouton « Générer la convention » dans le bloc à l'état « Générée » ; un lien « Modifier et régénérer » (retiré par le chef, §10).
+
+Structure (réutilise celle de « Générer la convention » du bloc, §2 ; `id` donné à titre d'exemple, dev-interface choisit l'`id` en suivant les noms déjà employés dans le script, aucun bouton « Re-générer » n'y existe encore) :
+
+```html
+<button class="btn btn-secondary" type="button" id="conventionRegenerer" aria-haspopup="dialog">
+  <span class="btn-content">Re-générer</span>
+</button>
+```
+
+### 12.3 La fenêtre à la re-génération
+
+- **Même fenêtre « Convention »** que pour générer : même structure, `modal-xl`, trois blocs, mêmes champs, même titre « Convention ». Aucune nouvelle fenêtre, aucun nouveau composant.
+- **Préremplie** avec les informations déjà enregistrées dans la ligne de la convention, comme à toute réouverture (fiche C33 du REVIEW_LOG) : année, signataire du club, représentant de l'agence, fonction du représentant. Les champs en lecture seule (club, siège, agence, adresse, fonction du signataire) se lisent comme d'habitude à l'ouverture.
+  - **L'année enregistrée est reprise, pas l'année en cours** : l'année en cours (D-4) n'est proposée que si rien n'est enregistré.
+  - **Un contact qui n'existe plus** (supprimé depuis dans la fiche du club) : la liste « Signataire » montre l'invite « Veuillez sélectionner » et l'agent doit en choisir un autre ; le contrôle de « Générer » le lui rappelle (« Choisissez le signataire du club. »). Rien de nouveau à écrire.
+- **Bouton du pied : « Générer la convention » (décidé par Hanta le 2026-10-26, D-S8-1).** Le texte **ne change pas**. Raisons : c'est ce que la note dit déjà (§2, §5 : « aussi à la re-génération »), l'agent a cliqué sur « Re-générer » pour arriver là donc il sait ce qu'il fait, un deuxième libellé obligerait à doubler les textes d'attente et de succès (« Re-génération en cours… »), et la fenêtre reste la même pour les deux cas. Le pied reste : « Fermer », « Enregistrer les informations », « Générer la convention » (seul bouton principal).
+- **Phrase d'information en tête du corps (décidé par Hanta le 2026-10-26, D-S8-2).** Parce que le remplacement est **sans historique**, l'agent doit le savoir avant de cliquer. Quand la fenêtre est ouverte depuis « Re-générer », une phrase ordinaire s'ajoute **tout en haut du corps**, avant la phrase sur les champs obligatoires : « Le nouveau PDF remplacera la convention générée le [date]. » C'est un `<p>` ordinaire, sans classe d'alerte (ce n'est ni une erreur ni un succès), présent dès l'ouverture, lu en parcourant la fenêtre ; pas de région `role="status"` (elle n'apparaît pas après une action). La date est celle de `Date_generation`, au même format que « Convention générée le [date]. » du bloc. Elle n'existe pas à la première génération.
+- **Focus à l'ouverture** : sur le premier champ modifiable, comme à la première génération (§6).
+- **Fermer / Échap** (hors attente) : ferment sans confirmation (Q-H), le focus revient sur **« Re-générer »** (le bouton qui a ouvert la fenêtre, qui existe toujours). Les informations modifiées et non enregistrées sont perdues, l'ancien PDF est intact.
+- **Mobile, zoom 200 %, mode sombre** : sans changement (§7).
+
+### 12.4 Ce qui change vraiment par rapport à une première génération
+
+| Point | Première génération | Re-génération |
+|---|---|---|
+| Bouton d'ouverture | « Générer la convention » (état « À générer ») | « Re-générer » (état « Générée ») |
+| Ligne `Conventions` | créée à l'étape 2 s'il n'y en a pas | existe déjà : mise à jour (la plus ancienne en cas de doublon, comme aujourd'hui) |
+| `PDF_genere` | rempli | **remplacé** par le nouveau fichier, **sans historique** (§1, §10) : la cellule ne contient jamais deux fichiers |
+| `Date_generation` | écrite | **réécrite avec la nouvelle date**, dans la même opération que `PDF_genere` (D-S7-1) |
+| `Modele` | le modèle actif | voir Q-I (§12.5) |
+| `PDF_signe`, `Date_depot` | sans objet | **jamais touchés** (l'état « Générée » n'a pas de fichier signé) |
+| Après un échec | état « À générer », aucun fichier | état « Générée », **l'ancien PDF et l'ancienne date restent** (§12.7) |
+| Phrase en tête de la fenêtre | aucune | « Le nouveau PDF remplacera la convention générée le [date]. » (D-S8-2) |
+| Messages d'échec | ceux du §3 | ceux du §3 + « L'ancienne convention reste disponible. » (D-S8-3) |
+
+### 12.5 Q-I : quel modèle enregistrer à la re-génération ? (décidé le 2026-10-26 : option A, D-S8-4)
+
+**État actuel du code (lu, pas exécuté).** Aujourd'hui, les deux moitiés ne vont pas ensemble :
+- l'enregistrement des informations écrit `Modele` avec le modèle de la ligne existante s'il y en a une, sinon le modèle actif (`conventionEtat`, `conventionAEcrire`) ;
+- la fenêtre affiche le titre de **ce même modèle** (« Modèle utilisé ») et en tire la présence du champ « Année » (`conventionModeleInfos`) ;
+- mais la fabrication du PDF lit le texte du **modèle actif du dispositif** (`conventionGenerer` appelle `conventionModeleActif`).
+
+Tant que le modèle n'a pas changé, c'est invisible. Dès qu'un modèle a été remplacé (nouveau modèle actif pour le même dispositif), une re-génération ferait un PDF avec le **nouveau** texte, tout en affichant et en gardant l'**ancien** modèle dans `Modele` : l'information enregistrée serait fausse.
+
+| Option | Ce que ça donne | Avantages | Inconvénients |
+|---|---|---|---|
+| **A. Modèle actif au moment de la re-génération** (**décidé**) | `Modele` est mis à jour avec le modèle actif ; la fenêtre affiche ce modèle (et son champ « Année » ou non) ; le PDF est fait avec ce modèle | simple, cohérent avec le texte réellement imprimé ; corriger une erreur du modèle est une raison fréquente de re-générer ; si le modèle n'est plus actif, on retombe sur l'échec déjà décrit (« le modèle de convention n'est plus disponible… ») | le texte de la convention peut changer entre deux générations : l'agent doit pouvoir le voir (le titre du modèle dans la fenêtre suffit à le dire, mais pas ce qui a changé dedans) |
+| **B. Modèle de la génération d'origine** | le PDF est refait avec l'ancien texte | une re-génération ne change jamais le texte du contrat | l'ancien modèle est peut-être inactif ou modifié : il faudrait le relire même inactif, ce qui contredit « Modèle inactif ou introuvable » du §3 ; si son texte a été corrigé, la re-génération ne corrige rien ; plus de code |
+
+**Décidé par Hanta le 2026-10-26 (D-S8-4) : option A.** Le modèle actif est enregistré dans `Modele` à **chaque** re-génération (pas celui d'origine), pour qu'il corresponde toujours au texte réellement utilisé dans le PDF. Deux conséquences à faire coder en 8.1 : (1) la fenêtre « Modèle utilisé » et la présence du champ « Année » suivent le modèle actif à l'ouverture, pas la ligne enregistrée ; (2) `Modele` est réécrit avec l'id du modèle actif à l'étape 2 (la ligne enregistrée doit dire ce qui est imprimé). Cas à traiter : si le modèle actif n'a plus d'année alors que la convention en avait une (ou l'inverse), la fenêtre suit le modèle actif ; l'année enregistrée n'est simplement pas montrée dans le premier cas, et l'année en cours est proposée dans le second (D-4).
+
+### 12.6 Q-J : que devient l'ancien PDF ? (décidé le 2026-10-26 : option A, D-S8-5)
+
+**Ce que fait le widget, dans tous les cas** : il **ne supprime jamais** un fichier. Il remplace seulement la valeur de la cellule `PDF_genere` (une liste d'un fichier) par la référence du nouveau fichier, dans la dernière écriture de la chaîne. Il n'y a aucune étape « effacer l'ancien ».
+
+**Ce que devient l'ancien fichier, une fois la cellule remplacée.** Il reste dans le stockage des pièces jointes du document Grist, **sans être rattaché** à une cellule. **Non vérifié** : si et quand Grist supprime une pièce jointe qu'aucune cellule n'utilise (je ne l'ai pas lu dans la documentation de Grist ni essayé dans DEV7). Comment le vérifier (par Hanta, dans le document DEV, rien à coder) : générer, noter la taille ou le nombre de pièces jointes affichés par Grist pour le document, re-générer, regarder à nouveau ; revenir après quelques jours. Le résultat décide du reste : si Grist nettoie tout seul, il n'y a rien à faire ; sinon, des PDF contenant des noms de signataires s'accumulent dans le document, ce qui rejoint la durée de conservation à décider (§7, §10).
+
+| Option | Ce que ça donne | Avantages | Inconvénients |
+|---|---|---|---|
+| **A. Laisser l'ancien PDF dans Grist, non rattaché, sans le supprimer depuis le widget** (**décidé**) | le widget ne fait que remplacer la cellule | aucun risque de perdre l'ancien fichier par erreur ; aucun code ni droit de plus ; le même comportement qu'au remplacement du fichier signé (§4) | l'ancien PDF (avec noms de signataires) reste jusqu'à un nettoyage de Grist, à vérifier |
+| **B. Supprimer l'ancien fichier depuis le widget après la réussite** | le widget demande à Grist de supprimer la pièce jointe | rien d'orphelin | rien dans la note ni dans le dépôt ne montre que le widget a le droit ou le moyen de supprimer une pièce jointe (**non vérifié**) ; une suppression qui échoue ou qui touche le mauvais fichier est irréversible ; contredit la prudence de §12.7 |
+
+**Décidé par Hanta le 2026-10-26 (D-S8-5) : option A.** L'ancien PDF n'est **jamais supprimé par le widget** ; s'il n'est plus rattaché à aucune cellule après un rattachement réussi du nouveau, il reste **orphelin** dans Grist. Le nettoyage éventuel par Grist reste à vérifier par Hanta dans DEV7 avant la recette R5 (D-S8-7). Si un jour la suppression depuis le widget est voulue, ce sera une tâche à part, avec l'avis d'auditeur-securite.
+
+**Cas : le nouveau fichier est envoyé, mais le rattachement échoue.** Réponse : **l'ancien PDF reste en place** (la cellule n'a pas été modifiée), « Voir la convention » ouvre l'ancien, la date reste l'ancienne. Le nouveau fichier est un fichier orphelin dans Grist (même nature que l'ancien après un remplacement réussi). Chaque nouvel essai raté peut en laisser un de plus : petit risque d'accumulation, signalé dans les risques. Message : celui de la ligne « Fichier envoyé, écriture dans la convention… refusée ou échouée » du §3, plus la phrase du §12.7.
+
+### 12.7 Si la re-génération échoue : l'ancien PDF n'est jamais perdu
+
+**Règle.** La cellule `PDF_genere` et `Date_generation` ne sont **modifiées qu'une seule fois, à la toute fin**, dans une seule opération, **après** que le nouveau fichier est fabriqué **et envoyé avec succès**. Avant cette dernière écriture, l'ancien PDF est intact, quelle que soit l'étape qui échoue. C'est déjà l'ordre de la génération (§3, étapes 1 à 5 ; D-S7-1) : il n'y a rien à ajouter, il ne faut qu'**interdire de le changer**.
+
+| Étape (§3) | Ce qui est écrit si elle échoue | `PDF_genere` / `Date_generation` | « Voir la convention » |
+|---|---|---|---|
+| 1. Contrôle des champs | rien | inchangés | ouvre l'ancien PDF |
+| 2. Enregistrement des informations | rien (ou rien de plus) | inchangés | ouvre l'ancien PDF |
+| 3. Modèle introuvable, case inconnue | informations déjà enregistrées | inchangés | ouvre l'ancien PDF |
+| 4. pdfmake ou fabrication | informations déjà enregistrées | inchangés | ouvre l'ancien PDF |
+| 5a. Envoi du nouveau fichier | informations déjà enregistrées | inchangés | ouvre l'ancien PDF |
+| 5b. Écriture de `PDF_genere` et `Date_generation` | informations déjà enregistrées ; **nouveau fichier orphelin** | inchangés, car une seule opération : tout passe ou rien ne passe | ouvre l'ancien PDF |
+
+**Règles pour dev-backend (à vérifier par le testeur, 8.2) :**
+1. **Jamais** de vidage préalable de `PDF_genere` (« effacer, puis envoyer, puis remplir »), ni de `Date_generation`.
+2. **Jamais** de suppression de l'ancien fichier, avant ni après (§12.6, option A).
+3. La mémoire du navigateur (`state.raw.Conventions`) n'est mise à jour qu'après une écriture réussie : en cas d'échec, le bloc continue à montrer l'ancienne date et à ouvrir l'ancien fichier, sans rechargement.
+4. `PDF_genere` ne devient **pas** la liste de deux fichiers : c'est une valeur de remplacement, pas un ajout (test de la recette R5 : « la liste des pièces jointes ne contient qu'un fichier »).
+
+**Ce que voit l'agent après un échec (fenêtre ouverte, comme au §3 « Échecs »).** Les règles communes du §3 s'appliquent (fenêtre ouverte, saisie gardée, alerte `alert alert-error` `role="alert"` en haut du corps, focus sur « Générer la convention »). **À la re-génération, une phrase est ajoutée à la fin de chaque message d'échec de génération** du tableau du §3 (huit lignes : bibliothèque non chargée, une case inconnue, plusieurs cases inconnues, modèle inactif ou introuvable, envoi refusé, envoi impossible, fichier non rattaché, échec inattendu) : « L'ancienne convention reste disponible. » (décision D-S8-3). Exemple : « La convention n'a pas pu être générée. Vos informations sont conservées. L'ancienne convention reste disponible. » Elle ne s'ajoute pas à la première génération (il n'y a pas d'ancienne convention), ni aux erreurs de champ, ni à l'échec de l'enregistrement de l'étape 2 (message du §5, qui ne parle pas de génération).
+- Après avoir fermé la fenêtre, le bloc est **inchangé** : état « Générée », ancienne date, « Voir la convention » qui ouvre l'ancien PDF.
+
+**Un effet à connaître (accepté par Hanta le 2026-10-26, D-S8-6).** L'étape 2 enregistre les nouvelles informations **avant** de fabriquer le PDF (D-S7-4). Si la re-génération échoue ensuite, la ligne `Conventions` contient donc les **nouvelles** informations (par exemple une année corrigée) alors que le PDF encore visible a été fait avec les **anciennes**. C'est voulu à la première génération (« Vos informations sont conservées »), mais à la re-génération le PDF et les informations enregistrées peuvent se contredire jusqu'à une re-génération réussie. Aucune solution ne fait mieux sans changer D-S7-4. **Décidé : (a) accepter** (cohérent avec D-S7-4, le message le dit, et la fenêtre rouverte montre les informations que l'agent a saisies pour réessayer). Écarté : (b) ne pas enregistrer avant le PDF à la re-génération seulement : l'agent perdrait sa saisie en cas d'échec et « Vos informations sont conservées » deviendrait faux, il faudrait donc un message différent.
+
+**Cas « écriture réussie, mais réponse réseau perdue » (ajouté le 2026-10-26, demande de Hanta).** Grist a bien écrit `PDF_genere` et `Date_generation` (étape 5b), mais la réponse n'est jamais revenue au widget (coupure, délai dépassé). Le widget reçoit une erreur alors que le nouveau fichier **est** rattaché : afficher « La convention n'a pas pu être générée… L'ancienne convention reste disponible. » serait faux (l'ancienne n'est plus rattachée, et l'agent referait une génération pour rien, ce qui laisserait un fichier orphelin de plus).
+- **Demande à dev-backend** : éviter qu'un tel cas s'affiche comme un échec. Quand l'étape 5b (ou la lecture de sa réponse) échoue pour une raison qui n'est **pas** un refus clair de Grist (droits, règle d'accès), vérifier d'abord, par une relecture de la ligne `Conventions`, si `PDF_genere` contient déjà le nouveau fichier. Si oui, traiter comme une réussite (alerte « Convention générée. », fenêtre fermée, mémoire du navigateur mise à jour). Si la relecture donne l'ancien fichier, c'est un vrai échec : messages du §3 + phrase du §12.7.
+- **Risque connu si ce n'est pas totalement garanti** : si la relecture échoue aussi (réseau toujours coupé), le widget ne peut pas savoir ; il affiche alors le message d'échec habituel, qui peut être inexact. L'agent verra la bonne date après avoir rechargé la fiche. Dev-backend dit dans son compte rendu ce qu'il a pu garantir ; ce risque est signalé, pas ignoré (à ajouter aux risques restants de 8.1).
+- **Même cas à l'étape 5a** (envoi du fichier réussi, réponse perdue) : sans identifiant de fichier reçu, le rattachement est impossible ; l'ancien PDF reste en place, le nouveau fichier est orphelin (§12.6). Le message d'échec affiché est alors exact pour l'agent.
+
+**Cas « le fichier signé est déposé pendant que la fenêtre de re-génération est ouverte » (ajouté le 2026-10-26, demande de Hanta).** Un autre agent (ou le même, dans un autre onglet) dépose la convention signée, l'état du document passe à « Signée », alors que la fenêtre de re-génération est encore ouverte chez quelqu'un. **Accepté sans traitement particulier pour l'instant** : aucun contrôle, aucun message de plus. À revoir si un jour le cas se produit en pratique (la re-génération pourrait alors remplacer `PDF_genere` alors que la convention est déjà signée ; `PDF_signe` et `Date_depot` ne sont jamais touchés par la re-génération, §12.4).
+
+### 12.8 Nouveaux textes (pour dev-interface ; ajoutés à la liste du §5)
+
+- Mis à jour le 2026-10-26 (S8), phrase en tête de la fenêtre à la re-génération (D-S8-2) : « Le nouveau PDF remplacera la convention générée le [date]. »
+- Mis à jour le 2026-10-26 (S8), phrase ajoutée à la fin des huit messages d'échec de génération à la re-génération (D-S8-3) : « L'ancienne convention reste disponible. »
+- Rien d'autre : bouton « Re-générer », pied « Générer la convention », « Génération en cours… », « Convention générée. » existent déjà.
+
+### 12.9 Cas à faire tester en 8.2 (pour le testeur)
+
+Un seul fichier dans `PDF_genere` après une re-génération réussie ; `Date_generation` plus récente ; `PDF_signe` et `Date_depot` inchangés ; fenêtre préremplie avec l'année enregistrée (pas l'année en cours) ; échec à chaque étape du tableau du §12.7 : `PDF_genere` et `Date_generation` inchangés et phrase « L'ancienne convention reste disponible. » présente ; la phrase absente à la première génération ; focus de retour sur « Re-générer » à la fermeture sans génération, sur « Voir la convention » après une réussite ; « Re-générer » grisé avec le message du §2 quand un élément manque ; `Modele` égal au modèle actif après chaque re-génération réussie (D-S8-4), y compris quand il a changé depuis la première génération ; phrase « Le nouveau PDF remplacera la convention générée le [date]. » présente à la re-génération, absente à la première ; l'ancien PDF jamais supprimé par le widget (D-S8-5) ; écriture réussie avec réponse perdue : pas d'échec affiché si le fichier est rattaché, ou risque connu noté (§12.7). Non testé automatiquement : le cas du fichier signé déposé pendant que la fenêtre est ouverte (accepté, §12.7).
+
+### 12.10 Décisions de Hanta (du 2026-10-26, S8)
+
+Les sept points posés dans cette note sont tranchés. Colonne de droite : ce que cela change dans la note.
+
+| N° | Décision | Décidé le 2026-10-26 |
+|---|---|---|
+| D-S8-1 | Texte du bouton du pied à la re-génération | **Le bouton reste « Générer la convention ».** (§12.3) |
+| D-S8-2 | Phrase en tête de la fenêtre à la re-génération | **Oui** : « Le nouveau PDF remplacera la convention générée le [date]. » (§12.3, §12.8) |
+| D-S8-3 | Phrase ajoutée aux messages d'échec à la re-génération | **Oui** : « L'ancienne convention reste disponible. » (§12.7, §12.8) |
+| D-S8-4 (Q-I) | Modèle enregistré à la re-génération | **Le modèle actif**, enregistré dans `Modele` à chaque re-génération (pas celui d'origine), pour qu'il corresponde toujours au texte réellement utilisé dans le PDF. (§12.5) |
+| D-S8-5 (Q-J) | Ancien PDF | **Jamais supprimé par le widget** ; s'il n'est plus rattaché à aucune cellule après un rattachement réussi du nouveau, il reste orphelin dans Grist. (§12.6) |
+| D-S8-6 | Nouvelles informations enregistrées alors que le PDF visible est l'ancien, après un échec | **Accepté.** (§12.7) |
+| D-S8-7 | Grist supprime-t-il tout seul une pièce jointe orpheline ? | **À vérifier par Hanta dans DEV7 avant la recette R5** (non vérifié à ce jour). (§12.6) |
+
+Deux cas ajoutés au même moment (§12.7) : « écriture réussie mais réponse réseau perdue » (dev-backend doit éviter l'échec affiché à tort, sinon risque connu signalé) et « fichier signé déposé pendant que la fenêtre de re-génération est ouverte » (accepté sans traitement, à revoir s'il se produit).
