@@ -431,17 +431,115 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 **Enregistrement immédiat** : dès qu'un PDF est choisi, il est enregistré, en remplaçant l'ancien fichier signé s'il y en a un (sans historique). La date de dépôt est mise à jour et le bloc passe (ou reste) à l'état « Signée ».
 
 **Fichier refusé** (dépôt et remplacement, mêmes règles). Le fichier est refusé, un message le dit dans le bloc (A5) et rien n'est enregistré, dans l'un de ces cas :
+- il est vide (0 octet) ;
+- il dépasse 10 Mo ;
 - son extension n'est pas `.pdf` ;
 - son type n'est pas `application/pdf` ;
-- son contenu ne commence pas par « %PDF- » (contrôle des premiers octets, qui ne se fie pas au nom ni au type annoncé) ;
-- il est vide (0 octet) ;
-- il dépasse 10 Mo.
+- son contenu ne commence pas par « %PDF- » (contrôle des premiers octets, qui ne se fie pas au nom ni au type annoncé).
 
-Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ordre ci-dessus (la taille est vérifiée avant la lecture du contenu) : extension, type ou « %PDF- » → « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » ; vide → « Le fichier n'a pas été enregistré : le fichier est vide. » ; trop gros → « Le fichier n'a pas été enregistré : 10 Mo au maximum. » L'ancien fichier signé, s'il existe, reste en place.
+**Mis à jour le 2026-10-26 (S9) : l'ordre des contrôles est celui de la liste ci-dessus, et c'est lui qui fait foi** (la version précédente listait les contrôles dans un autre ordre que celui annoncé dans la phrase suivante ; décision déjà prise par Hanta : vide, taille, extension, type, contenu). Un seul message est affiché, celui du premier contrôle qui échoue : vide → « Le fichier n'a pas été enregistré : le fichier est vide. » ; trop gros → « Le fichier n'a pas été enregistré : 10 Mo au maximum. » ; extension, type ou « %PDF- » → « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » Conséquences : un fichier vide nommé `.txt` reçoit « le fichier est vide » ; un fichier de 12 Mo nommé `.docx` reçoit « 10 Mo au maximum » ; la lecture du contenu (« %PDF- ») n'a lieu que si les quatre premiers contrôles sont passés. L'ancien fichier signé, s'il existe, reste en place.
 
 **Envoi en cours (C2)** : le bouton ou le lien qui a lancé le dépôt affiche « Envoi en cours… » et reste en place (`aria-disabled="true"`).
 
 **Succès (A6)** : alerte `alert alert-success`, `role="status"` : « Convention signée enregistrée. ». **Échec d'envoi** : alerte `alert alert-error`, `role="alert"` : « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. » L'état ne change pas. La méthode technique d'envoi de la pièce jointe est décrite dans CLAUDE.md (section Pièges connus) : jeton d'écriture, `credentials 'omit'`, en-tête `X-Requested-With`.
+
+### 4.1 Compléments pour le dépôt et le remplacement (mis à jour le 2026-10-26 (S9))
+
+Sources lues pour ces compléments : ce fichier (§1, §2, §3, §4, §5, §8, §12), `src/actions-dashboard/script.js` (`conventionPhrases`, `conventionVerrouiller`, ligne 3089 pour `Date_generation`) et `src/clubs/script.js` (`bindLogo`, `logoFileProblem`). Rien n'est exécuté.
+
+**Ce qui était déjà juste et n'est pas réécrit** : les textes d'alerte, la liste des contrôles (sauf l'ordre, corrigé plus haut), l'absence de fenêtre, `accept="application/pdf,.pdf"`, l'enregistrement immédiat, le remplacement sans historique, l'absence d'`aria-haspopup`.
+
+**a) Les deux commandes : texte exact, place, style**
+
+| État | Commande | Texte exact | Place | Style |
+|---|---|---|---|---|
+| Générée | bouton | « Déposer la convention signée » | **dernier** de la rangée : « Voir la convention », « Re-générer », « Déposer la convention signée » (ordre de Tab = ordre visuel, comme au §12.2) | `btn btn-secondary`, sans icône, sans `btn-sm` (la rangée n'a aucun bouton principal, §12.2) |
+| Signée | « lien » | « Remplacer le fichier signé » | **sous** la rangée, seul sur sa ligne, après « Voir la convention signée » | `btn btn-link` (§8) |
+
+Le « lien » reste un vrai `<button type="button">` (il n'ouvre pas de page, il lance une action) : pas de `<a>`, pas de `role="link"`. Les lecteurs d'écran l'annoncent « bouton » : c'est exact. Aucun texte caché : la commande n'ouvre ni fenêtre ni onglet. À l'état « Signée », il n'y a ni « Re-générer » ni « Déposer la convention signée » (§2, A3).
+
+```html
+<!-- État Générée, dernier bouton de la rangée -->
+<button class="btn btn-secondary" type="button" id="conventionDeposer">
+  <span class="btn-content">Déposer la convention signée</span>
+</button>
+
+<!-- État Signée, sous la rangée -->
+<div>
+  <button class="btn btn-link" type="button" id="conventionRemplacer">
+    <span class="btn-content">Remplacer le fichier signé</span>
+  </button>
+</div>
+
+<!-- Le même champ fichier caché sert aux deux états (structure de « Ajouter un logo », §8) -->
+<input class="convention-file" type="file" id="conventionFichier" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
+```
+
+(`id` donnés à titre d'exemple : dev-interface suit les noms déjà employés dans le script.) Les deux commandes ne portent **pas** `aria-haspopup`.
+
+**b) Choisir un fichier : ce qui se passe, dans l'ordre**
+
+1. Clic sur la commande : si elle est verrouillée (envoi en cours), le clic est ignoré **et n'ouvre pas le sélecteur**. Sinon la commande appelle seulement `input.click()` : **aucun verrou, aucun message, aucun changement de texte à ce stade.**
+2. L'utilisateur choisit un fichier : le navigateur déclenche l'événement `change`. **C'est là que tout commence** (comme `bindLogo` dans clubs, qui lit le fichier puis remet `input.value = ''` pour que le même fichier puisse être choisi une seconde fois).
+3. Au début du gestionnaire de `change` : les alertes précédentes du bloc sont effacées (une seule alerte à la fois, §2), le **verrou est posé avant la première opération asynchrone**, puis les contrôles s'enchaînent dans l'ordre du §4. Un fichier refusé libère le verrou aussitôt, affiche l'alerte A5 et ne passe jamais par « Envoi en cours… ».
+4. Si les contrôles passent : le texte de la commande devient « Envoi en cours… », puis envoi, puis écriture (voir e).
+
+**c) Annulation du sélecteur (l'utilisateur ferme la fenêtre du navigateur sans rien choisir)**
+
+Rien ne se passe : **pas de message, pas de changement de texte, pas de verrou, pas d'effacement de l'alerte qui était déjà affichée.** C'est vrai par construction si, et seulement si, tout part de l'événement `change` (étape 2) et jamais du clic de la commande. Raisons et consignes pour dev-interface :
+- Selon le navigateur, l'annulation ne déclenche aucun événement, ou un événement `cancel` (présent sur les navigateurs récents). **Ne rien brancher sur `cancel`, ni sur `focus` de la fenêtre** : le comportement varie d'un navigateur à l'autre.
+- Si `input.files` est vide dans le gestionnaire de `change` (cas observé quand on annule alors qu'un choix existait), sortir sans rien faire et sans poser de verrou.
+- Le focus revient sur la commande (comportement du navigateur) ; dev-interface ne le déplace pas.
+- Test à prévoir : annuler le sélecteur ne change ni le texte, ni `aria-disabled`, ni le contenu de la zone d'alerte.
+
+**d) Pendant l'envoi : attente, verrou, accessibilité**
+
+- **Texte** : la commande qui a lancé le dépôt devient « Envoi en cours… » (le texte caché n'existe pas pour ces commandes, il n'y a rien à retirer). Le texte d'origine revient à la fin d'un échec ; en cas de réussite, le bloc est refait (état « Signée »).
+- **Verrou** : un seul envoi à la fois. Même principe que « Générer » (§3) : le verrou est une variable du script posée **avant** la première opération asynchrone et levée à la fin de la tentative (réussite ou échec) ; il ne dépend pas de l'apparence. Il couvre la commande de dépôt/remplacement : un second clic, ou la touche Entrée/Espace, ne rouvre pas le sélecteur et ne lance rien.
+- **`aria-disabled="true"`, jamais `disabled`** : la commande reste atteignable au clavier, **le focus ne bouge pas**, le lecteur d'écran dit « Envoi en cours…, bouton, estompé ». Le message de l'état d'attente est dans le nom du bouton ; pas besoin d'`aria-describedby` (contrairement au bouton grisé du §2, qui explique un blocage).
+- **Les autres boutons du bloc pendant l'envoi** : « Voir la convention » / « Voir la convention signée » restent utilisables (lecture seule). **« Re-générer » est grisé** (`aria-disabled="true"`, clic ignoré, pas d'`aria-haspopup`, texte inchangé) pour qu'une re-génération ne démarre pas pendant qu'un fichier signé est en route ; il se réactive à la fin. Ce n'est pas un blocage au sens du §2 : pas de message, l'attente est dite par la commande « Envoi en cours… ».
+- **Si le bloc est refait pendant l'envoi** (rechargement des données de la fiche, par exemple) : le texte « Envoi en cours… », `aria-disabled` et la zone d'attente (ci-dessous) doivent être reposés d'après le verrou, pas d'après l'état précédent.
+- **Annonce pour les lecteurs d'écran (recommandation : oui, une région `role="status"`).** Raison : un envoi peut durer plusieurs secondes (jusqu'à 10 Mo), plus qu'une ouverture de PDF (pour laquelle je n'avais pas prévu de région, §2), et le changement de texte d'un bouton qui a le focus n'est pas annoncé de façon fiable. L'alerte de fin ne suffit pas : elle ne dit rien pendant l'attente, et une personne qui ne voit pas l'écran ne sait pas si le clic a été pris en compte. Même principe que `#conventionAttente` (§3) : une région **toujours présente dans le bloc, vide, hors de la partie refaite**, dont seul le texte change.
+
+```html
+<div role="status" id="conventionDepotAttente">
+  <p>Envoi de la convention signée en cours. Cela peut prendre quelques secondes.</p>
+</div>
+```
+
+  (le `<p>` n'existe que pendant l'envoi ; la région est **vidée à la fin**, réussite comme échec. Place : sous la zone d'alerte du bloc, au-dessus des boutons. Texte ordinaire, sans classe d'alerte. Elle n'est posée **qu'après** que les contrôles du fichier ont réussi : un fichier refusé n'annonce jamais « Envoi… ».) À la fin, l'alerte de réussite (`role="status"`) ou d'erreur (`role="alert"`) prend le relais.
+
+**e) Fin de l'envoi**
+
+- **Réussite** : alerte `alert alert-success`, `role="status"`, « Convention signée enregistrée. » (A6, texte inchangé), en haut du bloc, même place et même forme que « Convention générée. » (§3). Elle reste jusqu'à la prochaine action dans le bloc ou la fermeture de la fiche, sans bouton de fermeture. La région `role="status"` de l'alerte doit exister **avant** que le texte y soit placé (même consigne qu'au §3).
+- **Focus après réussite** (recommandation, voir S9-3) : au **premier dépôt**, la commande « Déposer la convention signée » disparaît (état « Signée ») : le focus va sur **« Voir la convention signée »**, premier bouton du nouvel état (même logique que D-S7-6). Au **remplacement**, le lien « Remplacer le fichier signé » existe toujours : **le focus y reste** ; rien ne disparaît, rien ne bouge.
+- **Échec** : alerte `alert alert-error`, `role="alert"` (texte inchangé, §4 ; un cas de droits est proposé en S9-4), l'état et la date ne changent pas, la commande retrouve son texte, **le focus reste sur la commande** (jamais déplacé sur l'alerte, comme pour « Voir », §2).
+
+**f) Date de dépôt**
+
+`Date_depot` est écrite avec **la date du jour au moment de l'écriture, calculée exactement comme `Date_generation`** (secondes Unix, `Math.floor(Date.now() / 1000)`, script.js ligne 3089) et affichée avec le même `formatDate` : « Convention signée, déposée le [date]. », même format que « Convention générée le [date]. ». Elle est **réécrite à chaque dépôt ou remplacement** (la date du dernier fichier, pas celle du premier). Aucune saisie de date par l'utilisateur. (Le type exact de la colonne, Date ou DateTime, n'est pas vérifié ici ; la même valeur est déjà acceptée par `Date_generation`.)
+
+**g) Écriture : une seule opération pour le fichier et la date (recommandation : oui)**
+
+Même décision que D-S7-1, pour la même raison : pas d'état intermédiaire « fichier signé présent, date absente ». Ordre : (1) contrôles ; (2) envoi du fichier (jeton d'écriture, `credentials 'omit'`, `X-Requested-With`, §8 de CLAUDE.md) qui donne l'identifiant de la pièce jointe ; (3) **un seul `PATCH` REST** qui écrit `PDF_signe` (liste d'un fichier) **et** `Date_depot` ensemble, avec le même jeton que l'envoi. Rien n'est écrit avant l'étape 3. L'état « Générée » est conservé tant que l'étape 3 n'a pas réussi, et, au remplacement, l'ancien fichier signé et son ancienne date restent en place tant que l'étape 3 n'a pas réussi. Conséquences pour dev-backend, identiques au §12.7 :
+1. **Jamais** de vidage préalable de `PDF_signe` (« effacer, puis envoyer, puis remplir »).
+2. `PDF_signe` reçoit **une valeur de remplacement** (la liste d'un seul fichier), pas un ajout : la cellule ne contient jamais deux fichiers.
+3. `PDF_genere` et `Date_generation` ne sont **jamais touchés** par le dépôt.
+4. La mémoire du navigateur (`state.raw.Conventions`) n'est mise à jour qu'après une écriture réussie.
+5. Cas « écriture réussie, réponse perdue » : même demande qu'au §12.7 (relire la ligne `Conventions` avant d'afficher un échec, sauf refus clair de Grist ; si `PDF_signe` contient déjà le nouveau fichier, traiter comme une réussite). Si la relecture échoue aussi, risque connu signalé, comme au §12.7.
+6. Aucun jeton dans la console, un message, une adresse (CLAUDE.md).
+
+**h) Remplacement du fichier signé : l'ancien devient orphelin (confirmé)**
+
+**Oui, la même règle que D-S8-5 s'applique.** Le widget ne supprime **jamais** une pièce jointe : il remplace seulement la valeur de la cellule `PDF_signe`. L'ancien fichier signé reste dans le stockage des pièces jointes de Grist, non rattaché, jusqu'à un nettoyage éventuel par Grist (à vérifier par Hanta, D-S8-7 : la vérification faite pour le PDF généré vaut pour le fichier signé, c'est le même mécanisme). Si l'envoi réussit mais que le `PATCH` échoue, le **nouveau** fichier est orphelin et l'ancien reste rattaché. Aucune étape « supprimer l'ancien », ni avant ni après. Une suppression depuis le widget serait une tâche à part, avec l'avis d'auditeur-securite (§12.6). Points à noter : le fichier signé contient des signatures et des noms ; sa conservation rejoint la durée de conservation à décider (§7, §10), et chaque remplacement ou échec peut laisser un orphelin de plus.
+
+**i) Mobile (confirmé)**
+
+Oui : sur téléphone, le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » **gardent leur taille normale et passent à la ligne comme les autres boutons du bloc** (§2, Mobile ; §12.2), dans l'ordre du clavier. Le lien est seul sur sa ligne sous « Voir la convention signée », à toutes les largeurs. Le texte long « Déposer la convention signée » peut occuper une ligne entière ; il ne doit pas être tronqué (pas de `white-space: nowrap`). La zone d'alerte et la région d'attente restent au-dessus des boutons, pleine largeur. Aucune nouvelle classe : on emploie `btn`, `btn-secondary`, `btn-link` et la classe de rangée du bloc déjà existante (`convention-actions`, §8) ; le champ caché utilise `convention-file` (§8).
+
+**j) Ce qui est à tester en plus (pour le testeur)**
+
+Annuler le sélecteur : rien ne change, aucun verrou. Choisir deux fois le même fichier de suite : le second choix déclenche bien un envoi (`input.value` remis à vide). Second clic ou Entrée/Espace pendant « Envoi en cours… » : rien ne démarre, le sélecteur ne s'ouvre pas. « Re-générer » grisé pendant l'envoi. Fichier de 0 octet nommé `.txt` : message « vide ». Fichier trop gros ne portant pas l'extension `.pdf` : message « 10 Mo ». Fichier `.pdf` dont le contenu ne commence pas par `%PDF-` : message « ce n'est pas un PDF », rien d'écrit. Réussite : une seule opération écrit `PDF_signe` et `Date_depot` ; `PDF_genere` et `Date_generation` inchangés ; la cellule `PDF_signe` ne contient qu'un fichier après un remplacement ; en cas d'échec au remplacement, l'ancien fichier signé s'ouvre toujours avec « Voir la convention signée » ; focus selon e). Aucun jeton dans la console.
 
 ## 5. Textes affichés (tous, pour dev-interface)
 
@@ -457,6 +555,7 @@ Un seul message est affiché, celui du premier contrôle qui échoue, dans l'ord
 - Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7, messages validés, détail au §3) : « Saisissez l'année de la convention. » ; « Saisissez une année à quatre chiffres. » ; « Choisissez le signataire du club. » ; « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » ; « Saisissez le nom du représentant. » ; « Saisissez la fonction du représentant. »
 - Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
+- Mis à jour le 2026-10-26 (S9), dépôt du fichier signé : région d'attente `role="status"` du bloc : « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. » (§4.1 d) ; proposé, à décider (S9-4) : « Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. »
 - Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
 - Chargement : sur le bouton, pendant la génération, « Génération en cours… » (le bouton reste en place, `aria-disabled="true"`) ; pendant l'envoi du fichier, « Envoi en cours… ».
 - Mis à jour le 2026-10-23 (S7), génération : région d'attente de la fenêtre : « Génération de la convention en cours. Cela peut prendre quelques secondes. » ; succès dans le bloc : « Convention générée. » ; échecs (alerte en haut de la fenêtre, textes exacts au §3, « Échecs ») : bibliothèque non chargée, une case inconnue, plusieurs cases inconnues, modèle inactif ou introuvable, envoi refusé, envoi impossible, fichier non rattaché, échec inattendu (« La convention n'a pas pu être générée. Vos informations sont conservées. »).
@@ -999,3 +1098,18 @@ Les sept points posés dans cette note sont tranchés. Colonne de droite : ce qu
 | D-S8-7 | Grist supprime-t-il tout seul une pièce jointe orpheline ? | **À vérifier par Hanta dans DEV7 avant la recette R5** (non vérifié à ce jour). (§12.6) |
 
 Deux cas ajoutés au même moment (§12.7) : « écriture réussie mais réponse réseau perdue » (dev-backend doit éviter l'échec affiché à tort, sinon risque connu signalé) et « fichier signé déposé pendant que la fenêtre de re-génération est ouverte » (accepté sans traitement, à revoir s'il se produit).
+
+## 13. Dépôt et remplacement du fichier signé (S9) : décisions qui reviennent à Hanta (mis à jour le 2026-10-26 (S9))
+
+Les compléments sont au §4.1. Rien d'antérieur n'est changé, sauf l'ordre des contrôles du fichier au §4 (corrigé pour suivre la décision déjà prise : vide, taille, extension, type, contenu). Les 8 décisions ci-dessous (S9-1 à S9-8) sont **prises** : Hanta les a toutes tranchées le 2026-10-26, dans le sens de la recommandation proposée pour chacune. Plus aucune n'est en attente.
+
+| N° | Question | Décision de Hanta (2026-10-26) |
+|---|---|---|
+| S9-1 | Écriture de `PDF_signe` et `Date_depot` : une seule opération `PATCH`, après l'envoi du fichier ? (§4.1 g) | **Oui**, comme D-S7-1 : pas d'état « fichier signé sans date », et l'ancien fichier signé reste en place si l'écriture échoue. |
+| S9-2 | Annonce de l'attente pour les lecteurs d'écran : région `role="status"` pendant l'envoi, ou l'alerte de fin seule ? (§4.1 d) | **Région `role="status"`** (« Envoi de la convention signée en cours… »), car l'envoi peut durer plusieurs secondes ; l'alerte de fin seule laisse un silence. Coût : une région vide de plus dans le bloc. |
+| S9-3 | Focus après un dépôt réussi (§4.1 e) | **Premier dépôt : « Voir la convention signée »** (le bouton de dépôt a disparu) ; **remplacement : le focus reste sur le lien « Remplacer le fichier signé »**. |
+| S9-4 | Ajouter un message distinct quand Grist refuse l'écriture (droits) ? Aujourd'hui, une seule phrase d'échec. | **Oui** : « Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. » (réponse 401 ou 403 de Grist), comme pour la génération (§3). Toute autre erreur garde le message actuel. |
+| S9-5 | Pendant l'envoi, griser « Re-générer » (sans message) ? (§4.1 d) | **Oui**, pour éviter une re-génération pendant qu'un fichier signé est en route. |
+| S9-6 | Fichier PDF dont le navigateur ne renseigne pas le type (type vide) : refusé (comme la règle écrite) ou accepté si l'extension et le « %PDF- » sont bons ? | **Accepter le type vide** (les contrôles d'extension et de contenu suffisent à écarter un faux PDF), refuser tout type renseigné autre que `application/pdf`. À défaut, un vrai PDF sans type serait refusé à tort. Non vérifié sur les navigateurs de l'équipe. |
+| S9-7 | Taille limite : « 10 Mo » = 10 × 1024 × 1024 octets (10 485 760), comme les 5 Mo du logo de clubs (`5 * 1024 * 1024`) ? | **Oui**, même convention que le logo ; un fichier de exactement 10 485 760 octets est accepté. |
+| S9-8 | Conservation des fichiers signés orphelins (ancien fichier après remplacement, nouveau fichier après un rattachement raté) | Même suite que D-S8-5 / D-S8-7 : rien n'est supprimé par le widget ; Hanta vérifie dans DEV7 si Grist nettoie tout seul avant la recette. Durée de conservation des noms et signatures : à décider (§7). |
