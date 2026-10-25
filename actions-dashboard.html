@@ -3083,7 +3083,7 @@ function conventionBlocContenuHtml(actionId, donnees) {
     .join('');
   const etat = conventionEtat(actionId, donnees).etat;
   const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
-    : etat === CONVENTION_ETATS.generee ? conventionVoirHtml()
+    : etat === CONVENTION_ETATS.generee ? conventionGenereeHtml(actionId, donnees)
     : '';
   return `${phrases}${boutons}`;
 }
@@ -3102,6 +3102,28 @@ function conventionGenererHtml(actionId, donnees) {
   const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"' : ' aria-haspopup="dialog"';
   return `<div id="conventionBlocage" role="status">${message}</div>
             <div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionGenerer"${attributs}><span class="btn-content">Générer la convention</span></button></div>`;
+}
+
+// Boutons de l'etat « Generee » (tache 8.1) : « Voir la convention », puis « Re-generer »
+// juste apres, sur la meme rangee. « Re-generer » suit les memes regles que « Generer la
+// convention » : grise avec le message du premier element manquant (zone role="status"
+// toujours presente, vide quand rien ne manque), sinon il annonce qu'il ouvre une fenetre.
+function conventionGenereeHtml(actionId, donnees) {
+  const blocage = conventionBlocage(actionId, donnees);
+  const message = blocage
+    ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
+    : '';
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"' : ' aria-haspopup="dialog"';
+  const regenerer = `<button class="btn btn-secondary" type="button" id="conventionRegenerer"${attributs}><span class="btn-content">Re-générer</span></button>`;
+  return `<div id="conventionBlocage" role="status">${message}</div>
+            ${conventionVoirHtml(regenerer)}`;
+}
+
+// Vrai quand la fenetre s'ouvre pour une re-generation : la ligne Conventions de l'action
+// porte deja un PDF genere. Fonction pure : ni DOM, ni Grist.
+function conventionEstRegeneration(actionId, donnees) {
+  const {convention} = conventionEtat(actionId, donnees);
+  return !!(convention && conventionPieceJointeRemplie(convention.PDF_genere));
 }
 
 // ---- Convention : fenetre (tache 5.1a : informations du club et de l'agence, en lecture seule) ----
@@ -3242,13 +3264,19 @@ function conventionModalHtml(actionId, donnees) {
   const annee = modele.avecAnnee
     ? conventionChampSaisie('conventionAnnee', 'Année', `<input class="form-control" id="conventionAnnee" name="conventionAnnee" type="number" required value="${new Date().getFullYear()}">`, conventionErreurHtml('conventionAnnee', CONVENTION_ERREURS.annee))
     : '';
+  // Re-generation seulement : on previent que le nouveau PDF remplace l'ancien (sans historique).
+  // Sans date enregistree, la phrase s'ecrit sans date, comme « Convention generee. » du bloc.
+  const quand = conventionEstRegeneration(actionId, donnees) ? formatDate((conventionEtat(actionId, donnees).convention || {}).Date_generation) : null;
+  const remplacement = quand === null ? ''
+    : `<p>${escapeHtml(quand ? `Le nouveau PDF remplacera la convention générée le ${quand}.` : 'Le nouveau PDF remplacera la convention générée.')}</p>
+          `;
   return `<div class="modal-backdrop fade show"></div>
   <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <form class="modal-content" id="conventionForm" novalidate>
         <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
         <div class="modal-body">
-          <div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          ${remplacement}<div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
           <div id="conventionAttente" role="status"></div>
           <p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>
           <div class="convention-grid">
@@ -3300,13 +3328,16 @@ let conventionGenerationEnCours = false;
 // (aria-disabled) ignore le clic ; l'ouverture reverifie le blocage, au cas ou le
 // script du design system n'aurait pas deja bloque le clic.
 function bindConvention(actionId) {
-  const bouton = document.getElementById('conventionGenerer');
-  if (bouton) {
+  // « Generer la convention » (etat « A generer ») et « Re-generer » (etat « Generee »)
+  // ouvrent la meme fenetre ; un seul des deux existe a la fois.
+  ['conventionGenerer', 'conventionRegenerer'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
     bouton.addEventListener('click', () => {
       if (bouton.getAttribute('aria-disabled') === 'true' || conventionBlocage(actionId, state)) return;
       openConvention(actionId);
     });
-  }
+  });
   // « Voir la convention » n'existe qu'a l'etat « Generee ».
   const voir = document.getElementById('conventionVoir');
   if (voir) voir.addEventListener('click', () => conventionVoir(actionId));
@@ -3929,12 +3960,20 @@ function conventionMessageCases(cases) {
   return `La convention n'a pas pu être générée : ${debut}${cites}. Contactez l'équipe du tableau de bord pour corriger le modèle. ${CONVENTION_SUITE}`;
 }
 
+// Phrase ajoutee a la fin des messages d'echec d'une RE-generation (decision D-S8-3).
+const CONVENTION_ANCIENNE_DISPONIBLE = "L'ancienne convention reste disponible.";
+
 // Message d'une erreur de conventionGenerer. Un code inconnu donne le message « inattendu ».
-function conventionMessageEchec(erreur) {
+// `regeneration` (vrai si une convention existait deja avant le clic) ajoute la phrase
+// D-S8-3 ; l'echec d'enregistrement des informations (etape 2) ne parle pas de generation
+// et ne la recoit pas.
+function conventionMessageEchec(erreur, regeneration) {
   const code = erreur && erreur.code;
   if (code === CONVENTION_GENERATION_ERREURS.enregistrement) return CONVENTION_MESSAGES.echec;
-  if (code === CONVENTION_GENERATION_ERREURS.cases) return conventionMessageCases(erreur.cases);
-  return CONVENTION_MESSAGES_ECHEC[code] || CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+  const message = code === CONVENTION_GENERATION_ERREURS.cases
+    ? conventionMessageCases(erreur.cases)
+    : CONVENTION_MESSAGES_ECHEC[code] || CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+  return regeneration ? `${message} ${CONVENTION_ANCIENNE_DISPONIBLE}` : message;
 }
 
 // Verrouille ou deverrouille la fenetre. aria-disabled (jamais disabled) sur les trois
@@ -3968,6 +4007,8 @@ async function lancerGenerationConvention(actionId) {
   // Bouton grise (club sans contact) ou generation deja en cours : le clic ne fait rien.
   if (!bouton || conventionGenerationEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
   const valeurs = lireConventionForm();
+  // Une convention existait-elle avant ce clic ? Lu avant toute operation, pour le message d'echec.
+  const regeneration = conventionEstRegeneration(actionId, state);
   // Le verrou est pose tout de suite, avant la premiere operation asynchrone. Les anciens
   // messages d'erreur sont effaces au debut de chaque tentative.
   conventionVerrouiller(true);
@@ -4001,7 +4042,7 @@ async function lancerGenerationConvention(actionId) {
     document.getElementById(problemes[0].id).focus();
     return;
   }
-  afficherMessageConvention(false, conventionMessageEchec(echec));
+  afficherMessageConvention(false, conventionMessageEchec(echec, regeneration));
   bouton.focus();
   const alerte = document.getElementById('conventionMessage');
   // Le corps de la fenetre defile : l'alerte, en haut, peut etre hors de vue.
@@ -4061,8 +4102,9 @@ function conventionVoirLibelleHtml() {
   return `${escapeHtml(CONVENTION_TEXTE_VOIR)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
 }
 
-function conventionVoirHtml() {
-  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button></div>`;
+// `apres` (facultatif) : boutons places sur la meme rangee, juste apres « Voir la convention ».
+function conventionVoirHtml(apres) {
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button>${apres || ''}</div>`;
 }
 
 // Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
