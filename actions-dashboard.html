@@ -2531,7 +2531,7 @@ function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
       fermer();
       liste = {type, items: [], debut};
     }
-    // Le style donne les 4 pt d'espace apres chaque element (la marge n'est pas heritee de la liste).
+    // Le style donne les 6 pt d'espace apres chaque element (la marge n'est pas heritee de la liste).
     liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs, numeros)), style: 'elementListe'});
   };
 
@@ -2655,9 +2655,10 @@ function conventionTexte(runs) {
 const CONVENTION_POINTS_PAR_CM = 28.35;
 const CONVENTION_MISE_EN_PAGE = {
   pageMargins: [2.5, 2.5, 2.5, 2.5].map(cm => cm * CONVENTION_POINTS_PAR_CM),
-  // Texte courant : Roboto 11 pt, justifie, interligne simple (lineHeight 1).
-  // Les autres styles heritent de ces reglages, sauf ceux qu'ils redefinissent.
-  defaultStyle: {font: 'Roboto', fontSize: 11, alignment: 'justify', lineHeight: 1},
+  // Texte courant : Roboto 11 pt, justifie, interligne 1,2 (lineHeight 1.2, note UX §11.1 :
+  // PDF volontairement plus aere que le Word). Les autres styles (listes, citations, notes)
+  // heritent de ces reglages, sauf ceux qu'ils redefinissent : aucun ne redefinit lineHeight.
+  defaultStyle: {font: 'Roboto', fontSize: 11, alignment: 'justify', lineHeight: 1.2},
   // Logos (note UX, §11.1 et §11.2) : premiere page seulement. Chaque logo tient dans une boite
   // de 6 cm sur 2 cm au plus. distanceHaut : le haut des logos est a 1,25 cm du haut de la page
   // (comme l'en-tete du Word), donc dans la marge haute. espaceSousLogos : le titre commence
@@ -2680,11 +2681,11 @@ const CONVENTION_MISE_EN_PAGE = {
     titre3: {fontSize: 11, bold: true, alignment: 'left', margin: [1.25 * CONVENTION_POINTS_PAR_CM, 12, 0, 8]},
     // Ligne entierement en gras : justifiee comme le texte.
     titre: {fontSize: 11, bold: true, margin: [0, 0, 0, 8]},
-    paragraphe: {margin: [0, 6, 0, 0]},
+    paragraphe: {margin: [0, 6, 0, 10]},
     // Citation : l'espace avant vient du paragraphe qu'elle contient (6 pt), pas du retrait.
     retrait: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
     liste: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
-    elementListe: {margin: [0, 0, 0, 4]},
+    elementListe: {margin: [0, 0, 0, 6]},
     note: {fontSize: 10, margin: [0, 0, 0, 0]},
   },
 };
@@ -2761,7 +2762,9 @@ function conventionDocumentPdf(texte, valeurs, options) {
     footer: page => {
       if (page === 1) return {text: ''};
       const espaceAvant = mise.pageMargins[3] - mise.pied.distanceBas - mise.pied.fontSize * 1.17;
-      return {text: String(page), alignment: 'right', fontSize: mise.pied.fontSize, margin: [mise.pageMargins[0], espaceAvant, mise.pageMargins[2], 0]};
+      // lineHeight 1 : le numero garde l'interligne simple, sinon l'interligne 1,2 du texte le
+      // decalerait (la place de la ligne grandit) et il ne serait plus a 1,25 cm du bas.
+      return {text: String(page), alignment: 'right', fontSize: mise.pied.fontSize, lineHeight: 1, margin: [mise.pageMargins[0], espaceAvant, mise.pageMargins[2], 0]};
     },
     // Un titre n'est jamais seul en bas de page : s'il n'est suivi, sur sa page, que d'autres
     // titres (ou de rien), il passe a la page suivante avec ce qui le suit. On ne saute pas
