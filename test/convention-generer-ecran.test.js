@@ -723,12 +723,12 @@ function reussiteAvecPdf(m) {
 
 // Echoue si, apres une reussite, la fenetre reste ouverte (state.conventionOpen, modal-open),
 // si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, puis les
-// boutons « Voir la convention » (avec son texte cache) et « Re-générer », dans cet ordre, et plus
-// le bouton « Générer la convention »), si le message « Convention générée. » n'est pas dans une
+// boutons « Voir la convention » (avec son texte cache), « Re-générer » et « Déposer la convention
+// signée » (depuis la 9.1a), dans cet ordre, et plus le bouton « Générer la convention »), si le message « Convention générée. » n'est pas dans une
 // alerte alert-success placee dans la zone role="status" du bloc, ou si le focus n'est pas sur
 // « Voir la convention » (decision D-S7-6, et note UX §12.1 : « Re-générer » existe mais ne recoit
 // pas le focus) : le message de reussite, lui, ne recoit plus le focus.
-test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention » puis « Re-générer », message « Convention générée. », focus sur « Voir la convention »", async () => {
+test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention », « Re-générer » puis « Déposer la convention signée », message « Convention générée. », focus sur « Voir la convention »", async () => {
   const m = await preparer();
   m.generation.comportement = reussiteAvecPdf(m);
   m.remplir();
@@ -743,9 +743,11 @@ test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la conven
     "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
   ]);
   const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
-  assert.equal(boutons.length, 2, "deux boutons dans le bloc");
+  assert.equal(boutons.length, 3, "trois boutons dans le bloc");
   assert.match(boutons[0], /\sid="conventionVoir"/, "le premier est « Voir la convention »");
   assert.match(boutons[1], /\sid="conventionRegenerer"/, "le deuxième est « Re-générer »");
+  assert.match(boutons[2], /\sid="conventionDeposer"/, "le troisième est « Déposer la convention signée »");
+  assert.equal(texteDe(m.htmlContenu(), "button", "conventionDeposer"), "Déposer la convention signée", "libellé de « Déposer »");
   assert.equal(texteDe(m.htmlContenu(), "button", "conventionRegenerer"), "Re-générer", "libellé de « Re-générer »");
   assert.equal(texteDe(m.htmlContenu(), "button", "conventionVoir"), "Voir la convention (s'ouvre dans un nouvel onglet)", "texte, puis texte caché");
   assert.match(decoder(m.htmlContenu()), /<span class="btn-content">Voir la convention<span class="sr-only"> \(s'ouvre dans un nouvel onglet\)<\/span><\/span>/, "le texte caché est dans un sr-only");
