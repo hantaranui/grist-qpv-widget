@@ -950,7 +950,7 @@ Date : 2026-10-24
 Agents : dev-interface (bouton, puis correction), relecteur (enquête)
 Prompt : tâche 7.4, puis cycle d'un bug (403 « Cannot access attachment »)
 
-Note /5 : sans condition
+Note /5 : sans objet
 Ce qui allait : onglet ouvert au clic (bloqueur de fenêtres), jeton dans des variables locales, ouverture depuis une adresse blob: libérée au bout de 60 s, opener à null, « Ouverture en cours… », message d'échec de la note, onglet vide refermé, focus sur « Voir la convention » après une génération (D-S7-6).
 Ce que j'ai fait corriger : le propriétaire recevait 403 « Cannot access attachment ». Enquête : numéro de fichier correct (12 = 12), type de colonne correct, règles d'accès correctes ; cause : le jeton en lecture seule fait passer le propriétaire au niveau lecteur, refusé par les règles par défaut. Correction : jeton d'écriture, avec un commentaire qui interdit de le remettre en lecture seule.
 Leçon : « Voir en tant que » ne simule pas l'utilisateur pour les jetons du widget. La génération « réussie en Régional » de C39 avait été faite avec le jeton du propriétaire. Preuve réelle obtenue avec un compte non propriétaire (éditeur, profil FT Régional complet dans Utilisateurs) : génération et « Voir » réussies.
@@ -973,3 +973,18 @@ Tests : 495 passés, 0 échec après la correction (npm test).
 Fichiers modifiés : test/convention-bloc.test.js, test/convention-generer-ecran.test.js, test/convention-voir.test.js (nouveau)
 Build refait : pas nécessaire
 Commit : 445b24d
+
+## Tâche C43 — Fin des tests de la génération (S7, tâche 7.3)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : tests du chargement de pdfmake, du nom du fichier, du contrôle de « Générer » et des neuf codes d'erreur
+
+Note /5 : sans objet
+Ce qui allait : 53 tests, tous verts du premier coup (compte annoncé exact) ; nouveau fichier test/convention-pdfmake.test.js, choix expliqué ; minuterie simulée pour le délai de 20 s ; pour chaque code d'erreur : rien dans PDF_genere ni Date_generation, état conservé, ni jeton ni nom de personne dans l'erreur, le message ou la console ; ordre des étapes (D-S7-4) vérifié.
+Ce que j'ai fait corriger : rien. Le testeur a lancé des commandes de lecture et node --check.
+Tests : 548 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-generation.test.js, test/convention-pdfmake.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 7b378e5
+À faire plus tard : après un délai de 20 s dépassé, un nouvel essai échoue tant que la page n'est pas rechargée, alors que le message dit « Réessayez » (petite tâche dev-backend). Commentaire d'en-tête périmé dans convention-generation.test.js.
