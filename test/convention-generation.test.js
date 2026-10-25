@@ -345,9 +345,10 @@ function verifierEchec(ctx, erreur, code, avant, {etat = "À générer", convent
   assert.equal(journal.length, 0, "rien dans la console");
 }
 
-// Echoue si l'ordre des etapes change (decision D-S7-4) : enregistrement, puis pdfmake, puis
-// fabrication du PDF, puis jeton et envoi, puis rattachement.
-test("génération : ordre des étapes en réussite (enregistrement, pdfmake, PDF, jeton, envoi, rattachement)", async () => {
+// Echoue si l'ordre des etapes change (decision D-S7-4, mise a jour par la tache 7.7b) :
+// enregistrement, puis le jeton (demande AVANT pdfmake, car il sert aux logos), puis pdfmake,
+// fabrication du PDF, envoi, rattachement. Le modele d'essai n'a pas de logo : aucun telechargement.
+test("génération : ordre des étapes en réussite (enregistrement, jeton, pdfmake, PDF, envoi, rattachement)", async () => {
   const ctx = await preparer();
   const {w} = ctx;
   const g = w.window;
@@ -364,7 +365,7 @@ test("génération : ordre des étapes en réussite (enregistrement, pdfmake, PD
 
   await w.conventionGenerer(1, VALEURS);
 
-  assert.deepEqual(trace, ["enregistrement", "pdfmake", "pdf", "jeton", "envoi", "rattachement"]);
+  assert.deepEqual(trace, ["enregistrement", "jeton", "pdfmake", "pdf", "envoi", "rattachement"]);
 });
 
 // Echoue si des champs a corriger ne rendent pas champs-a-corriger avec TOUS les problemes
@@ -458,7 +459,8 @@ test("échec cases-inconnues : .cases donne les noms inconnus, sans doublon", as
 });
 
 // Echoue si un chargement de pdfmake qui echoue ne rend pas pdfmake-non-charge, si un PDF est
-// fabrique ou un jeton demande apres l'echec.
+// fabrique, si le jeton (demande avant pdfmake depuis la 7.7b) n'a pas ete demande exactement une
+// fois en ecriture, ou si une requete est envoyee apres l'echec.
 test("échec pdfmake-non-charge : le chargement est refusé", async () => {
   const ctx = await preparer();
   ctx.w.window.chargerPdfmake = () => Promise.reject(Object.assign(new Error("pdfmake non chargé (doublure)"), {code: "pdfmake-non-charge"}));
@@ -469,12 +471,14 @@ test("échec pdfmake-non-charge : le chargement est refusé", async () => {
   verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
   assert.equal(ctx.appels.length, 1, "les informations ont été enregistrées avant");
   assert.equal(ctx.compteurs.pdf, 0, "aucun PDF fabriqué");
-  assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
+  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
+  assert.deepEqual(ordinaire(ctx.jetons[0]), {readOnly: false});
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
 
 // Echoue si un chargement qui ne repond pas ne donne pas pdfmake-non-charge au bout de
 // 20 secondes (minuterie simulee : le test n'attend pas), ou si la minuterie n'a pas ce delai.
+// Le jeton est deja demande (une fois, en ecriture) quand pdfmake est attendu.
 test("échec pdfmake-non-charge : pas de réponse au bout de 20 secondes (minuterie simulée)", async () => {
   const ctx = await preparer();
   const g = ctx.w.window;
@@ -493,7 +497,8 @@ test("échec pdfmake-non-charge : pas de réponse au bout de 20 secondes (minute
 
   verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
   assert.equal(ctx.compteurs.pdf, 0, "aucun PDF fabriqué");
-  assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
+  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
+  assert.deepEqual(ordinaire(ctx.jetons[0]), {readOnly: false});
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
 
@@ -541,7 +546,8 @@ for (const [nom, preparerEnvoi] of ENVOIS_IMPOSSIBLES) {
 
 // Echoue si un echec pendant la fabrication du PDF (getBlob rejette, fichier vide ou absent,
 // createPdf qui plante) ne rend pas echec-inattendu, si le texte de l'erreur (nom de personne,
-// jeton) est repris, ou si un jeton est demande ou un fichier envoye apres l'echec.
+// jeton) est repris, si le jeton n'a pas ete demande exactement une fois (avant pdfmake, depuis
+// la 7.7b), ou si un fichier est envoye apres l'echec. Sans logo, createPdf n'est essaye qu'une fois.
 const FABRICATIONS_RATEES = [
   ["getBlob rejette", (g) => { g.pdfMake.createPdf = () => ({getBlob: () => Promise.reject(new Error(`échec pour ${NOM_DE_PERSONNE} ${JETON}`))}); }],
   ["fichier vide", (g) => { g.pdfMake.createPdf = () => ({getBlob: () => Promise.resolve({size: 0})}); }],
@@ -558,7 +564,7 @@ for (const [nom, preparerPdf] of FABRICATIONS_RATEES) {
 
     verifierEchec(ctx, erreur, "echec-inattendu", avant);
     assert.equal(ctx.compteurs.pdfmake, 1, "pdfmake chargé avant");
-    assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
+    assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
     assert.equal(ctx.fetchs.length, 0, "aucun fichier envoyé");
   });
 }

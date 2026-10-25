@@ -657,10 +657,25 @@ test("pied de page : marges gauche et droite de 2,5 cm, et espace avant qui plac
   assert.ok(pied.margin[1] > 0, "l'espace avant doit rester positif");
 });
 
-test("logo commençant par data:image/ : l'en-tête est créé avec l'image, la largeur et la marge de la mise en page", () => {
-  const logo = "data:image/png;base64,AAAA";
-  const doc = plain(documentPdf("Texte", {}, {logo}));
-  assert.deepStrictEqual(doc.header, {image: logo, width: MISE_EN_PAGE.logo.width, alignment: "left", margin: MISE_EN_PAGE.logo.margin});
+// Depuis la 7.7b, les logos viennent de options.logos = {logo, partenaire} (images déjà prêtes pour pdfmake),
+// et l'en-tête est une fonction de la page. Échoue si l'en-tête perd une image, sa taille, son côté
+// ou la marge de 1,25 cm en haut, ou si l'ancienne option « logo » (une seule image) agit encore.
+const LOGO_EXEMPLE = {image: "data:image/png;base64,AAAA", width: 100, height: 40};
+const PARTENAIRE_EXEMPLE = {image: "data:image/jpeg;base64,BBBB", width: 120, height: 30};
+
+test("logos {logo, partenaire} : l'en-tête de la page 1 contient les deux images, leurs tailles et la marge de la mise en page ; l'ancienne option logo est ignorée", () => {
+  const brut = documentPdf("Texte", {}, {logos: {logo: LOGO_EXEMPLE, partenaire: PARTENAIRE_EXEMPLE}});
+  assert.equal(typeof brut.header, "function");
+  assert.deepStrictEqual(plain(brut.header(1)), {
+    columns: [
+      {image: LOGO_EXEMPLE.image, width: 100, height: 40, alignment: "left"},
+      {width: "*", text: ""},
+      {image: PARTENAIRE_EXEMPLE.image, width: 120, height: 30, alignment: "right"},
+    ],
+    margin: [2.5 * 28.35, 1.25 * 28.35, 2.5 * 28.35, 0],
+  });
+  const ancien = documentPdf("Texte", {}, {logo: "data:image/png;base64,AAAA"});
+  assert.equal(Object.hasOwn(ancien, "header"), false, "l'ancienne option logo ne crée plus d'en-tête");
 });
 
 test("logo qui ne commence pas par data:image/ (adresse https, autre type, vide, pas du texte) : ignoré, sans en-tête", () => {
@@ -678,15 +693,21 @@ test("logo qui ne commence pas par data:image/ (adresse https, autre type, vide,
   });
 });
 
-test("les valeurs de mise en page viennent de CONVENTION_MISE_EN_PAGE : marges, police, styles, logo, espace entre les colonnes de signature", () => {
-  const doc = plain(documentPdf("{signatures}", SIGNATURES_VALEURS, {logo: "data:image/png;base64,AAAA"}));
-  assert.deepStrictEqual(doc.pageMargins, MISE_EN_PAGE.pageMargins);
+test("les valeurs de mise en page viennent de CONVENTION_MISE_EN_PAGE : marges, police, styles, logos, espace entre les colonnes de signature", () => {
+  const brut = documentPdf("{signatures}", SIGNATURES_VALEURS, {logos: {logo: LOGO_EXEMPLE}});
+  const doc = plain(brut);
+  const {logo, pageMargins} = MISE_EN_PAGE;
+  assert.deepStrictEqual(doc.pageMargins, pageMargins);
   assert.deepStrictEqual(doc.defaultStyle, MISE_EN_PAGE.defaultStyle);
   assert.deepStrictEqual(doc.styles, MISE_EN_PAGE.styles);
-  assert.equal(doc.header.width, MISE_EN_PAGE.logo.width);
-  assert.deepStrictEqual(doc.header.margin, MISE_EN_PAGE.logo.margin);
-  assert.equal(doc.content[0].columnGap, MISE_EN_PAGE.signatures.espaceEntreColonnes);
-  assert.equal(doc.content[0].columns[0].stack.at(-1).text, LIGNES_VIDES);
+  // En-tête : marge gauche et droite de la page, haut = logo.distanceHaut.
+  assert.deepStrictEqual(plain(brut.header(1)).margin, [pageMargins[0], logo.distanceHaut, pageMargins[2], 0]);
+  // Ligne d'espace en tête du contenu : le titre arrive logo.espaceSousLogos sous le bas du logo (ligne de 1 pt = 1,17 pt).
+  assert.equal(doc.content[0].fontSize, 1);
+  assert.ok(Math.abs(doc.content[0].margin[3] - (logo.distanceHaut + LOGO_EXEMPLE.height + logo.espaceSousLogos - pageMargins[1] - 1.17)) < 1e-9);
+  // Le bloc de signatures vient juste après cette ligne d'espace.
+  assert.equal(doc.content[1].columnGap, MISE_EN_PAGE.signatures.espaceEntreColonnes);
+  assert.equal(doc.content[1].columns[0].stack.at(-1).text, LIGNES_VIDES);
 });
 
 test("conventionDocumentPdf renvoie une copie des réglages : modifier le document ne change pas le suivant", () => {
@@ -728,7 +749,8 @@ test("texte courant : Roboto 11 pt, justifié, interligne simple", () => {
 // Échoue si la taille, le gras, l'alignement ou les espaces d'un style s'écartent du tableau du §11.1.
 test("styles : tailles, gras, alignements, retraits et espaces avant/après des titres, paragraphe, citation, listes et notes", () => {
   const {styles} = PDF_VIDE();
-  assert.deepStrictEqual(styles.titre1, {fontSize: 12, bold: true, alignment: "center", margin: [0, 0, 0, 8]});
+  // Titre du document (7.7b) : retrait de 1 cm à gauche et à droite, 24 pt après.
+  assert.deepStrictEqual(styles.titre1, {fontSize: 12, bold: true, alignment: "center", margin: [CM(1), 0, CM(1), 24]});
   assert.deepStrictEqual(styles.titre2, {fontSize: 11, bold: true, alignment: "left", margin: [0, 18, 0, 8]});
   assert.deepStrictEqual(styles.titre3, {fontSize: 11, bold: true, alignment: "left", margin: [RETRAIT, 12, 0, 8]});
   assert.deepStrictEqual(styles.titre, {fontSize: 11, bold: true, margin: [0, 0, 0, 8]});
