@@ -1108,3 +1108,18 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : 2b82bf3 (code) et c17b574 (tests)
 Reste à faire : D-S8-7 (vérifier si Grist nettoie seul les pièces jointes orphelines, avant R5) ; incohérence fenêtre/modèle actif après re-génération (amélioration possible, non urgente) ; aucun test ne déclenche directement le délai de 20 s de l'enregistrement lui-même (signalé par le testeur).
+
+## Tâche C52 — Commandes de dépôt du fichier signé (S9, tâche 9.1a)
+
+Date : 2026-10-26
+Agents : designer-ux (§4.1 et §13 de la note), Claude Code sans agent (décisions S9-1 à S9-8), dev-interface (code), testeur (tests)
+Prompt : tâche 9.1a, décisions S9-1 à S9-8 toutes tranchées « oui »
+
+Note /5 : 5
+Ce qui allait : bouton « Déposer » après « Re-générer » à l'état « Générée » ; lien « Remplacer » seul sur sa ligne à l'état « Signée » ; champ fichier caché déclenché par input.click() ; verrou de la commande utilisée et de « Re-générer » seulement (« Voir » reste utilisable, S9-5) ; région d'attente annoncée ; annulation du sélecteur sans effet. Deux erreurs de ma consigne corrigées par l'agent avant de coder : verrouiller aussi « Voir » (contraire à la note) et l'absence de « Voir la convention signée » (hors périmètre, reporté en 9.1c). 20 tests ajoutés, 6 mis à jour, dont une précision sur l'état « Signée » qui affiche déjà un bouton (le lien).
+Ce que j'ai fait corriger : rien dans le code. Mon prompt initial contredisait la note sur le verrouillage de « Voir » ; corrigé avant tout code grâce aux questions de l'agent.
+Tests : 697 tests, 6 échecs attendus, puis 717 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : bouton « Déposer » visible, sélecteur de fichiers s'ouvre, annulation sans effet, espacement du bloc correct.
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html, test/convention-bloc.test.js, test/convention-generer-ecran.test.js, test/convention-deposer.test.js (nouveau)
+Build refait : oui
+Commit : b78596d (code) et 23a1552 (tests)
+Reste à faire : 9.1b (contrôle du fichier, envoi, écriture) ; 9.1c (« Voir la convention signée »).
