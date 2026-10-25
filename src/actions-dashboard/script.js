@@ -1744,7 +1744,11 @@ const CONVENTION_MISE_EN_PAGE = {
   // Texte courant : Roboto 11 pt, justifie, interligne simple (lineHeight 1).
   // Les autres styles heritent de ces reglages, sauf ceux qu'ils redefinissent.
   defaultStyle: {font: 'Roboto', fontSize: 11, alignment: 'justify', lineHeight: 1},
-  logo: {width: 90, margin: [56, 24, 0, 0]},
+  // Logos (note UX, §11.1 et §11.2) : premiere page seulement. Chaque logo tient dans une boite
+  // de 6 cm sur 2 cm au plus. distanceHaut : le haut des logos est a 1,25 cm du haut de la page
+  // (comme l'en-tete du Word), donc dans la marge haute. espaceSousLogos : le titre commence
+  // 24 pt sous le bas des logos.
+  logo: {largeurMax: 6 * CONVENTION_POINTS_PAR_CM, hauteurMax: 2 * CONVENTION_POINTS_PAR_CM, distanceHaut: 1.25 * CONVENTION_POINTS_PAR_CM, espaceSousLogos: 24},
   // Numero de page : 9 pt, a droite, a 1,25 cm du bas de la page.
   pied: {fontSize: 9, distanceBas: 1.25 * CONVENTION_POINTS_PAR_CM},
   notes: {espaceAvant: 12},
@@ -1756,7 +1760,8 @@ const CONVENTION_MISE_EN_PAGE = {
     espaceAvantLieuDate: 18,
   },
   styles: {
-    titre1: {fontSize: 12, bold: true, alignment: 'center', margin: [0, 0, 0, 8]},
+    // Titre du document : retrait de 1 cm a gauche et a droite, 24 pt apres.
+    titre1: {fontSize: 12, bold: true, alignment: 'center', margin: [1 * CONVENTION_POINTS_PAR_CM, 0, 1 * CONVENTION_POINTS_PAR_CM, 24]},
     titre2: {fontSize: 11, bold: true, alignment: 'left', margin: [0, 18, 0, 8]},
     titre3: {fontSize: 11, bold: true, alignment: 'left', margin: [1.25 * CONVENTION_POINTS_PAR_CM, 12, 0, 8]},
     // Ligne entierement en gras : justifiee comme le texte.
@@ -1814,15 +1819,28 @@ function conventionSignatures(avecLieuDate, valeurs, ftAGauche) {
 }
 
 // Description complete du document pour pdfmake (fonction pure : elle n'appelle pas pdfmake).
-// options.logo : image en data URL, affichee a gauche de l'en-tete ; sans logo, pas d'en-tete.
+// options.logos : { logo, partenaire }, chacun null ou { image (data URL), width, height }
+// (voir conventionImageLogo). Ils sont dans l'en-tete de la page 1 seulement (Logo a gauche,
+// Logo_partenaire a droite), a 1,25 cm du haut de la page. Un en-tete ne pousse pas le contenu :
+// une petite ligne d'espace en tete du contenu descend le titre jusqu'a 24 pt sous le bas des
+// logos. Aucun logo : ni en-tete, ni espace, le titre reste en haut de la zone de texte.
 function conventionDocumentPdf(texte, valeurs, options) {
   const mise = JSON.parse(JSON.stringify(CONVENTION_MISE_EN_PAGE));
-  const logo = options && typeof options.logo === 'string' && options.logo.startsWith('data:image/') ? options.logo : '';
+  const logos = (options && options.logos) || {};
+  const contenu = conventionVersContenuPdf(texte, valeurs);
+  const ligneLogos = conventionLigneLogos(logos.logo, logos.partenaire, mise.logo.distanceHaut, mise.pageMargins);
+  if (ligneLogos) {
+    const hauteurLogos = Math.max(...[logos.logo, logos.partenaire].filter(Boolean).map(logo => logo.height));
+    // Espace a ajouter entre le haut de la zone de texte (marge haute) et le titre. La ligne
+    // d'espace fait elle-meme environ 1,17 fois sa taille de police (1 pt) : on la retire.
+    const espace = mise.logo.distanceHaut + hauteurLogos + mise.logo.espaceSousLogos - mise.pageMargins[1];
+    if (espace > 0) contenu.unshift({text: ' ', fontSize: 1, margin: [0, 0, 0, Math.max(0, espace - 1.17)]});
+  }
   const document = {
     pageSize: 'A4',
     pageMargins: mise.pageMargins,
     defaultStyle: mise.defaultStyle,
-    content: conventionVersContenuPdf(texte, valeurs),
+    content: contenu,
     // Numero de page seul, a droite, absent de la premiere page. Le pied de page commence au
     // bord de la marge du bas : on le descend pour que le bas du numero soit a 1,25 cm du bas
     // de la page (1,17 = hauteur d'une ligne de Roboto, en multiples de la taille du texte).
@@ -1851,10 +1869,79 @@ function conventionDocumentPdf(texte, valeurs, options) {
     },
     styles: mise.styles,
   };
-  if (logo) {
-    document.header = {image: logo, width: mise.logo.width, alignment: 'left', margin: mise.logo.margin};
-  }
+  // En-tete de la page 1 seulement (pdfmake 0.3 : header peut etre une fonction de la page).
+  if (ligneLogos) document.header = page => (page === 1 ? ligneLogos : {text: ''});
   return document;
+}
+
+// Ligne des logos pour l'en-tete de la page 1, ou null s'il n'y en a aucun. Un logo seul garde
+// son cote : a droite, un espace extensible ('*') le pousse contre la marge droite.
+// Marge de l'en-tete : gauche et droite comme la page, haut = distanceHaut (depuis le haut de la page).
+function conventionLigneLogos(logo, partenaire, distanceHaut, pageMargins) {
+  if (!logo && !partenaire) return null;
+  const colonnes = [];
+  if (logo) colonnes.push({image: logo.image, width: logo.width, height: logo.height, alignment: 'left'});
+  colonnes.push({width: '*', text: ''});
+  if (partenaire) colonnes.push({image: partenaire.image, width: partenaire.width, height: partenaire.height, alignment: 'right'});
+  return {columns: colonnes, margin: [pageMargins[0], distanceHaut, pageMargins[2], 0]};
+}
+
+// Taille d'un logo PNG ou JPEG lue dans ses premiers octets : { type, largeur, hauteur }, ou
+// null si ce n'est ni l'un ni l'autre (le nom du fichier et le type annonce ne comptent pas).
+function conventionDimensionsImage(octets) {
+  const n = octets.length;
+  const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (n >= 24 && PNG.every((valeur, i) => octets[i] === valeur)) {
+    const lire = debut => ((octets[debut] << 24) | (octets[debut + 1] << 16) | (octets[debut + 2] << 8) | octets[debut + 3]) >>> 0;
+    return {type: 'png', largeur: lire(16), hauteur: lire(20)};
+  }
+  if (n >= 4 && octets[0] === 0xff && octets[1] === 0xd8 && octets[2] === 0xff) {
+    let i = 2;
+    while (i + 3 < n) {
+      if (octets[i] !== 0xff) { i++; continue; }
+      const marque = octets[i + 1];
+      if (marque === 0xff) { i++; continue; }
+      if (marque === 0xd9) return null;
+      if (marque === 0x01 || (marque >= 0xd0 && marque <= 0xd8)) { i += 2; continue; }
+      // Marqueurs « Start Of Frame » (SOF0 a SOF15), sauf C4, C8 et CC : ils portent la taille.
+      if (marque >= 0xc0 && marque <= 0xcf && marque !== 0xc4 && marque !== 0xc8 && marque !== 0xcc) {
+        if (i + 8 >= n) return null;
+        return {type: 'jpeg', largeur: (octets[i + 7] << 8) | octets[i + 8], hauteur: (octets[i + 5] << 8) | octets[i + 6]};
+      }
+      const longueur = (octets[i + 2] << 8) | octets[i + 3];
+      if (longueur < 2) return null;
+      i += 2 + longueur;
+    }
+  }
+  return null;
+}
+
+// Poids maximum d'un logo (au-dela : traite comme illisible).
+const CONVENTION_LOGO_OCTETS_MAX = 5 * 1024 * 1024;
+
+// Transforme les octets d'un fichier en image pour pdfmake : { image (data URL), width, height },
+// ou null si ce n'est pas un PNG ou un JPEG lisible. pdfmake 0.3 accepte les images PNG et JPEG
+// en data URL (https://pdfmake.github.io/docs/0.3/document-definition-object/images/). La taille
+// (en points, comme les pixels pour pdfmake) tient dans 6 cm sur 2 cm, proportions gardees, sans
+// agrandissement. Fonction pure.
+function conventionImageLogo(tampon) {
+  try {
+    const octets = tampon instanceof Uint8Array ? tampon : new Uint8Array(tampon);
+    if (!octets.length || octets.length > CONVENTION_LOGO_OCTETS_MAX) return null;
+    const dim = conventionDimensionsImage(octets);
+    if (!dim || !(dim.largeur > 0) || !(dim.hauteur > 0)) return null;
+    const boite = CONVENTION_MISE_EN_PAGE.logo;
+    const echelle = Math.min(1, boite.largeurMax / dim.largeur, boite.hauteurMax / dim.hauteur);
+    let binaire = '';
+    for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
+    return {
+      image: `data:image/${dim.type};base64,${btoa(binaire)}`,
+      width: dim.largeur * echelle,
+      height: dim.hauteur * echelle
+    };
+  } catch (erreur) {
+    return null;
+  }
 }
 
 // ---- Convention : chargement de pdfmake (tache 7.1) ----
@@ -2715,17 +2802,11 @@ function conventionChargerPdfmake() {
 
 // Envoie le PDF comme piece jointe, par la methode du logo de clubs : jeton d'ecriture dans
 // l'adresse, credentials 'omit', en-tete X-Requested-With. Renvoie l'identifiant de la piece
-// jointe. Le jeton n'est lu qu'ici, vit dans ces variables locales et n'est mis dans aucune
+// jointe. Le jeton vit dans des variables locales et n'est mis dans aucune
 // erreur : les erreurs ne portent qu'un code (une erreur de fetch peut recopier l'adresse).
-async function conventionEnvoyerPdf(blob, nomFichier) {
+// Le jeton (acces) est celui de conventionDemanderAcces, demande une fois par generation.
+async function conventionEnvoyerPdf(acces, blob, nomFichier) {
   const impossible = () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
-  let acces;
-  try {
-    acces = await grist.docApi.getAccessToken({readOnly: false});
-  } catch (error) {
-    throw impossible();
-  }
-  if (!acces || !acces.token || !acces.baseUrl) throw impossible();
   const formulaire = new FormData();
   formulaire.append('upload', blob, nomFichier);
   let reponse;
@@ -2751,8 +2832,60 @@ async function conventionEnvoyerPdf(blob, nomFichier) {
   }
   const id = Array.isArray(ids) ? ids[0] : undefined;
   if (!Number.isInteger(id) || id <= 0) throw impossible();
-  // On rend aussi l'acces : le rattachement reutilise le meme jeton, sans en redemander un.
-  return {id, acces};
+  return id;
+}
+
+// UN seul jeton par generation, demande par conventionGenerer avant les logos puis reutilise
+// pour le telechargement des logos, l'envoi du PDF et le rattachement. Jeton d'ECRITURE voulu :
+// un jeton en lecture seule met le proprietaire au niveau lecteur, refuse par les regles par
+// defaut (voir conventionTelechargerPdf). Il vit dans des variables locales et n'est jamais
+// mis dans une erreur, la console ou un message.
+async function conventionDemanderAcces() {
+  let acces;
+  try {
+    acces = await grist.docApi.getAccessToken({readOnly: false});
+  } catch (error) {
+    throw conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  }
+  if (!acces || !acces.token || !acces.baseUrl) throw conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  return acces;
+}
+
+// Telecharge une piece jointe avec le jeton deja obtenu (meme methode que
+// conventionTelechargerPdf). Renvoie les octets ; echoue sans detail.
+async function conventionTelechargerPieceJointe(acces, pieceJointe) {
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}/download?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('telechargement');
+  return reponse.arrayBuffer();
+}
+
+// Logo d'une colonne de pieces jointes du modele : le premier fichier, converti pour pdfmake.
+// null si la cellule est vide, si le telechargement echoue ou si l'image est illisible : la
+// generation continue alors sans ce logo. Rien dans la console.
+async function conventionChargerLogo(acces, valeur) {
+  const id = conventionPieceJointeId(valeur);
+  if (!id) return null;
+  try {
+    return conventionImageLogo(await conventionTelechargerPieceJointe(acces, id));
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// Logos du modele. Renvoie { logos: {logo, partenaire}, manquants } : manquants contient
+// 'Logo' des qu'il n'a pas pu etre mis, et 'Logo_partenaire' seulement s'il etait rempli.
+async function conventionChargerLogos(acces, modele) {
+  const [logo, partenaire] = await Promise.all([
+    conventionChargerLogo(acces, modele.Logo),
+    conventionChargerLogo(acces, modele.Logo_partenaire)
+  ]);
+  const manquants = [];
+  if (!logo) manquants.push('Logo');
+  if (!partenaire && conventionPieceJointeId(modele.Logo_partenaire)) manquants.push('Logo_partenaire');
+  return {logos: {logo, partenaire}, manquants};
 }
 
 // Ecrit PDF_genere et Date_generation en UNE requete PATCH REST, avec le jeton de l'envoi
@@ -2778,11 +2911,14 @@ async function conventionRattacherPdf(acces, conventionId, champs) {
 // Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
 // Les etapes se suivent, la premiere qui echoue arrete tout (note UX, §3 et D-S7-4) :
 //  1. controle des champs obligatoires ; 2. enregistrement des informations (sans message) ;
-//  3. modele actif ; 4. remplissage des cases ; 5. chargement de pdfmake (20 s au plus) ;
-//  6. fabrication du PDF et nom du fichier ; 7. envoi du fichier ;
-//  8. UNE requete PATCH REST pour PDF_genere et Date_generation ;
+//  3. modele actif ; 4. remplissage des cases ; 4b. UN jeton d'ecriture, puis les logos du
+//  modele (Logo, Logo_partenaire : un logo absent ou illisible n'arrete rien) ;
+//  5. chargement de pdfmake (20 s au plus) ;
+//  6. fabrication du PDF et nom du fichier ; 7. envoi du fichier (meme jeton) ;
+//  8. UNE requete PATCH REST pour PDF_genere et Date_generation (meme jeton) ;
 //  9. mise a jour de state.raw.Conventions (le bloc peut passer a « Generee »).
-// Reussite : renvoie {nomFichier}. Echec : rejette une Error portant `code`
+// Reussite : renvoie {nomFichier, logosManquants} (logosManquants : [] ou 'Logo' et/ou
+// 'Logo_partenaire', ce dernier seulement s'il etait rempli). Echec : rejette une Error portant `code`
 // (voir CONVENTION_GENERATION_ERREURS) ; rien n'est alors ecrit dans PDF_genere ni Date_generation.
 async function conventionGenerer(actionId, valeurs) {
   try {
@@ -2802,19 +2938,32 @@ async function conventionGenerer(actionId, valeurs) {
     const inconnues = conventionCasesManquantes(contenu, cases);
     if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
 
+    // Le jeton est demande une seule fois, ici, avant les logos.
+    const acces = await conventionDemanderAcces();
+    const {logos, manquants} = await conventionChargerLogos(acces, modele);
+
     await conventionChargerPdfmake();
-    const blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases)).getBlob();
+    let blob = null;
+    try {
+      blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases, {logos})).getBlob();
+    } catch (erreur) {
+      // Un logo que pdfmake n'arrive pas a lire ne doit pas bloquer : on refait le PDF sans logo.
+      if (!logos.logo && !logos.partenaire) throw erreur;
+      if (logos.logo && !manquants.includes('Logo')) manquants.push('Logo');
+      if (logos.partenaire && !manquants.includes('Logo_partenaire')) manquants.push('Logo_partenaire');
+      blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases)).getBlob();
+    }
     if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
     const nomFichier = conventionNomFichier(actionId, valeurs, state);
 
-    const {id: pieceJointe, acces} = await conventionEnvoyerPdf(blob, nomFichier);
+    const pieceJointe = await conventionEnvoyerPdf(acces, blob, nomFichier);
 
     const champs = {PDF_genere: ['L', pieceJointe], Date_generation: Math.floor(Date.now() / 1000)};
     await conventionRattacherPdf(acces, convention.id, champs);
     // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
     const ligne = conventionLigne(state.raw.Conventions, convention.id);
     if (ligne) Object.assign(ligne, champs);
-    return {nomFichier};
+    return {nomFichier, logosManquants: manquants};
   } catch (error) {
     if (error && typeof error.code === 'string') throw error;
     throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
