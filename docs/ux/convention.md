@@ -727,7 +727,7 @@ Conversion utilisée : 1 cm = 28,35 pt, donc 2,5 cm = 70,9 pt. Page A4 (21 × 29
 
 | Élément du modèle | Taille | Style | Alignement | Espace avant | Espace après |
 |---|---|---|---|---|---|
-| `#` titre du document | 12 pt | gras | centré | 0 pt | 8 pt |
+| `#` titre du document (mis à jour le 2026-10-25 (comparaison avec le Word)) | 12 pt | gras | centré, retrait de 1 cm à gauche et de 1 cm à droite | 0 pt | 24 pt (au lieu de 8 pt) |
 | `##` titre d'article | 11 pt | gras | à gauche | 18 pt | 8 pt |
 | Ligne entièrement en gras, seule (par exemple « En amont de l'opération, France Travail : ») | 11 pt | gras | justifié, comme le texte | 0 pt | 8 pt |
 | `###` sous-titre (« 4.1 »…) | 11 pt | gras | à gauche, retrait à gauche de 1,25 cm | 12 pt | 8 pt |
@@ -752,14 +752,14 @@ Décision de Hanta : deux colonnes de type pièce jointe dans `Modeles_conventio
 
 | Point | Règle |
 |---|---|
-| Où | première page seulement, tout en haut de la zone de texte, au-dessus du titre `#` |
+| Où (mis à jour le 2026-10-25 (comparaison avec le Word)) | première page seulement, au-dessus du titre `#`. Le **haut des logos est à 1,25 cm du haut de la page** (35,4 pt), comme l'en-tête du Word, donc dans la marge haute de 2,5 cm. Le titre `#` commence **24 pt sous le bas des logos**. Le reste du texte suit le titre normalement |
 | `Logo` | à **gauche**, bord gauche aligné sur la marge gauche |
 | `Logo_partenaire` | à **droite**, bord droit aligné sur la marge droite, **sur la même ligne** que `Logo` |
 | Si seul `Logo` est rempli | `Logo` à gauche, rien à droite |
 | Si seul `Logo_partenaire` est rempli | `Logo_partenaire` reste à droite, rien à gauche |
 | Taille | `Logo` : 6 cm de large sur 2 cm de haut au plus, proportions gardées. `Logo_partenaire` : 6 cm de large au plus, comme `Logo` (choix de Hanta, 2026-10-25), même hauteur au plus. Chaque logo tient dans sa boîte, garde ses proportions, n'est jamais déformé ni agrandi au-delà de sa taille d'origine. La largeur de 90 pt du code actuel vient du code, pas du Word |
-| Le logo ne chevauche jamais le texte | le texte de la première page commence **sous** les logos. Donc le logo est le premier élément du contenu (dans le flux), pas dans l'en-tête de page : un en-tête reste dans la marge haute de 2,5 cm, trop petite si le logo est plus haut. À valider par dev-backend |
-| Pages suivantes | aucun logo, première page seulement (le code actuel en met un sur chaque page : à changer) |
+| Le logo ne chevauche jamais le texte (mis à jour le 2026-10-25 (comparaison avec le Word)) | le texte de la première page commence **sous** les logos : le titre `#` est placé 24 pt sous le bas du logo le plus haut des deux. Comme les logos partent à 1,25 cm du haut de la page et peuvent mesurer 2 cm de haut, leur bas peut dépasser la marge haute de 2,5 cm : la position du titre se calcule donc à partir du bas des logos, pas à partir de la marge. À valider par dev-backend |
+| Pages suivantes | aucun logo, première page seulement (le code actuel en met un sur chaque page : à changer). Rien ne change : marge du haut de 2,5 cm (mis à jour le 2026-10-25 (comparaison avec le Word)) |
 
 **Cas particuliers (décidés : D-MEP-3, 2026-10-25)** :
 
@@ -769,7 +769,7 @@ Décision de Hanta : deux colonnes de type pièce jointe dans `Modeles_conventio
 | `Logo_partenaire` vide | normal, rien ne s'affiche, aucun message |
 | Fichier illisible (corrompu, format non pris en charge, téléchargement qui échoue) | on génère sans ce logo, sans bloquer, avec le même message |
 | Plusieurs fichiers dans la cellule | on prend le premier |
-| Les deux colonnes sont vides | aucun logo, aucun en-tête vide : le titre est tout en haut |
+| Les deux colonnes sont vides (mis à jour le 2026-10-25 (comparaison avec le Word)) | aucun logo, aucun en-tête vide : le titre commence en haut de la zone de texte, comme avant, sans l'espace de 24 pt ni le décalage des logos |
 
 Message d'information (décision D-MEP-3, ajouté à la liste des textes du §5), affiché avec la réussite de la génération (même emplacement que les messages du §3 « Générer la convention ») : « La convention a été générée sans le logo France Travail. Vérifiez le modèle avant de l'imprimer. » (ou « …sans le logo du partenaire. » si c'est `Logo_partenaire` qui est illisible alors qu'il était rempli). Ce n'est **pas** une erreur : le bouton « Voir la convention » reste disponible.
 

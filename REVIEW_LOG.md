@@ -1018,3 +1018,18 @@ Tests : 582 passés, 0 échec (npm test).
 Fichiers modifiés : test/convention-modele.test.js
 Build refait : pas nécessaire
 Commit : 96f9185
+
+## Tâche C46 — Logos de la convention (S7, tâche 7.7b) et réglages après comparaison avec le Word
+
+Date : 2026-10-25
+Agents : dev-backend (logos, puis réglages), Claude Code sans agent (note §11), testeur (tests)
+Prompt : tâche 7.7b (colonnes Logo et Logo_partenaire de Modeles_convention), puis réglages décidés par Hanta en comparant le PDF au Word
+
+Note /5 : sans objet
+Ce qui allait : logos lus dans Grist au moment de la génération ; PNG et JPEG reconnus d'après leurs octets ; jamais agrandis ni déformés ; un seul jeton par génération, en écriture, jamais affiché ; un logo absent ou illisible ne bloque pas (logosManquants) ; ancien logo d'en-tête retiré ; source pdfmake citée.
+Ce que j'ai fait corriger : après comparaison avec le Word : haut des logos à 1,25 cm du haut de la page, titre 24 pt sous les logos, titre en retrait de 1 cm à gauche et à droite et 24 pt après. Côté tests : un JPEG d'essai trop haut (réduit à juste titre par le code).
+Tests : 582 tests, 10 échecs attendus, puis 633 tests, 1 échec (test du JPEG), puis 633 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : logo à bonne taille, en haut de la première page seulement ; génération sans logo quand la colonne est vide.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, docs/ux/convention.md (§11.1, §11.2), test/convention-generation.test.js, test/convention-modele.test.js, test/convention-logos.test.js (nouveau)
+Build refait : oui
+Commit : 956fd5c (code) et 0ca0699 (tests)
+Reste à faire : 7.7c (message quand un logo manque) ; lisibilité (interligne 1,2, 10 pt entre paragraphes, 6 pt après les listes, vrai gras Roboto Bold) ; italique de « Entre » et « et » ajouté dans les modèles par Hanta.
