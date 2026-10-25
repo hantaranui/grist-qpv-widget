@@ -1033,3 +1033,18 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, do
 Build refait : oui
 Commit : 956fd5c (code) et 0ca0699 (tests)
 Reste à faire : 7.7c (message quand un logo manque) ; lisibilité (interligne 1,2, 10 pt entre paragraphes, 6 pt après les listes, vrai gras Roboto Bold) ; italique de « Entre » et « et » ajouté dans les modèles par Hanta.
+
+## Tâche C47 — Lisibilité du PDF : interligne et espaces (S7, partie A)
+
+Date : 2026-10-25
+Agents : Claude Code sans agent (note §11), dev-backend (code), testeur (tests)
+Prompt : décisions de Hanta après comparaison avec le Word (interligne 1,2, 10 pt après un paragraphe, 6 pt après un élément de liste), pour la lisibilité des personnes qui voient mal
+
+Note /5 : 5
+Ce qui allait : les trois réglages appliqués dans CONVENTION_MISE_EN_PAGE ; protection ajoutée de sa propre initiative pour que le numéro de page reste à 1,25 cm du bas malgré le nouvel interligne, signalée clairement ; conséquences sur les signatures et la place du titre sous les logos annoncées à l'avance et acceptées par Hanta ; 2 tests mis à jour, 1 ajouté pour la protection du numéro de page.
+Ce que j'ai fait corriger : rien.
+Tests : 633 tests, 2 échecs attendus, puis 634 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : PDF plus aéré, plus facile à lire, comparé au Word.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : b613b39 (code) et a29b460 (tests)
+Reste à faire : le vrai gras (partie B, auditeur-securite puis dev-backend) ; position exacte du numéro de page (1,25 cm) à vérifier à l'écran ; écart de 0,2 pt sous les logos, invisible, signalé pour mémoire.
