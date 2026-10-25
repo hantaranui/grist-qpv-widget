@@ -13,6 +13,8 @@ const w = loadWidget();
 // l'hote : on les ramene a des valeurs simples avant de comparer.
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const convertir = (texte) => plain(w.conventionVersContenuPdf(texte));
+// Un élément de liste porte le style elementListe (les 4 pt d'espace après), voir §11.
+const ITEM = (text) => ({text, style: "elementListe"});
 
 test("deux paragraphes séparés par une ligne vide ; un retour à la ligne simple reste dans le paragraphe", () => {
   assert.deepStrictEqual(convertir("Première ligne\nSuite du même paragraphe\n\nSecond paragraphe"), [
@@ -23,33 +25,33 @@ test("deux paragraphes séparés par une ligne vide ; un retour à la ligne simp
 
 test("titres #, ## et ### avec le style titre1, titre2 et titre3", () => {
   assert.deepStrictEqual(convertir("# Un\n## Deux\n### Trois"), [
-    {text: "Un", style: "titre1"},
-    {text: "Deux", style: "titre2"},
-    {text: "Trois", style: "titre3"},
+    {text: "Un", style: "titre1", headlineLevel: 1},
+    {text: "Deux", style: "titre2", headlineLevel: 1},
+    {text: "Trois", style: "titre3", headlineLevel: 1},
   ]);
 });
 
 test("titre ## avec du gras dedans : le gras est retiré car le style le porte déjà", () => {
   assert.deepStrictEqual(convertir("## **Article 3 : Rôle des parties prenantes**"), [
-    {text: "Article 3 : Rôle des parties prenantes", style: "titre2"},
+    {text: "Article 3 : Rôle des parties prenantes", style: "titre2", headlineLevel: 1},
   ]);
 });
 
 test("titre ## avec un mot en gras au milieu : le texte reste découpé, sans l'attribut gras", () => {
   assert.deepStrictEqual(convertir("## Article **3** fin"), [
-    {text: ["Article ", "3", " fin"], style: "titre2"},
+    {text: ["Article ", "3", " fin"], style: "titre2", headlineLevel: 1},
   ]);
 });
 
 test("ligne entièrement en gras : elle prend le style titre", () => {
   assert.deepStrictEqual(convertir("**Article 1 : Objet de la convention**"), [
-    {text: "Article 1 : Objet de la convention", style: "titre"},
+    {text: "Article 1 : Objet de la convention", style: "titre", headlineLevel: 1},
   ]);
 });
 
 test("retrait d'une seule ligne : > **4.1 Rôle de France Travail**", () => {
   assert.deepStrictEqual(convertir("> **4.1 Rôle de France Travail**"), [
-    {stack: [{text: "4.1 Rôle de France Travail", style: "titre"}], style: "retrait"},
+    {stack: [{text: "4.1 Rôle de France Travail", style: "titre", headlineLevel: 1}], style: "retrait"},
   ]);
 });
 
@@ -67,23 +69,23 @@ test("retrait de plusieurs lignes : une ligne contenant seulement > sépare deux
 
 test("liste à puces, et deux listes séparées par une ligne vide", () => {
   assert.deepStrictEqual(convertir("- a\n- b"), [
-    {ul: [{text: "a"}, {text: "b"}], style: "liste"},
+    {ul: [ITEM("a"), ITEM("b")], style: "liste"},
   ]);
   assert.deepStrictEqual(convertir("- a\n- b\n\n- c"), [
-    {ul: [{text: "a"}, {text: "b"}], style: "liste"},
-    {ul: [{text: "c"}], style: "liste"},
+    {ul: [ITEM("a"), ITEM("b")], style: "liste"},
+    {ul: [ITEM("c")], style: "liste"},
   ]);
 });
 
 test("liste numérotée 1. 2. 3. sans start", () => {
   assert.deepStrictEqual(convertir("1. un\n2. deux\n3. trois"), [
-    {ol: [{text: "un"}, {text: "deux"}, {text: "trois"}], style: "liste"},
+    {ol: [ITEM("un"), ITEM("deux"), ITEM("trois")], style: "liste"},
   ]);
 });
 
 test("liste numérotée qui ne commence pas à 1 : start reprend le premier numéro", () => {
   assert.deepStrictEqual(convertir("3. trois\n4. quatre"), [
-    {ol: [{text: "trois"}, {text: "quatre"}], style: "liste", start: 3},
+    {ol: [ITEM("trois"), ITEM("quatre")], style: "liste", start: 3},
   ]);
 });
 
@@ -107,7 +109,7 @@ test("italique : *soft skills*", () => {
 
 test("souligné dans le gras : ligne en titre, le souligné est gardé", () => {
   assert.deepStrictEqual(convertir("**<u>3.1 - Rôle l'organisation sportive</u>**"), [
-    {text: [{text: "3.1 - Rôle l'organisation sportive", decoration: "underline"}], style: "titre"},
+    {text: [{text: "3.1 - Rôle l'organisation sportive", decoration: "underline"}], style: "titre", headlineLevel: 1},
   ]);
 });
 
@@ -127,8 +129,8 @@ test("exposant dans le gras : 1<sup>er</sup> reste en gras, er est en exposant",
 
 test("commentaire HTML vide seul sur sa ligne : il disparaît et sépare deux listes", () => {
   assert.deepStrictEqual(convertir("- a\n- b\n<!-- -->\n- c\n- d"), [
-    {ul: [{text: "a"}, {text: "b"}], style: "liste"},
-    {ul: [{text: "c"}, {text: "d"}], style: "liste"},
+    {ul: [ITEM("a"), ITEM("b")], style: "liste"},
+    {ul: [ITEM("c"), ITEM("d")], style: "liste"},
   ]);
 });
 
@@ -156,7 +158,7 @@ test("note : l'appel devient un 1 en exposant, la définition quitte le corps et
   assert.deepStrictEqual(convertir(texte), [
     {text: ["Le club fourni", {text: "1", sup: true}, " dans le texte."], style: "paragraphe"},
     {text: "Autre paragraphe", style: "paragraphe"},
-    {text: [{text: "1", sup: true}, " ", "France Travail, dans son rôle d'accueil…"], style: "note"},
+    {text: [{text: "1", sup: true}, " ", "France Travail, dans son rôle d'accueil…"], style: "note", margin: [0, 12, 0, 0]},
   ]);
 });
 
@@ -190,13 +192,13 @@ test("case dans du gras : la valeur remplace la case et reste en gras", () => {
 
 test("case dans un titre : la valeur est dans le texte du titre", () => {
   assert.deepStrictEqual(remplir("## Convention avec [Nom du club]", {"Nom du club": "Club Alpha"}), [
-    {text: "Convention avec Club Alpha", style: "titre2"},
+    {text: "Convention avec Club Alpha", style: "titre2", headlineLevel: 1},
   ]);
 });
 
 test("case dans un élément de liste : la valeur est dans l'élément", () => {
   assert.deepStrictEqual(remplir("- Siège : [Siège du club]\n- Autre", {"Siège du club": "1 rue des Sports"}), [
-    {ul: [{text: "Siège : 1 rue des Sports"}, {text: "Autre"}], style: "liste"},
+    {ul: [ITEM("Siège : 1 rue des Sports"), ITEM("Autre")], style: "liste"},
   ]);
 });
 
@@ -209,7 +211,7 @@ test("case dans un retrait (>) : la valeur est dans le paragraphe du retrait", (
 test("case dans le texte d'une note : la valeur est dans la note rangée en dernier", () => {
   assert.deepStrictEqual(remplir("Texte[^1]\n\n[^1]: Défini par [Nom du club]", {"Nom du club": "Club Alpha"}), [
     {text: ["Texte", {text: "1", sup: true}], style: "paragraphe"},
-    {text: [{text: "1", sup: true}, " ", "Défini par Club Alpha"], style: "note"},
+    {text: [{text: "1", sup: true}, " ", "Défini par Club Alpha"], style: "note", margin: [0, 12, 0, 0]},
   ]);
 });
 
@@ -364,7 +366,7 @@ test("notes [^1] : jamais remplacées par une valeur, jamais listées comme case
   const texte = "Voir[^1] ici\n\n[^1]: Texte de la note";
   assert.deepStrictEqual(remplir(texte, {"^1": "NON", "1": "NON"}), [
     {text: ["Voir", {text: "1", sup: true}, " ici"], style: "paragraphe"},
-    {text: [{text: "1", sup: true}, " ", "Texte de la note"], style: "note"},
+    {text: [{text: "1", sup: true}, " ", "Texte de la note"], style: "note", margin: [0, 12, 0, 0]},
   ]);
   assert.deepStrictEqual(manquantes(texte, {}), []);
 });
@@ -417,12 +419,19 @@ const vm = require("node:vm");
 
 // CONVENTION_MISE_EN_PAGE est une `const` du script, que le bac à sable ne
 // laisse pas voir : on relit sa déclaration dans les sources, pour que les
-// tests suivent les réglages sans les recopier.
+// tests suivent les réglages sans les recopier. Elle dépend de
+// CONVENTION_POINTS_PAR_CM : on relit aussi cette constante, et on évalue les
+// deux ensemble, donc l'ordre des déclarations dans script.js ne compte pas.
+const SOURCE_SCRIPT = fs.readFileSync(path.join(__dirname, "..", "src", "actions-dashboard", "script.js"), "utf8");
+const POINTS_PAR_CM = (() => {
+  const m = /const CONVENTION_POINTS_PAR_CM = ([0-9.]+);/.exec(SOURCE_SCRIPT);
+  assert.ok(m, "la déclaration de CONVENTION_POINTS_PAR_CM est introuvable dans script.js");
+  return Number(m[1]);
+})();
 const MISE_EN_PAGE = (() => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "src", "actions-dashboard", "script.js"), "utf8");
-  const m = /const CONVENTION_MISE_EN_PAGE = (\{[\s\S]*?\n\});/.exec(source);
+  const m = /const CONVENTION_MISE_EN_PAGE = (\{[\s\S]*?\n\});/.exec(SOURCE_SCRIPT);
   assert.ok(m, "la déclaration de CONVENTION_MISE_EN_PAGE est introuvable dans script.js");
-  return plain(vm.runInNewContext(`(${m[1]})`));
+  return plain(vm.runInNewContext(`const CONVENTION_POINTS_PAR_CM = ${POINTS_PAR_CM}; (${m[1]})`));
 })();
 
 const problemesNotes = (texte) => plain(w.conventionProblemesNotes(texte));
@@ -570,7 +579,7 @@ test("notes renumérotées : [^a] puis [^2] appelées dans cet ordre deviennent 
   const texte = "Un[^a] deux[^2] encore[^a]\n\n[^2]: Texte de la note deux\n[^a]: Texte de la note a";
   assert.deepStrictEqual(convertir(texte), [
     {text: ["Un", {text: "1", sup: true}, " deux", {text: "2", sup: true}, " encore", {text: "1", sup: true}], style: "paragraphe"},
-    {text: [{text: "1", sup: true}, " ", "Texte de la note a"], style: "note"},
+    {text: [{text: "1", sup: true}, " ", "Texte de la note a"], style: "note", margin: [0, 12, 0, 0]},
     {text: [{text: "2", sup: true}, " ", "Texte de la note deux"], style: "note"},
   ]);
 });
@@ -578,7 +587,7 @@ test("notes renumérotées : [^a] puis [^2] appelées dans cet ordre deviennent 
 test("note définie deux fois avec la même étiquette : seule la première définition est gardée", () => {
   assert.deepStrictEqual(convertir("Appel[^1]\n\n[^1]: Première définition\n[^1]: Seconde définition"), [
     {text: ["Appel", {text: "1", sup: true}], style: "paragraphe"},
-    {text: [{text: "1", sup: true}, " ", "Première définition"], style: "note"},
+    {text: [{text: "1", sup: true}, " ", "Première définition"], style: "note", margin: [0, 12, 0, 0]},
   ]);
 });
 
@@ -615,17 +624,37 @@ test("conventionDocumentPdf sans logo : A4, contenu identique à conventionVersC
   assert.deepStrictEqual(doc.content, plain(w.conventionVersContenuPdf(texte, valeurs)));
   assert.equal(Object.hasOwn(brut, "header"), false);
   assert.equal(Object.hasOwn(doc, "header"), false);
-  assert.deepStrictEqual(Object.keys(doc.styles).sort(), ["liste", "note", "paragraphe", "retrait", "titre", "titre1", "titre2", "titre3"]);
+  assert.deepStrictEqual(Object.keys(doc.styles).sort(), ["elementListe", "liste", "note", "paragraphe", "retrait", "titre", "titre1", "titre2", "titre3"]);
   Object.keys(doc.styles).forEach(nom => {
     assert.equal(typeof doc.styles[nom], "object", `le style ${nom} doit être un objet`);
   });
 });
 
-test("pied de page : footer(1, 3) donne « Page 1 sur 3 », centré", () => {
+// Échoue si le numéro de page redevient « Page x sur y », centré, ou apparaît en page 1.
+test("pied de page : numéro seul (sans « Page » ni « sur »), à droite, 9 pt, vide en page 1", () => {
   const {footer} = documentPdf("Texte", {});
   assert.equal(typeof footer, "function");
-  assert.deepStrictEqual(plain(footer(1, 3)), {text: "Page 1 sur 3", alignment: "center", fontSize: MISE_EN_PAGE.pied.fontSize});
-  assert.deepStrictEqual(plain(footer(2, 10)), {text: "Page 2 sur 10", alignment: "center", fontSize: MISE_EN_PAGE.pied.fontSize});
+  assert.deepStrictEqual(plain(footer(1, 3)), {text: ""});
+  [[2, 3], [3, 3], [10, 12]].forEach(([page, total]) => {
+    const pied = plain(footer(page, total));
+    assert.equal(pied.text, String(page));
+    assert.equal(pied.alignment, "right");
+    assert.equal(pied.fontSize, 9);
+    assert.doesNotMatch(pied.text, /Page|sur/);
+  });
+});
+
+// Échoue si le pied de page ne suit plus les marges gauche et droite (le numéro doit finir au bord droit du texte).
+test("pied de page : marges gauche et droite de 2,5 cm, et espace avant qui place le bas du numéro à 1,25 cm du bas de la page", () => {
+  const pied = plain(documentPdf("Texte", {}).footer(2, 3));
+  const cm25 = 2.5 * POINTS_PAR_CM;
+  const hauteurLigne = 9 * 1.17;
+  assert.equal(pied.margin[0], cm25);
+  assert.equal(pied.margin[2], cm25);
+  assert.equal(pied.margin[3], 0);
+  // Le pied commence au bord de la marge du bas (2,5 cm du bas) : on descend de 1,25 cm moins la hauteur de la ligne.
+  assert.ok(Math.abs(pied.margin[1] - (cm25 - 1.25 * POINTS_PAR_CM - hauteurLigne)) < 1e-9);
+  assert.ok(pied.margin[1] > 0, "l'espace avant doit rester positif");
 });
 
 test("logo commençant par data:image/ : l'en-tête est créé avec l'image, la largeur et la marge de la mise en page", () => {
@@ -667,4 +696,345 @@ test("conventionDocumentPdf renvoie une copie des réglages : modifier le docume
   const second = plain(documentPdf("Texte", {}));
   assert.deepStrictEqual(second.styles, MISE_EN_PAGE.styles);
   assert.deepStrictEqual(second.pageMargins, MISE_EN_PAGE.pageMargins);
+});
+
+// ---- Tâche 7.7a : mise en page du PDF selon docs/ux/convention.md §11 ----
+// Les valeurs attendues sont écrites ici en clair (en cm convertis avec 28,35 pt par cm),
+// et non relues dans CONVENTION_MISE_EN_PAGE : un test qui relirait le réglage ne verrait pas
+// une valeur qui s'écarte du §11.
+
+const CM = (cm) => cm * 28.35;
+const RETRAIT = CM(1.25);
+const PDF_VIDE = () => plain(documentPdf("Texte", {}));
+
+// Échoue si la constante de conversion s'écarte du 28,35 pt par cm du §11.
+test("conversion : 1 cm = 28,35 pt", () => {
+  assert.equal(POINTS_PAR_CM, 28.35);
+});
+
+// Échoue si une marge n'est plus de 2,5 cm (70,875 pt), ou si une des quatre diffère.
+test("marges de la page : 2,5 cm partout (gauche, haut, droite, bas), page A4", () => {
+  const doc = PDF_VIDE();
+  assert.equal(doc.pageSize, "A4");
+  assert.equal(doc.pageMargins.length, 4);
+  doc.pageMargins.forEach(marge => assert.ok(Math.abs(marge - CM(2.5)) < 1e-9, `marge ${marge}`));
+});
+
+// Échoue si la police, la taille, la justification ou l'interligne simple changent.
+test("texte courant : Roboto 11 pt, justifié, interligne simple", () => {
+  assert.deepStrictEqual(PDF_VIDE().defaultStyle, {font: "Roboto", fontSize: 11, alignment: "justify", lineHeight: 1});
+});
+
+// Échoue si la taille, le gras, l'alignement ou les espaces d'un style s'écartent du tableau du §11.1.
+test("styles : tailles, gras, alignements, retraits et espaces avant/après des titres, paragraphe, citation, listes et notes", () => {
+  const {styles} = PDF_VIDE();
+  assert.deepStrictEqual(styles.titre1, {fontSize: 12, bold: true, alignment: "center", margin: [0, 0, 0, 8]});
+  assert.deepStrictEqual(styles.titre2, {fontSize: 11, bold: true, alignment: "left", margin: [0, 18, 0, 8]});
+  assert.deepStrictEqual(styles.titre3, {fontSize: 11, bold: true, alignment: "left", margin: [RETRAIT, 12, 0, 8]});
+  assert.deepStrictEqual(styles.titre, {fontSize: 11, bold: true, margin: [0, 0, 0, 8]});
+  assert.deepStrictEqual(styles.paragraphe, {margin: [0, 6, 0, 0]});
+  assert.deepStrictEqual(styles.retrait, {margin: [RETRAIT, 0, 0, 0]});
+  assert.deepStrictEqual(styles.liste, {margin: [RETRAIT, 0, 0, 0]});
+  assert.deepStrictEqual(styles.elementListe, {margin: [0, 0, 0, 4]});
+  assert.deepStrictEqual(styles.note, {fontSize: 10, margin: [0, 0, 0, 0]});
+});
+
+// Échoue si la ligne en gras reçoit un alignement propre : elle doit rester justifiée comme le texte (héritage).
+test("ligne entièrement en gras : pas d'alignement propre, donc justifiée comme le texte courant", () => {
+  const {styles, defaultStyle} = PDF_VIDE();
+  assert.equal(Object.hasOwn(styles.titre, "alignment"), false);
+  assert.equal(defaultStyle.alignment, "justify");
+});
+
+// Échoue si le paragraphe ou la liste redéfinit l'alignement : ils doivent hériter du justifié.
+test("paragraphe, liste, élément de liste et citation : pas d'alignement propre, donc justifiés", () => {
+  const {styles} = PDF_VIDE();
+  ["paragraphe", "liste", "elementListe", "retrait"].forEach(nom => {
+    assert.equal(Object.hasOwn(styles[nom], "alignment"), false, `le style ${nom} ne doit pas fixer l'alignement`);
+  });
+});
+
+// Échoue si un titre n'est plus repéré par headlineLevel (le saut de page conditionnel ne le verrait plus).
+test("les trois titres et la ligne en gras portent headlineLevel 1 ; paragraphes, listes et notes n'en portent pas", () => {
+  const blocs = convertir("# A\n\n## B\n\n### C\n\n**D**\n\nTexte\n\n- x\n\nNote[^1]\n\n[^1]: n");
+  const titres = blocs.filter(b => ["titre1", "titre2", "titre3", "titre"].includes(b.style));
+  assert.equal(titres.length, 4);
+  titres.forEach(b => assert.equal(b.headlineLevel, 1, `titre ${b.style}`));
+  blocs.filter(b => !titres.includes(b)).forEach(b => assert.equal(Object.hasOwn(b, "headlineLevel"), false));
+});
+
+// Échoue si un élément de liste perd son style elementListe (les 4 pt après chaque élément viennent de lui).
+test("liste à puces et liste numérotée : chaque élément porte le style elementListe, la liste porte le style liste", () => {
+  const [puces, numerotee] = convertir("- a\n- b\n\n1. un\n2. deux");
+  assert.equal(puces.style, "liste");
+  assert.equal(numerotee.style, "liste");
+  [...puces.ul, ...numerotee.ol].forEach(item => assert.equal(item.style, "elementListe"));
+});
+
+// Échoue si le gras (ou un autre style) d'un élément de liste est perdu en ajoutant le style.
+test("élément de liste avec du gras : le style elementListe est ajouté sans perdre le texte mis en forme", () => {
+  assert.deepStrictEqual(convertir("- un **mot** gras"), [
+    {ul: [{text: ["un ", {text: "mot", bold: true}, " gras"], style: "elementListe"}], style: "liste"},
+  ]);
+});
+
+// Échoue si la citation perd son style retrait ou si son paragraphe perd les 6 pt d'espace avant.
+test("citation (>) : bloc retrait qui contient un paragraphe ; les 6 pt d'espace avant viennent du paragraphe", () => {
+  assert.deepStrictEqual(convertir("> Texte cité"), [
+    {stack: [{text: "Texte cité", style: "paragraphe"}], style: "retrait"},
+  ]);
+  assert.equal(PDF_VIDE().styles.paragraphe.margin[1], 6);
+  assert.equal(PDF_VIDE().styles.retrait.margin[1], 0);
+});
+
+// Échoue si l'espace avant le bloc des notes (12 pt) passe sur une autre note que la première, ou disparaît.
+test("notes : seule la première porte l'espace avant de 12 pt, les suivantes n'ont pas de marge propre", () => {
+  const blocs = convertir("A[^1] B[^2] C[^3]\n\n[^1]: Un\n[^2]: Deux\n[^3]: Trois");
+  const notes = blocs.filter(b => b.style === "note");
+  assert.equal(notes.length, 3);
+  assert.deepStrictEqual(notes[0].margin, [0, 12, 0, 0]);
+  assert.equal(Object.hasOwn(notes[1], "margin"), false);
+  assert.equal(Object.hasOwn(notes[2], "margin"), false);
+});
+
+// Échoue si un texte sans note reçoit quand même un bloc de notes ou une marge de notes.
+test("sans note : aucun bloc note, aucune marge de 12 pt", () => {
+  const blocs = convertir("Texte simple\n\n- a");
+  assert.equal(blocs.some(b => b.style === "note"), false);
+  assert.equal(JSON.stringify(blocs).includes('"margin"'), false);
+});
+
+// Échoue si le numéro apparaît dans le contenu du document (il vient seulement du pied de page).
+test("le contenu du document ne contient aucun numéro de page ni « Page »", () => {
+  const doc = plain(documentPdf("# Titre\n\nTexte\n\n{signatures:ft-gauche}", SIGNATURES_VALEURS));
+  assert.doesNotMatch(JSON.stringify(doc.content), /Page \d|sur \d/);
+});
+
+// ---- {signatures:ft-gauche} ----
+
+const FT_GAUCHE = (valeurs = SIGNATURES_VALEURS) => remplir("{signatures:ft-gauche}", valeurs);
+const FAIT_A = "Fait à ............................, le ............................";
+
+// Échoue si la ligne « Fait à… », l'ordre des colonnes, les intitulés en gras ou l'espace de signature changent.
+test("{signatures:ft-gauche} : ligne « Fait à… » (18 pt avant), puis France Travail à gauche et le club à droite, d'un seul tenant", () => {
+  assert.deepStrictEqual(FT_GAUCHE(), [
+    {
+      stack: [
+        {text: FAIT_A, margin: [0, 18, 0, 0]},
+        {
+          columns: [
+            {
+              width: "*",
+              stack: [
+                {text: "Pour France Travail", bold: true, style: "paragraphe"},
+                {text: "Alex Durand", bold: true, style: "paragraphe"},
+                {text: "Directeur d’agence", style: "paragraphe"},
+                {text: " ", fontSize: 1, margin: [0, 0, 0, CM(3)]},
+              ],
+            },
+            {
+              width: "*",
+              stack: [
+                {text: "Pour l'organisation sportive", bold: true, style: "paragraphe"},
+                {text: "Camille Martin", bold: true, style: "paragraphe"},
+                {text: "Présidente", style: "paragraphe"},
+                {text: " ", fontSize: 1, margin: [0, 0, 0, CM(3)]},
+              ],
+            },
+          ],
+          columnGap: 24,
+          unbreakable: true,
+        },
+      ],
+      unbreakable: true,
+    },
+  ]);
+});
+
+// Échoue si la ligne « Fait à… » et les colonnes ne sont plus dans le même bloc insécable (elle resterait seule en bas de page).
+test("{signatures:ft-gauche} : le bloc entier et les colonnes sont insécables, la ligne « Fait à… » est dans le bloc", () => {
+  const [bloc] = FT_GAUCHE();
+  assert.equal(bloc.unbreakable, true);
+  assert.equal(bloc.stack.length, 2);
+  assert.equal(bloc.stack[0].text, FAIT_A);
+  assert.equal(bloc.stack[1].unbreakable, true);
+  assert.equal(FT_GAUCHE().length, 1, "un seul bloc dans le contenu");
+});
+
+// Échoue si l'ordre des colonnes est inversé par rapport à {signatures} (club à gauche).
+test("{signatures:ft-gauche} : France Travail à gauche ; {signatures} : club à gauche (ordre inverse)", () => {
+  const ftGauche = FT_GAUCHE()[0].stack[1].columns.map(c => c.stack[0].text);
+  const classique = remplir("{signatures}", SIGNATURES_VALEURS)[0].columns.map(c => c.stack[0].text);
+  assert.deepStrictEqual(ftGauche, ["Pour France Travail", "Pour l'organisation sportive"]);
+  assert.deepStrictEqual(classique, ["Pour l'organisation sportive", "Pour France Travail"]);
+});
+
+// Échoue si la colonne n'a plus l'ordre intitulé, nom, fonction, puis l'espace pour signer (décision de Hanta).
+test("{signatures:ft-gauche} : dans chaque colonne, l'ordre est intitulé, nom, fonction, puis l'espace de 3 cm pour signer", () => {
+  FT_GAUCHE()[0].stack[1].columns.forEach(colonne => {
+    const [intitule, nom, fonction, espace] = colonne.stack;
+    assert.match(intitule.text, /^Pour /);
+    assert.equal(intitule.bold, true);
+    assert.equal(nom.bold, true);
+    assert.equal(Object.hasOwn(fonction, "bold"), false);
+    assert.equal(espace.text, " ");
+    assert.equal(espace.fontSize, 1);
+    assert.ok(Math.abs(espace.margin[3] - CM(3)) < 1e-9);
+    assert.equal(colonne.stack.length, 4);
+  });
+});
+
+// Échoue si le bloc contient « À … le … » par colonne, ou les lignes vides de {signatures}.
+test("{signatures:ft-gauche} : pas de « À …, le … » dans les colonnes et pas de lignes vides (retours à la ligne)", () => {
+  const texte = JSON.stringify(FT_GAUCHE());
+  assert.equal(texte.includes("À ......"), false);
+  assert.equal(texte.includes("\\n"), false);
+});
+
+// Échoue si une case sans valeur n'est plus écrite [Nom] dans le bloc ft-gauche.
+test("{signatures:ft-gauche} sans valeurs : les quatre cases restent écrites [Nom]", () => {
+  const [bloc] = FT_GAUCHE({});
+  const [gauche, droite] = bloc.stack[1].columns;
+  assert.equal(gauche.stack[1].text, "[Représentant de l’agence]");
+  assert.equal(gauche.stack[2].text, "[Fonction du représentant]");
+  assert.equal(droite.stack[1].text, "[Signataire du club]");
+  assert.equal(droite.stack[2].text, "[Fonction du signataire]");
+  assert.deepStrictEqual(convertir("{signatures:ft-gauche}"), plain(FT_GAUCHE({})));
+});
+
+// Échoue si le marqueur est reconnu dans un retrait, au milieu d'une phrase, ou s'il écrase le texte autour.
+test("{signatures:ft-gauche} : seul sur sa ligne il est reconnu ; dans un retrait ou dans une phrase, il reste du texte ; le texte autour est gardé", () => {
+  assert.deepStrictEqual(convertir("> {signatures:ft-gauche}"), [
+    {stack: [{text: "{signatures:ft-gauche}", style: "paragraphe"}], style: "retrait"},
+  ]);
+  assert.deepStrictEqual(convertir("Voir {signatures:ft-gauche} ici"), [
+    {text: "Voir {signatures:ft-gauche} ici", style: "paragraphe"},
+  ]);
+  const blocs = convertir("Avant\n\n{signatures:ft-gauche}\n\nAprès");
+  assert.equal(blocs.length, 3);
+  assert.equal(blocs[0].text, "Avant");
+  assert.ok(blocs[1].stack);
+  assert.equal(blocs[2].text, "Après");
+});
+
+// Échoue si une faute de frappe dans le marqueur est reconnue au lieu de rester du texte.
+test("marqueur inconnu ({signatures:ft-droite}) : reste du texte ordinaire", () => {
+  assert.deepStrictEqual(convertir("{signatures:ft-droite}"), [{text: "{signatures:ft-droite}", style: "paragraphe"}]);
+});
+
+// Échoue si {signatures} ou {signatures:lieu-date} reçoivent la ligne « Fait à… », le bloc extérieur ou l'espace de 3 cm.
+test("{signatures} et {signatures:lieu-date} inchangés : colonnes directes, club à gauche, intitulés sans gras, 4 lignes vides, pas de « Fait à… »", () => {
+  [["{signatures}", false], ["{signatures:lieu-date}", true]].forEach(([marqueur, avecLieuDate]) => {
+    const [bloc] = remplir(marqueur, SIGNATURES_VALEURS);
+    assert.equal(Object.hasOwn(bloc, "stack"), false, `${marqueur} : pas de bloc extérieur`);
+    assert.equal(bloc.unbreakable, true);
+    assert.equal(bloc.columnGap, 24);
+    const [club, agence] = bloc.columns;
+    const debut = avecLieuDate ? 1 : 0;
+    assert.equal(club.stack[debut].text, "Pour l'organisation sportive");
+    assert.equal(agence.stack[debut].text, "Pour France Travail");
+    assert.equal(Object.hasOwn(club.stack[debut], "bold"), false, "intitulé sans gras");
+    assert.equal(club.stack.at(-1).text, "\n\n\n\n");
+    assert.equal(JSON.stringify(bloc).includes("Fait à"), false);
+    assert.equal(JSON.stringify(bloc).includes('"fontSize":1'), false);
+  });
+});
+
+// ---- pageBreakBefore (signature de pdfmake 0.3.3 : (noeud, aides), aides.getFollowingNodesOnPage() et aides.getPreviousNodesOnPage()) ----
+
+const sautAvant = (noeud, aides) => documentPdf("Texte", {}).pageBreakBefore(noeud, aides);
+// Les aides de pdfmake 0.3 : deux fonctions qui renvoient les listes de nœuds de la page.
+const aidesPage = (precedents, suivants) => ({
+  getPreviousNodesOnPage: () => precedents,
+  getFollowingNodesOnPage: () => suivants,
+});
+const TITRE = {text: "Titre", style: "titre2", headlineLevel: 1};
+const TEXTE = {text: "Texte"};
+
+// Échoue si pageBreakBefore n'est plus une fonction du document.
+test("pageBreakBefore : le document en fournit une", () => {
+  assert.equal(typeof documentPdf("Texte", {}).pageBreakBefore, "function");
+});
+
+// Échoue si un titre suivi de texte sur sa page saute quand même la page.
+test("pageBreakBefore : titre suivi d'au moins un bloc de texte sur sa page : pas de saut", () => {
+  assert.equal(sautAvant(TITRE, aidesPage([TEXTE], [TEXTE])), false);
+  assert.equal(sautAvant(TITRE, aidesPage([TEXTE], [{headlineLevel: 1}, TEXTE])), false);
+});
+
+// Échoue si un titre seul en bas de page (suivi de rien) ne passe pas à la page suivante.
+test("pageBreakBefore : titre en bas de page, rien après lui sur la page : saut de page", () => {
+  assert.equal(sautAvant(TITRE, aidesPage([TEXTE], [])), true);
+});
+
+// Échoue si un titre suivi seulement d'autres titres reste en bas de page.
+test("pageBreakBefore : titre suivi seulement d'autres titres : saut de page", () => {
+  assert.equal(sautAvant(TITRE, aidesPage([TEXTE], [{headlineLevel: 1}, {headlineLevel: 1}])), true);
+});
+
+// Échoue si un titre déjà tout en haut de la page (rien avant lui) saute sans fin.
+test("pageBreakBefore : titre déjà en haut de page (rien avant lui) : pas de saut, même sans rien après", () => {
+  assert.equal(sautAvant(TITRE, aidesPage([], [])), false);
+  assert.equal(sautAvant(TITRE, aidesPage([], [{headlineLevel: 1}])), false);
+});
+
+// Échoue si un nœud sans headlineLevel (texte, liste, signature) peut provoquer un saut.
+test("pageBreakBefore : nœud qui n'est pas un titre : jamais de saut", () => {
+  assert.equal(sautAvant(TEXTE, aidesPage([TEXTE], [])), false);
+  assert.equal(sautAvant({text: "x", headlineLevel: 0}, aidesPage([TEXTE], [])), false);
+  assert.equal(sautAvant({stack: [], unbreakable: true}, aidesPage([TEXTE], [])), false);
+});
+
+// Échoue si la fonction lit les arguments de pdfmake 0.2 (listes passées directement) : c'était le bug « reading 'length' ».
+test("pageBreakBefore : appelée à la façon de pdfmake 0.2 (listes en arguments, sans fonctions) : ne plante pas, renvoie false", () => {
+  const f = documentPdf("Texte", {}).pageBreakBefore;
+  assert.equal(f(TITRE, [TEXTE], [], [TEXTE]), false);
+  assert.equal(f(TITRE, [], [], [TEXTE]), false);
+});
+
+// Échoue si un argument absent fait planter la fonction (génération bloquée) ou ne renvoie pas false.
+test("pageBreakBefore : arguments absents (aucun, undefined, null) : ne plante pas et renvoie false", () => {
+  const f = documentPdf("Texte", {}).pageBreakBefore;
+  assert.equal(f(), false);
+  assert.equal(f(undefined, undefined), false);
+  assert.equal(f(null, null), false);
+  assert.equal(f(TITRE), false);
+  assert.equal(f(TITRE, undefined), false);
+  assert.equal(f(TITRE, null), false);
+  assert.equal(f(undefined, aidesPage([TEXTE], [])), false);
+});
+
+// Échoue si des aides incomplètes ou illisibles bloquent la génération au lieu de renvoyer false.
+test("pageBreakBefore : aides incomplètes, listes illisibles ou fonction qui lève une erreur : renvoie false", () => {
+  const f = documentPdf("Texte", {}).pageBreakBefore;
+  assert.equal(f(TITRE, {}), false);
+  assert.equal(f(TITRE, {getFollowingNodesOnPage: () => []}), false);
+  assert.equal(f(TITRE, {getPreviousNodesOnPage: () => [TEXTE]}), false);
+  assert.equal(f(TITRE, aidesPage(undefined, undefined)), false);
+  assert.equal(f(TITRE, aidesPage([TEXTE], "pas une liste")), false);
+  assert.equal(f(TITRE, aidesPage(null, [])), false);
+  assert.equal(f(TITRE, {getPreviousNodesOnPage: () => { throw new Error("boum"); }, getFollowingNodesOnPage: () => []}), false);
+  assert.equal(f(TITRE, {getPreviousNodesOnPage: "texte", getFollowingNodesOnPage: 42}), false);
+});
+
+// Échoue si la fonction appelle les aides plusieurs fois par titre de façon visible, ou en lit d'autres que les deux prévues.
+test("pageBreakBefore : ne lit que getFollowingNodesOnPage et getPreviousNodesOnPage, et ne modifie pas les listes reçues", () => {
+  const appels = [];
+  const suivants = [{headlineLevel: 1}];
+  const precedents = [TEXTE];
+  const aides = {
+    getFollowingNodesOnPage: () => { appels.push("suivants"); return suivants; },
+    getPreviousNodesOnPage: () => { appels.push("precedents"); return precedents; },
+  };
+  assert.equal(documentPdf("Texte", {}).pageBreakBefore(TITRE, aides), true);
+  assert.deepStrictEqual([...new Set(appels)].sort(), ["precedents", "suivants"]);
+  assert.deepStrictEqual(suivants, [{headlineLevel: 1}]);
+  assert.deepStrictEqual(precedents, [TEXTE]);
+});
+
+// Échoue si les titres produits par le convertisseur ne sont plus ceux que pageBreakBefore sait repérer.
+test("pageBreakBefore + convertisseur : un titre produit par le modèle (##) est repéré, un paragraphe ne l'est pas", () => {
+  const [titre, paragraphe] = convertir("## Article\n\nTexte");
+  assert.equal(sautAvant(titre, aidesPage([TEXTE], [])), true);
+  assert.equal(sautAvant(paragraphe, aidesPage([TEXTE], [])), false);
 });
