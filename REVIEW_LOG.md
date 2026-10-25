@@ -943,3 +943,33 @@ Tests : 481 passés, 0 échec (npm test).
 Fichiers modifiés : test/convention-fenetre.test.js, test/convention-bloc.test.js, test/convention-generer-ecran.test.js (nouveau)
 Build refait : pas nécessaire
 Commit : 66c6a40
+
+## Tâche C41 — « Voir la convention » (S7, tâche 7.4) et bug du jeton du propriétaire
+
+Date : 2026-10-24
+Agents : dev-interface (bouton, puis correction), relecteur (enquête)
+Prompt : tâche 7.4, puis cycle d'un bug (403 « Cannot access attachment »)
+
+Note /5 : sans condition
+Ce qui allait : onglet ouvert au clic (bloqueur de fenêtres), jeton dans des variables locales, ouverture depuis une adresse blob: libérée au bout de 60 s, opener à null, « Ouverture en cours… », message d'échec de la note, onglet vide refermé, focus sur « Voir la convention » après une génération (D-S7-6).
+Ce que j'ai fait corriger : le propriétaire recevait 403 « Cannot access attachment ». Enquête : numéro de fichier correct (12 = 12), type de colonne correct, règles d'accès correctes ; cause : le jeton en lecture seule fait passer le propriétaire au niveau lecteur, refusé par les règles par défaut. Correction : jeton d'écriture, avec un commentaire qui interdit de le remettre en lecture seule.
+Leçon : « Voir en tant que » ne simule pas l'utilisateur pour les jetons du widget. La génération « réussie en Régional » de C39 avait été faite avec le jeton du propriétaire. Preuve réelle obtenue avec un compte non propriétaire (éditeur, profil FT Régional complet dans Utilisateurs) : génération et « Voir » réussies.
+Tests : 481 tests, 6 échecs attendus, puis 495 tests, 1 échec (test du bug), puis 495 passés, 0 échec (npm test). Vérifié à l'écran en propriétaire : PDF ouvert depuis une adresse blob:.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : e719ebf
+Reste à faire : requestTableColumns utilise aussi un jeton en lecture seule (choix de Statut, Public, Format) ; pour un propriétaire, repli probable sur la liste de secours. Tâche à part.
+
+## Tâche C42 — Tests de « Voir la convention » (S7, tâche 7.5)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : mise à jour de 6 tests, tests de « Voir », test du bug
+
+Note /5 : 5
+Ce qui allait : 6 tests mis à jour sans retrait ; 14 tests dans test/convention-voir.test.js, dont le test du bug, seul en échec avant la correction, comme annoncé ; doublures justes du premier coup ; aucun jeton ni texte technique vérifié dans chaque échec.
+Ce que j'ai fait corriger : rien.
+Tests : 495 passés, 0 échec après la correction (npm test).
+Fichiers modifiés : test/convention-bloc.test.js, test/convention-generer-ecran.test.js, test/convention-voir.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 445b24d
