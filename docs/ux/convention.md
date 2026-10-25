@@ -193,6 +193,7 @@ Le texte d'un modèle de convention contient des **cases** : un nom entre croche
 | [Adresse de l'agence] | adresse complète de l'agence, sur une ligne |
 | [Représentant de l'agence] | représentant saisi dans la fenêtre |
 | [Fonction du représentant] | fonction du représentant saisie dans la fenêtre |
+| [SIRET de l'agence] | SIRET de l'agence de l'action (colonne Agences.Siret) |
 
 Règles :
 
@@ -271,7 +272,7 @@ Les colonnes de la table Agences qui donnent l'adresse sont à vérifier dans le
 
 ### Champs retirés
 
-Par décision du chef : « SIRET de l'agence » (aucun modèle ne l'utilise) et « Contact protection des données du club » (rempli à la main sur le PDF, article 6.1).
+Par décision du chef : « Contact protection des données du club » (rempli à la main sur le PDF, article 6.1).
 
 Par les réponses du client (conventions imprimées et signées à la main) : « Nombre d'opérations », « Date de fin », tout le bloc « Date et lieu » (« Fait à » et dates de signature, y compris les deux lieux et dates de Parcours de remobilisation), et la règle « action sans fédération » avec son message (la fédération n'est plus utilisée). Ils n'apparaissent plus nulle part, ni dans la maquette ni dans les textes.
 
