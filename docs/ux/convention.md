@@ -8,6 +8,8 @@
 
 **Mis à jour le 2026-10-23** (après les tâches 5.1a et 5.1b, avant les tests 5.3b) : la note reprend les décisions déjà appliquées par le code pour la fenêtre « Convention ». Chaque changement porte la mention « mis à jour le 2026-10-23 ». Les points qui attendent Hanta sont dans le §10, rubrique « À décider par Hanta (2026-10-23) ».
 
+**Mis à jour le 2026-10-25 (mise en page)** : nouvelle section §11 « Mise en page du PDF » (ce que dev-backend doit reproduire d'après les Word officiels), décisions D-MEP-1 à D-MEP-7 à la fin du §11. Rien d'antérieur n'est changé.
+
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
@@ -699,3 +701,148 @@ Décisions de Hanta du 2026-10-23 :
 2. **Q-B (déjà ouverte au plan)** : une action en corbeille ou annulée garde-t-elle sa convention ? La génération est-elle interdite pour ces statuts ? Non traitée dans cette note : aucun état ni message n'est prévu pour ce cas.
 6. **Icônes** : aucune icône n'est utilisée dans les nouveaux messages. Si Hanta en veut une (information, avertissement), son nom est **à vérifier** dans la bibliothèque https://designsystem.francetravail.io/docs/bibliotheque/icones.html.
 7. **Variante d'alerte** : si Hanta préfère une alerte du design system plutôt qu'un `help-block` pour les messages de blocage, la variante d'information ou d'avertissement de la feuille est à vérifier (non lue). Le plus proche connu est `alert alert-error`, déjà employé, mais il signale une erreur : je ne le recommande pas ici.
+
+## 11. Mise en page du PDF (mis à jour le 2026-10-25 (mise en page))
+
+Public : dev-backend (qui règle `CONVENTION_MISE_EN_PAGE` et `conventionDocumentPdf`), puis Hanta pour les décisions de la fin.
+Sources : les mesures relevées par Hanta dans le Word officiel « Du stade vers l'emploi » (les trois Word ont la même mise en page), et la lecture de `src/actions-dashboard/script.js` (format des modèles, `CONVENTION_MISE_EN_PAGE`, `conventionSignatures`, `conventionDocumentPdf`). Aucune mesure n'est inventée : ce qui n'a pas été relevé est écrit « **non relevé** » et repris dans la liste « Mesures qui manquent » plus bas. Mesures complétées par Hanta dans le Word officiel le 2026-10-25. Les points non vérifiés sont marqués « à vérifier ».
+
+Conversion utilisée : 1 cm = 28,35 pt, donc 2,5 cm = 70,9 pt. Page A4 (21 × 29,7 cm) : largeur de texte = 16 cm.
+
+### 11.1 Page, texte et éléments (mis à jour le 2026-10-25 (mise en page))
+
+**Page et texte courant**
+
+| Réglage | Valeur du Word | Valeur actuelle du code (à remplacer) |
+|---|---|---|
+| Format | A4 | A4 (identique) |
+| Marges | 2,5 cm partout (70,9 pt) | [56, 72, 56, 64] pt |
+| Police | Marianne (voir §11.6) | Roboto |
+| Taille du texte | 11 pt | 11 pt (identique) |
+| Alignement du texte | justifié | non justifié |
+| Interligne | simple | non précisé dans le code (à vérifier sur le PDF) |
+
+**Éléments du format des modèles** (la syntaxe des modèles ne change pas, voir le commentaire de `conventionVersContenuPdf`) :
+
+| Élément du modèle | Taille | Style | Alignement | Espace avant | Espace après |
+|---|---|---|---|---|---|
+| `#` titre du document | 12 pt | gras | centré | 0 pt | 8 pt |
+| `##` titre d'article | 11 pt | gras | à gauche | 18 pt | 8 pt |
+| Ligne entièrement en gras, seule (par exemple « En amont de l'opération, France Travail : ») | 11 pt | gras | non relevé | 0 pt | 8 pt |
+| `###` sous-titre (« 4.1 »…) | 11 pt | gras | à gauche, retrait à gauche de 1,25 cm | 12 pt | 8 pt |
+| Paragraphe | 11 pt | normal | justifié | 6 pt | 0 |
+| Élément de liste (à puces ou numérotée) | 11 pt | normal | justifié (proposé, non relevé) | non relevé | 4 pt après chaque élément |
+| Retrait (`> `) | 11 pt | normal | justifié (proposé, non relevé) | comme un paragraphe (proposé) | comme un paragraphe (proposé) |
+| Note (`[^1]`) | 10 pt | normal | non relevé | non relevé | 0 pt (interligne simple) |
+| `{saut-de-page}` | sans objet | sans objet | sans objet | sans objet | sans objet |
+| Bloc de signature | 11 pt | voir §11.5 | voir §11.5 | voir §11.4 | voir §11.4 |
+
+Règles à retenir :
+
+1. **Les titres `##` et `###` rapprochés.** Entre un titre d'article et son premier sous-titre, les deux espaces avant s'additionnent-ils (18 + 12) ? Non relevé. Par défaut, dev-backend applique chaque marge séparément, comme Word ; l'écart avec le Word est à regarder sur le premier PDF.
+2. **Gras dans le texte** (`**gras**`) : même taille que le texte, police grasse. Italique, souligné et exposant : inchangés, rien n'a été relevé sur eux.
+3. **Liste.** Liste à puces : puce « - », retrait à gauche de 1,25 cm, 0,63 cm entre la puce et le texte, 4 pt après chaque élément. Liste numérotée : même retrait, numérotation « 1. ». Reste non relevé : l'espace avant et l'alignement.
+4. **Début de page.** Word garde l'espace avant d'un paragraphe en haut de la première page, mais pas toujours après un saut de page. Écart minime, à regarder sur le PDF.
+5. **Texte justifié et pointillés.** Une longue suite de points est un seul « mot » : sur une ligne justifiée, elle peut créer de grands vides. À vérifier sur le premier PDF, avec une zone en pointillés réelle.
+
+### 11.2 Les logos (mis à jour le 2026-10-25 (mise en page))
+
+Décision de Hanta : deux colonnes de type pièce jointe dans `Modeles_convention`, lues au moment de la génération : `Logo` (République française + France Travail) et `Logo_partenaire` (facultatif). Ces deux noms de colonnes sont ceux donnés par Hanta ; je n'ai pas vérifié qu'elles existent encore dans Grist.
+
+| Point | Règle |
+|---|---|
+| Où | première page seulement, tout en haut de la zone de texte, au-dessus du titre `#` |
+| `Logo` | à **gauche**, bord gauche aligné sur la marge gauche |
+| `Logo_partenaire` | à **droite**, bord droit aligné sur la marge droite, **sur la même ligne** que `Logo` |
+| Si seul `Logo` est rempli | `Logo` à gauche, rien à droite |
+| Si seul `Logo_partenaire` est rempli | `Logo_partenaire` reste à droite, rien à gauche |
+| Taille | `Logo` : 6 cm de large sur 2 cm de haut au plus, proportions gardées. `Logo_partenaire` : même hauteur au plus (largeur non relevée). Chaque logo tient dans sa boîte, garde ses proportions, n'est jamais déformé ni agrandi au-delà de sa taille d'origine. La largeur de 90 pt du code actuel vient du code, pas du Word |
+| Le logo ne chevauche jamais le texte | le texte de la première page commence **sous** les logos. Donc le logo est le premier élément du contenu (dans le flux), pas dans l'en-tête de page : un en-tête reste dans la marge haute de 2,5 cm, trop petite si le logo est plus haut. À valider par dev-backend |
+| Pages suivantes | aucun logo, première page seulement (le code actuel en met un sur chaque page : à changer) |
+
+**Cas particuliers (proposition, à valider : D-MEP-3)** :
+
+| Cas | Ce qui se passe |
+|---|---|
+| `Logo` vide | la convention est générée **sans ce logo, sans bloquer**. Message d'information après la génération (voir ci-dessous), car ce logo est « obligatoire en pratique » |
+| `Logo_partenaire` vide | normal, rien ne s'affiche, aucun message |
+| Fichier illisible (corrompu, format non pris en charge, téléchargement qui échoue) | on génère sans ce logo, sans bloquer, avec le même message |
+| Plusieurs fichiers dans la cellule | on prend le premier |
+| Les deux colonnes sont vides | aucun logo, aucun en-tête vide : le titre est tout en haut |
+
+Message proposé, affiché avec la réussite de la génération (même emplacement que les messages du §3 « Générer la convention », au texte à valider par Hanta) : « La convention a été générée sans le logo France Travail. Vérifiez le modèle avant de l'imprimer. » (ou « …sans le logo du partenaire. » si c'est `Logo_partenaire` qui est illisible alors qu'il était rempli). Ce n'est **pas** une erreur : le bouton « Voir la convention » reste disponible.
+
+Formats d'image : pdfmake lit en principe les images PNG et JPEG ; les autres formats (SVG, WebP, GIF) seraient donc « illisibles ». **À vérifier par dev-backend**, car je ne l'ai pas contrôlé ici.
+
+### 11.3 Numéro de page (mis à jour le 2026-10-25 (mise en page))
+
+- **Format** : le numéro seul (« 6 »), sans « Page », sans « sur N ». Le code actuel écrit « Page 6 sur 12 » au centre : à remplacer.
+- **Place** : en bas de page, aligné à droite.
+- **Taille et distance du bas de page** : 9 pt, à 1,25 cm du bas de la page.
+- **Première page** : le numéro est absent de la première page.
+
+### 11.4 Règles de coupure (mis à jour le 2026-10-25 (mise en page))
+
+1. **« Fait à…, le… » et les signatures ne sont jamais séparés.** Le bloc de signature actuel est déjà insécable (`unbreakable`), mais la ligne « Fait à … » des modèles Du stade vers l'emploi et Match des métiers est aujourd'hui un simple paragraphe du texte du modèle, hors de ce bloc : c'est ce qui l'a laissée seule en bas d'une page. Règle : la ligne « Fait à …, le … » et les deux colonnes forment un seul bloc insécable (voir §11.5 pour la façon de l'obtenir).
+2. **Un titre d'article n'est jamais seul en bas de page.** Un titre (`##`, `###`, ligne en gras) est toujours suivi, sur la même page, d'au moins les deux premières lignes du paragraphe ou de la liste qui le suit ; sinon le titre passe à la page suivante. pdfmake propose pour cela une fonction de saut de page conditionnel (`pageBreakBefore`) : **à vérifier par dev-backend**.
+3. **Titre du document (`#`)** : même règle que les titres d'article.
+4. **Si le bloc de signature ne tient pas en bas de page**, il passe en entier à la page suivante, même si cette page ne contient alors que lui (cas non décrit par le Word : voir D-MEP-4).
+5. **Sauts de page `{saut-de-page}`** : inchangés.
+
+### 11.5 Ordre des colonnes de signature (mis à jour le 2026-10-25 (mise en page))
+
+État des lieux. Dans le Word : Du stade vers l'emploi et Match des métiers : France Travail à **gauche**, club à **droite**, précédés d'une ligne « Fait à …, le … » (une seule, au-dessus des deux colonnes). Parcours de remobilisation : club à **gauche**, France Travail à **droite**, avec « À …, le … » en tête de **chaque** colonne. Dans le code actuel, `{signatures}` et `{signatures:lieu-date}` mettent toutes deux le club à gauche : seul `{signatures:lieu-date}` correspond donc à Parcours de remobilisation.
+
+**Proposition (sans casser les marqueurs existants)** : un seul nouveau marqueur, `{signatures:ft-gauche}`, seul sur sa ligne comme les autres.
+
+| Marqueur | Effet | Modèle concerné |
+|---|---|---|
+| `{signatures}` | inchangé : club à gauche, agence à droite, pas de ligne de lieu et de date | aucun modèle officiel connu (conservé tel quel) |
+| `{signatures:lieu-date}` | inchangé : club à gauche, agence à droite, « À …, le … » en tête de chaque colonne | Parcours de remobilisation |
+| `{signatures:ft-gauche}` (**nouveau**) | **une** ligne « Fait à …, le … » au-dessus ; puis France Travail à gauche, club à droite. Ligne et colonnes dans le même bloc insécable | Du stade vers l'emploi, Match des métiers |
+
+Conséquences :
+
+- Le modèle **n'écrit plus** lui-même la ligne « Fait à … » : le marqueur la produit, pour qu'elle ne puisse pas être séparée des colonnes (§11.4, règle 1). Si le texte des deux modèles contient déjà un paragraphe « Fait à … » avant `{signatures}`, il est à retirer en même temps : **je n'ai pas lu le texte des modèles** (il est dans `Modeles_convention`, dans Grist), à vérifier avant le changement pour ne pas l'imprimer deux fois.
+- Ligne « Fait à…, le… » : 18 pt avant. Intitulés « Pour France Travail » et « Pour l'organisation sportive » : gras, 11 pt, une colonne chacun. Le nombre de lignes laissées pour la signature à la main et l'écart entre colonnes ne figurent pas dans les mesures du Word : le code actuel (4 lignes vides, écart de 24 pt, deux colonnes de même largeur) est conservé jusqu'à relevé.
+- Les modèles qui utilisent {signatures:ft-gauche} ne doivent plus contenir de ligne « Fait à… » : le marqueur l'écrit lui-même.
+- Variante inutile pour l'instant : « France Travail à gauche **avec** lieu et date dans chaque colonne » (aucun des trois Word ne la demande). Elle s'écrirait `{signatures:lieu-date:ft-gauche}` si un jour il le fallait.
+- Un marqueur inconnu reste du texte ordinaire, comme aujourd'hui (comportement du code actuel) : une faute de frappe dans `ft-gauche` se verrait donc à l'impression. Un contrôle à l'enregistrement du modèle est hors de cette note.
+
+### 11.6 La police : deux options, sans choix (mis à jour le 2026-10-25 (mise en page))
+
+| | Roboto (actuelle) | Marianne (celle du Word) |
+|---|---|---|
+| Ressemblance avec le Word | police différente : les lettres sont plus étroites ou plus larges, les lignes et les pages ne se coupent pas aux mêmes endroits que dans le Word | identique : la coupure des lignes et des pages est proche du Word, à vérifier sur un vrai PDF |
+| Où se trouve le fichier de la police | chargée avec pdfmake depuis cdnjs, avec empreinte vérifiée (`Roboto.min.js`, tâche 7.1) : rien dans le dépôt | **ne peut pas** être mise dans le dépôt public (licence, d'après Hanta) : donc pas non plus sur GitHub Pages, qui est public |
+| Effort | aucun, déjà en place | il faut ranger les fichiers de la police ailleurs, par exemple en pièce jointe dans une table Grist (même méthode que les logos), puis les charger à la génération. Il en faut une par variante utilisée : normal, gras, italique, gras italique (**non vérifié** : disponibilité de chaque variante en italique dans la version à notre disposition) |
+| Droits | aucun | tous les profils qui génèrent doivent pouvoir lire la table qui contient la police ; sinon, génération impossible pour eux. À vérifier avec les règles d'accès |
+| Risques | écart d'aspect avec le Word | chargement plus lourd (poids des fichiers **non mesuré**) ; panne si la table est vide ou illisible : il faudrait alors générer en Roboto, ou bloquer, à décider ; licence à relire avant de choisir l'endroit de stockage |
+| Sécurité | police de la même source que pdfmake | fichier de police provenant de Grist : à faire examiner par auditeur-securite, comme pour le reste de la génération |
+
+### 11.7 Mesures qui manquent (non relevées dans le Word)
+
+1. Titre d'article `##` et sous-titre `###` : les espaces avant s'additionnent-ils (18 + 12) ?
+2. Élément de liste : espace avant, alignement.
+3. Retrait (`> `) : valeur du retrait, espaces.
+4. Note : place (bas de page ou fin de document : le code actuel les range à la fin du document, la mention « provisoire » est dans le code) et espace avant.
+5. Ligne entièrement en gras : alignement.
+6. Logo_partenaire : largeur maximale.
+7. Signatures : nombre de lignes vides pour signer, écart entre colonnes, forme exacte de « Fait à … » (nombre de points).
+8. Interligne « simple » : à comparer sur le PDF, car pdfmake et Word ne calculent pas la hauteur de ligne de la même façon.
+
+Pour relever ces valeurs sans devoir deviner : dans Word, ouvrir le style concerné (clic droit sur le texte → Paragraphe), ou clic droit sur l'image → Taille et position.
+
+### 11.8 Décisions qui reviennent à Hanta (mis à jour le 2026-10-25 (mise en page))
+
+| N° | Décision | Ma recommandation |
+|---|---|---|
+| D-MEP-1 | Police : Roboto ou Marianne (§11.6) | Roboto pour la première version. Comparer d'abord un PDF Roboto avec le Word ; ne passer à Marianne que si l'écart de mise en page est jugé trop gênant par le chef, et seulement après avoir confirmé la licence et l'endroit de stockage |
+| D-MEP-2 | Nom du nouveau marqueur : `{signatures:ft-gauche}` (§11.5) | Oui ce nom, sans variante combinée pour l'instant |
+| D-MEP-3 | Logo vide ou illisible : générer sans bloquer, avec le message d'information du §11.2 | Oui. Message affiché pour `Logo` (vide ou illisible) et pour `Logo_partenaire` seulement s'il était rempli. Aucune alerte quand `Logo_partenaire` est vide |
+| D-MEP-4 | Bloc « Fait à » et signatures seul sur une page, quand il ne tient pas en bas de la précédente | L'accepter : mieux vaut une page de signature seule qu'un bloc coupé. Alternative, plus lourde : garder aussi le dernier paragraphe avec lui |
+| D-MEP-5 | Le texte « Fait à … » passe dans le marqueur et sort du texte des modèles Du stade vers l'emploi et Match des métiers (§11.5) | Oui ; vérifier d'abord le texte réel des deux modèles |
+| D-MEP-6 | Valeurs non relevées du §11.7 : les relever dans le Word, ou accepter pour l'instant celles du code actuel | Relever les points 1, 2 et 7 avant de coder (ils changent visiblement la page) ; garder le code actuel pour les autres, puis corriger après le premier PDF imprimé (tâche 7.6) |
+| D-MEP-7 | Numéro de page : réglé par le Word (9 pt, à 1,25 cm du bas, absent de la première page) | Décision prise, rien à trancher |
+
+Rappel de périmètre : cette section ne change ni la fenêtre « Convention » ni les textes des §3 et §5, hormis le message de logo proposé au §11.2, qui n'est pas encore dans le tableau des textes du §5.
