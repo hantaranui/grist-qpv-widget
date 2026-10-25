@@ -606,3 +606,207 @@ Seuls CONV-68 et CONV-69 se rejouent en PROD (sur une vraie convention déjà g�
 7. **Compte du testeur « National »** : même question qu'en R1 et R2 (vrai profil FT National, ou propriétaire du document ?).
 8. **CONV-50** : l'alerte de succès (verte) pour un message qui demande de vérifier le modèle est un point ouvert de la fiche C48 (variante d'alerte d'information à confirmer dans le design system). Ne pas noter KO pour la couleur seule.
 9. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
+
+---
+
+# Cas de test : Convention, re-générer le PDF (R5)
+
+**Brouillon écrit par le recetteur. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste. Les cas CONV-01 à CONV-79 (R1, R2 et R4) ci-dessus n'ont pas été modifiés.
+
+- Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » et fenêtre « Convention ».
+- Branche : `feature/convention`. Fonction E : re-générer le PDF (fiches C50 et C51 de REVIEW_LOG.md).
+- Référence : `docs/ux/convention.md`, §12 « Re-générer (S8) » (elle fait foi, décisions D-S8-1 à D-S8-7). Les textes attendus en sont copiés mot pour mot (§2, §3 « Échecs » et §12.3, §12.7).
+- Le fichier `cas-de-test-convention.tsv` contient les 26 cas de R5 (CONV-80 à CONV-105), à la suite des 79 de R1, R2 et R4 : 105 lignes de cas, 18 colonnes.
+- Les actions de R5 s'appellent ESSAI-CONV-S1 à ESSAI-CONV-S25. **« S » veut dire « S8 »** (la re-génération) : à ne pas confondre avec les actions A (R1), B (R2) et R (R4).
+
+## Ce que cette recette couvre et ne couvre pas
+
+- Elle couvre : le bouton « Re-générer » (état Générée seulement), la fenêtre préremplie et sa phrase de remplacement, le remplacement du PDF (`PDF_genere`, `Date_generation`, `Modele`), le blocage, les échecs avec « L'ancienne convention reste disponible. », la persistance, les droits d'un vrai compte, le clavier, VoiceOver, le zoom et le mobile.
+- Hors de cette recette : le dépôt du fichier signé (R6). L'état Signée n'est regardé que pour vérifier qu'il n'a **jamais** de bouton « Re-générer » (CONV-97).
+- Tout ce qui est écrit pour « Générer » (messages de champs, logos, mise en page du PDF, attente verrouillée) s'applique à l'identique (§12.1) et est déjà joué en R4 : il n'est pas rejoué ici.
+
+## Cas volontairement non écrits (non jouables à l'écran)
+
+1. **« Écriture réussie, mais réponse réseau perdue »** (§12.7) : Grist a bien écrit le nouveau PDF, mais la réponse ne revient pas. Impossible à provoquer à l'écran de façon fiable (il faudrait couper le réseau pile entre l'écriture et la réponse). Vérification de repli : le test en code de la relecture de secours (fiche C51, `conventionPdfRattache`), dont le nom exact n'a pas été relu. À l'écran, CONV-94 montre au moins que la fenêtre n'est jamais bloquée.
+2. **Fichier signé déposé pendant que la fenêtre de re-génération est ouverte** (§12.7) : accepté sans traitement par Hanta, pas de test. Pas de cas.
+3. **Plusieurs éléments manquants à la fois** : un seul message s'affiche (le premier dans l'ordre agence, club, dispositif, adresse). Déjà vérifié par un test en code pour la génération (R2), même règle pour « Re-générer ».
+4. **Échec à l'étape 5b** (fichier envoyé mais non rattaché) : impossible à provoquer sans abîmer les données. Couvert en code (fiche C51).
+5. **Grist supprime-t-il seul, après plusieurs jours, un fichier orphelin ?** (D-S8-7) : le résultat immédiat (34 puis 35 pièces jointes) est déjà vu par Hanta et rejoué par CONV-100. Le nettoyage après quelques jours n'est pas vérifié : à revoir plus tard.
+
+## Cas qui se jouent dans DEV7, pas sur TEST
+
+CONV-86, 87, 88 modifient ou désactivent un vrai modèle de `Modeles_convention`, et CONV-100 compte les pièces jointes du document. Pour les mêmes raisons qu'en R4 (ne pas toucher au modèle utilisé dans la recette du collègue), ils se jouent dans **DEV7**, avec les actions ESSAI-CONV-S7, S8, S9 et S21 recréées là. Avant de commencer : garder une copie du texte et des fichiers des modèles. **Après chaque cas : remettre le modèle en état (Actif = Oui sur la ligne d'origine, suppression de la ligne ajoutée) et recharger la page.**
+
+### Pourquoi le changement de modèle est jouable (CONV-86, 87)
+
+La fenêtre et le PDF prennent le **modèle actif** du dispositif (le plus ancien s'il y en a plusieurs actifs). Pour changer de modèle sans écraser l'original : mettre la ligne d'origine (A) à `Actif = Non`, ajouter une ligne B active pour le même dispositif. La ligne `Conventions` de l'action de test garde `Modele = A` : c'est la preuve de départ. Après la re-génération, `Modele` doit valoir B. Le widget lit probablement les modèles au chargement de la page : **recharger après chaque modification** ([À CONFIRMER] 3).
+
+## Données d'essai de R5 à créer dans TEST avant de jouer
+
+Données fictives uniquement (exemple.fr). Aucun nom de document Grist, aucune adresse réelle. **Les données de R1, R2 et R4 restent en place.** On réutilise le club « Club Exemple », ses contacts (Alex Martin-Exemple, Président), « Club Exemple Sans Adresse » (R1) et l'agence d'essai (adresse et SIRET fictifs) ; on ne crée ni DR, ni DD, ni club.
+
+### Ligne `Conventions` à préparer pour chaque action « déjà générée »
+
+Même principe qu'en R1 et R4. « PDF fictif » = un petit PDF d'une page contenant seulement « Convention d'essai, données fictives », **nommé convention-essai-fictif.pdf** (ce nom sert à vérifier que l'ancien fichier a bien disparu de la cellule). Sauf mention contraire dans le tableau :
+
+| Colonne | Valeur |
+| --- | --- |
+| Action | l'action ESSAI-CONV-S… concernée |
+| Modele | le modèle actif du dispositif de l'action |
+| Annee | 2026 (vide pour Parcours de remobilisation, qui n'a pas d'année) |
+| Signataire_club | Alex Martin-Exemple (contact de Club Exemple) |
+| Representant_agence | Dominique Exemple (fictif) |
+| Fonction_representant | Directeur d'agence |
+| PDF_genere | PDF fictif (convention-essai-fictif.pdf) |
+| Date_generation | 14/10/2026 à 12:00 (midi : la date affichée reste la même quel que soit le fuseau horaire) |
+| PDF_signe, Date_depot | vides |
+
+Ne jamais renommer ni écrire à la main les colonnes `DR` et `DD` de `Conventions` : elles servent aux règles d'accès. Créer ces lignes par un propriétaire du document.
+
+### Actions d'essai (Corbeille = non)
+
+Chaque cas qui écrit a **son action** : aucun cas ne dépend d'un autre. Toutes utilisent l'agence d'essai, sauf indication. Stade = Du stade vers l'emploi ; Match = Match des métiers ; Remob. = Parcours de remobilisation vers l'emploi. « Générée » = ligne `Conventions` préparée comme ci-dessus.
+
+| Intitulé | Dispositif | Club | État au départ | Écart avec la ligne type | Sert au cas |
+| --- | --- | --- | --- | --- | --- |
+| ESSAI-CONV-S1 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-80 (lecture) |
+| ESSAI-CONV-S2 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-81 (écrit) |
+| ESSAI-CONV-S3 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | **Annee = 2025** | CONV-82 (écrit) |
+| ESSAI-CONV-S4 | Remob. | Club Exemple | Générée, modèle Remob., 14/10/2026 | Annee vide | CONV-83 (écrit) |
+| ESSAI-CONV-S5 | Stade | Club Exemple | **À générer : aucune ligne dans Conventions** | (pas de ligne) | CONV-84 (lecture) |
+| ESSAI-CONV-S6 | Match | Club Exemple | Générée, modèle Match, 14/10/2026 | aucun | CONV-85 (lecture) |
+| ESSAI-CONV-S7 | Match | Club Exemple | Générée, `Modele` = ligne A (DEV7) | aucun | CONV-86 (DEV7, écrit) |
+| ESSAI-CONV-S8 | Stade | Club Exemple | Générée, `Modele` = ligne A (DEV7) | aucun | CONV-87 (DEV7, écrit) |
+| ESSAI-CONV-S9 | Stade | Club Exemple | Générée, modèle Stade (DEV7) | aucun | CONV-88 (DEV7, écrit) |
+| ESSAI-CONV-S10 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun (l'agence est vidée pendant le cas, puis remise) | CONV-89 (modifie l'action) |
+| ESSAI-CONV-S11 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun (le club est vidé pendant le cas, puis remis) | CONV-90 (modifie l'action) |
+| ESSAI-CONV-S12 | Stade | **Club Exemple Sans Adresse** | Générée, modèle Stade, 14/10/2026 | aucun | CONV-91 et CONV-103 (lecture) |
+| ESSAI-CONV-S13 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-92 (blocage pdfmake, écrit) |
+| ESSAI-CONV-S14 | Match | Club Exemple | Générée, modèle Match, 14/10/2026 | aucun | CONV-93 (blocage de l'envoi, écrit) |
+| ESSAI-CONV-S15 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-94 (coupure réseau, écrit) |
+| ESSAI-CONV-S16 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-95 (lecture) |
+| ESSAI-CONV-S17 | Match | Club Exemple | Générée, modèle Match, 14/10/2026 | aucun | CONV-96 (écrit) |
+| ESSAI-CONV-S18 | Stade | Club Exemple | **Signée** | **PDF_signe = PDF fictif, Date_depot = 20/10/2026 à 12:00** | CONV-97 (lecture) |
+| ESSAI-CONV-S19 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-98 (FT Régional, vrai compte, écrit) |
+| ESSAI-CONV-S20 | Match | Club Exemple | Générée, modèle Match, 14/10/2026 | aucun | CONV-99 (FT Départemental, vrai compte, écrit) |
+| ESSAI-CONV-S21 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-100 (DEV7, écrit) |
+| ESSAI-CONV-S22 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-101 (lecture) |
+| ESSAI-CONV-S23 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-102 (écrit) |
+| ESSAI-CONV-S24 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-104 (lecture) |
+| ESSAI-CONV-S25 | Stade | Club Exemple | Générée, modèle Stade, 14/10/2026 | aucun | CONV-105 (lecture) |
+
+**Actions qui doivent déjà avoir un PDF généré avant de commencer : toutes, SAUF ESSAI-CONV-S5** (volontairement « À générer », pour CONV-84). S18 a en plus un fichier signé. Les actions A3 et A6 de R1 (déjà signées) servent aussi à CONV-97.
+
+Les actions « lecture » (S1, S5, S6, S12, S16, S18, S22, S24, S25) ne sont jamais modifiées : elles se rejouent telles quelles. **Pour rejouer un cas qui écrit** : remettre la ligne `Conventions` à son état de départ (PDF fictif, date du 14/10/2026, Annee et modèle d'origine) ou recréer l'action.
+
+### Profils
+
+- Prérequis commun : le profil FT National est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai.
+- CONV-98 (FT Régional) et CONV-99 (FT Départemental) se jouent avec **de vrais comptes**, comme CONV-71 et CONV-72 (R4) : éditeurs, jamais propriétaires, profil complet, navigateur à part. **Pas de « Voir en tant que »** (fiche C41). Aucun compte n'est inventé ici : voir [À CONFIRMER] 2.
+
+## Provoquer les pannes réseau (CONV-92, 93, 94, 102)
+
+Même méthode qu'en R4 (voir « Provoquer une panne réseau » plus haut) :
+- **CONV-92** (pdfmake non chargé) : bloquer « pdfmake » dans l'onglet Réseau, « Désactiver le cache » coché, **recharger la page après le blocage**.
+- **CONV-93** (envoi impossible) : bloquer le début de l'adresse d'envoi de pièce jointe, **sans copier le jeton**.
+- **CONV-94** (coupure complète) : régler le débit sur « Hors connexion » **après** avoir cliqué sur « Re-générer » et rempli la fenêtre, puis cliquer sur « Générer la convention ». Le message dépend de l'étape touchée : le noter tel quel.
+- **CONV-102** : « Slow 3G » pour rendre l'attente audible.
+- **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Un jeton Grist ne doit **jamais** figurer dans une fiche d'anomalie, une capture ou ce document.
+
+## Les 26 cas de R5
+
+Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
+
+### Re-génération réussie (profil FT National)
+
+- **CONV-80 : bouton « Re-générer », fenêtre préremplie, phrase de remplacement** (Nominal, Bloquant, fumée) : ordre des trois boutons, phrase « Le nouveau PDF remplacera la convention générée le 14/10/2026. », champs préremplis.
+- **CONV-81 : le nouveau PDF remplace l'ancien** (Nominal, Bloquant, fumée) : un seul fichier dans `PDF_genere`, `Date_generation` à jour, `Modele` = modèle actif, `PDF_signe` et `Date_depot` vides, focus sur « Voir la convention ».
+- **CONV-82 : année enregistrée reprise, puis corrigée** (Nominal, Majeur) : 2025 proposée (pas l'année en cours), nom du fichier avec 2027.
+- **CONV-83 : Parcours de remobilisation** (Limite, Majeur) : pas de champ Année, nom sans année.
+- **CONV-84 : pas de phrase de remplacement à la première génération** (Nominal, Majeur).
+- **CONV-85 : « Fermer » et Échap sans générer** (Persistance, Majeur) : focus sur « Re-générer », saisie perdue, rien d'écrit.
+
+### Modèle actif (DEV7)
+
+- **CONV-86 : le texte du modèle a changé** (Nominal, Majeur) : le nouveau texte sort, `Modele` = nouveau modèle.
+- **CONV-87 : le modèle actif n'a plus d'année** (Limite, Majeur) : pas de champ Année, nom sans année.
+- **CONV-88 : le modèle devient inactif pendant que la fenêtre est ouverte** (Erreur, Majeur) : message + « L'ancienne convention reste disponible. ».
+
+### Blocage
+
+- **CONV-89 : agence retirée après la génération** (Erreur, Majeur) : « Renseignez l'agence de l'action dans sa fiche. »
+- **CONV-90 : club retiré** (Erreur, Majeur) : « Renseignez le club de l'action. »
+- **CONV-91 : adresse du club manquante** (Erreur, Majeur) : « Renseignez l'adresse du club dans sa fiche. »
+
+### Échecs : l'ancienne convention reste disponible
+
+- **CONV-92 : pdfmake non chargé** (Erreur, Bloquant) : message, ancien PDF ouvrable, nouvelle année gardée.
+- **CONV-93 : envoi du fichier impossible** (Erreur, Majeur).
+- **CONV-94 : coupure réseau complète** (Erreur, Bloquant) : la fenêtre n'est jamais bloquée.
+- **CONV-95 : champ obligatoire vide** (Erreur, Majeur) : pas de phrase « L'ancienne convention… » pour une erreur de champ.
+
+### Persistance
+
+- **CONV-96 : après rechargement, nouvelle date et nouveau fichier** (Persistance, Majeur).
+
+### Pas de confusion avec l'état Signée
+
+- **CONV-97 : jamais de « Re-générer » à l'état Signée** (Nominal, Majeur) : S18, A3 et A6.
+
+### Droits (vrais comptes, pas « Voir en tant que »)
+
+- **CONV-98 : FT Régional re-génère et ouvre le PDF** (Droits, Bloquant, fumée).
+- **CONV-99 : FT Départemental re-génère et ouvre le PDF** (Droits, Bloquant).
+
+### Ancien fichier
+
+- **CONV-100 : l'ancien fichier n'est pas supprimé par le widget** (Persistance, Mineur, DEV7) : N pièces jointes puis N+1.
+
+### Mobile et accessibilité
+
+- **CONV-101 : clavier, ordre et focus de retour** (Majeur).
+- **CONV-102 : VoiceOver, phrase de remplacement, attente et réussite** (Majeur).
+- **CONV-103 : VoiceOver, « Re-générer » grisé** (Majeur).
+- **CONV-104 : zoom 200 %** (Majeur).
+- **CONV-105 : mobile (375 px)** (Mineur).
+
+## Tests de fumée de R5 (3 sur 26)
+
+- CONV-80 : le bouton « Re-générer » apparaît et ouvre la fenêtre préremplie avec sa phrase.
+- CONV-81 : la re-génération remplace bien le PDF.
+- CONV-98 : un vrai compte FT Régional re-génère.
+
+Au total, avec R1, R2 et R4 : 11 tests de fumée sur 105 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98).
+
+## Ordre conseillé pour jouer
+
+1. D'abord les cas qui ne modifient rien : CONV-80, 84, 85, 91, 95, 97, 101, 103, 104 et 105.
+2. Ensuite les re-générations qui réussissent : CONV-81, 82, 83, 96, 102.
+3. Puis les cas avec blocage ou coupure réseau : CONV-92, 93, 94 (puis retirer le blocage).
+4. Les cas qui modifient l'action : CONV-89 et 90 (remettre l'agence et le club).
+5. Les vrais comptes : CONV-98 et 99, à tout moment.
+6. Dans DEV7 (pas sur TEST) : CONV-86, 87, 88, puis CONV-100. Remettre les modèles en état et recharger après chaque cas.
+
+## Cas déjà couverts par un test en code
+
+`Automatisable = Oui` pour CONV-80 à CONV-93, CONV-95 et CONV-97 (fiches C50 et C51), `Non` pour CONV-94 (la coupure réseau réelle ; le délai maximum est testé à part, `test/convention-delais.test.js`), CONV-96 et CONV-98 à CONV-105 (rechargement, droits, pièces jointes, clavier, VoiceOver, zoom, mobile). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles. Les fichiers de test sont cités dans la colonne `Remarques` (convention-bloc, convention-fenetre, convention-generation, convention-generer-ecran, convention-modele, convention-delais), mais **les noms exacts des tests n'ont pas été relus**.
+
+## Après une correction
+
+Rejouer le cas concerné, puis ses voisins (re-génération réussie : CONV-80 à CONV-85 ; modèle : CONV-86 à CONV-88 ; blocage : CONV-89 à CONV-91 ; échecs : CONV-92 à CONV-95 ; Signée : CONV-97), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur le modèle ou sur la génération touche aussi CONV-44 à CONV-46 (R4).
+
+## Rejouer en PROD
+
+Seuls les cas qui ne font que regarder se rejouent sur de vraies conventions : CONV-80, 84 (une action sans convention), 85, 95, 97, 101, 104 et 105. **Ne jamais cliquer sur « Générer la convention » en PROD** : une re-génération remplace le vrai PDF, sans historique. Tous les autres écrivent, modifient un modèle ou coupent le réseau : TEST ou DEV7 seulement.
+
+## [À CONFIRMER] de R5
+
+1. **Lignes `Conventions` préparées** : leur création (par un propriétaire) et les noms de colonnes `Modele`, `Annee`, `Signataire_club`, `Representant_agence`, `Fonction_representant` viennent du script (`conventionAEcrire`), pas d'une vérification dans TEST. À contrôler avant de jouer.
+2. **Comptes réels** pour CONV-98 et CONV-99 : quel compte FT Régional et quel compte FT Départemental, tous deux éditeurs et non propriétaires, avec profil complet ? Aucun compte n'est inventé ici (même question que R4, [À CONFIRMER] 2).
+3. **Modèles (CONV-86 à 88)** : la colonne qui contient le texte du modèle n'est pas dans cette recette. Le widget relit-il `Modeles_convention` au clic (nécessaire pour CONV-88) ou seulement au chargement ? Si seulement au chargement, CONV-88 n'est pas jouable à l'écran (Non applicable). La fiche C51 signale aussi que la fenêtre peut afficher l'ancien modèle après changement : à noter tel que constaté.
+4. **CONV-87** : après une re-génération avec un modèle sans année, la colonne `Annee` est-elle conservée ou vidée ? La note ne le dit pas : noter la valeur constatée.
+5. **CONV-94** : la durée totale avant le message en cas de coupure complète n'est pas dans la note (délais de 15 à 20 secondes par appel dans le script). J'ai fixé une limite de 2 minutes pour noter KO : à valider par Hanta.
+6. **CONV-100** : l'endroit où Grist affiche le nombre de pièces jointes du document n'est pas indiqué ici : à relever par le testeur.
+7. **CONV-89 et CONV-90** : l'interface permet-elle de vider l'agence et le club d'une action ? Sinon, vider la cellule dans la table Actions (même question qu'en R2 pour CONV-17).
+8. **Compte du testeur « National »** : même question qu'en R1, R2 et R4 (vrai profil FT National, ou propriétaire du document ?).
+9. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
