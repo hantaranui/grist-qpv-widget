@@ -477,9 +477,9 @@ Même principe que les actions A2 de R1 : un « PDF fictif » d'une page contena
 
 Ne jamais renommer ni écrire à la main les colonnes `DR` et `DD` de `Conventions` : elles servent aux règles d'accès.
 
-## Modifications temporaires des modèles (cas à risque)
+## Modifications temporaires des modèles (cas à risque) — joués dans DEV7, pas sur TEST (décision de Hanta du 2026-10-25)
 
-La note UX parle d'un « modèle factice » pour les échecs. Comme il n'y a **qu'un modèle par dispositif** (voir [À CONFIRMER] 3), les cas ci-dessous modifient **temporairement le vrai modèle**. À jouer **en dernier**, dans un créneau où personne d'autre n'utilise TEST, ou dans une copie de TEST. Avant la première modification : garder une copie du texte et des fichiers d'origine (capture ou copie dans un document à part). **Après chaque modification, recharger la page du tableau de bord** (le widget lit probablement les modèles au chargement : [À CONFIRMER] 3).
+La note UX parle d'un « modèle factice » pour les échecs. Comme il n'y a **qu'un modèle par dispositif** (voir [À CONFIRMER] 3), les cas ci-dessous modifieraient **temporairement le vrai modèle**. Pour ne prendre aucun risque sur le modèle que le collègue utilisera dans sa recette (campagne C03), ces 7 cas (CONV-50, 51, 52, 63, 64, 65, 66) se jouent dans **DEV7** (en local, où Hanta travaille déjà) et non dans TEST. Avant la première modification : garder une copie du texte et des fichiers d'origine (capture ou copie dans un document à part). **Après chaque modification, recharger la page du tableau de bord** (le widget lit probablement les modèles au chargement : [À CONFIRMER] 3).
 
 | Repère | Cas | Modèle | Modification | À remettre en état ensuite |
 | --- | --- | --- | --- | --- |
@@ -491,7 +491,7 @@ La note UX parle d'un « modèle factice » pour les échecs. Comme il n'y a **q
 | M6 | CONV-65 | Parcours de remobilisation | ajouter la case [<b>Essai</b>] | retirer la case |
 | M7 | CONV-66 | Parcours de remobilisation | `Actif` = Non, **pendant que la fenêtre est ouverte** (second onglet) | remettre `Actif` = Oui |
 
-**Fin de séance : remettre les trois modèles dans l'état de départ, recharger la page, puis rejouer CONV-44, CONV-45 et CONV-46 pour prouver la remise en état.** Pour les cas M4 à M6, le nom de la colonne qui contient le texte du modèle n'est pas dans cette recette (voir [À CONFIRMER] 3).
+**Fin de séance (dans DEV7) : remettre les trois modèles dans l'état de départ, recharger la page, puis rejouer CONV-44, CONV-45 et CONV-46 pour prouver la remise en état.** Pour les cas M4 à M6, le nom de la colonne qui contient le texte du modèle n'est pas dans cette recette (voir [À CONFIRMER] 3).
 
 ## Provoquer une panne réseau (CONV-61, 62, 69, 77)
 
@@ -580,8 +580,8 @@ Au total, avec R1 et R2 : 8 tests de fumée sur 79 cas (CONV-01, 03, 08, 19, 30,
 1. D'abord les cas qui ne modifient rien : CONV-44 à CONV-49, 53 à 60, 67 à 70, 73 à 76, 78 et 79.
 2. Ensuite les cas avec blocage réseau : CONV-61, 62, 77 (puis retirer le blocage).
 3. Les vrais comptes : CONV-71 et CONV-72, à tout moment.
-4. En dernier, les cas qui modifient un modèle : CONV-50 à 52, puis 63 à 66.
-5. Remettre les modèles en état, recharger, rejouer CONV-44, 45 et 46.
+4. Dans DEV7 (pas sur TEST) : les cas qui modifient un modèle, CONV-50 à 52, puis 63 à 66.
+5. Dans DEV7 : remettre les modèles en état, recharger, rejouer CONV-44, 45 et 46 pour prouver la remise en état.
 
 ## Cas déjà couverts par un test en code
 
