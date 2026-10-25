@@ -477,22 +477,31 @@ test("échec pdfmake-non-charge : le chargement est refusé", async () => {
 });
 
 // Echoue si un chargement qui ne repond pas ne donne pas pdfmake-non-charge au bout de
-// 20 secondes (minuterie simulee : le test n'attend pas), ou si la minuterie n'a pas ce delai.
-// Le jeton est deja demande (une fois, en ecriture) quand pdfmake est attendu.
+// 20 secondes (minuterie simulee : le test n'attend pas), si la minuterie de pdfmake n'a pas ce
+// delai, si elle n'est pas la seule encore active, ou si celles de l'enregistrement (20 s, posee
+// en premier) et du jeton (15 s, posee ensuite) n'ont pas ete arretees quand leur reponse est
+// arrivee. Le jeton est deja demande (une fois, en ecriture)
+// quand pdfmake est attendu.
 test("échec pdfmake-non-charge : pas de réponse au bout de 20 secondes (minuterie simulée)", async () => {
   const ctx = await preparer();
   const g = ctx.w.window;
   const minuteries = [];
+  const arretees = new Set();
   g.setTimeout = (fonction, delai) => { minuteries.push({fonction, delai}); return minuteries.length; };
-  g.clearTimeout = () => {};
+  g.clearTimeout = (id) => { arretees.add(id); };
   g.chargerPdfmake = () => new Promise(() => {});
   const avant = ordinaire(ctx.w.state.raw.Conventions);
 
   const promesse = ctx.w.conventionGenerer(1, VALEURS);
   await attendre();
-  assert.equal(minuteries.length, 1, "une minuterie");
-  assert.equal(minuteries[0].delai, 20000);
-  minuteries[0].fonction();
+  assert.equal(minuteries.length, 3, "trois minuteries posées : l'enregistrement (20 s), le jeton (15 s), puis pdfmake (20 s)");
+  assert.equal(minuteries[0].delai, 20000, "la première est celle de l'enregistrement");
+  assert.ok(arretees.has(1), "la minuterie de l'enregistrement est arrêtée : il a répondu");
+  assert.equal(minuteries[1].delai, 15000, "la deuxième est celle du jeton");
+  assert.ok(arretees.has(2), "la minuterie du jeton est arrêtée : le jeton est arrivé");
+  assert.equal(minuteries[2].delai, 20000, "la troisième est celle de pdfmake");
+  assert.ok(!arretees.has(3), "la minuterie de pdfmake est la seule encore active");
+  minuteries[2].fonction();
   const erreur = await attraper(promesse);
 
   verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
@@ -566,5 +575,250 @@ for (const [nom, preparerPdf] of FABRICATIONS_RATEES) {
     assert.equal(ctx.compteurs.pdfmake, 1, "pdfmake chargé avant");
     assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
     assert.equal(ctx.fetchs.length, 0, "aucun fichier envoyé");
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Re-generation (tache 8.2) : decisions D-S8-4 a D-S8-7, note UX docs/ux/convention.md §12
+// ---------------------------------------------------------------------------
+// La convention existe deja et porte un PDF (piece jointe 41, date ancienne). Le modele
+// d'origine (id 11) n'est plus actif : le modele actif du dispositif est le 10.
+
+const ANCIEN_PDF = 41;
+const ANCIENNE_DATE = 1700000000;
+const MODELE_INACTIF = {id: 11, Dispositif: 3, Actif: false, Titre: "Ancien modèle", Avec_annee: true, Contenu: "Ancien texte fictif."};
+const NOUVELLES_VALEURS = {...VALEURS, annee: "2032", representant: "Sam Exemple"};
+
+// Charge le widget avec une convention deja generee avec l'ancien modele (11).
+async function preparerRegeneration(options = {}, ligneEnPlus = {}) {
+  const ctx = await preparer(options);
+  const raw = ctx.w.state.raw;
+  raw.Modeles_convention = [{...MODELE}, {...MODELE_INACTIF}];
+  raw.Conventions = [{...LIGNE_CONVENTION, Modele: 11, PDF_genere: ["L", ANCIEN_PDF], Date_generation: ANCIENNE_DATE, ...ligneEnPlus}];
+  return ctx;
+}
+
+const ligneConvention = (w) => w.state.raw.Conventions.find((l) => l.id === ID_CONVENTION);
+
+// L'ancien PDF est toujours en place : dans state.raw.Conventions, et pour le bloc
+// (« Voir la convention » lit conventionEtat(...).convention.PDF_genere).
+function verifierAncienPdfIntact(ctx) {
+  const {w, fetchs, appels} = ctx;
+  const ligne = ligneConvention(w);
+  assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ANCIEN_PDF], "PDF_genere inchangé");
+  assert.equal(ligne.Date_generation, ANCIENNE_DATE, "Date_generation inchangée");
+  const etat = w.conventionEtat(1, w.state);
+  assert.equal(etat.etat, "Générée", "le bloc reste à l'état Générée");
+  assert.deepEqual(ordinaire(etat.convention.PDF_genere), ["L", ANCIEN_PDF], "« Voir la convention » pointe vers l'ancien fichier");
+  assert.equal(fetchs.filter(estPatch).length, 0, "aucun PATCH");
+  assert.ok(!JSON.stringify(appels).includes("PDF_genere"), "pas de PDF_genere dans applyUserActions");
+  assert.ok(!JSON.stringify(appels).includes("Date_generation"), "pas de Date_generation dans applyUserActions");
+}
+
+// --- 1. Modele actif ---
+
+// Echoue si une re-generation ecrit l'ancien modele (11) au lieu du modele actif (10), dans
+// l'operation applyUserActions comme dans state.raw.Conventions.
+test("re-génération : Modele reçoit le modèle ACTIF, pas le modèle d'origine", async () => {
+  const ctx = await preparerRegeneration();
+  await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
+
+  assert.equal(ctx.appels.length, 1, "une seule opération d'enregistrement");
+  assert.deepEqual(ordinaire(ctx.appels[0][0].slice(0, 3)), ["UpdateRecord", "Conventions", ID_CONVENTION]);
+  assert.equal(ctx.appels[0][0][3].Modele, 10, "modèle actif dans l'opération");
+  assert.equal(ligneConvention(ctx.w).Modele, 10, "modèle actif en mémoire");
+});
+
+// Echoue si une premiere generation (aucune ligne Conventions) n'ecrit pas le modele actif
+// dans la ligne creee. Aucun test existant de ce fichier ne verifie Modele a la generation.
+test("première génération : la ligne créée reçoit le modèle actif", async () => {
+  const ctx = await preparer();
+  ctx.w.state.raw.Conventions = [];
+  await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.equal(ctx.appels[0][0][0], "AddRecord");
+  assert.equal(ctx.appels[0][0][3].Modele, 10);
+});
+
+// Echoue si « Enregistrer les informations » (conventionEnregistrer sans option) change Modele :
+// une convention deja faite garde son modele d'origine (11), meme s'il n'est plus actif.
+test("« Enregistrer les informations » seul ne change pas Modele (reste le modèle d'origine)", async () => {
+  const ctx = await preparerRegeneration();
+  await ctx.w.conventionEnregistrer(1, NOUVELLES_VALEURS);
+
+  assert.equal(ctx.appels[0][0][3].Modele, 11, "modèle d'origine dans l'opération");
+  assert.equal(ligneConvention(ctx.w).Modele, 11, "modèle d'origine en mémoire");
+  assert.equal(ligneConvention(ctx.w).Representant_agence, "Sam Exemple", "les informations, elles, sont bien enregistrées");
+});
+
+// --- 2. Une seule ecriture, aucune suppression ---
+
+// Echoue si la re-generation ecrit PDF_genere/Date_generation en plus d'une requete, si la
+// cellule est complétée (['L', 41, 42]) au lieu d'être remplacée (['L', 42]), si la mémoire
+// garde l'ancien fichier ou l'ancienne date.
+test("re-génération : une seule écriture de PDF_genere et Date_generation, qui remplace l'ancien fichier", async () => {
+  const ctx = await preparerRegeneration();
+  await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
+
+  const patchs = ctx.fetchs.filter(estPatch);
+  assert.equal(patchs.length, 1, "un seul PATCH");
+  const {fields} = JSON.parse(patchs[0].options.body).records[0];
+  assert.deepEqual(Object.keys(fields).sort(), ["Date_generation", "PDF_genere"]);
+  assert.deepEqual(fields.PDF_genere, ["L", ID_PIECE_JOINTE], "remplacement, pas ajout à l'ancien");
+  assert.ok(fields.Date_generation > ANCIENNE_DATE, "nouvelle date");
+  const ligne = ligneConvention(ctx.w);
+  assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ID_PIECE_JOINTE]);
+  assert.equal(ligne.Date_generation, fields.Date_generation);
+  assert.equal(ctx.fetchs.length, 2, "envoi du fichier + un PATCH, rien d'autre");
+});
+
+// Echoue si une requete DELETE part, si une requete vise l'ancien fichier (41), si une
+// operation applyUserActions autre qu'AddRecord/UpdateRecord ou touchant aux pieces jointes
+// (RemoveRecord, BulkRemoveRecord, _grist_Attachments...). Couvre la reussite et deux echecs
+// (envoi refuse, PATCH refuse).
+const SCENARIOS_SANS_SUPPRESSION = [
+  ["réussite", {}, (ctx) => ctx.w.conventionGenerer(1, NOUVELLES_VALEURS)],
+  ["envoi refusé", {}, (ctx) => { remplacerFetch(ctx, () => Promise.resolve(reponse(false, 403, {}))); return ctx.w.conventionGenerer(1, NOUVELLES_VALEURS); }],
+  ["PATCH refusé", {patch: () => Promise.resolve(reponse(false, 403, {}))}, (ctx) => ctx.w.conventionGenerer(1, NOUVELLES_VALEURS)],
+];
+for (const [nom, options, lancer] of SCENARIOS_SANS_SUPPRESSION) {
+  test(`re-génération (${nom}) : aucune suppression de pièce jointe, nulle part`, async () => {
+    const ctx = await preparerRegeneration(options);
+    await attraper(lancer(ctx));
+
+    for (const requete of ctx.fetchs) {
+      assert.ok(["POST", "PATCH"].includes(requete.options.method), `méthode ${requete.options.method} interdite`);
+      assert.ok(!requete.url.includes(`/attachments/${ANCIEN_PDF}`), "aucune requête sur l'ancien fichier");
+    }
+    for (const operation of ctx.appels.flat()) {
+      assert.ok(["AddRecord", "UpdateRecord"].includes(operation[0]), `opération ${operation[0]} interdite`);
+      assert.ok(!/attachment/i.test(JSON.stringify(operation)), "aucune opération sur les pièces jointes");
+    }
+  });
+}
+
+// --- 3. PDF_signe et Date_depot ---
+
+// Echoue si la re-generation ecrit PDF_signe ou Date_depot (applyUserActions ou PATCH) ou
+// les modifie en memoire.
+test("re-génération : PDF_signe et Date_depot ne sont ni écrits ni modifiés", async () => {
+  const ctx = await preparerRegeneration({}, {PDF_signe: ["L"], Date_depot: null});
+  await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
+
+  const requetes = JSON.stringify([ctx.appels, ctx.fetchs.filter(estPatch).map((r) => r.options.body)]);
+  assert.ok(!requetes.includes("PDF_signe"), "PDF_signe absent des écritures");
+  assert.ok(!requetes.includes("Date_depot"), "Date_depot absent des écritures");
+  const ligne = ligneConvention(ctx.w);
+  assert.deepEqual(ordinaire(ligne.PDF_signe), ["L"], "PDF_signe inchangé en mémoire");
+  assert.strictEqual(ligne.Date_depot, null, "Date_depot inchangé en mémoire");
+});
+
+// --- 4. Echec a chaque etape ---
+
+// Echoue si, a l'une de ces etapes, l'ancien PDF_genere ou l'ancienne Date_generation change
+// (memoire ou ecriture), si le bloc ne pointe plus vers l'ancien fichier, ou si les informations
+// de l'etape 2 (annee, representant) ne restent pas enregistrees.
+const ECHECS_REGENERATION = [
+  ["modèle inactif", "modele-indisponible", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Actif = false; }],
+  ["cases inconnues", "cases-inconnues", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Contenu = "Texte avec [Case inconnue]."; }],
+  ["pdfmake non chargé", "pdfmake-non-charge", (ctx) => { ctx.w.window.chargerPdfmake = () => Promise.reject(Object.assign(new Error("doublure"), {code: "pdfmake-non-charge"})); }],
+  ["envoi refusé", "envoi-refuse", (ctx) => remplacerFetch(ctx, () => Promise.resolve(reponse(false, 403, {})))],
+];
+for (const [nom, code, preparerEchec] of ECHECS_REGENERATION) {
+  test(`re-génération, échec (${nom}) : l'ancien PDF et l'ancienne date restent, les informations sont enregistrées`, async () => {
+    const ctx = await preparerRegeneration();
+    preparerEchec(ctx);
+
+    const erreur = await attraper(ctx.w.conventionGenerer(1, NOUVELLES_VALEURS));
+
+    assert.ok(erreur, "la re-génération est rejetée");
+    assert.equal(erreur.code, code);
+    verifierAncienPdfIntact(ctx);
+    const ligne = ligneConvention(ctx.w);
+    assert.equal(ligne.Annee, 2032, "année enregistrée à l'étape 2");
+    assert.equal(ligne.Representant_agence, "Sam Exemple", "représentant enregistré à l'étape 2");
+  });
+}
+
+// --- 5. Relecture de secours ---
+
+// Remplace fetchTable pour la relecture et compte ses appels sur la table Conventions.
+function poserRelecture(ctx, comportement) {
+  const lectures = [];
+  ctx.w.grist.docApi.fetchTable = (nom) => { lectures.push(nom); return comportement(); };
+  return lectures;
+}
+const tableAvec = (pdf) => () => Promise.resolve({id: [ID_CONVENTION], PDF_genere: [pdf]});
+const RESEAU_COUPE = () => Promise.reject(new Error(`Failed to fetch ${BASE_URL}?auth=${JETON}`));
+
+// Echoue si, apres un reseau coupe ou une reponse 408/5xx au PATCH, la relecture qui trouve le
+// NOUVEAU fichier dans PDF_genere n'est pas traitee comme une reussite : pas d'erreur, memoire
+// a jour (nouveau fichier, nouvelle date), resultat avec le nom du fichier, une seule relecture,
+// de la table Conventions, et un seul PATCH (pas de nouvel essai).
+const PATCH_INCERTAINS = [
+  ["réseau coupé", RESEAU_COUPE],
+  ["réponse 408", () => Promise.resolve(reponse(false, 408, {}))],
+  ["réponse 500", () => Promise.resolve(reponse(false, 500, {}))],
+  ["réponse 503", () => Promise.resolve(reponse(false, 503, {}))],
+];
+for (const [nom, patch] of PATCH_INCERTAINS) {
+  test(`relecture de secours : ${nom} puis fichier retrouvé → réussite`, async () => {
+    const ctx = await preparerRegeneration({patch});
+    const lectures = poserRelecture(ctx, tableAvec(["L", ID_PIECE_JOINTE]));
+
+    const resultat = await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
+
+    assert.ok(resultat.nomFichier.endsWith(".pdf"), "pas d'erreur : la génération réussit");
+    assert.deepEqual(lectures, ["Conventions"], "une seule relecture, de la table Conventions");
+    assert.equal(ctx.fetchs.filter(estPatch).length, 1, "un seul PATCH");
+    const ligne = ligneConvention(ctx.w);
+    assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ID_PIECE_JOINTE], "mémoire : nouveau fichier");
+    assert.ok(ligne.Date_generation > ANCIENNE_DATE, "mémoire : nouvelle date");
+    assert.ok(!JSON.stringify(ctx.journal).includes(JETON), "pas de jeton dans la console");
+  });
+}
+
+// Echoue si, quand la relecture ne retrouve PAS le nouveau fichier (ancien fichier encore la,
+// ligne absente, colonne vide, ou relecture qui echoue aussi), l'echec habituel
+// rattachement-echoue n'est pas rendu, ou si l'ancien PDF / l'ancienne date changent.
+const RELECTURES_SANS_CONFIRMATION = [
+  ["l'ancien fichier est encore là", tableAvec(["L", ANCIEN_PDF])],
+  ["la colonne est vide", tableAvec(null)],
+  ["la ligne est absente", () => Promise.resolve({id: [], PDF_genere: []})],
+  ["la relecture échoue aussi", () => Promise.reject(new Error(`refus ${JETON}`))],
+];
+for (const [nom, relecture] of RELECTURES_SANS_CONFIRMATION) {
+  test(`relecture de secours : réseau coupé puis ${nom} → échec habituel, ancien PDF intact`, async () => {
+    const ctx = await preparerRegeneration({patch: RESEAU_COUPE});
+    const lectures = poserRelecture(ctx, relecture);
+
+    const erreur = await attraper(ctx.w.conventionGenerer(1, NOUVELLES_VALEURS));
+
+    assert.ok(erreur, "l'échec reste affiché");
+    assert.equal(erreur.code, "rattachement-echoue");
+    assert.deepEqual(lectures, ["Conventions"], "une seule relecture");
+    const ligne = ligneConvention(ctx.w);
+    assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ANCIEN_PDF], "PDF_genere inchangé");
+    assert.equal(ligne.Date_generation, ANCIENNE_DATE, "Date_generation inchangée");
+    assert.ok(!visible(erreur).includes(JETON), "pas de jeton dans l'erreur");
+    assert.ok(!JSON.stringify(ctx.journal).includes(JETON), "pas de jeton dans la console");
+  });
+}
+
+// Echoue si un refus 4xx (droits, regle d'acces) declenche la relecture, meme si la table
+// contiendrait le nouveau fichier : le refus doit rester un echec direct, ancien PDF intact.
+for (const statut of [400, 401, 403, 404]) {
+  test(`relecture de secours : refus ${statut} → échec direct, aucune relecture`, async () => {
+    const ctx = await preparerRegeneration({patch: () => Promise.resolve(reponse(false, statut, {}))});
+    const lectures = poserRelecture(ctx, tableAvec(["L", ID_PIECE_JOINTE]));
+
+    const erreur = await attraper(ctx.w.conventionGenerer(1, NOUVELLES_VALEURS));
+
+    assert.ok(erreur, "la génération est rejetée");
+    assert.equal(erreur.code, "rattachement-echoue");
+    assert.deepEqual(lectures, [], "fetchTable n'est pas appelé");
+    const ligne = ligneConvention(ctx.w);
+    assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ANCIEN_PDF]);
+    assert.equal(ligne.Date_generation, ANCIENNE_DATE);
   });
 }

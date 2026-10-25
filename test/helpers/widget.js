@@ -77,6 +77,7 @@ function loadWidget(options = {}) {
     console: quiet,
     localStorage,
     setTimeout,
+    clearTimeout,
     requestAnimationFrame: () => {},
     fetch: () => Promise.reject(new Error("réseau indisponible en test")),
     document: {
