@@ -3011,8 +3011,10 @@ async function conventionRattacherPdf(acces, conventionId, champs) {
   if (!reponse.ok) {
     // 4xx (droits, regle d'acces, requete refusee) : refus clair, rien n'est ecrit. 408 et 5xx
     // (delai, passerelle) : la reponse ne dit pas si l'ecriture a eu lieu.
+    // Le code HTTP (nombre, sans texte de la reponse) permet au depot du fichier signe de
+    // distinguer un refus de droits (401, 403) des autres echecs.
     const incertain = reponse.status === 408 || reponse.status >= 500;
-    throw incertain ? Object.assign(echec(), {relire: true}) : echec();
+    throw Object.assign(echec(), {status: reponse.status}, incertain ? {relire: true} : {});
   }
 }
 
@@ -3419,12 +3421,16 @@ const CONVENTION_ATTENTE_DEPOT = 'Envoi de la convention signée en cours. Cela 
 let conventionDepotEnCours = false;
 // Id de la commande qui a ouvert le sélecteur (« conventionDeposer » ou « conventionRemplacer »).
 let conventionDepotCommande = '';
+// Vrai seulement pendant l'envoi réel : le fichier a passé les contrôles. Le texte « Envoi en cours… »
+// et la zone d'attente dépendent de lui, pas du verrou (qui, lui, est posé dès le choix du fichier).
+let conventionDepotAttenteVisible = false;
 
 // Une commande est verrouillée seulement pendant le dépôt, et seulement si c'est elle qui l'a lancé.
 // Le bloc peut être refait pendant l'envoi : texte et aria-disabled sont alors reposés d'après le verrou.
 function conventionDepotCommandeHtml(id, classe, libelle) {
   const verrouille = conventionDepotEnCours && conventionDepotCommande === id;
-  return `<button class="btn ${classe}" type="button" id="${id}"${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(verrouille ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
+  const enAttente = verrouille && conventionDepotAttenteVisible;
+  return `<button class="btn ${classe}" type="button" id="${id}"${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(enAttente ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
 }
 
 // État « Générée » : bouton secondaire, dernier de la rangée. Pas d'aria-haspopup : aucune fenêtre.
@@ -3472,16 +3478,15 @@ async function conventionFichierChoisi(actionId, champ) {
   }
 }
 
-// Verrouille ou déverrouille : la commande utilisée (texte « Envoi en cours… »), « Re-générer »,
-// et la zone d'attente annoncée aux lecteurs d'écran. aria-disabled, jamais disabled : le focus
-// reste en place. « Voir » n'est pas touché (lecture seule, décision S9-5).
+// Verrouille ou déverrouille, dès le choix du fichier : la commande utilisée et « Re-générer »
+// ignorent les clics. aria-disabled, jamais disabled : le focus reste en place. « Voir » n'est pas
+// touché (lecture seule, décision S9-5). Au déverrouillage, le texte et la zone d'attente sont aussi remis.
 function conventionDepotVerrouiller(verrou, actionId) {
+  if (!verrou) conventionDepotAttendre(false);
   const commande = document.getElementById(conventionDepotCommande);
   if (commande) {
-    const libelle = commande.querySelector('.btn-content') || commande;
     if (verrou) commande.setAttribute('aria-disabled', 'true');
     else commande.removeAttribute('aria-disabled');
-    libelle.textContent = verrou ? CONVENTION_TEXTE_ENVOI : (conventionDepotCommande === 'conventionRemplacer' ? CONVENTION_TEXTE_REMPLACER : CONVENTION_TEXTE_DEPOSER);
   }
   const regenerer = document.getElementById('conventionRegenerer');
   if (regenerer) {
@@ -3494,15 +3499,162 @@ function conventionDepotVerrouiller(verrou, actionId) {
       regenerer.setAttribute('aria-haspopup', 'dialog');
     }
   }
-  const attente = document.getElementById('conventionDepotAttente');
-  if (attente) attente.innerHTML = verrou ? `<p>${escapeHtml(CONVENTION_ATTENTE_DEPOT)}</p>` : '';
   requestResize();
 }
 
-// POINT D'APPEL DE LA TÂCHE 9.1b : reçoit le fichier choisi et ne fait encore rien.
-// 9.1b y mettra, dans l'ordre : contrôle du fichier (vide, taille, extension, type, « %PDF- »),
-// envoi, écriture de PDF_signe et Date_depot, messages de réussite ou d'échec. La fonction doit
-// attendre (await) la fin de l'envoi : le verrou n'est levé qu'à son retour.
+// Affiche ou retire « Envoi en cours… » sur la commande utilisée et la zone d'attente annoncée aux
+// lecteurs d'écran. Appelée avec true seulement quand le fichier est reconnu valide, juste avant l'envoi.
+function conventionDepotAttendre(actif) {
+  conventionDepotAttenteVisible = actif;
+  const commande = document.getElementById(conventionDepotCommande);
+  if (commande) {
+    const libelle = commande.querySelector('.btn-content') || commande;
+    libelle.textContent = actif ? CONVENTION_TEXTE_ENVOI : (conventionDepotCommande === 'conventionRemplacer' ? CONVENTION_TEXTE_REMPLACER : CONVENTION_TEXTE_DEPOSER);
+  }
+  const attente = document.getElementById('conventionDepotAttente');
+  if (attente) attente.innerHTML = actif ? `<p>${escapeHtml(CONVENTION_ATTENTE_DEPOT)}</p>` : '';
+  requestResize();
+}
+
+// ---- Convention : dépôt et remplacement du fichier signé (tâche 9.1b : contrôles, envoi, écriture) ----
+// Note UX : docs/ux/convention.md, §4 et §4.1. Rien dans la console : une erreur de fetch peut
+// recopier l'adresse, qui contient le jeton ; les erreurs ne portent qu'un code.
+const CONVENTION_DEPOT_TAILLE_MAX = 10 * 1024 * 1024; // 10 Mo ; un fichier de cette taille exacte est accepté (S9-7)
+const CONVENTION_DEPOT_SIGNATURE_PDF = [0x25, 0x50, 0x44, 0x46, 0x2D]; // « %PDF- »
+// Lecture des premiers octets du fichier choisi : un fichier local, 15 s comme les petites requêtes.
+const CONVENTION_DEPOT_LECTURE_DELAI_MS = 15000;
+
+const CONVENTION_DEPOT_MESSAGES = {
+  vide: "Le fichier n'a pas été enregistré : le fichier est vide.",
+  taille: "Le fichier n'a pas été enregistré : 10 Mo au maximum.",
+  pasPdf: "Le fichier n'a pas été enregistré : ce n'est pas un PDF.",
+  droits: "Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord.",
+  echec: "Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord.",
+  reussite: 'Convention signée enregistrée.'
+};
+
+// Contrôles du fichier, dans l'ordre de la note (§4) : vide, taille, extension, type, contenu.
+// Le premier qui échoue arrête tout. Renvoie le message à afficher, ou '' si le fichier est accepté.
+// Le contenu (« %PDF- ») n'est lu que si les quatre premiers contrôles sont passés.
+async function conventionDepotControler(fichier) {
+  if (!(fichier.size > 0)) return CONVENTION_DEPOT_MESSAGES.vide;
+  if (fichier.size > CONVENTION_DEPOT_TAILLE_MAX) return CONVENTION_DEPOT_MESSAGES.taille;
+  if (!/\.pdf$/i.test(String(fichier.name || ''))) return CONVENTION_DEPOT_MESSAGES.pasPdf;
+  // Un type vide est accepté (S9-6) : certains navigateurs ne le renseignent pas.
+  const type = String(fichier.type || '').toLowerCase();
+  if (type !== '' && type !== 'application/pdf') return CONVENTION_DEPOT_MESSAGES.pasPdf;
+  try {
+    const debut = new Uint8Array(await conventionAvecDelai(
+      fichier.slice(0, CONVENTION_DEPOT_SIGNATURE_PDF.length).arrayBuffer(),
+      CONVENTION_DEPOT_LECTURE_DELAI_MS,
+      () => new Error('lecture')
+    ));
+    const pdf = debut.length >= CONVENTION_DEPOT_SIGNATURE_PDF.length
+      && CONVENTION_DEPOT_SIGNATURE_PDF.every((octet, rang) => debut[rang] === octet);
+    return pdf ? '' : CONVENTION_DEPOT_MESSAGES.pasPdf;
+  } catch (erreur) {
+    // Fichier illisible : ce n'est pas un contrôle qui échoue, c'est un échec général.
+    return CONVENTION_DEPOT_MESSAGES.echec;
+  }
+}
+
+// Après une réponse perdue du PATCH : la ligne Conventions porte-t-elle déjà CE fichier dans
+// PDF_signe ? Renvoie la ligne relue si oui, null dans tous les autres cas (relecture impossible
+// comprise : le message d'échec habituel s'affiche alors, il peut être inexact).
+async function conventionSigneRattache(conventionId, pieceJointe) {
+  try {
+    const table = await conventionAvecDelai(
+      grist.docApi.fetchTable('Conventions'),
+      CONVENTION_RELECTURE_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    const ligne = rows(table).find(item => item.id === conventionId);
+    return ligne && conventionPieceJointeId(ligne.PDF_signe) === pieceJointe ? ligne : null;
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// Message d'un échec de l'envoi ou de l'écriture : refus de droits (401 ou 403, S9-4), sinon le message général.
+function conventionDepotMessageEchec(erreur) {
+  const refus = !!erreur && (erreur.code === CONVENTION_GENERATION_ERREURS.envoiRefuse || erreur.status === 401 || erreur.status === 403);
+  return refus ? CONVENTION_DEPOT_MESSAGES.droits : CONVENTION_DEPOT_MESSAGES.echec;
+}
+
+// Alerte en haut du bloc (zone role="status" qui existe déjà, hors de la partie refaite).
+// Une seule alerte à la fois : la plus récente remplace l'autre.
+function conventionDepotAlerte(succes, texte) {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = succes
+    ? `<div class="alert alert-success"><p class="alert-content">${escapeHtml(texte)}</p></div>`
+    : `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(texte)}</p></div>`;
+  requestResize();
+}
+
+// Dépose le fichier signé choisi (premier dépôt) ou remplace l'ancien (état « Signée »).
+// Étapes (note §4 et §4.1) : contrôles ; UN jeton d'écriture ; envoi du fichier ; UN seul PATCH
+// qui écrit PDF_signe et Date_depot ensemble ; mise à jour de state.raw.Conventions.
+// L'ancien fichier signé n'est jamais supprimé (S9-8) : seul le pointeur de la cellule change.
+// À tout échec, rien n'est écrit : message dans le bloc, focus sur la commande utilisée.
+// Le verrou est posé et levé par conventionFichierChoisi, qui attend la fin de cette fonction.
 async function conventionDeposerFichier(actionId, fichier) {
-  // Rien pour l'instant (9.1a).
+  const commande = () => document.getElementById(conventionDepotCommande);
+  const echouer = message => {
+    conventionDepotAlerte(false, message);
+    const bouton = commande();
+    if (bouton) bouton.focus();
+  };
+
+  const refus = await conventionDepotControler(fichier);
+  if (refus) return echouer(refus);
+
+  const {etat, convention} = conventionEtat(actionId, state);
+  if (!convention) return echouer(CONVENTION_DEPOT_MESSAGES.echec);
+  const remplacement = etat === CONVENTION_ETATS.signee;
+
+  // Fichier reconnu valide : l'envoi réel commence, l'attente peut s'afficher (levée par le finally de conventionFichierChoisi).
+  conventionDepotAttendre(true);
+
+  let champs;
+  try {
+    // Un seul jeton (15 s dans conventionDemanderAcces), réutilisé pour l'envoi et l'écriture.
+    const acces = await conventionDemanderAcces();
+    const pieceJointe = await conventionAvecDelai(
+      conventionEnvoyerPdf(acces, fichier, fichier.name),
+      CONVENTION_ENVOI_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
+    champs = {PDF_signe: ['L', pieceJointe], Date_depot: Math.floor(Date.now() / 1000)};
+    try {
+      // Délai dépassé = réponse perdue : même cas que « réseau coupé » (relire avant de conclure).
+      await conventionAvecDelai(
+        conventionRattacherPdf(acces, convention.id, champs),
+        CONVENTION_RATTACHEMENT_DELAI_MS,
+        () => Object.assign(conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement), {relire: true})
+      );
+    } catch (erreur) {
+      // Réponse perdue : si PDF_signe porte déjà le nouveau fichier, c'est une réussite.
+      const relue = erreur && erreur.relire ? await conventionSigneRattache(convention.id, pieceJointe) : null;
+      if (!relue) throw erreur;
+      champs = {PDF_signe: ['L', pieceJointe], Date_depot: relue.Date_depot};
+    }
+  } catch (erreur) {
+    return echouer(conventionDepotMessageEchec(erreur));
+  }
+
+  // Écriture réussie : la mémoire est mise à jour seulement maintenant, puis le bloc est refait.
+  const ligne = conventionLigne(state.raw.Conventions, convention.id);
+  if (ligne) Object.assign(ligne, champs);
+  conventionRafraichirBloc(actionId);
+  conventionDepotAlerte(true, CONVENTION_DEPOT_MESSAGES.reussite);
+  // Remplacement : « Remplacer » existe toujours, le focus y reste (S9-3). Premier dépôt : la
+  // commande a disparu, le focus va sur « Voir la convention signée » (id conventionVoirSignee,
+  // pas encore dans l'écran : tâche 9.1c), sinon sur le titre du bloc, rendu focalisable.
+  let cible = document.getElementById(remplacement ? 'conventionRemplacer' : 'conventionVoirSignee');
+  if (!cible) {
+    cible = document.querySelector('#conventionBloc .section-head span');
+    if (cible) cible.setAttribute('tabindex', '-1');
+  }
+  if (cible) cible.focus();
 }
