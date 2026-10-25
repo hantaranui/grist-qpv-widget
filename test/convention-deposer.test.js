@@ -1,14 +1,16 @@
 "use strict";
 
-// Dépôt du fichier signé, tâche 9.1a (commandes et sélecteur de fichier seulement ; le contrôle
-// du fichier, l'envoi et l'écriture dans Grist sont la tâche 9.1b) :
+// Dépôt du fichier signé, tâche 9.1a (commandes et sélecteur de fichier ; le contrôle du fichier,
+// l'envoi et l'écriture dans Grist sont la tâche 9.1b, voir plus bas les doublures) :
 //   - le HTML : « Déposer la convention signée » seulement à l'état Générée, dernier de la
 //     rangée ; « Remplacer le fichier signé » seulement à l'état Signée, seul sur sa ligne ;
 //   - le champ fichier caché de index.html (accept, hors du bloc, masqué par la feuille) ;
 //   - le comportement : le clic ouvre le sélecteur sans rien faire d'autre ; l'annulation du
 //     sélecteur est sans effet ; au choix d'un fichier, verrou de la commande utilisée et de
-//     « Re-générer » (jamais de « Voir »), texte « Envoi en cours… », région d'attente annoncée,
-//     alertes précédentes effacées ; le verrou est levé à la fin.
+//     « Re-générer » (jamais de « Voir ») est IMMÉDIAT, alertes précédentes effacées ; le texte
+//     « Envoi en cours… » et la région d'attente n'apparaissent qu'APRÈS les contrôles du fichier
+//     (vide, taille, extension, type, contenu), juste avant l'envoi réel ; un fichier refusé
+//     affiche son message sans jamais les montrer ; le verrou est levé à la fin.
 // Les textes de référence sont ceux de docs/ux/convention.md (§4 et §4.1). Ils sont recopiés
 // ici en dur : si le code change un mot, le test doit échouer.
 // Le navigateur et Grist sont des doublures de test/helpers/widget.js. Les éléments de la page
@@ -81,11 +83,14 @@ function enAttente() {
 // ---------------------------------------------------------------------------
 // preparer(jeu) charge le widget, pose les données, puis branche les commandes comme renderEdit
 // le fait (bindConventionDepot) en captant leurs gestionnaires de clic. Il note :
-//   depots   : chaque appel de conventionDeposerFichier ({actionId, fichier, ...}) ; la
-//              doublure ne rend la main que quand le test libère `envoi` ;
+//   depots   : chaque appel de conventionDeposerFichier ({actionId, fichier, ecran}) ; `ecran` est
+//              l'écran à cet instant, donc avant les contrôles du fichier ;
+//   envois   : chaque passage à l'envoi réel ({ecran}) : le fichier a passé les contrôles et
+//              « Envoi en cours… » est affiché ; l'opération reste en attente jusqu'à `envoi` ;
 //   clics    : le nombre de champ.click() (ouvertures du sélecteur) ;
 //   focus    : les focus() demandés par le script.
-// Aucune écriture dans Grist : applyUserActions et fetch ne sont pas appelés (le test le vérifie).
+// Aucune écriture dans Grist : applyUserActions et fetch ne sont pas appelés (le test le vérifie) ;
+// le réseau de la 9.1b (jeton, envoi, rattachement) est remplacé par des doublures.
 
 async function preparer(jeu) {
   const w = loadWidget();
@@ -132,13 +137,26 @@ async function preparer(jeu) {
   // « Re-générer » au repos : actif, il annonce une fenêtre.
   doc.getElementById("conventionRegenerer").setAttribute("aria-haspopup", "dialog");
 
-  // Doublure du point d'appel de la 9.1b : elle note l'appel et l'état de l'écran à cet instant.
+  // conventionDeposerFichier est le VRAI code de la 9.1b : ses contrôles (vide, taille, extension,
+  // type, contenu) tournent pour de bon. On l'enveloppe seulement pour noter l'écran à l'appel
+  // (verrou immédiat). Les trois opérations réseau sont des doublures : conventionDemanderAcces
+  // est le point « envoi réel » (juste après « Envoi en cours… »), elle note l'écran à cet instant
+  // et attend que le test libère `envoi`.
   const depots = [];
+  const envois = [];
+  const succes = [];
   const envoi = enAttente();
+  const reelle = w.window.conventionDeposerFichier;
   w.window.conventionDeposerFichier = (actionId, fichier) => {
     depots.push({actionId, fichier, ecran: instantane()});
-    return envoi.promesse;
+    return reelle(actionId, fichier);
   };
+  w.window.conventionDemanderAcces = () => {
+    envois.push({ecran: instantane()});
+    return envoi.promesse.then(() => ({base: "https://exemple.invalid", jeton: "jeton-fictif"}));
+  };
+  w.window.conventionEnvoyerPdf = () => Promise.resolve(99);
+  w.window.conventionRattacherPdf = () => Promise.resolve({});
 
   const element = (id) => doc.getElementById(id);
   const libelle = (id) => element(id).querySelector(".btn-content").textContent;
@@ -151,13 +169,14 @@ async function preparer(jeu) {
       regenererGrise: grise("conventionRegenerer"), voirGrise: grise("conventionVoir"),
       attente: element("conventionDepotAttente").innerHTML,
       alerte: element("conventionAlerte").innerHTML,
+      contenu: element("conventionBlocContenu").innerHTML,
     };
   }
 
   w.bindConventionDepot(1);
 
   return {
-    w, champ, element, libelle, grise, instantane, depots, envoi, focus, ecritures, ecouteurs,
+    w, champ, element, libelle, grise, instantane, depots, envois, envoi, focus, ecritures, ecouteurs,
     clics: () => clics,
     // Clic sur une commande : ouvre le sélecteur (ou rien si elle est grisée).
     cliquer: (id) => ecouteurs[id]({}),
@@ -171,7 +190,17 @@ async function preparer(jeu) {
   };
 }
 
-const FICHIER = {name: "convention-signee-fictive.pdf", size: 1234, type: "application/pdf"};
+// Un petit fichier factice de la forme que lit conventionDepotControler : size, name, type et
+// slice(0, n).arrayBuffer() (les premiers octets). Contenu par défaut : « %PDF- », donc valide.
+function fichierFactice({name = "convention-signee-fictive.pdf", type = "application/pdf", size, debut = "%PDF-1.4"} = {}) {
+  const octets = Uint8Array.from(Buffer.from(debut, "latin1"));
+  return {
+    name, type,
+    size: size === undefined ? 1234 : size,
+    slice: (de, a) => ({arrayBuffer: () => Promise.resolve(octets.slice(de, a).buffer)}),
+  };
+}
+const FICHIER = fichierFactice();
 
 // ---------------------------------------------------------------------------
 // 1. Le HTML du bloc : « Déposer » (Générée) et « Remplacer » (Signée)
@@ -368,10 +397,10 @@ test("après une annulation, on peut rouvrir le sélecteur puis choisir un fichi
   await m.choisir(null);
   m.cliquer("conventionDeposer");
   assert.equal(m.clics(), 2, "le sélecteur s'ouvre une seconde fois");
-  m.choisir(FICHIER);
+  const termine = m.choisir(FICHIER);
   assert.equal(m.depots.length, 1, "le fichier choisi ensuite part bien");
   m.envoi.resoudre();
-  await attendre();
+  await termine;
 });
 
 // ---------------------------------------------------------------------------
@@ -380,27 +409,39 @@ test("après une annulation, on peut rouvrir le sélecteur puis choisir un fichi
 
 // Echoue si, des le choix d'un fichier par « Déposer » : conventionDeposerFichier n'est pas
 // appelee exactement une fois avec (actionId, fichier choisi) ; « Déposer » n'est pas grise par
-// aria-disabled="true" (ou prend disabled, ce qui lui ferait perdre le focus) ; son texte n'est
-// pas « Envoi en cours… » ; « Re-générer » n'est pas grise (aria-disabled, sans disabled, et
-// sans aria-haspopup) ; « Voir la convention » est grise ou change de texte ; le verrou n'est pas
-// deja pose au moment de l'appel (avant toute operation asynchrone) ; le focus bouge.
-test("choix d'un fichier après « Déposer » : « Déposer » et « Re-générer » sont verrouillés, « Déposer » affiche « Envoi en cours… », « Voir » reste utilisable", async () => {
+// aria-disabled="true" (ou prend disabled, ce qui lui ferait perdre le focus) AVANT toute
+// operation asynchrone (donc avant de savoir si le fichier est valide) ; « Re-générer » n'est
+// pas grise (aria-disabled, sans disabled, et sans aria-haspopup) ; « Voir la convention » est
+// grise ou change de texte ; le focus bouge ; ou si « Envoi en cours… » apparait des ce moment
+// (avant les controles) ou n'apparait pas apres que le fichier valide les a passes (a l'envoi reel).
+test("choix d'un fichier après « Déposer » : verrou immédiat de « Déposer » et « Re-générer », « Envoi en cours… » seulement après les contrôles, « Voir » reste utilisable", async () => {
   const m = await preparer(GENEREE());
   m.cliquer("conventionDeposer");
   const termine = m.choisir(FICHIER);
 
+  // Immédiatement, avant les contrôles : verrou posé, mais pas encore « Envoi en cours… ».
   assert.equal(m.depots.length, 1, "conventionDeposerFichier est appelée une fois");
   assert.equal(m.depots[0].actionId, 1, "avec l'action ouverte");
   assert.equal(m.depots[0].fichier, FICHIER, "avec le fichier choisi");
   assert.equal(m.depots[0].ecran.deposerGrise, true, "le verrou est posé avant l'appel (avant toute opération asynchrone)");
-  assert.equal(m.depots[0].ecran.deposerTexte, TEXTE_ENVOI, "le texte est déjà « Envoi en cours… » à l'appel");
-
+  assert.equal(m.depots[0].ecran.regenererGrise, true, "« Re-générer » est déjà verrouillé à l'appel");
+  assert.equal(m.depots[0].ecran.deposerTexte, TEXTE_DEPOSER, "le texte n'est pas encore « Envoi en cours… » à l'appel");
+  assert.equal(m.envois.length, 0, "l'envoi réel n'a pas commencé");
+  assert.equal(m.libelle("conventionDeposer"), TEXTE_DEPOSER, "« Déposer » garde son texte tant que les contrôles ne sont pas passés");
+  assert.equal(m.element("conventionDepotAttente").innerHTML, "", "pas de région d'attente avant les contrôles");
   assert.equal(m.element("conventionDeposer").getAttribute("aria-disabled"), "true", "« Déposer » : aria-disabled=\"true\"");
   assert.equal(m.element("conventionDeposer").disabled, false, "« Déposer » : jamais disabled (le focus reste en place)");
-  assert.equal(m.libelle("conventionDeposer"), TEXTE_ENVOI, "« Déposer » : texte « Envoi en cours… »");
   assert.equal(m.element("conventionRegenerer").getAttribute("aria-disabled"), "true", "« Re-générer » : aria-disabled=\"true\"");
   assert.equal(m.element("conventionRegenerer").disabled, false, "« Re-générer » : jamais disabled");
   assert.equal(m.element("conventionRegenerer").getAttribute("aria-haspopup"), null, "« Re-générer » grisé n'annonce plus de fenêtre");
+
+  // Les contrôles passent (vrai PDF factice) : l'envoi réel commence, « Envoi en cours… » apparaît.
+  await attendre();
+  assert.equal(m.envois.length, 1, "l'envoi réel commence après les contrôles");
+  assert.equal(m.envois[0].ecran.deposerTexte, TEXTE_ENVOI, "« Envoi en cours… » est affiché à l'envoi réel");
+  assert.equal(m.libelle("conventionDeposer"), TEXTE_ENVOI, "« Déposer » : texte « Envoi en cours… »");
+  assert.equal(m.element("conventionDeposer").getAttribute("aria-disabled"), "true", "« Déposer » reste verrouillé");
+  assert.equal(m.element("conventionRegenerer").getAttribute("aria-disabled"), "true", "« Re-générer » reste verrouillé");
   assert.equal(m.libelle("conventionRegenerer"), "Re-générer", "« Re-générer » garde son texte");
   assert.equal(m.element("conventionVoir").getAttribute("aria-disabled"), null, "« Voir la convention » reste utilisable");
   assert.equal(m.libelle("conventionVoir"), "Voir la convention", "« Voir la convention » garde son texte");
@@ -412,8 +453,9 @@ test("choix d'un fichier après « Déposer » : « Déposer » et « Re-génér
 
 // Echoue si, au choix d'un fichier par « Remplacer », c'est « Déposer » qui est verrouille a la
 // place (c'est la commande utilisee qui prend le verrou et le texte), si « Remplacer » n'est pas
-// grise avec « Envoi en cours… », ou si « Voir » est touche.
-test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer » est verrouillé et affiche « Envoi en cours… », pas « Déposer »", async () => {
+// grise des le choix, s'il affiche « Envoi en cours… » avant les controles ou ne l'affiche pas a
+// l'envoi reel, ou si « Voir » est touche.
+test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer » est verrouillé tout de suite, « Envoi en cours… » seulement après les contrôles, pas « Déposer »", async () => {
   const m = await preparer(SIGNEE());
   m.cliquer("conventionRemplacer");
   const termine = m.choisir(FICHIER);
@@ -421,9 +463,16 @@ test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer
   assert.equal(m.depots.length, 1, "conventionDeposerFichier est appelée une fois");
   assert.equal(m.depots[0].fichier, FICHIER, "avec le fichier choisi");
   assert.equal(m.depots[0].ecran.remplacerGrise, true, "le verrou est posé avant l'appel");
+  assert.equal(m.depots[0].ecran.regenererGrise, true, "« Re-générer » est déjà verrouillé à l'appel");
+  assert.equal(m.depots[0].ecran.remplacerTexte, TEXTE_REMPLACER, "pas encore « Envoi en cours… » avant les contrôles");
   assert.equal(m.element("conventionRemplacer").getAttribute("aria-disabled"), "true", "« Remplacer » : aria-disabled=\"true\"");
   assert.equal(m.element("conventionRemplacer").disabled, false, "« Remplacer » : jamais disabled");
-  assert.equal(m.libelle("conventionRemplacer"), TEXTE_ENVOI, "« Remplacer » : texte « Envoi en cours… »");
+  assert.equal(m.element("conventionDepotAttente").innerHTML, "", "pas de région d'attente avant les contrôles");
+
+  await attendre();
+  assert.equal(m.envois.length, 1, "l'envoi réel commence après les contrôles");
+  assert.equal(m.libelle("conventionRemplacer"), TEXTE_ENVOI, "« Remplacer » : texte « Envoi en cours… » à l'envoi réel");
+  assert.equal(m.element("conventionRemplacer").getAttribute("aria-disabled"), "true", "« Remplacer » reste verrouillé");
   assert.equal(m.element("conventionDeposer").getAttribute("aria-disabled"), null, "« Déposer » n'est pas la commande utilisée : pas verrouillé");
   assert.equal(m.libelle("conventionDeposer"), TEXTE_DEPOSER, "« Déposer » garde son texte");
   assert.equal(m.element("conventionVoir").getAttribute("aria-disabled"), null, "« Voir la convention » reste utilisable");
@@ -432,22 +481,71 @@ test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer
   await termine;
 });
 
-// Echoue si la region role="status" #conventionDepotAttente ne recoit pas la phrase exacte
-// « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. » des le choix
-// du fichier (elle serait annoncee trop tard ou pas du tout), si la phrase est ailleurs que dans
-// cette region, ou si la region perd son role.
-test("choix d'un fichier : la région d'attente (role=\"status\") annonce « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. »", async () => {
+// Echoue si la region role="status" #conventionDepotAttente recoit la phrase avant les controles
+// du fichier (annonce a tort pour un fichier qui sera refuse), ne recoit pas la phrase exacte
+// « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. » une fois les
+// controles passes, si la phrase est ailleurs que dans cette region, ou si la region perd son role.
+test("choix d'un fichier valide : la région d'attente (role=\"status\") annonce « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. » après les contrôles seulement", async () => {
   const m = await preparer(GENEREE());
   m.cliquer("conventionDeposer");
   const termine = m.choisir(FICHIER);
+  assert.equal(m.element("conventionDepotAttente").innerHTML, "", "vide avant les contrôles");
 
+  await attendre();
   const html = m.element("conventionDepotAttente").innerHTML;
   assert.equal(decoder(html.replace(/<[^>]+>/g, "")), TEXTE_ATTENTE, "phrase exacte");
-  assert.equal(m.depots[0].ecran.attente, html, "la phrase est déjà là quand l'envoi commence");
+  assert.equal(m.envois[0].ecran.attente, html, "la phrase est déjà là quand l'envoi réel commence");
   assert.ok(!m.element("conventionAlerte").innerHTML.includes("Envoi"), "la phrase n'est pas dans la zone des alertes");
 
   m.envoi.resoudre();
   await termine;
+});
+
+// Echoue si un fichier INVALIDE (vide, mauvaise extension, mauvais type, mauvais contenu, trop gros)
+// montre « Envoi en cours… » ou la region d'attente a un moment quelconque (avant, pendant ou
+// apres les controles), n'affiche pas directement son message d'echec exact dans la zone des
+// alertes, atteint l'envoi reel (jeton, envoi, ecriture), ou laisse l'ecran verrouille ensuite.
+test("fichier invalide (vide, mauvaise extension, mauvais type, mauvais contenu, trop gros) : message d'échec direct, jamais « Envoi en cours… » ni région d'attente", async () => {
+  const cas = [
+    ["vide", fichierFactice({size: 0}), "Le fichier n'a pas été enregistré : le fichier est vide."],
+    ["trop gros", fichierFactice({size: 10 * 1024 * 1024 + 1}), "Le fichier n'a pas été enregistré : 10 Mo au maximum."],
+    ["mauvaise extension", fichierFactice({name: "convention.docx"}), "Le fichier n'a pas été enregistré : ce n'est pas un PDF."],
+    ["mauvais type", fichierFactice({type: "image/png"}), "Le fichier n'a pas été enregistré : ce n'est pas un PDF."],
+    ["mauvais contenu", fichierFactice({debut: "PK\u0003\u0004zip"}), "Le fichier n'a pas été enregistré : ce n'est pas un PDF."],
+  ];
+  for (const [nom, fichier, message] of cas) {
+    const m = await preparer(GENEREE());
+    // On note l'écran à chaque modification de la commande ou de la région : « Envoi en cours… » ne doit jamais y passer.
+    const vus = [];
+    const surveiller = () => vus.push(m.instantane());
+    const libelleDeposer = m.element("conventionDeposer").querySelector(".btn-content");
+    let texte = libelleDeposer.textContent;
+    Object.defineProperty(libelleDeposer, "textContent", {get: () => texte, set: (v) => { texte = v; surveiller(); }});
+    const attente = m.element("conventionDepotAttente");
+    let html = attente.innerHTML;
+    Object.defineProperty(attente, "innerHTML", {get: () => html, set: (v) => { html = v; surveiller(); }});
+
+    m.cliquer("conventionDeposer");
+    const termine = m.choisir(fichier);
+    surveiller(); // juste après le choix : verrou posé, contrôles pas encore terminés
+    await termine;
+    surveiller();
+
+    assert.ok(m.depots.length === 1, `${nom} : le fichier est bien soumis à conventionDeposerFichier`);
+    assert.ok(vus.length >= 2, `${nom} : l'écran a été observé`);
+    for (const vu of vus) {
+      assert.notEqual(vu.deposerTexte, TEXTE_ENVOI, `${nom} : jamais « Envoi en cours… »`);
+      assert.equal(vu.attente, "", `${nom} : jamais de région d'attente`);
+    }
+    assert.equal(vus[0].deposerGrise, true, `${nom} : le verrou est posé dès le choix`);
+    assert.equal(decoder(m.element("conventionAlerte").innerHTML.replace(/<[^>]+>/g, "")), message, `${nom} : message d'échec exact`);
+    assert.match(m.element("conventionAlerte").innerHTML, /class="alert alert-error" role="alert"/, `${nom} : alerte d'erreur`);
+    assert.equal(m.envois.length, 0, `${nom} : l'envoi réel n'est jamais atteint`);
+    assert.deepEqual(m.ecritures, [], `${nom} : aucune écriture, aucune requête`);
+    assert.equal(m.grise("conventionDeposer"), false, `${nom} : « Déposer » dégrisé à la fin`);
+    assert.equal(m.grise("conventionRegenerer"), false, `${nom} : « Re-générer » dégrisé à la fin`);
+    assert.deepEqual(m.focus, ["conventionDeposer"], `${nom} : le focus revient sur la commande utilisée`);
+  }
 });
 
 // Echoue si une alerte precedente du bloc (erreur ou reussite de « Voir », d'un depot ou d'une
@@ -502,7 +600,9 @@ test("à la fin de l'envoi (réussi ou en échec) : commandes dégrisées, texte
     const m = await preparer(GENEREE());
     m.cliquer("conventionDeposer");
     const termine = m.choisir(FICHIER);
+    await attendre();
     assert.equal(m.grise("conventionDeposer"), true, `${issue} : verrouillé pendant l'envoi`);
+    assert.equal(m.libelle("conventionDeposer"), TEXTE_ENVOI, `${issue} : « Envoi en cours… » pendant l'envoi`);
 
     if (issue === "réussite") m.envoi.resoudre(); else m.envoi.rejeter(new Error("échec fictif"));
     await termine.catch(() => {});
@@ -535,12 +635,18 @@ test("à la fin de l'envoi, « Re-générer » reste grisé si la génération e
 });
 
 // Echoue si le bloc refait pendant l'envoi (HTML reconstruit) perd le verrou : « Déposer » doit
-// alors etre ecrit grise, avec « Envoi en cours… », et « Re-générer » grise sans aria-haspopup.
+// alors etre ecrit grise, avec « Envoi en cours… » une fois les controles passes (mais avec son
+// texte d'origine tant qu'ils ne le sont pas), et « Re-générer » grise sans aria-haspopup.
 test("bloc refait pendant l'envoi : « Déposer » et « Re-générer » sont écrits verrouillés, « Voir » reste actif", async () => {
   const m = await preparer(GENEREE());
   m.cliquer("conventionDeposer");
   const termine = m.choisir(FICHIER);
 
+  // Avant la fin des contrôles : verrouillé, mais avec son texte d'origine.
+  const avantControles = bloc(m.w, GENEREE());
+  assert.match(avantControles, /<button class="btn btn-secondary" type="button" id="conventionDeposer" aria-disabled="true"><span class="btn-content">Déposer la convention signée<\/span><\/button>/, "« Déposer » reconstruit avant les contrôles : grisé, texte d'origine");
+
+  await attendre();
   const html = bloc(m.w, GENEREE());
   assert.match(html, /<button class="btn btn-secondary" type="button" id="conventionDeposer" aria-disabled="true"><span class="btn-content">Envoi en cours…<\/span><\/button>/, "« Déposer » reconstruit : grisé, « Envoi en cours… »");
   const regenerer = /<button\b[^>]*\sid="conventionRegenerer"[^>]*>/.exec(html)[0];
@@ -551,4 +657,37 @@ test("bloc refait pendant l'envoi : « Déposer » et « Re-générer » sont é
   m.envoi.resoudre();
   await termine;
   assert.ok(!bloc(m.w, GENEREE()).includes("aria-disabled"), "après l'envoi, le bloc refait n'a plus de verrou");
+});
+
+// Point signale comme risque par dev-interface : apres un depot REUSSI, le bloc est refait et
+// l'alerte de reussite est ecrite pendant que le verrou et « Envoi en cours… » sont encore poses ;
+// ils ne sont leves qu'ensuite, par le finally de conventionFichierChoisi. Ce test fige ce
+// comportement ACCEPTABLE : l'etat intermediaire existe (il se voit au moment du focus final), mais
+// il n'y a aucun rendu du navigateur entre le focus et le finally (suite synchrone puis microtache),
+// donc la personne ne le voit pas. Echoue si cet etat intermediaire disparait en un sens ou en
+// l'autre sans que la note soit revue, ou si l'etat FINAL n'est pas propre : verrou leve, texte
+// d'origine, region d'attente vide, alerte de reussite conservee.
+test("après un dépôt réussi : « Envoi en cours… » peut rester jusqu'au focus final (aucun rendu entre), puis l'écran final est propre", async () => {
+  const m = await preparer(GENEREE());
+  const intermediaire = [];
+  m.element("conventionVoirSignee").focus = () => { intermediaire.push(m.instantane()); };
+
+  m.cliquer("conventionDeposer");
+  const termine = m.choisir(FICHIER);
+  await attendre();
+  m.envoi.resoudre();
+  await termine;
+
+  assert.equal(intermediaire.length, 1, "le focus final est demandé une fois");
+  assert.equal(intermediaire[0].deposerGrise, true, "à ce moment-là, le verrou n'est pas encore levé (accepté : aucun rendu avant le finally)");
+  assert.notEqual(intermediaire[0].attente, "", "la région d'attente n'est pas encore vidée à ce moment-là (accepté)");
+  assert.match(intermediaire[0].alerte, /Convention signée enregistrée\./, "l'alerte de réussite est déjà écrite");
+
+  assert.equal(m.grise("conventionDeposer"), false, "final : verrou levé");
+  assert.equal(m.grise("conventionRegenerer"), false, "final : « Re-générer » dégrisé");
+  assert.equal(m.libelle("conventionDeposer"), TEXTE_DEPOSER, "final : texte d'origine");
+  assert.equal(m.element("conventionDepotAttente").innerHTML, "", "final : région d'attente vidée");
+  assert.match(m.element("conventionAlerte").innerHTML, /Convention signée enregistrée\./, "final : l'alerte de réussite reste affichée");
+  assert.ok(!m.instantane().contenu.includes(TEXTE_ENVOI), "final : plus d'« Envoi en cours… » dans le bloc refait");
+  assert.deepEqual(m.ecritures, [], "aucune écriture réelle (doublures)");
 });
