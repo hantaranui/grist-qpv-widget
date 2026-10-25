@@ -1123,3 +1123,18 @@ Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, act
 Build refait : oui
 Commit : b78596d (code) et 23a1552 (tests)
 Reste à faire : 9.1b (contrôle du fichier, envoi, écriture) ; 9.1c (« Voir la convention signée »).
+
+## Tâche C53 — Contrôle et envoi du fichier signé (S9, tâche 9.1b)
+
+Date : 2026-10-26
+Agents : dev-backend (code), dev-interface (correction du moment d'affichage), testeur (tests)
+Prompt : tâche 9.1b, contrôles dans l'ordre de la note, envoi par PATCH (PDF_signe + Date_depot ensemble, S9-1), délais sur tous les appels réseau
+
+Note /5 : 5
+Ce qui allait : 5 contrôles dans l'ordre exact (vide, taille, extension, type, contenu %PDF-) ; un seul message, le bon ; une seule écriture PATCH ; message distinct pour un refus de droits (S9-4) ; relecture de secours ajoutée de sa propre initiative, comme pour la génération ; tous les appels réseau protégés par un délai, leçon de C51 bien appliquée ; aucune suppression de l'ancien fichier signé (S9-8).
+Ce que j'ai fait corriger : « Envoi en cours… » s'affichait avant même les contrôles du fichier, contraire à la note ; corrigé pour n'apparaître qu'après un fichier valide. 6 tests mis à jour, 2 ajoutés en conséquence.
+Tests : 717 tests, 4 échecs attendus, puis 719 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : faux PDF (texte renommé) refusé directement sans jamais afficher « Envoi en cours… » ; vrai PDF déposé avec succès, état passé à « Signée ».
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-deposer.test.js
+Build refait : oui
+Commit : 3f2a798 (tests) et 7763fed (code)
+Reste à faire : 9.1c, « Voir la convention signée » (le lien « Remplacer » fonctionne déjà, mais il n'y a aucun moyen de revoir le PDF signé) ; décision en attente : renommer ou non le fichier signé au dépôt (il garde aujourd'hui son nom d'origine, qui peut contenir un nom de personne).
