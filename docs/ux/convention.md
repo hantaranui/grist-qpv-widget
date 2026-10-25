@@ -420,6 +420,8 @@ Règles de fabrication du nom, dans cet ordre :
 
 Exemples (clubs fictifs) : « Club Sportif d'Exemple », Du stade vers l'emploi, année 2026 → `Convention-Stade-emploi-Club-Sportif-d-Exemple-2026.pdf` ; « Étoile & Cœur FC », Match des métiers, année 2026 → `Convention-Match-metiers-Etoile-Coeur-FC-2026.pdf` ; « Association Exemple », Parcours de remobilisation → `Convention-Remobilisation-Association-Exemple.pdf`.
 
+**Fichier signé (mis à jour le 2026-10-26, décision de Hanta)** : le fichier signé déposé reçoit un nom fabriqué avec **les mêmes règles de nettoyage** que celles ci-dessus (accents, `œ`/`æ`, un seul tiret, 40 caractères au plus pour le club, jamais de nom de personne) : `Convention-signee-[dispositif]-[club]-[année].pdf`, et `Convention-signee-[dispositif]-[club].pdf` sans année. Voir le §4.1 k) ; les règles ne sont pas recopiées, ce §3 fait foi.
+
 Limite connue : deux actions du même club, du même dispositif et de la même année donnent le même nom. Ce n'est pas bloquant (le fichier est rattaché à la ligne de l'action, une convention par action). Le nom donné au fichier envoyé ne contrôle pas le titre de l'onglet du navigateur, qui reste celui de l'adresse `blob:`.
 
 ## 4. Écran C : dépôt et remplacement du fichier signé (sans fenêtre, maquette C1 et C2)
@@ -429,6 +431,8 @@ Il n'y a plus de petite fenêtre de dépôt ni de vérification (pas de case à 
 **Choix du fichier (C1)** : le bouton « Déposer la convention signée » (état Générée) ou le lien « Remplacer le fichier signé » (état Signée) déclenche directement un champ fichier caché, `accept="application/pdf,.pdf"`, comme le bouton « Ajouter un logo » de la fiche du club. Ces deux commandes n'ouvrent pas de fenêtre : pas d'`aria-haspopup`. Le design system n'a pas de composant de dépôt de fichier : voir §8.
 
 **Enregistrement immédiat** : dès qu'un PDF est choisi, il est enregistré, en remplaçant l'ancien fichier signé s'il y en a un (sans historique). La date de dépôt est mise à jour et le bloc passe (ou reste) à l'état « Signée ».
+
+**Nom du fichier enregistré (mis à jour le 2026-10-26, décision de Hanta)** : le fichier signé est **renommé au moment du dépôt et du remplacement**. Il est enregistré sous le nom `Convention-signee-[dispositif]-[club]-[année].pdf`, sans l'année pour un modèle qui n'en a pas (Parcours de remobilisation). Les règles de fabrication sont celles du nom du PDF généré (§3, « Nom du fichier PDF »). Détail au §4.1 k).
 
 **Fichier refusé** (dépôt et remplacement, mêmes règles). Le fichier est refusé, un message le dit dans le bloc (A5) et rien n'est enregistré, dans l'un de ces cas :
 - il est vide (0 octet) ;
@@ -521,7 +525,7 @@ Rien ne se passe : **pas de message, pas de changement de texte, pas de verrou, 
 
 **g) Écriture : une seule opération pour le fichier et la date (recommandation : oui)**
 
-Même décision que D-S7-1, pour la même raison : pas d'état intermédiaire « fichier signé présent, date absente ». Ordre : (1) contrôles ; (2) envoi du fichier (jeton d'écriture, `credentials 'omit'`, `X-Requested-With`, §8 de CLAUDE.md) qui donne l'identifiant de la pièce jointe ; (3) **un seul `PATCH` REST** qui écrit `PDF_signe` (liste d'un fichier) **et** `Date_depot` ensemble, avec le même jeton que l'envoi. Rien n'est écrit avant l'étape 3. L'état « Générée » est conservé tant que l'étape 3 n'a pas réussi, et, au remplacement, l'ancien fichier signé et son ancienne date restent en place tant que l'étape 3 n'a pas réussi. Conséquences pour dev-backend, identiques au §12.7 :
+Même décision que D-S7-1, pour la même raison : pas d'état intermédiaire « fichier signé présent, date absente ». Ordre : (1) contrôles ; (2) envoi du fichier, sous le nom fabriqué en k) (jeton d'écriture, `credentials 'omit'`, `X-Requested-With`, §8 de CLAUDE.md) qui donne l'identifiant de la pièce jointe ; (3) **un seul `PATCH` REST** qui écrit `PDF_signe` (liste d'un fichier) **et** `Date_depot` ensemble, avec le même jeton que l'envoi. Rien n'est écrit avant l'étape 3. L'état « Générée » est conservé tant que l'étape 3 n'a pas réussi, et, au remplacement, l'ancien fichier signé et son ancienne date restent en place tant que l'étape 3 n'a pas réussi. Conséquences pour dev-backend, identiques au §12.7 :
 1. **Jamais** de vidage préalable de `PDF_signe` (« effacer, puis envoyer, puis remplir »).
 2. `PDF_signe` reçoit **une valeur de remplacement** (la liste d'un seul fichier), pas un ajout : la cellule ne contient jamais deux fichiers.
 3. `PDF_genere` et `Date_generation` ne sont **jamais touchés** par le dépôt.
@@ -539,7 +543,21 @@ Oui : sur téléphone, le bouton « Déposer la convention signée » et le lien
 
 **j) Ce qui est à tester en plus (pour le testeur)**
 
-Annuler le sélecteur : rien ne change, aucun verrou. Choisir deux fois le même fichier de suite : le second choix déclenche bien un envoi (`input.value` remis à vide). Second clic ou Entrée/Espace pendant « Envoi en cours… » : rien ne démarre, le sélecteur ne s'ouvre pas. « Re-générer » grisé pendant l'envoi. Fichier de 0 octet nommé `.txt` : message « vide ». Fichier trop gros ne portant pas l'extension `.pdf` : message « 10 Mo ». Fichier `.pdf` dont le contenu ne commence pas par `%PDF-` : message « ce n'est pas un PDF », rien d'écrit. Réussite : une seule opération écrit `PDF_signe` et `Date_depot` ; `PDF_genere` et `Date_generation` inchangés ; la cellule `PDF_signe` ne contient qu'un fichier après un remplacement ; en cas d'échec au remplacement, l'ancien fichier signé s'ouvre toujours avec « Voir la convention signée » ; focus selon e). Aucun jeton dans la console.
+Annuler le sélecteur : rien ne change, aucun verrou. Choisir deux fois le même fichier de suite : le second choix déclenche bien un envoi (`input.value` remis à vide). Second clic ou Entrée/Espace pendant « Envoi en cours… » : rien ne démarre, le sélecteur ne s'ouvre pas. « Re-générer » grisé pendant l'envoi. Fichier de 0 octet nommé `.txt` : message « vide ». Fichier trop gros ne portant pas l'extension `.pdf` : message « 10 Mo ». Fichier `.pdf` dont le contenu ne commence pas par `%PDF-` : message « ce n'est pas un PDF », rien d'écrit. Réussite : une seule opération écrit `PDF_signe` et `Date_depot` ; `PDF_genere` et `Date_generation` inchangés ; la cellule `PDF_signe` ne contient qu'un fichier après un remplacement ; en cas d'échec au remplacement, l'ancien fichier signé s'ouvre toujours avec « Voir la convention signée » ; focus selon e). Aucun jeton dans la console. Nom du fichier enregistré (k) : pour chaque modèle, le nom correspond au format (avec ou sans année) ; un nom de fichier choisi contenant un nom de personne ressort sans lui ; un nom de club à accents, `&` ou plus de 40 caractères donne le même résultat que pour le PDF généré ; un fichier refusé n'est jamais renommé ni envoyé.
+
+**k) Nom du fichier enregistré (décision de Hanta du 2026-10-26)**
+
+Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt comme au remplacement. Le nom d'origine du fichier n'est jamais repris (il peut contenir un nom de personne) et n'est affiché nulle part.
+
+- **Format** : `Convention-signee-[dispositif]-[club]-[année].pdf`.
+- **Sans année** (modèle Parcours de remobilisation, qui n'a pas d'année) : `Convention-signee-[dispositif]-[club].pdf`. On n'invente pas d'année, comme au §3.
+- **Règles de nettoyage : exactement celles du nom du PDF généré (D-S7-3), décrites au §3, « Nom du fichier PDF »** : accents retirés ; `œ` devient `oe` et `æ` devient `ae` ; tout caractère qui n'est ni une lettre ni un chiffre est remplacé par un seul tiret (une suite de tels caractères donne un seul tiret) ; tirets de début et de fin retirés ; 40 caractères au plus pour le nom du club ; club vide après nettoyage : le mot `club` ; [dispositif] en forme courte (Stade-emploi, Match-metiers, Remobilisation) ; jamais de nom de personne (signataire, représentant), ni de nom d'agence, ni d'identifiant d'action. Seule différence avec le PDF généré : le mot `signee` après `Convention-`. Les règles ne sont pas copiées ici : si elles changent au §3, elles changent aussi pour le fichier signé.
+- **Source des valeurs** : dispositif et club de l'action ; année = celle enregistrée avec la convention (celle de la génération). Le nom de la colonne n'est pas vérifié ici : dev-backend la lit dans le modèle de données. [À CONFIRMER, par prudence : si l'année enregistrée était absente pour un modèle qui en a une, ce cas ne devrait pas arriver, la génération l'exigeant ; le comportement dans ce cas n'est pas décidé.]
+- **Un seul code pour les deux noms** : recommandation à dev-backend de réutiliser la fonction qui fabrique le nom du PDF généré (en lui ajoutant le mot `signee`), pour que les deux noms ne divergent jamais.
+- **Quand** : après les contrôles du fichier (§4, qui portent sur le nom et le contenu d'origine), au moment de l'envoi. Un fichier refusé n'est jamais renommé ni envoyé.
+- **Aucun message, aucun champ de saisie, aucun changement visible** pour l'agent : le renommage est silencieux. « Voir la convention signée » ouvre le fichier comme avant.
+- **Remplacement** : le nouveau fichier reçoit le nom calculé de la même façon ; il peut donc porter le même nom que l'ancien, sans conséquence (deux pièces jointes distinctes dans Grist, voir h).
+- Exemples (clubs fictifs, comme au §3) : « Club Sportif d'Exemple », Du stade vers l'emploi, 2026 → `Convention-signee-Stade-emploi-Club-Sportif-d-Exemple-2026.pdf` ; « Étoile & Cœur FC », Match des métiers, 2026 → `Convention-signee-Match-metiers-Etoile-Coeur-FC-2026.pdf` ; « Association Exemple », Parcours de remobilisation → `Convention-signee-Remobilisation-Association-Exemple.pdf`.
 
 ## 5. Textes affichés (tous, pour dev-interface)
 
