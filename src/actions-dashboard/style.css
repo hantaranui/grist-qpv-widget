@@ -835,3 +835,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    (role="status") reste dans la page ; vide, elle ne prend pas de place. */
 .convention-contenu { display: contents; }
 .convention-alerte:empty { margin-bottom: -16px; }
+/* Dépôt du fichier signé : la zone d'attente (role="status") reste dans la page, vide, sans
+   prendre de place ; le champ fichier est caché (comme .logo-input du widget clubs). */
+.convention-depot-attente:empty { margin-bottom: -16px; }
+.convention-file { display: none; }

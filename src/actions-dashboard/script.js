@@ -2158,7 +2158,7 @@ function conventionBlocHtml(actionId, donnees) {
   // boutons), que conventionRafraichirBloc peut refaire seul apres une generation.
   return `<section class="edit-card" id="conventionBloc">
           <div class="section-head"><span>Convention</span></div>
-          <div class="edit-fields convention-fields"><div class="convention-alerte" id="conventionAlerte" role="status"></div><div class="convention-contenu" id="conventionBlocContenu">${conventionBlocContenuHtml(actionId, donnees)}</div></div>
+          <div class="edit-fields convention-fields"><div class="convention-alerte" id="conventionAlerte" role="status"></div><div class="convention-depot-attente" id="conventionDepotAttente" role="status"></div><div class="convention-contenu" id="conventionBlocContenu">${conventionBlocContenuHtml(actionId, donnees)}</div></div>
         </section>`;
 }
 
@@ -2170,6 +2170,7 @@ function conventionBlocContenuHtml(actionId, donnees) {
   const etat = conventionEtat(actionId, donnees).etat;
   const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
     : etat === CONVENTION_ETATS.generee ? conventionGenereeHtml(actionId, donnees)
+    : etat === CONVENTION_ETATS.signee ? conventionRemplacerHtml()
     : '';
   return `${phrases}${boutons}`;
 }
@@ -2199,10 +2200,13 @@ function conventionGenereeHtml(actionId, donnees) {
   const message = blocage
     ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
     : '';
-  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"' : ' aria-haspopup="dialog"';
+  // Pendant l'envoi du fichier signé, « Re-générer » est grisé sans message ni aria-haspopup (S9-5).
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"'
+    : conventionDepotEnCours ? ' aria-disabled="true"'
+    : ' aria-haspopup="dialog"';
   const regenerer = `<button class="btn btn-secondary" type="button" id="conventionRegenerer"${attributs}><span class="btn-content">Re-générer</span></button>`;
   return `<div id="conventionBlocage" role="status">${message}</div>
-            ${conventionVoirHtml(regenerer)}`;
+            ${conventionVoirHtml(regenerer + conventionDeposerHtml())}`;
 }
 
 // Vrai quand la fenetre s'ouvre pour une re-generation : la ligne Conventions de l'action
@@ -2427,6 +2431,7 @@ function bindConvention(actionId) {
   // « Voir la convention » n'existe qu'a l'etat « Generee ».
   const voir = document.getElementById('conventionVoir');
   if (voir) voir.addEventListener('click', () => conventionVoir(actionId));
+  bindConventionDepot(actionId);
 }
 
 function openConvention(actionId) {
@@ -3398,4 +3403,106 @@ async function conventionVoir(actionId) {
     conventionOuvertureEnCours = false;
     conventionVoirAttente(false);
   }
+}
+
+// ---- Convention : dépôt et remplacement du fichier signé (tâche 9.1a : commandes et sélecteur) ----
+// Cette tâche pose seulement les deux commandes, le champ fichier caché (dans index.html) et le
+// verrou pendant l'envoi. Le contrôle du fichier, l'envoi et l'écriture dans Grist viennent avec
+// la tâche 9.1b, par conventionDeposerFichier (ci-dessous).
+const CONVENTION_TEXTE_DEPOSER = 'Déposer la convention signée';
+const CONVENTION_TEXTE_REMPLACER = 'Remplacer le fichier signé';
+const CONVENTION_TEXTE_ENVOI = 'Envoi en cours…';
+const CONVENTION_ATTENTE_DEPOT = 'Envoi de la convention signée en cours. Cela peut prendre quelques secondes.';
+
+// Vrai pendant le dépôt : les deux commandes et « Re-générer » ignorent alors les clics.
+// Posé avant la première opération asynchrone, levé à la fin de la tentative.
+let conventionDepotEnCours = false;
+// Id de la commande qui a ouvert le sélecteur (« conventionDeposer » ou « conventionRemplacer »).
+let conventionDepotCommande = '';
+
+// Une commande est verrouillée seulement pendant le dépôt, et seulement si c'est elle qui l'a lancé.
+// Le bloc peut être refait pendant l'envoi : texte et aria-disabled sont alors reposés d'après le verrou.
+function conventionDepotCommandeHtml(id, classe, libelle) {
+  const verrouille = conventionDepotEnCours && conventionDepotCommande === id;
+  return `<button class="btn ${classe}" type="button" id="${id}"${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(verrouille ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
+}
+
+// État « Générée » : bouton secondaire, dernier de la rangée. Pas d'aria-haspopup : aucune fenêtre.
+function conventionDeposerHtml() {
+  return conventionDepotCommandeHtml('conventionDeposer', 'btn-secondary', CONVENTION_TEXTE_DEPOSER);
+}
+
+// État « Signée » : lien (btn-link), seul sur sa ligne dans son propre div.
+function conventionRemplacerHtml() {
+  return `<div>${conventionDepotCommandeHtml('conventionRemplacer', 'btn-link', CONVENTION_TEXTE_REMPLACER)}</div>`;
+}
+
+// Appelée à chaque fois que le bloc est (re)construit. Le champ fichier reste dans la page : on lui
+// donne son gestionnaire par onchange (une affectation), pour ne jamais l'écouter deux fois.
+function bindConventionDepot(actionId) {
+  const champ = document.getElementById('conventionFichier');
+  ['conventionDeposer', 'conventionRemplacer'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
+    // Le clic ouvre seulement le sélecteur : aucun verrou, aucun message, aucun changement de texte.
+    bouton.addEventListener('click', () => {
+      if (conventionDepotEnCours || bouton.getAttribute('aria-disabled') === 'true' || !champ) return;
+      conventionDepotCommande = id;
+      champ.click();
+    });
+  });
+  if (champ) champ.onchange = () => conventionFichierChoisi(actionId, champ);
+}
+
+// Tout part de l'événement change, jamais du clic. Annuler le sélecteur ne donne aucun fichier :
+// on sort sans verrou, sans message et sans toucher à l'alerte déjà affichée.
+async function conventionFichierChoisi(actionId, champ) {
+  const fichier = champ.files && champ.files[0];
+  // Vidé tout de suite pour que le même fichier puisse être choisi une seconde fois.
+  champ.value = '';
+  if (!fichier || conventionDepotEnCours) return;
+  conventionDepotEnCours = true;
+  conventionAlerteVoirEffacer();
+  conventionDepotVerrouiller(true, actionId);
+  try {
+    await conventionDeposerFichier(actionId, fichier);
+  } finally {
+    conventionDepotEnCours = false;
+    conventionDepotVerrouiller(false, actionId);
+  }
+}
+
+// Verrouille ou déverrouille : la commande utilisée (texte « Envoi en cours… »), « Re-générer »,
+// et la zone d'attente annoncée aux lecteurs d'écran. aria-disabled, jamais disabled : le focus
+// reste en place. « Voir » n'est pas touché (lecture seule, décision S9-5).
+function conventionDepotVerrouiller(verrou, actionId) {
+  const commande = document.getElementById(conventionDepotCommande);
+  if (commande) {
+    const libelle = commande.querySelector('.btn-content') || commande;
+    if (verrou) commande.setAttribute('aria-disabled', 'true');
+    else commande.removeAttribute('aria-disabled');
+    libelle.textContent = verrou ? CONVENTION_TEXTE_ENVOI : (conventionDepotCommande === 'conventionRemplacer' ? CONVENTION_TEXTE_REMPLACER : CONVENTION_TEXTE_DEPOSER);
+  }
+  const regenerer = document.getElementById('conventionRegenerer');
+  if (regenerer) {
+    if (verrou) {
+      regenerer.setAttribute('aria-disabled', 'true');
+      regenerer.removeAttribute('aria-haspopup');
+    } else if (!conventionBlocage(actionId, state)) {
+      // Pas de blocage de génération : « Re-générer » redevient normal. Sinon il reste grisé.
+      regenerer.removeAttribute('aria-disabled');
+      regenerer.setAttribute('aria-haspopup', 'dialog');
+    }
+  }
+  const attente = document.getElementById('conventionDepotAttente');
+  if (attente) attente.innerHTML = verrou ? `<p>${escapeHtml(CONVENTION_ATTENTE_DEPOT)}</p>` : '';
+  requestResize();
+}
+
+// POINT D'APPEL DE LA TÂCHE 9.1b : reçoit le fichier choisi et ne fait encore rien.
+// 9.1b y mettra, dans l'ordre : contrôle du fichier (vide, taille, extension, type, « %PDF- »),
+// envoi, écriture de PDF_signe et Date_depot, messages de réussite ou d'échec. La fonction doit
+// attendre (await) la fin de l'envoi : le verrou n'est levé qu'à son retour.
+async function conventionDeposerFichier(actionId, fichier) {
+  // Rien pour l'instant (9.1a).
 }
