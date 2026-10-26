@@ -3091,7 +3091,7 @@ function conventionBlocContenuHtml(actionId, donnees) {
   const etat = conventionEtat(actionId, donnees).etat;
   const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
     : etat === CONVENTION_ETATS.generee ? conventionGenereeHtml(actionId, donnees)
-    : etat === CONVENTION_ETATS.signee ? conventionRemplacerHtml()
+    : etat === CONVENTION_ETATS.signee ? conventionSigneeHtml()
     : '';
   return `${phrases}${boutons}`;
 }
@@ -3352,6 +3352,9 @@ function bindConvention(actionId) {
   // « Voir la convention » n'existe qu'a l'etat « Generee ».
   const voir = document.getElementById('conventionVoir');
   if (voir) voir.addEventListener('click', () => conventionVoir(actionId));
+  // « Voir la convention signée » n'existe qu'a l'etat « Signee ».
+  const voirSignee = document.getElementById('conventionVoirSignee');
+  if (voirSignee) voirSignee.addEventListener('click', () => conventionVoirSigneeClic(actionId));
   bindConventionDepot(actionId);
 }
 
@@ -3791,6 +3794,20 @@ function conventionNomNettoye(texte, longueurMax) {
 // Nom du fichier : Convention-[dispositif]-[club]-[annee].pdf, sans « -[annee] » quand le
 // modele n'a pas d'annee. Jamais de nom de personne. Fonction pure.
 function conventionNomFichier(actionId, valeurs, donnees) {
+  return conventionNomFichierAvec(['Convention'], actionId, valeurs, donnees);
+}
+
+// Nom du fichier signe : Convention-signee-[dispositif]-[club]-[annee].pdf (decision du
+// 2026-10-26). Memes regles de nettoyage que le PDF genere, car meme code. L'annee est celle
+// enregistree avec la convention (colonne Annee). Le nom d'origine du fichier n'est jamais repris.
+function conventionNomFichierSigne(actionId, donnees) {
+  const {convention} = conventionEtat(actionId, donnees);
+  const annee = convention && convention.Annee ? String(convention.Annee) : '';
+  return conventionNomFichierAvec(['Convention', 'signee'], actionId, {annee}, donnees);
+}
+
+// Code commun aux deux noms : `debut` donne les mots places avant le dispositif.
+function conventionNomFichierAvec(debut, actionId, valeurs, donnees) {
   const raw = (donnees && donnees.raw) || {};
   const action = conventionLigne(raw.Actions, actionId) || {};
   const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
@@ -3799,7 +3816,7 @@ function conventionNomFichier(actionId, valeurs, donnees) {
   const partDispositif = conventionNomNettoye(court || nomDispositif) || conventionNomNettoye(nomDispositif);
   const partClub = conventionNomNettoye(conventionInfos(actionId, donnees).club.nom, CONVENTION_NOM_CLUB_MAX) || 'club';
   const annee = conventionModeleInfos(actionId, donnees).avecAnnee ? String(valeurs.annee ?? '').trim() : '';
-  return ['Convention', partDispositif, partClub, annee].filter(Boolean).join('-') + '.pdf';
+  return [...debut, partDispositif, partClub, annee].filter(Boolean).join('-') + '.pdf';
 }
 
 // chargerPdfmake avec un delai maximum : au-dela, meme erreur que pdfmake-non-charge.
@@ -4328,6 +4345,112 @@ async function conventionVoir(actionId) {
   }
 }
 
+// Telecharge le fichier signe (colonne PDF_signe) : meme methode que conventionTelechargerPdf
+// (jeton d'ecriture, credentials 'omit', X-Requested-With), qu'elle reutilise. Renvoie le Blob
+// PDF. Echoue sans detail s'il n'y a pas de fichier signe. Aucun jeton dans les erreurs.
+async function conventionTelechargerPdfSigne(actionId) {
+  const {convention} = conventionEtat(actionId, state);
+  const pieceJointe = conventionPieceJointeId(convention && convention.PDF_signe);
+  if (!pieceJointe) throw new Error('pas de fichier signe');
+  return conventionTelechargerPdf(pieceJointe);
+}
+
+// POINT D'APPEL pour « Voir la convention signee » (le bouton et l'ecran viennent avec la
+// tache de dev-interface). Meme deroulement que conventionVoir : l'onglet est ouvert tout de
+// suite pendant le clic, puis recoit l'adresse blob:, liberee apres un delai. Ne touche ni au
+// bouton ni a l'ecran sauf l'alerte d'echec commune. Renvoie true si le fichier est ouvert,
+// false sinon (l'appelant gere le texte du bouton et le verrou).
+async function conventionVoirSignee(actionId) {
+  let onglet = null;
+  try {
+    onglet = window.open('', '_blank');
+  } catch (erreur) {
+    onglet = null;
+  }
+  let adresse = '';
+  let reussi = false;
+  try {
+    if (!onglet) throw new Error('onglet bloque');
+    const pdf = await conventionAvecDelai(
+      conventionTelechargerPdfSigne(actionId),
+      CONVENTION_TELECHARGEMENT_DELAI_MS,
+      () => new Error('delai')
+    );
+    adresse = URL.createObjectURL(pdf);
+    try { onglet.opener = null; } catch (erreur) { /* sans effet : on continue */ }
+    onglet.location.href = adresse;
+    reussi = true;
+    setTimeout(() => URL.revokeObjectURL(adresse), CONVENTION_VOIR_LIBERATION_MS);
+  } catch (erreur) {
+    if (adresse && !reussi) URL.revokeObjectURL(adresse);
+    if (onglet) {
+      try { onglet.close(); } catch (autre) { /* deja ferme */ }
+    }
+    conventionAlerteVoirEchec();
+  }
+  return reussi;
+}
+
+// ---- Convention : bouton « Voir la convention signée » (tâche 9.1c) ----
+// Meme structure et meme comportement que « Voir la convention » (note UX, §2 et §4.1) : texte
+// « Ouverture en cours… » et aria-disabled (jamais disabled) pendant l'ouverture, clics ignores,
+// focus qui reste sur le bouton. Il n'est jamais verrouille par un depot ou un remplacement
+// (decision S9-5) : conventionDepotVerrouiller ne le touche pas.
+const CONVENTION_TEXTE_VOIR_SIGNEE = 'Voir la convention signée';
+
+// Vrai pendant l'ouverture : les clics sont alors ignores. Distinct de celui de « Voir la
+// convention » : les deux boutons n'existent jamais en meme temps (etats « Generee » et « Signee »).
+let conventionOuvertureSigneeEnCours = false;
+
+function conventionVoirSigneeLibelleHtml() {
+  return `${escapeHtml(CONVENTION_TEXTE_VOIR_SIGNEE)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
+}
+
+// Etat « Signee » : le bouton sur sa rangee, puis (conventionSigneeHtml) le lien « Remplacer ».
+// Si le bloc est refait pendant l'ouverture, texte et aria-disabled sont reposes d'apres le verrou.
+function conventionVoirSigneeHtml() {
+  const attente = conventionOuvertureSigneeEnCours;
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button></div>`;
+}
+
+// Contenu des boutons de l'etat « Signee » : « Voir la convention signee », puis en dessous
+// le lien « Remplacer le fichier signe » (qui a deja son propre div).
+function conventionSigneeHtml() {
+  return conventionVoirSigneeHtml() + conventionRemplacerHtml();
+}
+
+// Texte du bouton pendant (ou apres) l'ouverture : le texte cache est retire pendant l'attente
+// et revient ensuite.
+function conventionVoirSigneeAttente(attente) {
+  const bouton = document.getElementById('conventionVoirSignee');
+  if (!bouton) return;
+  const libelle = bouton.querySelector('.btn-content') || bouton;
+  if (attente) {
+    bouton.setAttribute('aria-disabled', 'true');
+    libelle.textContent = CONVENTION_TEXTE_OUVERTURE;
+  } else {
+    bouton.removeAttribute('aria-disabled');
+    libelle.innerHTML = conventionVoirSigneeLibelleHtml();
+  }
+}
+
+// Clic sur « Voir la convention signee ». conventionVoirSignee ouvre l'onglet tout de suite,
+// avant sa premiere attente : le clic reste donc compris comme un geste de l'utilisateur. Elle
+// affiche elle-meme l'alerte d'echec ; ici, on gere seulement le verrou et le texte du bouton.
+async function conventionVoirSigneeClic(actionId) {
+  const bouton = document.getElementById('conventionVoirSignee');
+  if (!bouton || conventionOuvertureSigneeEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
+  conventionAlerteVoirEffacer();
+  conventionOuvertureSigneeEnCours = true;
+  conventionVoirSigneeAttente(true);
+  try {
+    await conventionVoirSignee(actionId);
+  } finally {
+    conventionOuvertureSigneeEnCours = false;
+    conventionVoirSigneeAttente(false);
+  }
+}
+
 // ---- Convention : dépôt et remplacement du fichier signé (tâche 9.1a : commandes et sélecteur) ----
 // Cette tâche pose seulement les deux commandes, le champ fichier caché (dans index.html) et le
 // verrou pendant l'envoi. Le contrôle du fichier, l'envoi et l'écriture dans Grist viennent avec
@@ -4542,7 +4665,7 @@ async function conventionDeposerFichier(actionId, fichier) {
     // Un seul jeton (15 s dans conventionDemanderAcces), réutilisé pour l'envoi et l'écriture.
     const acces = await conventionDemanderAcces();
     const pieceJointe = await conventionAvecDelai(
-      conventionEnvoyerPdf(acces, fichier, fichier.name),
+      conventionEnvoyerPdf(acces, fichier, conventionNomFichierSigne(actionId, state)),
       CONVENTION_ENVOI_DELAI_MS,
       () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
     );
