@@ -293,6 +293,49 @@ test("poids : un PNG valide de 5 Mo pile est accepté", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 2 bis. Dimensions maximales (4000 px) et en-tête PNG (IHDR)
+// ---------------------------------------------------------------------------
+
+// Échoue si un PNG (en-tête correct) de plus de 4000 px de large ou de haut est accepté, ou si la
+// génération est bloquée au lieu de continuer sans ce logo (comme un logo absent ou illisible).
+for (const [nom, fichier] of [
+  ["largeur 4001 px", png(4001, 500)],
+  ["hauteur 4001 px", png(500, 4001)],
+]) {
+  test(`dimensions : PNG de ${nom} → logo refusé, génération sans lui`, async () => {
+    assert.equal(image(widgetPur(), fichier), null, "refusé par conventionImageLogo");
+
+    const ctx = await preparer({partenaire: null, fichiers: {[ID_LOGO]: fichier}});
+    const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+    assert.deepEqual(ordinaire(resultat.logosManquants), ["Logo"]);
+    assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
+    assert.equal(Object.hasOwn(ctx.docs[0], "header"), false, "aucun logo dans le document");
+  });
+}
+
+// Échoue si un PNG dont les octets 12 à 15 ne valent pas "IHDR" est lu quand même, ou si la
+// génération est bloquée au lieu de continuer sans ce logo.
+test("dimensions : PNG dont les octets 12 à 15 ne sont pas IHDR → illisible, génération sans logo", async () => {
+  const fichier = png(100, 40);
+  fichier.set([0x49, 0x44, 0x41, 0x54], 12); // "IDAT" à la place de "IHDR"
+  assert.equal(image(widgetPur(), fichier), null, "refusé par conventionImageLogo");
+
+  const ctx = await preparer({partenaire: null, fichiers: {[ID_LOGO]: fichier}});
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.deepEqual(ordinaire(resultat.logosManquants), ["Logo"]);
+  assert.equal(Object.hasOwn(ctx.docs[0], "header"), false, "aucun logo dans le document");
+});
+
+// Échoue si la limite est appliquée trop tôt : un PNG de 4000 × 4000 px pile doit encore passer.
+test("dimensions : un PNG de 4000 × 4000 px pile est accepté", () => {
+  const resultat = image(widgetPur(), png(4000, 4000));
+  assert.ok(resultat, "4000 px pile est accepté");
+  assert.ok(resultat.image.startsWith("data:image/png;base64,"));
+});
+
+// ---------------------------------------------------------------------------
 // 3. Taille maximale et proportions, jamais agrandi
 // ---------------------------------------------------------------------------
 
