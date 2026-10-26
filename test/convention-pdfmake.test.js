@@ -419,6 +419,32 @@ test("conventionNomFichier : un modèle sans année donne Convention-[dispositif
   assert.equal(w.conventionNomFichier(1, {...VALEURS_NOM, annee: null}, donnees), "Convention-Remobilisation-Club-Exemple.pdf");
 });
 
+// Echoue si une annee saisie qui n'a pas exactement quatre chiffres (« abc », « 12 », « 20.5 »,
+// « 20311 ») est recopiee dans le nom du PDF genere, au lieu d'etre omise comme pour un modele sans annee.
+test("conventionNomFichier : une année invalide est omise du nom, jamais recopiée", async () => {
+  const w = await widgetDeNoms();
+  const sansAnnee = w.conventionNomFichier(1, VALEURS_NOM, donneesNom({avecAnnee: false}));
+  assert.equal(sansAnnee, "Convention-Match-metiers-Club-Exemple.pdf");
+  for (const annee of ["abc", "12", "20.5", "20311", "20 31"]) {
+    assert.equal(w.conventionNomFichier(1, {...VALEURS_NOM, annee}, donneesNom()), sansAnnee, `année « ${annee} »`);
+  }
+});
+
+// Echoue si le nom du fichier signe recopie une valeur invalide de la colonne Conventions.Annee
+// (« abc », « 12 », « 20.5 »), ou perd une annee valide a quatre chiffres.
+test("conventionNomFichierSigne : une année invalide dans Annee est omise, une année valide est gardée", async () => {
+  const w = await widgetDeNoms();
+  const donnees = annee => {
+    const d = donneesNom();
+    d.raw.Conventions = [{id: 20, Action: 1, Modele: 10, PDF_genere: ["L", 1], PDF_signe: ["L", 2], Annee: annee}];
+    return d;
+  };
+  assert.equal(w.conventionNomFichierSigne(1, donnees(2031)), "Convention-signee-Match-metiers-Club-Exemple-2031.pdf");
+  for (const annee of ["abc", "12", "20.5"]) {
+    assert.equal(w.conventionNomFichierSigne(1, donnees(annee)), "Convention-signee-Match-metiers-Club-Exemple.pdf", `année « ${annee} »`);
+  }
+});
+
 // Echoue si le nom du club depasse 40 caracteres, ou si la coupe laisse un tiret a la fin.
 test("conventionNomFichier : le nom du club est limité à 40 caractères, sans tiret final", async () => {
   const w = await widgetDeNoms();
