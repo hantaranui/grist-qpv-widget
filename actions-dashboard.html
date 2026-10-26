@@ -3815,7 +3815,10 @@ function conventionNomFichierAvec(debut, actionId, valeurs, donnees) {
   const court = CONVENTION_NOMS_COURTS[normalizeText(nomDispositif.replace(/[’‘]/g, "'"))];
   const partDispositif = conventionNomNettoye(court || nomDispositif) || conventionNomNettoye(nomDispositif);
   const partClub = conventionNomNettoye(conventionInfos(actionId, donnees).club.nom, CONVENTION_NOM_CLUB_MAX) || 'club';
-  const annee = conventionModeleInfos(actionId, donnees).avecAnnee ? String(valeurs.annee ?? '').trim() : '';
+  // L'annee n'entre dans le nom que si le modele en demande une ET qu'elle a quatre chiffres
+  // (meme regle que conventionProblemes). Vide, absente ou invalide : omise, jamais inventee.
+  const anneeBrute = conventionModeleInfos(actionId, donnees).avecAnnee ? String(valeurs.annee ?? '').trim() : '';
+  const annee = /^[1-9]\d{3}$/.test(anneeBrute) ? anneeBrute : '';
   return [...debut, partDispositif, partClub, annee].filter(Boolean).join('-') + '.pdf';
 }
 
