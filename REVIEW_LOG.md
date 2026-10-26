@@ -1152,3 +1152,18 @@ Tests : 719 tests, 4 échecs attendus (état Signée, deux éléments au lieu d'
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-bloc.test.js, test/convention-deposer.test.js, test/convention-voir-signee.test.js (nouveau), test/convention-pdfmake.test.js
 Build refait : oui
 Commit : c79d9d2 et 6374f44 (9.1c) ; 6408060 et 119c34a (correction année invalide)
+
+## Tâche C55 — Audit de sécurité final et corrections (S10, tâche 10.1)
+
+Date : 2026-10-26
+Agents : auditeur-securite (examen), dev-backend (corrections), testeur (tests)
+Prompt : examen de sécurité final de toute la fonctionnalité Convention, avant clôture
+
+Note /5 : sans objet
+Ce qui allait : aucun point bloquant sur l'ensemble de la fonctionnalité (jetons, pdfmake/SRI, logos, contenu du fichier généré, dépôt du fichier signé) ; 2 points mineurs identifiés et corrigés (jeton recopié dans un console.warn hors Convention ligne 194 ; logos sans limite de dimensions pouvant figer l'onglet) ; remarque documentaire importante : les pièces jointes Grist ne sont pas filtrées par table, la vraie protection vient des règles de Conventions/Modeles_convention (à ajouter à CLAUDE.md) ; CLAUDE.md en retard sur les écritures réelles (Conventions, pièces jointes) à mettre à jour en 10.2.
+Ce que j'ai fait corriger : les 2 points mineurs ci-dessus.
+Tests : 729 passés avant correction, puis 733 passés après (4 tests ajoutés pour les logos), 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-logos.test.js
+Build refait : oui
+Commit : a194073 (tests) et 07fbccf (code)
+Reste à faire (10.2) : vérifier les règles d'accès réelles dans DEV7/TEST (Modeles_convention en lecture seule hors propriétaires, ANS/anonyme sans accès) ; mettre à jour CLAUDE.md (écritures sur Conventions, pièces jointes non filtrées par table, jeton d'écriture utilisé aussi pour la lecture par nécessité).
