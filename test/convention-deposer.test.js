@@ -245,9 +245,10 @@ test("« Déposer la convention signée » est le dernier bouton de la rangée, 
 
 // Echoue si le lien « Remplacer le fichier signé » apparait ailleurs qu'a l'etat Signee, manque
 // a l'etat Signee ou y est en double ; s'il perd btn btn-link (il devient un bouton plein), prend
-// btn-secondary, btn-sm ou une icone ; s'il est dans la rangee convention-actions ou partage son
-// <div> avec autre chose ; s'il porte aria-haspopup, aria-disabled ou disabled au repos ; ou si
-// l'etat Signee affiche aussi « Déposer ».
+// btn-secondary, btn-sm ou une icone ; s'il est dans la rangee convention-actions (qui, depuis la
+// 9.1c, ne contient que « Voir la convention signée ») ou partage son <div> avec autre chose ; s'il
+// passe avant « Voir la convention signée » ; s'il porte aria-haspopup, aria-disabled ou disabled au
+// repos ; ou si l'etat Signee affiche aussi « Déposer » ou a un nombre de boutons different de deux.
 test("« Remplacer le fichier signé » n'existe qu'à l'état Signée, en lien (btn-link), seul sur sa ligne dans son propre <div>", () => {
   const w = loadWidget();
   const autres = {
@@ -264,10 +265,14 @@ test("« Remplacer le fichier signé » n'existe qu'à l'état Signée, en lien 
   assert.equal(html.split('id="conventionRemplacer"').length - 1, 1, "un seul « Remplacer » à l'état Signée");
   assert.ok(html.includes('<div><button class="btn btn-link" type="button" id="conventionRemplacer"><span class="btn-content">Remplacer le fichier signé</span></button></div>'),
     "lien btn-link, type button, seul dans son <div>, libellé exact dans btn-content, sans attribut d'accessibilité");
-  assert.ok(!html.includes("convention-actions"), "pas de rangée de boutons : le lien est seul sur sa ligne");
+  // Depuis la 9.1c, l'etat Signee a une rangee convention-actions : elle ne contient que « Voir la convention signée ».
+  assert.deepEqual([...rangee(html).matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]), ["conventionVoirSignee"], "la rangée des boutons ne contient que « Voir la convention signée » (pas « Remplacer »)");
+  assert.ok(html.indexOf('id="conventionVoirSignee"') < html.indexOf('id="conventionRemplacer"'), "« Voir la convention signée » est avant « Remplacer »");
   assert.ok(!html.includes("conventionDeposer"), "pas de « Déposer » à l'état Signée");
-  assert.deepEqual(html.match(/<button\b/g), ["<button"], "un seul bouton à l'état Signée");
-  assert.ok(!/btn-secondary|btn-sm|btn-primary|icon-/.test(html), "ni bouton secondaire ou principal, ni petite taille, ni icône");
+  assert.deepEqual(html.match(/<button\b/g), ["<button", "<button"], "deux boutons à l'état Signée : « Voir la convention signée » et « Remplacer »");
+  const balise = /<button\b[^>]*\sid="conventionRemplacer"[^>]*>/.exec(html)[0];
+  assert.ok(!/btn-secondary|btn-sm|btn-primary|icon-/.test(html.slice(html.indexOf(balise))), "« Remplacer » : ni bouton secondaire ou principal, ni petite taille, ni icône");
+  assert.ok(!/aria-haspopup|aria-disabled|\sdisabled\b/.test(balise), "« Remplacer » : ni aria-haspopup, ni aria-disabled, ni disabled au repos");
 });
 
 // Echoue si la zone d'attente (#conventionDepotAttente, role="status") manque dans l'un des
@@ -690,4 +695,32 @@ test("après un dépôt réussi : « Envoi en cours… » peut rester jusqu'au f
   assert.match(m.element("conventionAlerte").innerHTML, /Convention signée enregistrée\./, "final : l'alerte de réussite reste affichée");
   assert.ok(!m.instantane().contenu.includes(TEXTE_ENVOI), "final : plus d'« Envoi en cours… » dans le bloc refait");
   assert.deepEqual(m.ecritures, [], "aucune écriture réelle (doublures)");
+});
+
+// Tache 9.1c : apres un PREMIER depot reussi, la commande « Déposer » a disparu et le bloc refait
+// montre « Voir la convention signée » : le focus doit arriver sur ce bouton (id conventionVoirSignee),
+// sans repli sur le titre du bloc. Echoue si le bloc refait n'a pas le bouton « Voir la convention
+// signée » (avant « Remplacer ») ; si le dernier focus demande n'est pas sur lui ; si le focus est
+// demande sur autre chose a la fin (« Déposer », « Remplacer ») ; ou si le script cherche encore le
+// titre du bloc (querySelector du repli, tabindex pose sur le titre).
+test("après un premier dépôt réussi : le focus arrive sur « Voir la convention signée », sans repli sur le titre du bloc", async () => {
+  const m = await preparer(GENEREE());
+  const recherches = [];
+  const titre = {tabindex: null, setAttribute(nom, valeur) { if (nom === "tabindex") this.tabindex = valeur; }, focus() { recherches.push("focus-titre"); }};
+  m.w.document.querySelector = (selecteur) => { recherches.push(selecteur); return titre; };
+
+  m.cliquer("conventionDeposer");
+  const termine = m.choisir(FICHIER);
+  await attendre();
+  m.envoi.resoudre();
+  await termine;
+
+  const html = decoder(m.element("conventionBlocContenu").innerHTML);
+  assert.ok(html.includes('id="conventionVoirSignee"'), "le bloc refait contient « Voir la convention signée »");
+  assert.ok(html.indexOf('id="conventionVoirSignee"') < html.indexOf('id="conventionRemplacer"'), "avant « Remplacer »");
+  assert.ok(!html.includes("conventionDeposer"), "« Déposer » a disparu");
+  assert.equal(m.focus[m.focus.length - 1], "conventionVoirSignee", "le dernier focus demandé est sur « Voir la convention signée »");
+  assert.ok(!m.focus.includes("conventionDeposer") && !m.focus.includes("conventionRemplacer"), "le focus n'est demandé ni sur « Déposer » ni sur « Remplacer »");
+  assert.deepEqual(recherches, [], "aucun repli : le titre du bloc n'est ni cherché, ni focalisé");
+  assert.equal(titre.tabindex, null, "aucun tabindex posé sur le titre du bloc");
 });
