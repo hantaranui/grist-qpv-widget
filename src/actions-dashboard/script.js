@@ -190,8 +190,9 @@ async function choicesFromRestApi(tableId, colId) {
 
 function fetchTableColumns(tableId) {
   if (!columnsCache.has(tableId)) {
-    columnsCache.set(tableId, requestTableColumns(tableId).catch(error => {
-      console.warn(`Impossible de lire les colonnes de ${tableId} via l'API REST`, error);
+    columnsCache.set(tableId, requestTableColumns(tableId).catch(() => {
+      // Texte fixe : l'erreur d'un fetch peut contenir l'adresse, donc le jeton de lecture.
+      console.warn(`Impossible de lire les colonnes de ${tableId} via l'API REST.`);
       return [];
     }));
   }
@@ -1895,6 +1896,8 @@ function conventionDimensionsImage(octets) {
   const n = octets.length;
   const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   if (n >= 24 && PNG.every((valeur, i) => octets[i] === valeur)) {
+    // Octets 12 a 15 : le bloc « IHDR » doit suivre la signature, sinon le fichier est illisible.
+    if (String.fromCharCode(octets[12], octets[13], octets[14], octets[15]) !== 'IHDR') return null;
     const lire = debut => ((octets[debut] << 24) | (octets[debut + 1] << 16) | (octets[debut + 2] << 8) | octets[debut + 3]) >>> 0;
     return {type: 'png', largeur: lire(16), hauteur: lire(20)};
   }
@@ -1922,6 +1925,10 @@ function conventionDimensionsImage(octets) {
 // Poids maximum d'un logo (au-dela : traite comme illisible).
 const CONVENTION_LOGO_OCTETS_MAX = 5 * 1024 * 1024;
 
+// Taille maximum annoncee d'un logo, en pixels, pour largeur et hauteur : au-dela, un petit
+// fichier peut figer l'onglet au decodage (traite comme un logo absent).
+const CONVENTION_LOGO_PIXELS_MAX = 4000;
+
 // Transforme les octets d'un fichier en image pour pdfmake : { image (data URL), width, height },
 // ou null si ce n'est pas un PNG ou un JPEG lisible. pdfmake 0.3 accepte les images PNG et JPEG
 // en data URL (https://pdfmake.github.io/docs/0.3/document-definition-object/images/). La taille
@@ -1933,6 +1940,7 @@ function conventionImageLogo(tampon) {
     if (!octets.length || octets.length > CONVENTION_LOGO_OCTETS_MAX) return null;
     const dim = conventionDimensionsImage(octets);
     if (!dim || !(dim.largeur > 0) || !(dim.hauteur > 0)) return null;
+    if (dim.largeur > CONVENTION_LOGO_PIXELS_MAX || dim.hauteur > CONVENTION_LOGO_PIXELS_MAX) return null;
     const boite = CONVENTION_MISE_EN_PAGE.logo;
     const echelle = Math.min(1, boite.largeurMax / dim.largeur, boite.hauteurMax / dim.hauteur);
     let binaire = '';
