@@ -810,3 +810,252 @@ Seuls les cas qui ne font que regarder se rejouent sur de vraies conventions : C
 7. **CONV-89 et CONV-90** : l'interface permet-elle de vider l'agence et le club d'une action ? Sinon, vider la cellule dans la table Actions (même question qu'en R2 pour CONV-17).
 8. **Compte du testeur « National »** : même question qu'en R1, R2 et R4 (vrai profil FT National, ou propriétaire du document ?).
 9. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
+
+---
+
+# Cas de test : Convention, déposer, remplacer et revoir le fichier signé (R6)
+
+**Brouillon écrit par le recetteur. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste. Les cas CONV-01 à CONV-105 (R1, R2, R4 et R5) ci-dessus n'ont pas été modifiés.
+
+- Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » (pas de fenêtre pour le dépôt).
+- Branche : `feature/convention`. Fonction F : déposer et remplacer le fichier signé, et le revoir (fiches C52, C53 et C54 de REVIEW_LOG.md).
+- Référence : `docs/ux/convention.md`, §4, §4.1 et §13 (décisions S9-1 à S9-8). Elle fait foi. Les textes attendus en sont copiés mot pour mot (§4, §5, §4.1 d) et e), S9-4).
+- Le fichier `cas-de-test-convention.tsv` contient les 33 cas de R6 (CONV-106 à CONV-138), à la suite des 105 de R1, R2, R4 et R5 : 138 lignes de cas, 18 colonnes.
+- Les actions de R6 s'appellent ESSAI-CONV-T1 à ESSAI-CONV-T24. **« T » veut dire « S9 »** (le dépôt du fichier signé) : à ne pas confondre avec les actions A (R1), B (R2), R (R4) et S (R5).
+
+## Ce que cette recette couvre et ne couvre pas
+
+- Elle couvre : « Déposer la convention signée » (état Générée) et « Remplacer le fichier signé » (état Signée) ; les cinq contrôles du fichier dans leur ordre ; le nom du fichier enregistré ; l'écriture de `PDF_signe` et `Date_depot` ; l'attente, le verrou et « Re-générer » grisé ; « Voir la convention signée » ; les échecs réseau ; le message de droits refusés ; la persistance ; les droits d'un vrai compte ; le clavier, VoiceOver, le zoom et le mobile.
+- Hors de cette recette : la génération (R4) et la re-génération (R5), jouées avant. L'état Signée n'a jamais de bouton « Re-générer » : c'est CONV-97 (R5).
+- Tout ce qui est écrit pour « Voir la convention » (R4, CONV-68 et 69) s'applique à l'identique à « Voir la convention signée » : CONV-122 en refait le cœur, pas plus.
+
+## Cas volontairement non écrits (non jouables à l'écran)
+
+1. **Type du fichier vide ou différent de `application/pdf`** (contrôle n° 4, décision S9-6) : le navigateur déduit le type de l'extension, on ne peut donc pas fabriquer à l'écran un fichier `.pdf` dont le type est vide ou autre. Ce contrôle n'est vu qu'en code (fiche C53, noms non relus). Point que la note signale elle-même comme **non vérifié sur les navigateurs de l'équipe** : un vrai PDF sans type serait-il refusé à tort ? CONV-106 montre au moins qu'un vrai PDF avec son type passe. À faire vérifier par Hanta.
+2. **« Écriture réussie, mais réponse réseau perdue »** (§4.1 g), point 5) : Grist a écrit `PDF_signe` mais la réponse ne revient pas. Impossible à provoquer de façon fiable. Vérification de repli : le test en code de la relecture de secours (fiche C53), nom non relu. À l'écran, CONV-125 et 126 montrent au moins que le bloc n'est jamais bloqué.
+3. **Envoi réussi, écriture refusée ou perdue** (fichier envoyé mais `PDF_signe` non écrit : le nouveau fichier reste sans rattachement) : impossible sans abîmer les données. CONV-130 peut y mener par construction (le refus vient après l'envoi) : à noter si c'est le cas.
+4. **Bloc refait pendant l'envoi** (rechargement des données de la fiche, §4.1 d)) : pas provocable de façon fiable à l'écran. Couvert en code (fiche C54 : le bouton « Voir » est refait avec son état, noms non relus).
+5. **Nettoyage par Grist des fichiers sans rattachement après plusieurs jours** (S9-8) : non vérifié, comme pour R5 (D-S8-7). Le résultat immédiat (N puis N+1 pièces jointes) est rejoué par CONV-108.
+6. **Nom de club de plus de 40 caractères** (§4.1 k)) : voir [À CONFIRMER] 12.
+
+## Cas qui se jouent dans DEV7, pas sur TEST
+
+- **CONV-108** (compte les pièces jointes du document) : même raison que CONV-100 (R5). L'action ESSAI-CONV-T3 est recréée dans DEV7.
+- **CONV-130** (droits refusés) : il faut un refus d'écriture réel, donc des règles d'accès modifiées temporairement par un propriétaire, et l'action ESSAI-CONV-T19 recréée dans DEV7. **Après le cas : remettre les règles d'accès exactement comme elles étaient.**
+
+## Fichiers d'essai à préparer avant de jouer
+
+Fictifs, sans donnée de personne. Un « vrai PDF » est un PDF d'une page qui s'ouvre normalement. À ranger dans un dossier à part sur l'ordinateur du testeur (jamais dans le dépôt). **Les commandes ci-dessous sont proposées, pas essayées** (le recetteur n'en lance aucune, voir [À CONFIRMER] 3) : à lancer par la personne qui teste, puis à contrôler avec `ls -l` (taille en octets).
+
+| Fichier | Ce que c'est | Sert aux cas |
+| --- | --- | --- |
+| `scan-signe-fictif-A.pdf` | vrai PDF d'une page : « Convention signée d'essai A, données fictives » | 106, 110 à 112, 121, 127, 128, 131, 133, 134 |
+| `scan-signe-fictif-B.pdf` | vrai PDF d'une page : « Convention signée d'essai B, données fictives » | 107, 108, 128, 129, 132, 133, 134 |
+| `Camille-Exemple-scan-original.pdf` | copie de A, nommée avec un nom de personne fictif | 109 |
+| `signe-ancien-fictif.pdf` | vrai PDF : « Ancienne convention signée d'essai, données fictives ». **Pas un fichier à choisir** : il est mis dans `PDF_signe` des actions « Signée » avant de jouer | 107, 108, 120, 122, 123, 126, 129, 132, 136 |
+| `convention-essai-fictif.pdf` | le « PDF fictif » de R1, R4 et R5, dans `PDF_genere` de toutes les actions | toutes |
+| `vide.pdf`, `vide.txt` | fichiers de 0 octet | 113, 117 |
+| `gros-fichier-11Mo.pdf` | 11 534 336 octets, commence par `%PDF-` | 114 |
+| `gros-fichier-12Mo.docx` | 12 582 912 octets, nom en `.docx` | 117 |
+| `limite-10485760.pdf` | exactement 10 485 760 octets (10 × 1024 × 1024), commence par `%PDF-` | 115 |
+| `limite-10485761.pdf` | exactement 10 485 761 octets, commence par `%PDF-` | 115 |
+| `lent-1Mo.pdf` | copie de `scan-signe-fictif-A.pdf` à laquelle on ajoute environ 1 Mo de zéros à la fin (le PDF reste lisible, à confirmer) | 123 à 126, 135 |
+| `faux-pdf-texte.pdf` | quelques mots de texte brut dans un fichier nommé `.pdf` | 118, 120, 121, 136 à 138 |
+| `image-renommee.pdf` | une vraie image PNG dont l'extension a été changée en `.pdf` | 119 |
+| `document-word-fictif.docx` | un petit vrai document Word fictif | 116 |
+
+Commandes proposées (Mac, terminal, depuis le dossier des fichiers) :
+
+- Fichiers vides : `: > vide.pdf` puis `: > vide.txt`.
+- 11 Mo : `{ printf '%%PDF-1.4\n'; head -c 11534327 /dev/zero; } > gros-fichier-11Mo.pdf` (9 octets d'en-tête, puis le reste).
+- 12 Mo : `head -c 12582912 /dev/zero > gros-fichier-12Mo.docx`.
+- 10 Mo exact : `{ printf '%%PDF-1.4\n'; head -c 10485751 /dev/zero; } > limite-10485760.pdf`.
+- 10 Mo plus 1 octet : `{ printf '%%PDF-1.4\n'; head -c 10485752 /dev/zero; } > limite-10485761.pdf`.
+- Fichier lent : `cp scan-signe-fictif-A.pdf lent-1Mo.pdf` puis `head -c 1048576 /dev/zero >> lent-1Mo.pdf`.
+- Faux PDF : `echo "Ceci n'est pas un PDF, données fictives." > faux-pdf-texte.pdf`.
+
+## Données d'essai de R6 à créer dans TEST avant de jouer
+
+Données fictives uniquement (exemple.fr). Aucun nom de document Grist, aucune adresse réelle. **Les données de R1, R2, R4 et R5 restent en place.** On réutilise « Club Exemple » (adresse complète), « Étoile & Cœur FC » (créé en R4) et l'agence d'essai ; on ne crée ni DR, ni DD, ni club, ni contact.
+
+### Deux lignes `Conventions` types
+
+Sauf mention contraire dans le tableau des actions. « PDF fictif » = `convention-essai-fictif.pdf` (voir R5).
+
+| Colonne | État « Générée » | État « Signée » |
+| --- | --- | --- |
+| Action | l'action ESSAI-CONV-T… concernée | idem |
+| Modele | le modèle actif du dispositif | idem |
+| Annee | 2026 (vide pour Parcours de remobilisation) | idem |
+| Signataire_club | Alex Martin-Exemple | idem |
+| Representant_agence | Dominique Exemple (fictif) | idem |
+| Fonction_representant | Directeur d'agence | idem |
+| PDF_genere | PDF fictif | PDF fictif |
+| Date_generation | 14/10/2026 à 12:00 | 14/10/2026 à 12:00 |
+| PDF_signe | vide | `signe-ancien-fictif.pdf` |
+| Date_depot | vide | 20/10/2026 à 12:00 (midi : la date affichée reste la même quel que soit le fuseau) |
+
+Ne jamais renommer ni écrire à la main les colonnes `DR` et `DD` de `Conventions`. Créer ces lignes par un propriétaire du document.
+
+### Actions d'essai (Corbeille = non)
+
+Chaque cas qui écrit a **son action** : aucun cas ne dépend d'un autre. Toutes utilisent l'agence d'essai. Stade = Du stade vers l'emploi ; Match = Match des métiers ; Remob. = Parcours de remobilisation vers l'emploi.
+
+| Intitulé | Dispositif | Club | État au départ | Écart avec la ligne type | Sert au cas |
+| --- | --- | --- | --- | --- | --- |
+| ESSAI-CONV-T1 | Stade | Club Exemple | **Générée** | aucun | CONV-106 (écrit) |
+| ESSAI-CONV-T2 | Stade | Club Exemple | **Signée** | aucun | CONV-107 (écrit) |
+| ESSAI-CONV-T3 | Stade | Club Exemple | **Signée** (DEV7) | aucun | CONV-108 (DEV7, écrit) |
+| ESSAI-CONV-T4 | Stade | Club Exemple | Générée | aucun | CONV-109 (écrit) |
+| ESSAI-CONV-T5 | Match | **Étoile & Cœur FC** | Générée | aucun | CONV-110 (écrit) |
+| ESSAI-CONV-T6 | Remob. | Club Exemple | Générée | **Annee vide** | CONV-111 (écrit) |
+| ESSAI-CONV-T7 | Stade | Club Exemple | Générée | **Annee = 12** | CONV-112 (écrit) |
+| ESSAI-CONV-T8 | Stade | Club Exemple | Générée | aucun | CONV-113, 114, 116, 117, 118, 119, 137, 138 (« refus » : ne s'écrit jamais) |
+| ESSAI-CONV-T9 | Stade | Club Exemple | Signée | aucun | CONV-120, 122, 136, 137, 138 (« signée, lecture » : ne s'écrit jamais) |
+| ESSAI-CONV-T10 | Stade | Club Exemple | Générée | aucun | CONV-115 (écrit) |
+| ESSAI-CONV-T11 | Stade | Club Exemple | Générée | aucun | CONV-121 (écrit) |
+| ESSAI-CONV-T12 | Stade | Club Exemple | Signée | aucun | CONV-123 (écrit) |
+| ESSAI-CONV-T13 | Stade | Club Exemple | Générée | aucun | CONV-124 (écrit) |
+| ESSAI-CONV-T14 | Stade | Club Exemple | Générée | aucun | CONV-125 (coupure réseau) |
+| ESSAI-CONV-T15 | Stade | Club Exemple | Signée | aucun | CONV-126 (coupure réseau) |
+| ESSAI-CONV-T16 | Stade | Club Exemple | Générée | aucun | CONV-127 (envoi bloqué puis réussi, écrit) |
+| ESSAI-CONV-T17 | Stade | Club Exemple | Générée | aucun | CONV-128 (FT Régional, vrai compte, écrit) |
+| ESSAI-CONV-T18 | Match | Club Exemple | Signée | aucun | CONV-129 (FT Départemental, vrai compte, écrit) |
+| ESSAI-CONV-T19 | Stade | Club Exemple | Générée (DEV7) | aucun | CONV-130 (DEV7, droits refusés) |
+| ESSAI-CONV-T20 | Stade | Club Exemple | Générée | aucun | CONV-131 (écrit) |
+| ESSAI-CONV-T21 | Stade | Club Exemple | Signée | aucun | CONV-132 (écrit) |
+| ESSAI-CONV-T22 | Stade | Club Exemple | Générée | aucun | CONV-133 (écrit) |
+| ESSAI-CONV-T23 | Stade | Club Exemple | Générée | aucun | CONV-134 (écrit) |
+| ESSAI-CONV-T24 | Stade | Club Exemple | Générée | aucun | CONV-135 (écrit) |
+
+**À l'état « Générée » avant de commencer (17 actions)** : T1, T4, T5, T6, T7, T8, T10, T11, T13, T14, T16, T17, T19, T20, T22, T23, T24. C'est là qu'on dépose.
+**À l'état « Signée » avant de commencer (7 actions)** : T2, T3, T9, T12, T15, T18, T21. C'est là qu'on remplace et qu'on teste la persistance.
+
+**Pour rejouer un cas qui écrit** : remettre la ligne `Conventions` à son état de départ (vider `PDF_signe` et `Date_depot` pour une action « Générée », ou remettre `signe-ancien-fictif.pdf` et le 20/10/2026 à 12:00 pour une action « Signée ») ou recréer l'action. Les actions « refus » (T8) et « signée, lecture » (T9) ne sont jamais modifiées si tout se passe bien : si l'une change, c'est une anomalie à noter, puis la remettre en état.
+
+### Profils
+
+- Prérequis commun : le profil FT National est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai.
+- CONV-128 (FT Régional) et CONV-129 (FT Départemental) se jouent avec **de vrais comptes**, comme CONV-71, 72, 98 et 99 : éditeurs, jamais propriétaires, profil complet, navigateur à part. **Pas de « Voir en tant que »** (fiche C41). Aucun compte n'est inventé ici : voir [À CONFIRMER] 9.
+- CONV-130 (droits refusés) : voir [À CONFIRMER] 8.
+
+## Provoquer les pannes réseau (CONV-123 à 127, 135)
+
+Même méthode qu'en R4 et R5 (voir « Provoquer une panne réseau » plus haut), dans les outils du navigateur (F12), onglet **Réseau** :
+- **Allonger l'envoi (CONV-123, 124, 135)** : régler le débit sur « Fast 3G » et utiliser `lent-1Mo.pdf`. L'envoi dure alors quelques secondes, ce qui laisse le temps de lire « Envoi en cours… » et de cliquer. Ajuster la taille du fichier pour viser **5 à 10 secondes** d'attente : trop court, on ne peut rien lire ; trop long (plus de 15 à 20 secondes, délai maximum du script par appel), l'échec « Le fichier n'a pas pu être enregistré. » arrive pour de bon ([À CONFIRMER] 3). Le choix de « Fast 3G » plutôt que « Slow 3G » vient de là : à « Slow 3G », 1 Mo dépasserait le délai.
+- **Coupure complète (CONV-125 et 126)** : « Fast 3G » d'abord, puis régler sur « Hors connexion » **dès que « Envoi en cours… » est affiché**. Le message dépend de l'étape touchée : le noter tel quel.
+- **Envoi impossible (CONV-127)** : bloquer le début de l'adresse d'envoi de pièce jointe (elle finit par « attachments » suivi du jeton), **sans copier le jeton** nulle part.
+- **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Un jeton Grist ne doit **jamais** figurer dans une fiche d'anomalie, une capture ou ce document.
+
+## Les 33 cas de R6
+
+Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
+
+### Dépôt et remplacement réussis (profil FT National)
+
+- **CONV-106 : premier dépôt** (Nominal, Bloquant, fumée) : alerte « Convention signée enregistrée. », état Signée, « Voir la convention signée » et « Remplacer le fichier signé » apparus, focus sur « Voir la convention signée », `PDF_genere` et `Date_generation` inchangés.
+- **CONV-107 : remplacement** (Nominal, Bloquant, fumée) : le nouveau fichier remplace l'ancien sans historique, `Date_depot` mise à jour, le focus reste sur « Remplacer le fichier signé ».
+- **CONV-108 : l'ancien fichier n'est pas supprimé** (Persistance, Mineur, DEV7) : N puis N+1 pièces jointes.
+
+### Nom du fichier enregistré
+
+- **CONV-109 : nom pour Du stade vers l'emploi, nom d'origine jamais repris** (Nominal, Majeur) : `Convention-signee-Stade-emploi-Club-Exemple-2026.pdf`.
+- **CONV-110 : club à accents et « & »** (Limite, Majeur) : `Convention-signee-Match-metiers-Etoile-Coeur-FC-2026.pdf`.
+- **CONV-111 : Parcours de remobilisation, sans année** (Limite, Majeur) : `Convention-signee-Remobilisation-Club-Exemple.pdf`.
+- **CONV-112 : année enregistrée invalide, omise du nom** (Limite, Mineur) : `Convention-signee-Stade-emploi-Club-Exemple.pdf`.
+
+### Fichiers refusés (un cas par contrôle, dans l'ordre de la note)
+
+- **CONV-113 : fichier vide** (Erreur, Majeur) : « le fichier est vide ».
+- **CONV-114 : plus de 10 Mo** (Erreur, Majeur) : « 10 Mo au maximum ».
+- **CONV-115 : la limite exacte** (Limite, Majeur) : 10 485 761 octets refusé, 10 485 760 accepté.
+- **CONV-116 : mauvaise extension** (Erreur, Majeur) : « ce n'est pas un PDF ».
+- **CONV-117 : ordre des contrôles** (Erreur, Majeur) : un fichier vide en `.txt` reçoit « vide » ; 12 Mo en `.docx` reçoit « 10 Mo ».
+- **CONV-118 : contenu qui ne commence pas par %PDF-, texte renommé** (Erreur, Majeur).
+- **CONV-119 : image renommée en .pdf** (Erreur, Majeur) : passe le nom et l'extension, pas le contenu réel.
+- **CONV-120 : refus au remplacement, l'ancien fichier reste** (Erreur, Bloquant) : date et fichier inchangés, « Voir » ouvre l'ancien.
+- **CONV-121 : annulation du sélecteur, et même fichier choisi deux fois** (Limite, Mineur).
+
+### Voir la convention signée
+
+- **CONV-122 : ouverture, adresse `blob:`, pas de jeton** (Nominal, Bloquant) : seul cas rejouable en PROD.
+- **CONV-123 : « Voir » reste utilisable pendant un remplacement** (Limite, Majeur) : ouvre l'ancien fichier.
+
+### Pendant l'envoi
+
+- **CONV-124 : verrou et « Re-générer » grisé** (Limite, Majeur) : second clic, Entrée et Espace ne lancent rien.
+
+### Échecs d'envoi
+
+- **CONV-125 : coupure réseau pendant un dépôt** (Erreur, Bloquant) : message après l'attente, jamais bloqué.
+- **CONV-126 : coupure réseau pendant un remplacement** (Erreur, Bloquant) : l'ancien fichier signé reste intact et s'ouvre toujours.
+- **CONV-127 : envoi bloqué, puis nouvel essai sans recharger** (Erreur, Majeur).
+
+### Droits (vrais comptes, pas « Voir en tant que »)
+
+- **CONV-128 : FT Régional dépose, puis remplace** (Droits, Bloquant, fumée).
+- **CONV-129 : FT Départemental remplace** (Droits, Bloquant).
+- **CONV-130 : droits refusés, message distinct** (Droits, Majeur, DEV7) : « …vos droits ne le permettent pas pour cette action… » (S9-4).
+
+### Persistance
+
+- **CONV-131 : après rechargement, état Signée et boutons corrects** (Persistance, Majeur) : après un premier dépôt.
+- **CONV-132 : après rechargement, nouveau fichier et nouvelle date** (Persistance, Majeur) : après un remplacement.
+
+### Sécurité
+
+- **CONV-133 : aucun jeton dans la console, le bloc ou une adresse** (Nominal, Bloquant).
+
+### Mobile et accessibilité
+
+- **CONV-134 : clavier, ordre de Tab et focus** (Majeur).
+- **CONV-135 : VoiceOver, attente et réussite** (Majeur).
+- **CONV-136 : VoiceOver, état Signée et fichier refusé** (Majeur).
+- **CONV-137 : zoom 200 %** (Majeur).
+- **CONV-138 : mobile (375 px)** (Mineur).
+
+## Tests de fumée de R6 (3 sur 33)
+
+- CONV-106 : le premier dépôt marche de bout en bout.
+- CONV-107 : le remplacement marche et change bien le fichier.
+- CONV-128 : un vrai compte FT Régional dépose et remplace.
+
+Au total, avec R1, R2, R4 et R5 : 14 tests de fumée sur 138 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98, 106, 107, 128).
+
+## Ordre conseillé pour jouer
+
+1. Préparer les fichiers d'essai (tableau plus haut) et contrôler leur taille.
+2. D'abord les cas qui n'écrivent rien : CONV-113, 114, 116, 117, 118, 119, 120, 122, 136, 137 et 138 (sur T8 et T9).
+3. Ensuite les dépôts et remplacements qui réussissent : CONV-106, 107, 109, 110, 111, 112, 115, 121, 131, 132, 133, 134.
+4. Puis ceux qui demandent un réglage du réseau : CONV-123, 124, 135, puis CONV-125, 126, 127 (retirer le blocage et remettre le débit normal après chacun).
+5. Les vrais comptes : CONV-128 et 129, à tout moment.
+6. Dans DEV7 (pas sur TEST) : CONV-108, puis CONV-130 (remettre les règles d'accès en état).
+
+## Cas déjà couverts par un test en code
+
+`Automatisable = Oui` pour CONV-106, 107 et 109 à 124 (fiches C52, C53 et C54), `Non` pour CONV-108 (pièces jointes du document), 125 à 127 (pannes réseau réelles), 128 à 130 (droits), 131 à 133 (rechargement et console) et 134 à 138 (clavier, VoiceOver, zoom, mobile). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles. Les fichiers de test cités dans la colonne `Remarques` sont `test/convention-deposer.test.js`, `test/convention-voir-signee.test.js`, `test/convention-bloc.test.js`, `test/convention-generer-ecran.test.js` et `test/convention-delais.test.js` (d'après REVIEW_LOG.md), mais **les noms exacts des tests n'ont pas été relus**.
+
+## Après une correction
+
+Rejouer le cas concerné, puis ses voisins (réussites : CONV-106 à CONV-108 ; noms : CONV-109 à CONV-112 ; refus : CONV-113 à CONV-121 ; Voir et envoi : CONV-122 à CONV-124 ; échecs : CONV-125 à CONV-127 ; droits : CONV-128 à CONV-130), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur la fonction qui fabrique le nom du fichier (`conventionNomFichierAvec`) touche aussi CONV-44 à CONV-47 (R4). Un changement sur « Voir la convention » touche CONV-68 et 69 (R4).
+
+## Rejouer en PROD
+
+Seul **CONV-122** se rejoue sur une vraie convention signée : il ne fait que regarder. **Ne jamais déposer ni remplacer un fichier en PROD** : le dépôt écrit une vraie pièce jointe, et un remplacement efface la référence vers l'ancien fichier signé (qui reste dans Grist, sans rattachement). Tous les autres cas écrivent, coupent le réseau ou modifient des règles d'accès : TEST ou DEV7 seulement.
+
+## [À CONFIRMER] de R6
+
+1. **CONV-125 et 126** : la durée totale avant le message en cas de coupure n'est pas dans la note (délais de 15 à 20 secondes par appel dans le script, étendus au dépôt par la fiche C53). J'ai fixé une limite de 2 minutes pour noter KO : à valider par Hanta. L'étendue du test `convention-delais.test.js` au dépôt n'a pas été relue.
+2. **Sélecteur de fichiers (CONV-116 et 117)** : le champ est ouvert avec `accept="application/pdf,.pdf"`. Peut-on, avec le navigateur de l'équipe, passer le filtre sur « Tous les fichiers » pour choisir un `.docx` ou un `.txt` ? Sinon (Safari, par exemple), ces deux cas sont Non applicables et on s'appuie sur les tests en code. Les cas CONV-118 et 119 (nom en `.pdf`) se jouent dans tous les cas.
+3. **Fichiers d'essai** : les commandes proposées plus haut ne sont ni lancées ni essayées. Le PDF lent (copie de A plus des zéros à la fin) reste-t-il lisible dans le lecteur de PDF du navigateur ? Quel débit et quelle taille donnent une attente de 5 à 10 secondes sans dépasser le délai du script ? À régler par le testeur ; Hanta dit ce qu'elle a fait en DEV7.
+4. **Extension en majuscules** : un vrai PDF nommé `SCAN.PDF` est-il accepté ? La note dit « extension `.pdf` » sans parler de la casse. Pas de cas écrit : à ajouter si Hanta tranche.
+5. **CONV-112 (réglé par Hanta le 2026-10-26)** : Grist accepte 12 au niveau de la colonne (un nombre), mais le widget refuse déjà de générer avec cette valeur (« Saisissez une année à quatre chiffres. », testé en C31/C34). Une Annee invalide ne peut donc pas apparaître par le parcours normal : CONV-112 est un test de robustesse volontairement artificiel. Pour le jouer, dans DEV7 : modifier directement, dans la cellule Grist (pas dans le widget), la colonne Annee de la ligne Conventions de ESSAI-CONV-T7 pour y mettre 12, puis cliquer sur la commande de dépôt ou de remplacement pour vérifier que le nom du fichier omet bien l'année. Remettre la valeur d'origine ensuite.
+6. **Où lire le nom du fichier de `PDF_signe`** (CONV-109 à 112, 115, 127, 129) : la cellule de pièce jointe de Grist, son aperçu, ou autre chose ? Le chemin exact n'est pas indiqué ici, comme pour `PDF_genere` en R4.
+7. **CONV-108** : l'endroit où Grist affiche le nombre de pièces jointes du document (même question que R5, [À CONFIRMER] 6).
+8. **CONV-130** : comment provoquer un refus d'écriture sur `Conventions` sans « Voir en tant que » ? Deux pistes : un profil réel dont les règles sont déjà en lecture seule sur `Conventions` (ANS ?), ou le retrait temporaire du droit de modification par un propriétaire de DEV7. Quelles sont les règles actuelles de `Conventions` pour chaque profil ? Non lues ici. L'envoi du fichier (pièce jointe) réussira-t-il alors que l'écriture est refusée, ou le refus tombera-t-il déjà à l'envoi ? Dans les deux cas le message attendu est celui de S9-4 ; noter ce qui est vu.
+9. **Comptes réels** pour CONV-128 et 129 : quel compte FT Régional et quel compte FT Départemental, tous deux éditeurs et non propriétaires, avec profil complet ? Aucun compte n'est inventé ici (même question que R4, [À CONFIRMER] 2, et R5, [À CONFIRMER] 2).
+10. **Compte du testeur « National »** : même question qu'en R1, R2, R4 et R5 (vrai profil FT National, ou propriétaire du document ?).
+11. **Focus après un fichier refusé (CONV-113 et 120)** : la note précise le focus après une réussite et après un échec d'envoi (§4.1 e)), mais pas après un fichier refusé. J'ai écrit « le focus reste sur la commande » et demandé de noter où il est : à confirmer par Hanta.
+12. **Nom de club de plus de 40 caractères** (§4.1 k)) : pas de cas écrit, faute d'un club d'essai de ce nom et d'un résultat attendu exact (l'ordre « nettoyer puis couper » n'est pas dit). À ajouter si Hanta le veut, avec le nom du PDF généré du même club comme référence.
+13. **Date de dépôt près de minuit** : `Date_depot` est calculée avec la date du jour au moment de l'écriture (§4.1 f)). Éviter de jouer entre 23 h 30 et 0 h 30 pour que « la date du jour » reste la même du début à la fin d'un cas.
+14. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
