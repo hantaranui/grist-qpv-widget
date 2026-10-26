@@ -1138,3 +1138,17 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : 3f2a798 (tests) et 7763fed (code)
 Reste à faire : 9.1c, « Voir la convention signée » (le lien « Remplacer » fonctionne déjà, mais il n'y a aucun moyen de revoir le PDF signé) ; décision en attente : renommer ou non le fichier signé au dépôt (il garde aujourd'hui son nom d'origine, qui peut contenir un nom de personne).
+
+## Tâche C54 — « Voir la convention signée », nom du fichier signé renommé, et correction de l'année invalide (S9, tâche 9.1c)
+
+Date : 2026-10-26
+Agents : dev-backend (renommage, conventionVoirSignee, correction), dev-interface (bouton et écran), testeur (tests)
+Prompt : tâche 9.1c (fermeture du parcours de dépôt), puis correction d'un cas limite signalé
+
+Note /5 : 5
+Ce qui allait : fichier signé renommé au dépôt en Convention-signee-[dispositif]-[club]-[année].pdf, mêmes règles que le PDF généré (fonction commune conventionNomFichierAvec, pas de duplication) ; bouton « Voir la convention signée » à l'état « Signée », avant « Remplacer », même comportement que « Voir la convention », jamais verrouillé pendant un remplacement (S9-5) ; focus après un premier dépôt qui trouve maintenant un vrai bouton ; détail ajouté par dev-interface non demandé (bouton reconstruit avec son état verrouillé si le bloc est refait pendant l'ouverture) ; cas limite trouvé et corrigé : une année invalide (« abc », « 12 ») était recopiée telle quelle dans le nom du fichier, au lieu d'être omise comme pour un modèle sans année.
+Ce que j'ai fait corriger : rien en dehors de ce qui précède (le cas limite a été trouvé par une question de ma part, pas par un bug constaté à l'écran).
+Tests : 719 tests, 4 échecs attendus (état Signée, deux éléments au lieu d'un), puis 727 passés après la 9.1c, puis 729 passés après la correction de l'année invalide (npm test). Vérifié à l'écran dans DEV7 : bouton visible et fonctionnel, PDF signé ouvert, focus correct après un premier dépôt.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-bloc.test.js, test/convention-deposer.test.js, test/convention-voir-signee.test.js (nouveau), test/convention-pdfmake.test.js
+Build refait : oui
+Commit : c79d9d2 et 6374f44 (9.1c) ; 6408060 et 119c34a (correction année invalide)
