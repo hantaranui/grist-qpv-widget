@@ -1,15 +1,6 @@
-# Widget Grist - Verification QPV
+# Widgets Grist - Actions d'insertion par le sport
 
-Ce widget Grist indique si une adresse se situe dans un Quartier prioritaire de la politique de la ville (QPV).
-
-## Principe
-
-1. Le widget geocode l'adresse avec la Base Adresse Nationale.
-2. Il charge les contours QPV officiels publies par l'ANCT sur data.gouv.fr.
-3. Il teste si le point BAN est dans un polygone QPV.
-4. Il peut afficher le resultat pour la ligne selectionnee ou ecrire les resultats dans la table Grist.
-
-Le service API SIGVILLE existe, mais son acces SI demande un compte ANCT et une autorisation. Cette version ne depend donc pas d'une cle API.
+Ce depot contient trois widgets : le tableau de bord des actions (`actions-dashboard`), le widget `clubs`, et le widget de verification QPV (`qpv-widget`), aujourd'hui en pause (voir « Widgets en pause », en bas de ce document).
 
 ## Structure du widget
 
@@ -292,14 +283,90 @@ aux yeux du navigateur (le port compte), qui ne partagent donc aucun stockage.
 Servir les deux fichiers assembles depuis un seul `npm run dev` (un seul
 dossier, un seul port) le temps du test regle ca.
 
-## Installation dans Grist
+## Convention de partenariat (widget dashboard des actions)
+
+Dans la fiche d'une action, le bloc **Convention** permet de produire la
+convention entre l'agence France Travail et le club, puis de garder la version
+signee. Le detail (etats du bloc, textes exacts, decisions, mise en page du PDF)
+est dans `docs/ux/convention.md`, qui fait foi ; les taches et les recettes sont
+dans `docs/backlog.md` et `docs/tests/`.
+
+### Ce que fait la fonction
+
+- **Generer** un PDF a partir d'un modele (selon le dispositif de l'action),
+  apres avoir choisi le signataire du club parmi ses contacts et saisi le
+  representant de l'agence. Le PDF est fabrique dans le navigateur avec pdfmake,
+  charge depuis cdnjs (version figee, empreinte SRI) seulement au clic.
+- **Voir** le PDF genere, dans un nouvel onglet (adresse `blob:`, sans jeton).
+- **Re-generer** : le nouveau PDF remplace l'ancien, sans historique.
+- **Deposer** le fichier signe (PDF, 10 Mo au maximum), le **voir**, le
+  **remplacer**. Les conventions sont imprimees et signees a la main : le widget
+  ne fait pas de signature electronique.
+
+### Tables lues et ecrites
+
+| Table | Lue | Ecrite |
+| --- | --- | --- |
+| `Conventions` (une ligne par action) | etat du bloc, informations enregistrees | `Action`, `Modele`, `Annee`, `Signataire_club`, `Representant_agence`, `Fonction_representant` ; puis `PDF_genere` + `Date_generation`, et `PDF_signe` + `Date_depot` (chaque paire en une seule requete). Jamais `DR` ni `DD` (formules des regles d'acces) |
+| `Modeles_convention` | texte du modele (`Contenu`), `Avec_annee`, `Actif`, `Logo`, `Logo_partenaire` (pieces jointes) | jamais |
+| `Contacts` | signataire du club (prenom, nom, fonction) | jamais |
+| `Agences` | adresse, `Siret` | jamais |
+
+Les informations passent par `grist.docApi.applyUserActions`. Les fichiers
+(PDF genere, PDF signe) et les deux dates qui les accompagnent passent par l'API
+REST de Grist avec un jeton d'ecriture, car `applyUserActions` est refuse a un
+non-proprietaire pour une piece jointe. Le jeton sert aussi a certaines lectures
+(voir un PDF, charger les logos) : avec un jeton en lecture seule, les regles par
+defaut du document refusent le telechargement a un non-proprietaire. Il n'est
+jamais ecrit dans la console, un message ni une adresse affichee.
+
+Les droits sont ceux des regles d'acces de Grist sur `Conventions` et
+`Modeles_convention`. Quand Grist refuse leur lecture (c'est le cas de l'ANS), le
+bloc affiche « Droits insuffisants ».
+
+### Pieces jointes : a savoir
+
+- Grist ne filtre pas les pieces jointes par table : la protection des PDF vient
+  des regles d'acces sur `Conventions` et `Modeles_convention`, pas d'un filtre
+  sur les fichiers eux-memes.
+- Le widget ne supprime jamais une piece jointe. Un fichier remplace (PDF genere
+  ou signe) reste dans le document, non rattache a une cellule ; Grist ne le
+  nettoie pas.
+
+### Donnees personnelles
+
+- Nom, prenom et fonction du **signataire du club** (lus dans `Contacts`) et du
+  **representant de l'agence** (saisis dans la fenetre, enregistres dans
+  `Conventions`), reproduits dans le PDF.
+- Le PDF signe contient en plus des **signatures manuscrites**.
+- Le widget n'ecrit jamais dans `Contacts` ni de coordonnees (e-mail, telephone).
+  La duree de conservation de ces fichiers n'est pas encore decidee.
+
+## Widgets en pause
+
+### Verification QPV (`qpv-widget`)
+
+En pause depuis le 21/08/2026 (date du premier developpement, premier commit du depot) ; usage futur a decider par Hanta.
+
+Ce widget Grist indique si une adresse se situe dans un Quartier prioritaire de la politique de la ville (QPV).
+
+#### Principe
+
+1. Le widget geocode l'adresse avec la Base Adresse Nationale.
+2. Il charge les contours QPV officiels publies par l'ANCT sur data.gouv.fr.
+3. Il teste si le point BAN est dans un polygone QPV.
+4. Il peut afficher le resultat pour la ligne selectionnee ou ecrire les resultats dans la table Grist.
+
+Le service API SIGVILLE existe, mais son acces SI demande un compte ANCT et une autorisation. Cette version ne depend donc pas d'une cle API.
+
+#### Installation dans Grist
 
 1. Dans Grist, ajouter un widget personnalise.
 2. Renseigner l'URL GitHub Pages ci-dessus.
 3. Donner l'acces complet au widget si vous souhaitez qu'il ecrive les resultats dans la table.
 4. Associer les colonnes dans la configuration du widget.
 
-## Colonnes attendues
+#### Colonnes attendues
 
 Obligatoire :
 
@@ -321,12 +388,12 @@ Optionnelles pour l'ecriture des resultats :
 - `Latitude`
 - `Statut verification QPV`
 
-## Sources
+#### Sources
 
 - Donnees QPV : https://www.data.gouv.fr/datasets/quartiers-prioritaires-de-la-politique-de-la-ville-qpv/
 - Geocodage : https://api-adresse.data.gouv.fr/
 - Documentation SIGVILLE : https://sig.ville.gouv.fr/page/174
 
-## Limites
+#### Limites
 
 Le resultat depend du point retourne par la BAN. Comme l'indique SIGVILLE, la localisation d'une adresse est indicative et ne vaut pas attestation reglementaire.
