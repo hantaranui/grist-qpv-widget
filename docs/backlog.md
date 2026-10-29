@@ -161,6 +161,23 @@ Maquette de référence (pour illustrer l'intention, pas pour en tirer des pixel
 
 Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1.3 (données et écriture, dev-backend), E1.4 (tests, testeur), R8 (recette, recetteur).
 
+#### Décisions de Hanta du 2026-10-29 (E1)
+
+- **D-E1-1** : l'encart Club affiche nom, SIRET et adresse sur une ligne, dans un textarea en lecture seule.
+- **D-E1-2** : la ligne dépliante du signataire utilise l'élément HTML natif `<details>`, sans classe nouvelle (aucun composant équivalent trouvé dans le design system).
+- **D-E1-3** : la saisie libre (Prénom/Nom) est active dès que l'un des deux champs est rempli. Plier la ligne dépliante ne perd rien : la saisie reste visible si l'agent la rouvre.
+- **D-E1-5** : si l'enregistrement à la fermeture de la fenêtre échoue, elle reste ouverte avec l'alerte d'échec habituelle ; un deuxième clic sur Fermer (ou Échap) quitte sans enregistrer.
+- **D-E1-7** (vérifiée) : dans `Contacts`, Nom et Email sont obligatoires (comme le vrai formulaire « Ajout d'un contact » du widget clubs) ; Prénom, Téléphone et Fonction ne le sont pas.
+- **D-E1-8** : si `Actions.Campagne` est vide, l'année est omise du sous-titre et du nom de fichier, comme pour une année invalide.
+- **D-E1-9** : pas de croix ajoutée à la fenêtre Convention (elle n'en a pas aujourd'hui).
+- **D-E1-10** : sous-titre de la fenêtre : « [Dispositif] · Campagne [Campagne] ».
+- **D-E1-13** : les doublons de contact (même personne saisie deux fois en saisie libre) sont acceptés, aucun traitement particulier côté interface.
+- **Champs de la ligne dépliante du signataire** (nouvelle décision du 2026-10-29) : elle reprend les champs du vrai formulaire « Ajout d'un contact » (`src/clubs/script.js`) plutôt que d'en inventer un autre : Nom (obligatoire), Prénom (facultatif), Email (obligatoire), Fonction (facultatif). Téléphone n'est PAS repris (pas utile pour signer une convention).
+  - Si Nom est vide, rien n'est créé dans `Contacts` et `Signataire_club` garde sa valeur actuelle.
+  - Si Nom est rempli mais Email est vide, le contact ne peut pas être créé : message d'échec à la fermeture/génération, comme un échec d'enregistrement classique, en attendant la saisie de l'e-mail.
+- **Rappel** : D-E1-4 et D-E1-6, dans leur forme d'origine, restent sans objet (case à cocher supprimée, toujours créer le contact). D-E1-11 et D-E1-12 restent valables tels que posés par le designer-ux (Nom devient la condition de création plutôt que Prénom OU Nom ; phrase d'information sous Prénom/Nom).
+- **Documentation à mettre à jour en E1** (hors du périmètre de dev-interface/dev-backend, pour la documentaliste) : CLAUDE.md dit encore que le widget n'écrit jamais dans `Contacts` ; ce n'est plus vrai.
+
 ## Questions encore ouvertes
 
 - **Q-A** : notes de bas de page regroupées en fin de document (limite de pdfmake). À faire valider par le client : fin de l'article ou fin du document ?
