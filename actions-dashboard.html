@@ -824,23 +824,30 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .add-action-fields { display: grid; gap: 16px; }
 
 /* Fenetre « Convention » : meme affichage que les deux fenetres ci-dessus, dans
-   une regle a part. Puis une colonne, puis deux colonnes cote a cote des 1200 px
-   (la note en prevoit trois quand le bloc « Informations relatives a la convention »
-   sera ajoute). Aucune couleur : tout vient du design system. */
+   une regle a part. Une colonne, puis deux colonnes cote a cote des 1100 px : Club
+   (3 parts) plus large qu'Agence (2 parts), soit 60 % / 40 %, pour que l'encart du club
+   tienne en largeur. Rien n'est reserve pour un troisieme bloc. Aucune couleur : tout
+   vient du design system. */
 #conventionModal .modal { display: block; overflow-y: auto; }
 .convention-grid { display: grid; gap: 24px; }
-@media (min-width: 1200px) {
-  .convention-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1100px) {
+  /* Cote a cote : 40 px entre les deux colonnes (meme valeur que les marges de la fiche d'action),
+     pour une separation nette. En une colonne, l'espace reste de 24 px. */
+  .convention-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: 40px; }
 }
+/* Sous-titre et phrase d'introduction : pas de marge propre ni d'espace en haut du corps,
+   pour que la phrase suive le sous-titre de pres. */
+.convention-soustitre, .convention-intro { margin: 0; }
+#conventionModal .modal-body { padding-top: 0; }
+.convention-intro { margin-bottom: 16px; }
 .convention-part { min-width: 0; margin: 0; padding: 0; border: 0; }
 .convention-champs { display: grid; gap: 16px; }
+/* Encart du club (lecture seule) : pas de poignee de redimensionnement, pas de defilement ;
+   sa hauteur est reglee par le script (conventionAjusterEncart) d'apres son contenu. Le
+   selecteur est plus precis que « .edit-field textarea », qui autorise resize: vertical. */
+.edit-field textarea.convention-encart { resize: none; overflow: hidden; }
 /* Boutons du bloc Convention : ils gardent leur taille et passent a la ligne. */
 .convention-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-/* Trois blocs (informations, signataire club, signataire agence) : trois colonnes des
-   1200 px. Regle separee, placee apres celle des deux colonnes qu'elle remplace. */
-@media (min-width: 1200px) {
-  .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 /* Bloc « Convention » : le contenu (phrases et boutons) est refait seul apres une generation,
    dans un conteneur qui ne change pas la grille de .edit-fields. La zone de message
    (role="status") reste dans la page ; vide, elle ne prend pas de place. */
@@ -925,7 +932,9 @@ grist.ready({requiredAccess: 'full'});
 // partenariat (lecture seule pour l'instant). Une table que les regles d'acces
 // refusent (ex. ANS : ni Conventions ni Modeles_convention) devient une liste
 // vide dans load(), comme toutes les autres.
-const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP', 'Contacts', 'Conventions', 'Modeles_convention'];
+// Campagnes sert au sous-titre de la fenetre Convention (Actions.Campagne est une reference
+// vers Campagnes.Campagne, le texte de l'annee).
+const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP', 'Contacts', 'Conventions', 'Modeles_convention', 'Campagnes'];
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -2711,7 +2720,7 @@ function conventionSignatures(avecLieuDate, valeurs, ftAGauche) {
   };
   const colonne = (titre, nomPersonne, nomFonction) => {
     const lignes = [];
-    if (avecLieuDate) lignes.push({text: 'À ............................, le ............................', style: 'paragraphe'});
+    if (avecLieuDate) lignes.push({text: 'À ........................................................, le ........................................................', style: 'paragraphe'});
     lignes.push(
       ftAGauche ? {text: titre, bold: true, style: 'paragraphe'} : {text: titre, style: 'paragraphe'},
       {text: valeurOuCase(nomPersonne), bold: true, style: 'paragraphe'},
@@ -2734,7 +2743,7 @@ function conventionSignatures(avecLieuDate, valeurs, ftAGauche) {
   if (!ftAGauche) return colonnes;
   return {
     stack: [
-      {text: 'Fait à ............................, le ............................', margin: [0, reglages.espaceAvantLieuDate, 0, 0]},
+      {text: 'Fait à ........................................................, le ........................................................', margin: [0, reglages.espaceAvantLieuDate, 0, 0]},
       colonnes,
     ],
     unbreakable: true,
@@ -2971,8 +2980,7 @@ const CONVENTION_ETATS = {
 const CONVENTION_BLOCAGES = {
   agence: "Renseignez l'agence de l'action dans sa fiche.",
   club: "Renseignez le club de l'action.",
-  dispositif: "Renseignez le dispositif de l'action dans sa fiche.",
-  adresse: "Renseignez l'adresse du club dans sa fiche."
+  dispositif: "Renseignez le dispositif de l'action dans sa fiche."
 };
 
 // Une colonne de pieces jointes arrive de Grist sous la forme ['L', id, id...] ;
@@ -3024,11 +3032,10 @@ function conventionEtat(actionId, donnees) {
   return {etat: CONVENTION_ETATS.sansModele, convention: convention || null, modele: null};
 }
 
-// Premier element qui empeche de generer, dans l'ordre : agence, club, dispositif,
-// adresse du club. Renvoie { element, message } (element : 'agence', 'club',
-// 'dispositif' ou 'adresse'), ou null si la generation est possible.
-// Adresse du club = Structures.Adresse + Code_postal + Ville (colonne formule de
-// Structures, calculee par Grist : le widget ne lit pas Communes).
+// Premier element qui empeche de generer, dans l'ordre : agence, club, dispositif.
+// Renvoie { element, message } (element : 'agence', 'club' ou 'dispositif'), ou null
+// si la generation est possible. L'adresse du club ne bloque plus : absente, elle
+// donne des pointillés dans le PDF (comme toute case connue mais vide).
 function conventionBlocage(actionId, donnees) {
   const raw = (donnees && donnees.raw) || {};
   const action = conventionLigne(raw.Actions, actionId) || {};
@@ -3036,12 +3043,7 @@ function conventionBlocage(actionId, donnees) {
   if (!action.Agence) return bloque('agence');
   if (!action.Club) return bloque('club');
   if (!action.Dispositif) return bloque('dispositif');
-
-  const club = conventionLigne(raw.Structures, action.Club) || {};
-  const texte = valeur => String(valeur ?? '').trim();
-  const codePostal = texte(club.Code_postal);
-  const adresseComplete = texte(club.Adresse) && codePostal && codePostal !== '0' && texte(club.Ville);
-  return adresseComplete ? null : bloque('adresse');
+  return null;
 }
 
 // ---- Convention : bloc affiche en bas de la fiche (lecture seule) ----
@@ -3151,7 +3153,7 @@ function conventionEstRegeneration(actionId, donnees) {
 //  - siege : adresse du club sur plusieurs lignes (adresse, puis code postal et ville) ;
 //  - adresse de l'agence : adresse, complement, puis code postal et ville.
 // Un code postal a 0 est la valeur par defaut d'une colonne numerique de Grist : on l'ignore,
-// comme conventionBlocage.
+// de meme partout dans la fenetre.
 function conventionInfos(actionId, donnees) {
   const raw = (donnees && donnees.raw) || {};
   const action = conventionLigne(raw.Actions, actionId) || {};
@@ -3174,33 +3176,38 @@ function conventionInfos(actionId, donnees) {
   };
 }
 
-// Nombre de lignes d'une zone de texte en lecture seule : au moins 2, davantage
-// si l'adresse est longue, pour qu'aucun defilement interne n'apparaisse.
-function conventionLignesZone(valeur) {
-  const lignes = String(valeur || '').split('\n').reduce((total, ligne) => total + Math.max(1, Math.ceil(ligne.length / 40)), 0);
-  return Math.max(2, lignes);
+// Ajuste la hauteur de l'encart du club (D-E1-19) a son contenu reel : ni poignee, ni espace vide,
+// ni defilement interne. Le champ part de rows="1" : sa hauteur « auto » vaut alors une ligne, et
+// scrollHeight donne la hauteur du texte. Appelee a l'ouverture de la fenetre et quand la largeur
+// change (la fenetre passe de deux colonnes a une, un telephone tourne).
+function conventionAjusterEncart() {
+  const encart = document.getElementById('clubEncart');
+  if (!encart) return;
+  encart.style.height = 'auto';
+  const bordures = encart.offsetHeight - encart.clientHeight;
+  encart.style.height = `${encart.scrollHeight + bordures}px`;
 }
 
 // `erreur` (facultatif) : message d'erreur place sous le champ, comme pour les champs de saisie.
-function conventionChampLecture(id, libelle, valeur, zone, erreur) {
+// Si libelleCache est vrai, l'etiquette reste pour les lecteurs d'ecran (sr-only) mais n'est plus
+// affichee : le titre de la section (legend) dit deja « Club » ou « Agence ».
+function conventionChampLecture(id, libelle, valeur, zone, erreur, libelleCache) {
   const champ = zone
-    ? `<textarea class="form-control" id="${id}" name="${id}" readonly rows="${conventionLignesZone(valeur)}">${escapeHtml(valeur)}</textarea>`
+    ? `<textarea class="form-control convention-encart" id="${id}" name="${id}" readonly rows="1">${escapeHtml(valeur)}</textarea>`
     : `<input class="form-control" id="${id}" name="${id}" readonly type="text" value="${escapeAttr(valeur)}">`;
-  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${champ}${erreur || ''}</div>`;
+  const classeLibelle = libelleCache ? 'form-label sr-only' : 'form-label';
+  return `<div class="edit-field"><label class="${classeLibelle}" for="${id}">${escapeHtml(libelle)}</label>${champ}${erreur || ''}</div>`;
 }
 
 // ---- Convention : champs de la fenetre (tache 5.1b : saisie et controle, sans enregistrement) ----
 const CONVENTION_FONCTION_AGENCE = "Directeur d'agence";
 const CONVENTION_FONCTION_VIDE = 'Fonction non renseignée';
-const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention.";
-const CONVENTION_ERREURS = {
-  alerte: 'Certains champs sont à corriger.',
-  annee: 'Saisissez une année à quatre chiffres.'
-};
-// Champs qui ont un message d'erreur sous eux (leur message a pour id « <champ>Erreur »),
-// dans l'ordre de la fenetre. « Enregistrer » ne controle que l'annee ; « Generer »
-// controle aussi les champs obligatoires.
-const CONVENTION_CHAMPS_CONTROLES = ['conventionAnnee', 'clubSignataire', 'clubFonction', 'agenceRepresentant', 'agenceFonction'];
+const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.";
+// Evolution 1 : plus aucun champ obligatoire dans la fenetre, donc plus de controle des champs
+// (ni a la fermeture, ni a « Generer »). Un champ vide donne des pointilles dans le PDF.
+const CONVENTION_INTRODUCTION = "Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.";
+// Valeur de l'option de la liste « Signataire » qui represente le contact saisi dans le formulaire « Ajouter un contact ».
+const CONVENTION_VALEUR_NOUVEAU_CONTACT = 'nouveau';
 
 // Titre du modele de l'action et indication « le modele demande une annee ».
 // Seule une colonne Avec_annee a non retire l'annee (Parcours de remobilisation).
@@ -3228,26 +3235,41 @@ function conventionContacts(actionId, donnees) {
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'));
 }
 
-// Controle des champs, sans toucher au DOM. `valeurs` vient de lireConventionForm.
-// Renvoie les champs a corriger, dans l'ordre de la fenetre : [{id, message}].
-// Pour l'instant : l'annee, si elle est saisie, doit etre un nombre de quatre chiffres
-// (un champ vide est accepte). Les champs obligatoires seront controles par
-// « Generer » (S7), qui pourra reutiliser cette fonction en y ajoutant ses controles.
-function conventionProblemes(valeurs) {
-  const problemes = [];
-  if (valeurs.annee !== null) {
-    const annee = String(valeurs.annee).trim();
-    // Un champ numerique dont le texte n'est pas un nombre rend une valeur vide :
-    // anneeIllisible permet de ne pas le prendre pour un champ laisse vide.
-    if (valeurs.anneeIllisible || (annee !== '' && !/^[1-9]\d{3}$/.test(annee))) {
-      problemes.push({id: 'conventionAnnee', message: CONVENTION_ERREURS.annee});
-    }
+// Texte du sous-titre de la fenetre : « [Dispositif] · Campagne [Campagne] » (note UX §3, E1).
+// Campagne vide : le dispositif seul. Fonction pure : ni DOM, ni Grist.
+// La campagne est Actions.Campagne, une reference vers Campagnes.Campagne (texte). Si la table
+// Campagnes n'est pas chargee (elle n'est pas dans TABLES), la reference ne peut pas etre lue : le
+// sous-titre n'a alors que le dispositif.
+function conventionSousTitre(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
+  const nom = String(dispositif.Dispositif || dispositif.Code || '').trim();
+  let campagne = '';
+  if (typeof action.Campagne === 'number') {
+    const ligne = conventionLigne(raw.Campagnes || [], action.Campagne);
+    campagne = ligne ? String(ligne.Campagne ?? '').trim() : '';
+  } else {
+    campagne = String(action.Campagne ?? '').trim();
   }
-  return problemes;
+  return campagne ? `${nom} · Campagne ${campagne}` : nom;
 }
 
-function conventionChampSaisie(id, libelle, controle, erreur) {
-  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}<span class="required">&nbsp;*</span></label>${controle}${erreur || ''}</div>`;
+// Contenu de l'encart du club (lecture seule), sur une seule ligne logique, separe par des
+// virgules : « Nom, SIRET, adresse code postal ville ». Aucun retour a la ligne voulu : la zone
+// peut seulement passer a la ligne quand le texte est trop long. Une donnee absente ne bloque rien.
+function conventionEncartClub(infos) {
+  const adresse = infos.club.siege.split('\n').join(' ');
+  return [
+    infos.club.nom,
+    infos.club.siret || 'SIRET non renseigné',
+    adresse || 'adresse non renseignée'
+  ].join(', ');
+}
+
+// Champ de saisie sans asterisque : rien n'est obligatoire dans la fenetre.
+function conventionChampTexte(id, libelle, controle) {
+  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${controle}</div>`;
 }
 
 // Message d'erreur sous un champ : le design system ne l'affiche que si le champ
@@ -3267,22 +3289,37 @@ function conventionSignataireHtml(contacts) {
   const options = contacts.map(contact => `<option value="${contact.id}">${escapeHtml(contact.libelle)}</option>`).join('');
   const aide = contacts.length ? '' : `<p class="help-block" id="clubSignataireAide">${escapeHtml(CONVENTION_SANS_CONTACT)}</p>`;
   const lien = contacts.length ? '' : ' aria-describedby="clubSignataireAide"';
-  const liste = `<select class="form-control" id="clubSignataire" name="clubSignataire" required${lien}><option selected disabled value="">Veuillez sélectionner</option>${options}</select>`;
-  // Le message d'aide (club sans contact) et le message d'erreur sont deux elements
-  // distincts : jamais help-block et invalid-feedback sur le meme element.
-  return conventionChampSaisie('clubSignataire', 'Signataire', liste, aide + conventionErreurHtml('clubSignataire', CONVENTION_ERREURS_GENERER.signataire));
+  // L'invite reste choisissable : on peut y revenir pour ne choisir personne (pointilles dans le PDF).
+  const liste = `<select class="form-control" id="clubSignataire" name="clubSignataire"${lien}><option selected value="">Veuillez sélectionner</option>${options}</select>`;
+  return conventionChampTexte('clubSignataire', 'Signataire', liste + aide);
 }
 
-// Structure de la note (§3 et §8) : fenetre modal-xl defilante, titre h2 « Convention »,
-// un fieldset par bloc (informations, signataire club, signataire agence), pied avec
-// « Fermer », « Enregistrer les informations » et « Generer la convention » (principal).
+// Bouton « Ajouter un contact » (D-E1-15) et son petit formulaire (ferme par defaut, attribut
+// hidden). Un clic sur le bouton l'ouvre, un second clic le referme (aria-expanded et
+// aria-controls). Champs dans l'ordre du formulaire du widget clubs : Nom, Prenom, E-mail.
+// Aucun asterisque, aucun required, aucun texte d'aide (D-E1-16 et D-E1-17). La fonction est le
+// champ unique « Fonction du signataire », place apres ce formulaire (conventionModalHtml).
+// Les champs referencent la phrase d'information par aria-describedby.
+// Le hidden est sur le div exterieur : le div interieur (convention-champs) est en display: grid,
+// ce qui l'emporterait sur hidden et laisserait le formulaire visible.
+function conventionSaisieLibreHtml() {
+  const aide = ' aria-describedby="signataireLibreAide"';
+  return `<div><button class="btn btn-secondary" type="button" id="signataireAjouter" aria-expanded="false" aria-controls="signataireLibre"><span class="btn-content">Ajouter un contact</span></button></div>
+                <div id="signataireLibre" hidden>
+                  <div class="convention-champs">
+                    ${conventionChampTexte('signataireNom', 'Nom', `<input class="form-control" id="signataireNom" name="signataireNom" type="text" autocomplete="off"${aide}>`)}
+                    ${conventionChampTexte('signatairePrenom', 'Prénom', `<input class="form-control" id="signatairePrenom" name="signatairePrenom" type="text" autocomplete="off"${aide}>`)}
+                    ${conventionChampTexte('signataireEmail', 'E-mail', `<input class="form-control" id="signataireEmail" name="signataireEmail" type="email" autocomplete="off"${aide}>`)}
+                  </div>
+                </div>`;
+}
+
+// Structure de la note (§3 et §8, evolution 1) : fenetre modal-xl defilante, titre h2
+// « Convention » et sous-titre dans l'en-tete, un fieldset par bloc (Club, Agence), pied avec
+// « Fermer » et « Generer la convention » (principal). Plus d'asterisque ni de required nulle part.
 function conventionModalHtml(actionId, donnees) {
   const infos = conventionInfos(actionId, donnees);
-  const modele = conventionModeleInfos(actionId, donnees);
   const contacts = conventionContacts(actionId, donnees);
-  const annee = modele.avecAnnee
-    ? conventionChampSaisie('conventionAnnee', 'Année', `<input class="form-control" id="conventionAnnee" name="conventionAnnee" type="number" required value="${new Date().getFullYear()}">`, conventionErreurHtml('conventionAnnee', CONVENTION_ERREURS.annee))
-    : '';
   // Re-generation seulement : on previent que le nouveau PDF remplace l'ancien (sans historique).
   // Sans date enregistree, la phrase s'ecrit sans date, comme « Convention generee. » du bloc.
   const quand = conventionEstRegeneration(actionId, donnees) ? formatDate((conventionEtat(actionId, donnees).convention || {}).Date_generation) : null;
@@ -3290,48 +3327,44 @@ function conventionModalHtml(actionId, donnees) {
     : `<p>${escapeHtml(quand ? `Le nouveau PDF remplacera la convention générée le ${quand}.` : 'Le nouveau PDF remplacera la convention générée.')}</p>
           `;
   return `<div class="modal-backdrop fade show"></div>
-  <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
+  <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" aria-describedby="conventionSubtitle" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <form class="modal-content" id="conventionForm" novalidate>
-        <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="conventionTitle">Convention</h2>
+            <p class="convention-soustitre" id="conventionSubtitle">${escapeHtml(conventionSousTitre(actionId, donnees))}</p>
+          </div>
+        </div>
         <div class="modal-body">
           ${remplacement}<div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
           <div id="conventionAttente" role="status"></div>
-          <p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>
+          <p class="convention-intro">${escapeHtml(CONVENTION_INTRODUCTION)}</p>
           <div class="convention-grid">
             <fieldset class="convention-part">
-              <legend class="form-legend">Informations relatives à la convention</legend>
+              <legend class="form-legend">Club</legend>
               <div class="convention-champs">
-                ${conventionChampLecture('conventionModele', 'Modèle utilisé', modele.titre)}
-                ${annee}
-              </div>
-            </fieldset>
-            <fieldset class="convention-part">
-              <legend class="form-legend">Signataire club</legend>
-              <div class="convention-champs">
-                ${conventionChampLecture('clubNom', 'Nom du club', infos.club.nom)}
-                ${conventionChampLecture('clubSiret', 'SIRET', infos.club.siret)}
-                ${conventionChampLecture('clubSiege', 'Siège', infos.club.siege, true)}
+                ${conventionChampLecture('clubEncart', 'Club', conventionEncartClub(infos), true, '', true)}
                 <p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>
                 ${conventionSignataireHtml(contacts)}
-                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '', false, conventionErreurHtml('clubFonction', CONVENTION_ERREURS_GENERER.signataireSansFonction))}
+                ${conventionSaisieLibreHtml()}
+                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '')}
+                <p class="help-block is-hidden" id="signataireLibreAide">Ce contact sera ajouté à la fiche du club.</p>
               </div>
             </fieldset>
             <fieldset class="convention-part">
-              <legend class="form-legend">Signataire agence</legend>
+              <legend class="form-legend">Agence</legend>
               <div class="convention-champs">
-                ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom)}
-                ${conventionChampLecture('agenceAdresse', 'Adresse', infos.agence.adresse, true)}
-                ${conventionChampSaisie('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" required autocomplete="off">', conventionErreurHtml('agenceRepresentant', CONVENTION_ERREURS_GENERER.representant))}
-                ${conventionChampSaisie('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" required autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`, conventionErreurHtml('agenceFonction', CONVENTION_ERREURS_GENERER.fonctionRepresentant))}
+                ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom, false, '', true)}
+                ${conventionChampTexte('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" autocomplete="off">')}
+                ${conventionChampTexte('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`)}
               </div>
             </fieldset>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="conventionFermer"><span class="btn-content">Fermer</span></button>
-          <button type="submit" class="btn btn-secondary" id="conventionEnregistrer"><span class="btn-content">Enregistrer les informations</span></button>
-          <button type="button" class="btn btn-primary" id="conventionGenererFenetre"${contacts.length ? '' : ' aria-disabled="true" aria-describedby="clubSignataireAide"'}><span class="btn-content">Générer la convention</span></button>
+          <button type="button" class="btn btn-primary" id="conventionGenererFenetre"><span class="btn-content">Générer la convention</span></button>
         </div>
       </form>
     </div>
@@ -3339,6 +3372,18 @@ function conventionModalHtml(actionId, donnees) {
 }
 
 let focusAvantConvention = null;
+// Action dont la fenetre est ouverte (Echap en a besoin), et suivi de la fermeture :
+// enregistrement en cours, ou echoue (un second « Fermer » ferme alors sans enregistrer).
+let conventionActionOuverte = 0;
+let conventionFermetureEnCours = false;
+let conventionFermetureEchouee = false;
+// Vrai tant que le message sous E-mail est affiche (voir conventionAfficherErreurEmail) : un second
+// « Fermer » ferme alors sans enregistrer. Remis a faux des que le message disparait.
+let conventionErreurEmailAffichee = false;
+// Dernier contact cree par cette fenetre : { cle (la saisie), id }. Un contact n'est cree qu'une
+// seule fois pour une meme saisie : si la bascule de la fenetre n'a pas pu avoir lieu, la saisie
+// identique reutilise cet identifiant au lieu de recreer le contact. Remis a null a l'ouverture.
+let conventionContactCree = null;
 // Vrai pendant « Generer la convention » (decision D-S7-2) : Fermer, Echap, Enregistrer et un
 // deuxieme clic sur Generer sont alors ignores. Pose avant la premiere operation asynchrone.
 let conventionGenerationEnCours = false;
@@ -3372,38 +3417,145 @@ function openConvention(actionId) {
   state.conventionOpen = true;
   host.innerHTML = conventionModalHtml(actionId, state);
   document.body.classList.add('modal-open');
-  document.getElementById('conventionForm').addEventListener('submit', event => submitConvention(event, actionId));
-  // Pendant la generation, « Fermer » est ignore (comme Echap).
-  document.getElementById('conventionFermer').addEventListener('click', () => {
-    if (!conventionGenerationEnCours) closeConvention();
-  });
+  conventionActionOuverte = actionId;
+  conventionFermetureEchouee = false;
+  conventionErreurEmailAffichee = false;
+  conventionContactCree = null;
+  conventionChoixListe = '';
+  // Plus de bouton « Enregistrer » : la touche Entree dans un champ ne fait rien.
+  document.getElementById('conventionForm').addEventListener('submit', event => event.preventDefault());
+  // « Fermer » enregistre en silence puis ferme ; pendant la generation, il est ignore (comme Echap).
+  document.getElementById('conventionFermer').addEventListener('click', () => fermerConvention());
   document.getElementById('conventionGenererFenetre').addEventListener('click', () => lancerGenerationConvention(actionId));
-  document.getElementById('clubSignataire').addEventListener('change', () => majFonctionSignataire(actionId));
+  document.getElementById('clubSignataire').addEventListener('change', () => choisirSignataireListe(actionId));
+  ['signataireNom', 'signatairePrenom'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => majSaisieLibre(actionId));
+  });
+  // Retaper dans E-mail efface le message d'erreur de ce champ.
+  document.getElementById('signataireEmail').addEventListener('input', conventionEffacerErreurEmail);
+  // « Ajouter un contact » : un clic ouvre le formulaire (focus sur Nom), un second clic le referme
+  // (focus sur le bouton). Fermer ne vide rien.
+  document.getElementById('signataireAjouter').addEventListener('click', () => {
+    const ouvrir = document.getElementById('signataireLibre').hidden;
+    conventionFormulaireContact(ouvrir);
+    majAideSaisieLibre();
+    document.getElementById(ouvrir ? 'signataireNom' : 'signataireAjouter').focus();
+  });
   host.addEventListener('keydown', keepFocusInConvention);
   conventionPrerempli(actionId);
-  // Le focus va sur le premier champ modifiable : l'annee, ou le signataire du club
-  // quand le modele n'a pas d'annee (Parcours de remobilisation).
-  (document.getElementById('conventionAnnee') || document.getElementById('clubSignataire')).focus();
+  conventionAjusterEncart();
+  if (typeof window !== 'undefined') window.addEventListener('resize', conventionAjusterEncart);
+  // Le focus va sur la liste « Signataire », premier champ modifiable.
+  document.getElementById('clubSignataire').focus();
   requestResize();
 }
 
 // Affiche la fonction du contact choisi (lecture seule). Un contact sans fonction
 // donne « Fonction non renseignee » ; sans choix, la zone reste vide.
 function majFonctionSignataire(actionId) {
-  const id = Number(document.getElementById('clubSignataire').value || 0);
+  const id = Number(document.getElementById('clubSignataire').value || 0) || 0;
   const contact = conventionContacts(actionId, state).find(item => item.id === id);
   document.getElementById('clubFonction').value = contact ? (contact.fonction || CONVENTION_FONCTION_VIDE) : '';
 }
 
-// Les valeurs saisies, sans controle. annee vaut null quand le modele n'en a pas.
+// ---- Convention : signataire, liste ou saisie libre (evolution 1) ----
+// Il y a un seul signataire. La saisie libre est active des que le Nom n'est pas vide : la liste
+// montre alors l'option « Prenom Nom (nouveau contact) » et la fonction devient modifiable.
+// Choisir un contact dans la liste desactive la saisie libre et vide ses champs. Plier ou deplier
+// la ligne ne change que l'affichage : rien n'est perdu.
+
+// Dernier choix fait dans la liste (identifiant du contact, ou ''), pour y revenir quand la saisie
+// libre redevient inactive. Remis a '' a chaque ouverture de la fenetre.
+let conventionChoixListe = '';
+
+// Ouvre ou ferme le formulaire du bouton « Ajouter un contact » : attribut hidden sur le
+// formulaire, aria-expanded sur le bouton. Ne touche ni aux champs ni a leur contenu.
+function conventionFormulaireContact(ouvert) {
+  const bouton = document.getElementById('signataireAjouter');
+  const formulaire = document.getElementById('signataireLibre');
+  if (!bouton || !formulaire) return;
+  formulaire.hidden = !ouvert;
+  bouton.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+}
+
+// Phrase « Ce contact sera ajoute a la fiche du club. » : visible tant que la saisie libre est
+// active (Nom rempli) ou que le formulaire « Ajouter un contact » est ouvert, cachee sinon.
+function majAideSaisieLibre() {
+  const aide = document.getElementById('signataireLibreAide');
+  const formulaire = document.getElementById('signataireLibre');
+  if (!aide || !formulaire) return;
+  const nom = document.getElementById('signataireNom').value.trim();
+  aide.classList.toggle('is-hidden', !(nom || !formulaire.hidden));
+}
+
+// Saisie libre inactive : plus d'option « nouveau contact », fonction en lecture seule.
+function conventionFinSaisieLibre() {
+  const nouveau = document.getElementById('clubSignataireNouveau');
+  if (nouveau) nouveau.remove();
+  const fonction = document.getElementById('clubFonction');
+  fonction.readOnly = true;
+  fonction.removeAttribute('aria-describedby');
+}
+
+// Appelee a chaque frappe dans Nom ou Prenom.
+function majSaisieLibre(actionId) {
+  const liste = document.getElementById('clubSignataire');
+  const fonction = document.getElementById('clubFonction');
+  const nom = document.getElementById('signataireNom').value.trim();
+  const prenom = document.getElementById('signatairePrenom').value.trim();
+  let nouveau = document.getElementById('clubSignataireNouveau');
+  // Nom vide : la saisie libre est inactive, le message sous E-mail n'a plus de raison d'etre.
+  if (!nom) conventionEffacerErreurEmail();
+  if (nom) {
+    if (!nouveau) {
+      // La saisie libre commence : on retient le choix de la liste et la fonction part de vide.
+      conventionChoixListe = liste.value;
+      nouveau = document.createElement('option');
+      nouveau.id = 'clubSignataireNouveau';
+      nouveau.value = CONVENTION_VALEUR_NOUVEAU_CONTACT;
+      liste.insertBefore(nouveau, liste.options[1] || null);
+      fonction.readOnly = false;
+      fonction.value = '';
+      fonction.setAttribute('aria-describedby', 'signataireLibreAide');
+    }
+    // textContent : le nom saisi n'est jamais interprete comme du HTML.
+    nouveau.textContent = `${[prenom, nom].filter(Boolean).join(' ')} (nouveau contact)`;
+    liste.value = CONVENTION_VALEUR_NOUVEAU_CONTACT;
+  } else if (nouveau) {
+    // Nom vide : la saisie libre est abandonnee, la liste revient a son dernier choix.
+    conventionFinSaisieLibre();
+    liste.value = conventionChoixListe;
+    majFonctionSignataire(actionId);
+  }
+  majAideSaisieLibre();
+}
+
+// Changement dans la liste « Signataire » (choix d'un contact, ou retour a l'invite).
+function choisirSignataireListe(actionId) {
+  const liste = document.getElementById('clubSignataire');
+  if (liste.value === CONVENTION_VALEUR_NOUVEAU_CONTACT) return;
+  ['signataireNom', 'signatairePrenom', 'signataireEmail'].forEach(id => { document.getElementById(id).value = ''; });
+  conventionEffacerErreurEmail();
+  conventionFinSaisieLibre();
+  conventionChoixListe = liste.value;
+  majFonctionSignataire(actionId);
+  majAideSaisieLibre();
+}
+
+// Les valeurs saisies, sans controle. `signataire` : contact choisi dans la liste (0 si aucun ou
+// si la saisie libre est active). `nouveauContact` : le contact de la ligne depliante, ou null
+// tant que le Nom est vide (Prenom, E-mail ou Fonction seuls ne creent rien).
+// Pas de cle `annee` : le champ « Annee » n'existe plus. L'annee vient de la campagne de l'action,
+// lue a chaque enregistrement (conventionLireAnnee). Surtout ne pas remettre `annee: null` ici :
+// cela effacerait l'annee deja enregistree de la convention.
 function lireConventionForm() {
-  const annee = document.getElementById('conventionAnnee');
+  const texte = id => { const champ = document.getElementById(id); return champ ? champ.value.trim() : ''; };
+  const nom = texte('signataireNom');
   return {
-    annee: annee ? annee.value : null,
-    anneeIllisible: !!(annee && annee.validity && annee.validity.badInput),
-    signataire: Number(document.getElementById('clubSignataire').value || 0),
-    representant: document.getElementById('agenceRepresentant').value.trim(),
-    fonctionRepresentant: document.getElementById('agenceFonction').value.trim()
+    signataire: Number(document.getElementById('clubSignataire').value || 0) || 0,
+    nouveauContact: nom ? {nom, prenom: texte('signatairePrenom'), email: texte('signataireEmail'), fonction: texte('clubFonction')} : null,
+    representant: texte('agenceRepresentant'),
+    fonctionRepresentant: texte('agenceFonction')
   };
 }
 
@@ -3420,45 +3572,53 @@ function afficherMessageConvention(succes, texte) {
   alerte.classList.remove('is-hidden');
 }
 
-// Alerte en haut de la fenetre, champs en is-invalid et lies a leur message.
-function marquerProblemesConvention(problemes) {
-  const alerte = document.getElementById('conventionMessage');
-  if (problemes.length) afficherMessageConvention(false, CONVENTION_ERREURS.alerte);
-  alerte.classList.toggle('is-hidden', !problemes.length);
-  CONVENTION_CHAMPS_CONTROLES.forEach(id => {
-    const champ = document.getElementById(id);
-    if (!champ) return;
-    const probleme = problemes.find(item => item.id === id);
-    if (probleme) {
-      champ.classList.add('is-invalid');
-      champ.setAttribute('aria-invalid', 'true');
-      champ.setAttribute('aria-describedby', `${id}Erreur`);
-      // Le texte suit le probleme : l'annee a deux messages (absente, pas a quatre chiffres).
-      const erreur = document.getElementById(`${id}Erreur`);
-      if (erreur && probleme.message) erreur.innerHTML = conventionErreurTexteHtml(probleme.message);
-    } else {
-      champ.classList.remove('is-invalid');
-      champ.removeAttribute('aria-invalid');
-      // On ne retire que le lien vers le message d'erreur : le signataire d'un club sans
-      // contact garde son lien vers l'aide « Ce club n'a aucun contact… ».
-      if (champ.getAttribute('aria-describedby') === `${id}Erreur`) champ.removeAttribute('aria-describedby');
-    }
-  });
-}
-
-// « Enregistrer les informations » : controle, puis (plus tard) enregistrement.
-function submitConvention(event, actionId) {
-  event.preventDefault();
-  // Pendant la generation, ni le bouton ni la touche Entree ne relancent un enregistrement.
-  if (conventionGenerationEnCours) return;
-  const valeurs = lireConventionForm();
-  const problemes = conventionProblemes(valeurs);
-  marquerProblemesConvention(problemes);
-  if (problemes.length) {
-    document.getElementById(problemes[0].id).focus();
+// « Fermer » et Echap (evolution 1) : enregistrent ce qui est saisi, sans message de reussite,
+// puis ferment la fenetre. Ignores pendant la generation (decision D-S7-2).
+// Si l'enregistrement echoue, la fenetre reste ouverte avec le message d'echec habituel ; un
+// second « Fermer » (ou Echap) ferme alors sans enregistrer (proposition D-E1-5 de la note UX).
+async function fermerConvention() {
+  if (conventionGenerationEnCours || conventionFermetureEnCours) return;
+  // Second « Fermer » apres un echec d'enregistrement, ou apres le message sous E-mail : on ferme
+  // sans enregistrer (D-E1-5).
+  if (conventionFermetureEchouee || conventionErreurEmailAffichee) {
+    closeConvention();
     return;
   }
-  conventionEnregistrer(actionId, valeurs);
+  const valeurs = lireConventionForm();
+  // Nom rempli mais E-mail vide ou mal forme : rien n'est enregistre, la fenetre reste ouverte.
+  const probleme = conventionProblemeNouveauContact(valeurs);
+  if (probleme) {
+    conventionAfficherErreurEmail(probleme);
+    return;
+  }
+  conventionFermetureEnCours = true;
+  let enregistre = false;
+  try {
+    enregistre = await conventionEnregistrerALaFermeture(conventionActionOuverte, valeurs);
+  } finally {
+    conventionFermetureEnCours = false;
+  }
+  // La fenetre a pu etre fermee entre-temps : rien a faire.
+  if (!state.conventionOpen) return;
+  if (enregistre) {
+    closeConvention();
+    return;
+  }
+  conventionFermetureEchouee = true;
+  afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+}
+
+// Enregistrement a la fermeture. `valeurs` : ce que lireConventionForm renvoie, dont `nouveauContact`
+// (null ou {nom, prenom, email, fonction}). Le controle de l'E-mail du nouveau contact a deja ete
+// fait par l'appelant (fermerConvention) : ici, tout se passe dans conventionEnregistrer, dans
+// l'ordre de la note UX (§3, « Ordre technique ») :
+//  1. creation du contact dans Contacts (UNE operation applyUserActions, attendue) et bascule de la
+//     fenetre sur le contact cree ;
+//  2. lecture de la campagne de l'action (l'annee) ;
+//  3. ecriture dans Conventions (signataire = contact cree ou choisi, representant, fonction, annee).
+// Renvoie true si tout est ecrit, false sinon (la fenetre reste alors ouverte).
+function conventionEnregistrerALaFermeture(actionId, valeurs) {
+  return conventionEnregistrer(actionId, valeurs, {silencieux: true});
 }
 
 // ---- Convention : enregistrement des informations (tache 5.2) ----
@@ -3468,8 +3628,10 @@ const CONVENTION_MESSAGES = {
 };
 
 // Ce qu'il faut ecrire dans Conventions pour une action. Fonction pure : ni DOM, ni Grist.
-// `valeurs` : { annee (texte, ou null sans annee), signataire (id du contact, 0 si aucun),
-// representant, fonctionRepresentant }. Renvoie { id, champs } : id est la ligne Conventions
+// `valeurs` : { annee, signataire (id du contact, 0 si aucun), representant, fonctionRepresentant }.
+// annee : undefined (ou absente) = NE PAS ECRIRE Annee, la valeur enregistree est gardee ; null ou ''
+// = Annee vide (campagne reellement vide) ; sinon l'annee, ecrite en nombre.
+// Renvoie { id, champs } : id est la ligne Conventions
 // existante de l'action (la plus ancienne en cas de doublon), ou 0 s'il faut en creer une.
 // Valeurs vides : reference = 0, entier = null, texte = ''.
 // Jamais ecrit : PDF_genere, Date_generation, PDF_signe, Date_depot, DR et DD (formules).
@@ -3482,18 +3644,169 @@ function conventionAEcrire(actionId, valeurs, donnees, options) {
   const action = conventionLigne(raw.Actions, actionId) || {};
   // Sans modele actif, on ne vide pas Modele : la generation s'arretera de toute facon a l'etape 3.
   const modele = (options && options.modeleActif && conventionModeleActif(raw, action.Dispositif)) || modeleEtat;
-  const annee = valeurs.annee === null || String(valeurs.annee).trim() === '' ? null : Number(valeurs.annee);
-  return {
-    id: convention ? convention.id : 0,
-    champs: {
-      Action: actionId,
-      Modele: modele ? modele.id : 0,
-      Annee: annee,
-      Signataire_club: valeurs.signataire || 0,
-      Representant_agence: valeurs.representant,
-      Fonction_representant: valeurs.fonctionRepresentant
-    }
+  const champs = {
+    Action: actionId,
+    Modele: modele ? modele.id : 0,
+    Signataire_club: valeurs.signataire || 0,
+    Representant_agence: valeurs.representant,
+    Fonction_representant: valeurs.fonctionRepresentant
   };
+  // Annee absente de `valeurs` : on n'y touche pas (jamais d'ecrasement par une valeur vide).
+  if (valeurs.annee !== undefined) {
+    champs.Annee = valeurs.annee === null || String(valeurs.annee).trim() === '' ? null : Number(valeurs.annee);
+  }
+  return {id: convention ? convention.id : 0, champs};
+}
+
+// ---- Convention : annee, controle de l'E-mail et creation du nouveau contact (evolution 1) ----
+
+// Annee de la convention = campagne de l'action : Actions.Campagne (reference) -> Campagnes.Campagne
+// (texte). Lue a CHAQUE enregistrement, avec un delai maximum. Renvoie :
+//  - { lue: true, annee: nombre } si la campagne est une annee a quatre chiffres ;
+//  - { lue: true, annee: null } si la campagne est reellement vide (pas de reference, ou ligne
+//    introuvable dans Campagnes) : Annee devient vide ;
+//  - { lue: false } si elle n'a pas pu etre lue (reseau, delai, table refusee) ou n'est pas une
+//    annee a quatre chiffres : l'appelant n'ecrit PAS Annee et la valeur enregistree est gardee.
+// Rien dans la console.
+async function conventionLireAnnee(actionId) {
+  const action = conventionLigne(state.raw.Actions, actionId);
+  if (!action) return {lue: false};
+  const reference = action.Campagne;
+  let campagne = '';
+  if (typeof reference === 'number') {
+    // 0 = reference vide dans Grist : pas de campagne, donc pas d'appel reseau.
+    if (reference > 0) {
+      try {
+        const table = await conventionAvecDelai(
+          grist.docApi.fetchTable('Campagnes'),
+          CONVENTION_CAMPAGNE_DELAI_MS,
+          () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+        );
+        const ligne = rows(table).find(item => item.id === reference);
+        campagne = ligne ? String(ligne.Campagne ?? '').trim() : '';
+      } catch (erreur) {
+        return {lue: false};
+      }
+    }
+  } else {
+    // Colonne texte (ancien document) : la valeur est deja la campagne.
+    campagne = String(reference ?? '').trim();
+  }
+  if (!campagne) return {lue: true, annee: null};
+  return /^[1-9]\d{3}$/.test(campagne) ? {lue: true, annee: Number(campagne)} : {lue: false};
+}
+
+const CONVENTION_EMAIL_MESSAGES = {
+  vide: "Saisissez l'e-mail du nouveau signataire.",
+  malForme: 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.'
+};
+
+// Forme d'une adresse e-mail : meme regle que emailBienForme de src/clubs/script.js (controlerContact).
+// Copiee ici car les widgets ne partagent pas de module.
+function conventionEmailBienForme(valeur) {
+  return /^[^\s@]+@[^\s@]+$/.test(valeur);
+}
+
+// Nom du nouveau contact (saisie libre), ou '' : sans Nom, la saisie libre est inactive et ignoree.
+function conventionNomNouveauContact(valeurs) {
+  const contact = valeurs && valeurs.nouveauContact;
+  return contact ? String(contact.nom ?? '').trim() : '';
+}
+
+// Message d'erreur du champ E-mail, ou '' si tout va bien. Le controle ne s'applique que si un Nom
+// est saisi : E-mail vide ou mal forme avec un Nom = message ; sans Nom, jamais d'erreur.
+// Fonction pure : ni DOM, ni Grist.
+function conventionProblemeNouveauContact(valeurs) {
+  if (!conventionNomNouveauContact(valeurs)) return '';
+  const email = String(valeurs.nouveauContact.email ?? '').trim();
+  if (!email) return CONVENTION_EMAIL_MESSAGES.vide;
+  return conventionEmailBienForme(email) ? '' : CONVENTION_EMAIL_MESSAGES.malForme;
+}
+
+// Affiche le message sous le champ E-mail (note UX §3) : champ is-invalid, aria-invalid, message
+// precede de « Erreur : » pour les lecteurs d'ecran, ligne depliante ouverte, focus sur E-mail.
+// Pas d'alerte en haut : on cache celle d'un ancien echec pour ne garder qu'une indication.
+function conventionAfficherErreurEmail(message) {
+  const champ = document.getElementById('signataireEmail');
+  if (!champ) return;
+  const ancienne = document.getElementById('signataireEmailErreur');
+  if (ancienne) ancienne.remove();
+  champ.insertAdjacentHTML('afterend', conventionErreurHtml('signataireEmail', message));
+  champ.classList.add('is-invalid');
+  champ.setAttribute('aria-invalid', 'true');
+  // Le message remplace la phrase d'information dans aria-describedby (jamais les deux ensemble).
+  champ.setAttribute('aria-describedby', 'signataireEmailErreur');
+  const alerte = document.getElementById('conventionMessage');
+  if (alerte) alerte.classList.add('is-hidden');
+  // Le formulaire est ouvert pour que le message soit visible.
+  conventionFormulaireContact(true);
+  conventionErreurEmailAffichee = true;
+  champ.focus();
+}
+
+// Retire le message sous E-mail et remet les attributs d'origine du champ.
+function conventionEffacerErreurEmail() {
+  conventionErreurEmailAffichee = false;
+  const erreur = document.getElementById('signataireEmailErreur');
+  if (erreur) erreur.remove();
+  const champ = document.getElementById('signataireEmail');
+  if (!champ) return;
+  champ.classList.remove('is-invalid');
+  champ.removeAttribute('aria-invalid');
+  champ.setAttribute('aria-describedby', 'signataireLibreAide');
+}
+
+// Cree le contact de la saisie libre dans Contacts : UNE operation applyUserActions avec toutes les
+// valeurs, Club compris (la regle d'acces refuse une ligne sans club). DR et DD (formules) ne sont
+// jamais ecrits, Telephone n'est pas demande. Renvoie l'identifiant de la ligne creee, ATTENDU avant
+// toute ecriture dans Conventions ; echoue (erreur `enregistrement-echoue`) si Grist refuse, si le
+// delai est depasse ou si l'identifiant n'est pas rendu. Rien dans la console : l'erreur peut citer
+// le nom d'une personne. La ligne creee est ajoutee a state.raw.Contacts : elle rejoint la liste.
+async function conventionCreerContact(actionId, valeurs) {
+  const echec = () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+  const action = conventionLigne(state.raw.Actions, actionId) || {};
+  if (!action.Club) throw echec();
+  const contact = valeurs.nouveauContact;
+  const texte = valeur => String(valeur ?? '').trim();
+  const champs = {Club: action.Club, Nom: texte(contact.nom), Prenom: texte(contact.prenom), Email: texte(contact.email), Fonction: texte(contact.fonction)};
+  const cle = JSON.stringify(champs);
+  // Meme saisie, deja creee : on reutilise le contact.
+  if (conventionContactCree && conventionContactCree.cle === cle) return conventionContactCree.id;
+  const resultat = await conventionAvecDelai(
+    grist.docApi.applyUserActions([['AddRecord', 'Contacts', null, champs]]),
+    CONVENTION_CONTACT_DELAI_MS,
+    echec
+  );
+  const id = Number(resultat && resultat.retValues && resultat.retValues[0]);
+  if (!Number.isInteger(id) || id <= 0) throw echec();
+  conventionContactCree = {cle, id};
+  (state.raw.Contacts || (state.raw.Contacts = [])).push({id, ...champs});
+  return id;
+}
+
+// Bascule de la fenetre des que le contact existe : il devient un contact de la liste, choisi ;
+// Nom, Prenom, E-mail et la fonction saisis sont vides (la fonction affichee est celle du contact) ;
+// la ligne depliante est repliee. Sans fenetre ouverte, ne fait rien.
+function conventionBasculerSurContact(actionId, idContact) {
+  const liste = document.getElementById('clubSignataire');
+  if (!liste || !document.getElementById('conventionDialog')) return;
+  const contact = conventionContacts(actionId, state).find(item => item.id === idContact);
+  ['signataireNom', 'signatairePrenom', 'signataireEmail'].forEach(id => { document.getElementById(id).value = ''; });
+  conventionEffacerErreurEmail();
+  conventionFinSaisieLibre();
+  if (contact && ![...liste.options].some(option => option.value === String(idContact))) {
+    // Place dans l'ordre alphabetique, apres l'invite (comme conventionSignataireHtml).
+    const option = document.createElement('option');
+    option.value = String(idContact);
+    option.textContent = contact.libelle;
+    const suivante = [...liste.options].slice(1).find(autre => autre.value !== '' && autre.textContent.localeCompare(contact.libelle, 'fr') > 0);
+    liste.insertBefore(option, suivante || null);
+  }
+  liste.value = String(idContact);
+  conventionChoixListe = String(idContact);
+  majFonctionSignataire(actionId);
+  conventionFormulaireContact(false);
+  majAideSaisieLibre();
 }
 
 // Une seule operation applyUserActions, avec toutes les valeurs : une ligne n'est jamais
@@ -3502,14 +3815,40 @@ function conventionAEcrire(actionId, valeurs, donnees, options) {
 // citer des valeurs, qui contiennent des noms de personnes.
 // Renvoie true si l'ecriture a reussi, false sinon. options.silencieux (utilise par la
 // generation) : ni message, ni bouton touche ; l'appelant traduit lui-meme le resultat.
+//
+// Evolution 1, dans l'ordre de la note UX (§3, « Ordre technique »), la premiere etape qui echoue
+// arrete tout (rien d'autre n'est ecrit) :
+//  1. nouveau contact (Nom rempli) : creation dans Contacts, attendue, puis bascule de la fenetre ;
+//     `valeurs` est alors MIS A JOUR sur place (signataire = contact cree, nouveauContact = null),
+//     pour que l'appelant (la generation) voie le meme signataire ;
+//  2. lecture de la campagne : Annee est ecrite d'apres elle, ou PAS ECRITE si la lecture a echoue ;
+//  3. ecriture dans Conventions, en une operation.
+// Le controle de l'E-mail est fait AVANT par l'appelant (message sous le champ, fenetre ouverte) ;
+// ici il n'est refait que par securite : un echec renvoie false sans rien ecrire.
 async function conventionEnregistrer(actionId, valeurs, options) {
   const silencieux = !!(options && options.silencieux);
-  const {id, champs} = conventionAEcrire(actionId, valeurs, state, options);
   const bouton = silencieux ? null : document.getElementById('conventionEnregistrer');
   try {
     if (bouton) bouton.disabled = true;
     const alerte = silencieux ? null : document.getElementById('conventionMessage');
     if (alerte) alerte.classList.add('is-hidden');
+    if (conventionProblemeNouveauContact(valeurs)) return false;
+    if (conventionNomNouveauContact(valeurs)) {
+      const idContact = await conventionCreerContact(actionId, valeurs);
+      valeurs.signataire = idContact;
+      valeurs.nouveauContact = null;
+      // La bascule de l'ecran ne doit jamais faire echouer un enregistrement deja reussi.
+      try {
+        conventionBasculerSurContact(actionId, idContact);
+      } catch (erreur) {
+        // La fenetre reste telle quelle : la memoire de conventionContactCree evite un doublon.
+      }
+    }
+    // Annee : celle de la campagne si elle est lue ; sinon celle que l'appelant donne (jamais null),
+    // sinon rien (la valeur enregistree est gardee).
+    const lecture = await conventionLireAnnee(actionId);
+    const fournie = valeurs.annee === null || valeurs.annee === undefined || String(valeurs.annee).trim() === '' ? undefined : valeurs.annee;
+    const {id, champs} = conventionAEcrire(actionId, {...valeurs, annee: lecture.lue ? lecture.annee : fournie}, state, options);
     const action = id ? ['UpdateRecord', 'Conventions', id, champs] : ['AddRecord', 'Conventions', null, champs];
     // Delai depasse (reseau coupe avant le clic, par exemple) = echec d'enregistrement : le catch
     // ci-dessous donne le message habituel. Sans delai, c'est le tout premier appel de la
@@ -3577,10 +3916,9 @@ function conventionValeursEnregistrees(actionId, donnees) {
 function conventionPrerempli(actionId) {
   const enregistrees = conventionValeursEnregistrees(actionId, state);
   if (!enregistrees) return;
-  const annee = document.getElementById('conventionAnnee');
-  if (annee) annee.value = enregistrees.annee;
   if (conventionContacts(actionId, state).some(contact => contact.id === enregistrees.signataire)) {
     document.getElementById('clubSignataire').value = String(enregistrees.signataire);
+    conventionChoixListe = String(enregistrees.signataire);
     majFonctionSignataire(actionId);
   }
   document.getElementById('agenceRepresentant').value = enregistrees.representant;
@@ -3590,21 +3928,24 @@ function conventionPrerempli(actionId) {
 function closeConvention() {
   const host = document.getElementById('conventionModal');
   host.removeEventListener('keydown', keepFocusInConvention);
+  if (typeof window !== 'undefined') window.removeEventListener('resize', conventionAjusterEncart);
   host.innerHTML = '';
   document.body.classList.remove('modal-open');
   state.conventionOpen = false;
+  conventionActionOuverte = 0;
   // Le bouton qui a ouvert la fenetre reprend le focus.
   if (focusAvantConvention && document.body.contains(focusAvantConvention)) focusAvantConvention.focus();
   focusAvantConvention = null;
   requestResize();
 }
 
-// Echap ferme ; Tab et Maj+Tab tournent entre les controles de la fenetre.
+// Echap enregistre en silence puis ferme (comme « Fermer ») ; Tab et Maj+Tab tournent entre les
+// controles de la fenetre.
 function keepFocusInConvention(event) {
   if (event.key === 'Escape') {
     event.preventDefault();
-    // Pendant la generation, Echap ne ferme pas (decision D-S7-2).
-    if (!conventionGenerationEnCours) closeConvention();
+    // Pendant la generation, Echap ne ferme pas (decision D-S7-2) : fermerConvention l'ignore.
+    fermerConvention();
     return;
   }
   if (event.key !== 'Tab') return;
@@ -3613,7 +3954,7 @@ function keepFocusInConvention(event) {
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
-  // Le focus d'ouverture est sur Annee, ou sur Signataire s'il n'y a pas d'annee.
+  // Le focus d'ouverture est sur la liste Signataire.
   // Maj+Tab depuis le premier champ boucle sur le dernier ; on garde aussi le cas
   // ou le focus serait encore sur la fenetre elle-meme.
   if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
@@ -3633,7 +3974,6 @@ function keepFocusInConvention(event) {
 // ecrits qu'a la toute fin, en une seule operation : a tout echec, l'etat reste « A generer ».
 
 // Codes des erreurs de conventionGenerer (propriete `code`).
-//  champs-a-corriger     : champs obligatoires manquants (erreur.problemes : [{id, message}])
 //  enregistrement-echoue : les informations n'ont pas pu etre enregistrees
 //  modele-indisponible   : modele introuvable, inactif ou sans texte
 //  cases-inconnues       : cases du modele sans valeur (erreur.cases : noms, sans doublon)
@@ -3643,7 +3983,6 @@ function keepFocusInConvention(event) {
 //  rattachement-echoue   : fichier envoye, mais PDF_genere / Date_generation non ecrits
 //  echec-inattendu       : tout autre echec (fabrication du PDF comprise)
 const CONVENTION_GENERATION_ERREURS = {
-  champs: 'champs-a-corriger',
   enregistrement: 'enregistrement-echoue',
   modele: 'modele-indisponible',
   cases: 'cases-inconnues',
@@ -3672,18 +4011,11 @@ const CONVENTION_RELECTURE_DELAI_MS = 15000;
 //  - ouverture de « Voir la convention » (jeton puis telechargement du PDF) : 20 s.
 const CONVENTION_ENREGISTREMENT_DELAI_MS = 20000;
 const CONVENTION_MEMORISATION_DELAI_MS = 15000;
+//  - lecture de la campagne de l'action (petite requete) : 15 s ;
+//    creation du nouveau contact (une ecriture) : 20 s, comme l'enregistrement.
+const CONVENTION_CAMPAGNE_DELAI_MS = 15000;
+const CONVENTION_CONTACT_DELAI_MS = 20000;
 const CONVENTION_TELECHARGEMENT_DELAI_MS = 20000;
-
-// Messages valides (note UX, §3 « Enregistrer et Generer », decision D-3), un par probleme.
-// Les deux messages de l'annee (absente, pas a quatre chiffres) : le second est celui de
-// CONVENTION_ERREURS.annee, repris par conventionProblemes.
-const CONVENTION_ERREURS_GENERER = {
-  anneeAbsente: "Saisissez l'année de la convention.",
-  signataire: 'Choisissez le signataire du club.',
-  signataireSansFonction: "Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention.",
-  representant: 'Saisissez le nom du représentant.',
-  fonctionRepresentant: 'Saisissez la fonction du représentant.'
-};
 
 // Noms des cases [Nom] que le widget remplit. Les quatre cases du bloc de signature sont
 // celles de conventionSignatures ; « Nom du club » et « Siège du club » sont celles des
@@ -3705,9 +4037,9 @@ const CONVENTION_CASES = {
   fonctionRepresentant: 'Fonction du représentant'
 };
 
-// Pointilles d'une case connue mais vide : meme longueur (28 points) que les zones
+// Pointilles d'une case connue mais vide : meme longueur (56 points) que les zones
 // « À ........, le ........ » du bloc de signature.
-const CONVENTION_POINTILLES = '............................';
+const CONVENTION_POINTILLES = '........................................................';
 
 // Forme courte du dispositif dans le nom du fichier (note UX, D-S7-3 : proposition a valider
 // par Hanta). Cle : nom du dispositif sans accent ni majuscule. Un dispositif absent d'ici
@@ -3738,24 +4070,6 @@ function conventionAvecDelai(promesse, delaiMs, creerErreur) {
       erreur => { clearTimeout(minuteur); reject(erreur); }
     );
   });
-}
-
-// Controle des champs obligatoires de « Generer ». Renvoie TOUS les problemes, dans l'ordre
-// de la fenetre : [{id, message}] (id : champ de la fenetre), liste vide si tout est bon.
-// `valeurs` vient de lireConventionForm. Fonction pure : ni DOM, ni Grist.
-function conventionProblemesGenerer(actionId, valeurs, donnees) {
-  const problemes = [];
-  if (conventionModeleInfos(actionId, donnees).avecAnnee) {
-    const annee = String(valeurs.annee ?? '').trim();
-    if (annee === '' && !valeurs.anneeIllisible) problemes.push({id: 'conventionAnnee', message: CONVENTION_ERREURS_GENERER.anneeAbsente});
-    else problemes.push(...conventionProblemes({...valeurs, annee}));
-  }
-  const signataire = conventionContacts(actionId, donnees).find(contact => contact.id === valeurs.signataire);
-  if (!signataire) problemes.push({id: 'clubSignataire', message: CONVENTION_ERREURS_GENERER.signataire});
-  else if (!signataire.fonction) problemes.push({id: 'clubFonction', message: CONVENTION_ERREURS_GENERER.signataireSansFonction});
-  if (!String(valeurs.representant ?? '').trim()) problemes.push({id: 'agenceRepresentant', message: CONVENTION_ERREURS_GENERER.representant});
-  if (!String(valeurs.fonctionRepresentant ?? '').trim()) problemes.push({id: 'agenceFonction', message: CONVENTION_ERREURS_GENERER.fonctionRepresentant});
-  return problemes;
 }
 
 // Valeur de chaque case connue, pour conventionVersContenuPdf. Fonction pure.
@@ -3988,7 +4302,7 @@ async function conventionPdfRattache(conventionId, pieceJointe) {
 
 // Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
 // Les etapes se suivent, la premiere qui echoue arrete tout (note UX, §3 et D-S7-4) :
-//  1. controle des champs obligatoires ; 2. enregistrement des informations (sans message) ;
+//  1. (plus de controle des champs, evolution 1) ; 2. enregistrement des informations (sans message) ;
 //  3. modele actif ; 4. remplissage des cases ; 4b. UN jeton d'ecriture, puis les logos du
 //  modele (Logo, Logo_partenaire : un logo absent ou illisible n'arrete rien) ;
 //  5. chargement de pdfmake (20 s au plus) ;
@@ -4000,9 +4314,7 @@ async function conventionPdfRattache(conventionId, pieceJointe) {
 // (voir CONVENTION_GENERATION_ERREURS) ; rien n'est alors ecrit dans PDF_genere ni Date_generation.
 async function conventionGenerer(actionId, valeurs) {
   try {
-    const problemes = conventionProblemesGenerer(actionId, valeurs, state);
-    if (problemes.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.champs, {problemes});
-
+    // Evolution 1 : plus de controle des champs ici, un champ vide donne des pointilles.
     // Modele = modele actif au moment du clic, premiere generation ou re-generation (D-S8-4).
     const enregistre = await conventionEnregistrer(actionId, valeurs, {silencieux: true, modeleActif: true});
     const convention = conventionEtat(actionId, state).convention;
@@ -4013,7 +4325,12 @@ async function conventionGenerer(actionId, valeurs) {
     const contenu = modele ? String(modele.Contenu ?? '') : '';
     if (!modele || !contenu.trim()) throw conventionErreur(CONVENTION_GENERATION_ERREURS.modele);
 
-    const cases = conventionValeursCases(actionId, valeurs, state);
+    // L'annee du PDF (case [Année] et nom du fichier) est celle qui vient d'etre enregistree
+    // d'apres la campagne de l'action, plus celle d'un champ de la fenetre (il n'existe plus).
+    // Si Annee n'a pas pu etre mise a jour, c'est l'ancienne valeur de la convention qui sert.
+    const anneeEnregistree = convention.Annee ? String(convention.Annee) : String(valeurs.annee ?? '');
+    const valeursPdf = {...valeurs, annee: anneeEnregistree};
+    const cases = conventionValeursCases(actionId, valeursPdf, state);
     const inconnues = conventionCasesManquantes(contenu, cases);
     if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
 
@@ -4033,7 +4350,7 @@ async function conventionGenerer(actionId, valeurs) {
       blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases)).getBlob();
     }
     if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
-    const nomFichier = conventionNomFichier(actionId, valeurs, state);
+    const nomFichier = conventionNomFichier(actionId, valeursPdf, state);
 
     // Le delai couvre toute la fonction (envoi puis lecture de la reponse), pas seulement fetch.
     const pieceJointe = await conventionAvecDelai(
@@ -4081,8 +4398,8 @@ const CONVENTION_MESSAGE_SANS_LOGO = "La convention a été générée sans le l
 const CONVENTION_MESSAGE_SANS_LOGO_PARTENAIRE = "La convention a été générée sans le logo du partenaire. Vérifiez le modèle avant de l'imprimer.";
 const CONVENTION_SUITE = 'Vos informations sont conservées.';
 
-// Messages des echecs (note UX, §3 « Echecs »), un par code. Les codes champs-a-corriger,
-// enregistrement-echoue et cases-inconnues ont leur propre traitement (voir plus bas).
+// Messages des echecs (note UX, §3 « Echecs »), un par code. Les codes enregistrement-echoue
+// et cases-inconnues ont leur propre traitement (voir plus bas).
 const CONVENTION_MESSAGES_ECHEC = {
   [CONVENTION_GENERATION_ERREURS.pdfmake]: `La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
   [CONVENTION_GENERATION_ERREURS.modele]: `La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
@@ -4121,12 +4438,12 @@ function conventionMessageEchec(erreur, regeneration) {
   return regeneration ? `${message} ${CONVENTION_ANCIENNE_DISPONIBLE}` : message;
 }
 
-// Verrouille ou deverrouille la fenetre. aria-disabled (jamais disabled) sur les trois
+// Verrouille ou deverrouille la fenetre. aria-disabled (jamais disabled) sur les deux
 // boutons du pied : le focus ne se perd pas ; les clics sont ignores par les gestionnaires
-// (conventionGenerationEnCours). Les trois fieldset passent en disabled (decision D-S7-7).
+// (conventionGenerationEnCours). Les deux fieldset passent en disabled (decision D-S7-7).
 function conventionVerrouiller(verrou) {
   conventionGenerationEnCours = verrou;
-  ['conventionFermer', 'conventionEnregistrer', 'conventionGenererFenetre'].forEach(id => {
+  ['conventionFermer', 'conventionGenererFenetre'].forEach(id => {
     const bouton = document.getElementById(id);
     if (!bouton) return;
     if (verrou) bouton.setAttribute('aria-disabled', 'true');
@@ -4149,15 +4466,22 @@ function conventionRafraichirBloc(actionId) {
 // Clic sur « Generer la convention » dans le pied de la fenetre.
 async function lancerGenerationConvention(actionId) {
   const bouton = document.getElementById('conventionGenererFenetre');
-  // Bouton grise (club sans contact) ou generation deja en cours : le clic ne fait rien.
+  // Generation deja en cours : le clic ne fait rien.
   if (!bouton || conventionGenerationEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
   const valeurs = lireConventionForm();
+  // Nom rempli mais E-mail vide ou mal forme : rien n'est enregistre ni genere, la fenetre reste
+  // ouverte avec le message sous le champ E-mail. Avant le verrou : pas de « Generation en cours… ».
+  const probleme = conventionProblemeNouveauContact(valeurs);
+  if (probleme) {
+    conventionAfficherErreurEmail(probleme);
+    return;
+  }
   // Une convention existait-elle avant ce clic ? Lu avant toute operation, pour le message d'echec.
   const regeneration = conventionEstRegeneration(actionId, state);
   // Le verrou est pose tout de suite, avant la premiere operation asynchrone. Les anciens
   // messages d'erreur sont effaces au debut de chaque tentative.
   conventionVerrouiller(true);
-  marquerProblemesConvention([]);
+  document.getElementById('conventionMessage').classList.add('is-hidden');
   let echec = null;
   let resultat = null;
   try {
@@ -4180,13 +4504,6 @@ async function lancerGenerationConvention(actionId) {
     return;
   }
   conventionVerrouiller(false);
-  const problemes = Array.isArray(echec.problemes) ? echec.problemes : [];
-  if (echec.code === CONVENTION_GENERATION_ERREURS.champs && problemes.length) {
-    // Tous les manques a la fois : messages sous les champs, alerte en haut, focus sur le premier.
-    marquerProblemesConvention(problemes);
-    document.getElementById(problemes[0].id).focus();
-    return;
-  }
   afficherMessageConvention(false, conventionMessageEchec(echec, regeneration));
   bouton.focus();
   const alerte = document.getElementById('conventionMessage');

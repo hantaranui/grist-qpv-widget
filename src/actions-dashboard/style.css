@@ -813,23 +813,30 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .add-action-fields { display: grid; gap: 16px; }
 
 /* Fenetre « Convention » : meme affichage que les deux fenetres ci-dessus, dans
-   une regle a part. Puis une colonne, puis deux colonnes cote a cote des 1200 px
-   (la note en prevoit trois quand le bloc « Informations relatives a la convention »
-   sera ajoute). Aucune couleur : tout vient du design system. */
+   une regle a part. Une colonne, puis deux colonnes cote a cote des 1100 px : Club
+   (3 parts) plus large qu'Agence (2 parts), soit 60 % / 40 %, pour que l'encart du club
+   tienne en largeur. Rien n'est reserve pour un troisieme bloc. Aucune couleur : tout
+   vient du design system. */
 #conventionModal .modal { display: block; overflow-y: auto; }
 .convention-grid { display: grid; gap: 24px; }
-@media (min-width: 1200px) {
-  .convention-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1100px) {
+  /* Cote a cote : 40 px entre les deux colonnes (meme valeur que les marges de la fiche d'action),
+     pour une separation nette. En une colonne, l'espace reste de 24 px. */
+  .convention-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: 40px; }
 }
+/* Sous-titre et phrase d'introduction : pas de marge propre ni d'espace en haut du corps,
+   pour que la phrase suive le sous-titre de pres. */
+.convention-soustitre, .convention-intro { margin: 0; }
+#conventionModal .modal-body { padding-top: 0; }
+.convention-intro { margin-bottom: 16px; }
 .convention-part { min-width: 0; margin: 0; padding: 0; border: 0; }
 .convention-champs { display: grid; gap: 16px; }
+/* Encart du club (lecture seule) : pas de poignee de redimensionnement, pas de defilement ;
+   sa hauteur est reglee par le script (conventionAjusterEncart) d'apres son contenu. Le
+   selecteur est plus precis que « .edit-field textarea », qui autorise resize: vertical. */
+.edit-field textarea.convention-encart { resize: none; overflow: hidden; }
 /* Boutons du bloc Convention : ils gardent leur taille et passent a la ligne. */
 .convention-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-/* Trois blocs (informations, signataire club, signataire agence) : trois colonnes des
-   1200 px. Regle separee, placee apres celle des deux colonnes qu'elle remplace. */
-@media (min-width: 1200px) {
-  .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 /* Bloc « Convention » : le contenu (phrases et boutons) est refait seul apres une generation,
    dans un conteneur qui ne change pas la grille de .edit-fields. La zone de message
    (role="status") reste dans la page ; vide, elle ne prend pas de place. */
