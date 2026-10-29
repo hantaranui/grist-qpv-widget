@@ -404,18 +404,17 @@ test("le bloc ne contient que des phrases (et, aux états À générer, Génér�
 // ---------------------------------------------------------------------------
 
 const MANQUES = {
-  "adresse du club": {structure: {Adresse: "", Code_postal: "", Ville: ""}},
   "agence": {action: {Agence: 0}},
   "club": {action: {Club: 0}},
 };
 
 // Echoue si, aux etats A generer et Generee (depuis la 8.1, pour « Re-générer »), le message de
-// blocage (« Renseignez… », texte cache, region #conventionBlocage) manque quand l'adresse du
-// club, l'agence ou le club manque ; ou si l'un des trois autres etats (Signee, Sans modele,
+// blocage (« Renseignez… », texte cache, region #conventionBlocage) manque quand l'agence
+// ou le club manque ; ou si l'un des trois autres etats (Signee, Sans modele,
 // Droits insuffisants) l'affiche malgre un element manquant (ici l'agence). La phrase d'etat ne
 // change pas : le message n'est pas une des phrases (<p> sans id) du bloc.
 // Le test verifie d'abord que conventionBlocage voit bien le manque, sinon il ne prouverait rien.
-test("le message de blocage n'apparaît qu'aux états À générer et Générée, quand il manque l'adresse du club, l'agence ou le club", () => {
+test("le message de blocage n'apparaît qu'aux états À générer et Générée, quand il manque l'agence ou le club", () => {
   const w = loadWidget();
   const ETATS_AVEC_BOUTON = {
     "À générer": {variante: {}, phrases: [TEXTES.aGenerer]},
@@ -448,18 +447,18 @@ test("le message de blocage n'apparaît qu'aux états À générer et Générée
   }
 });
 
-// Echoue si, a l'etat Generee, le message de blocage de « Re-générer » (adresse du club
+// Echoue si, a l'etat Generee, le message de blocage de « Re-générer » (agence
 // manquante) n'est pas affiche, ou s'il l'est alors que rien ne manque ; ou si le dispositif
 // manquant (etat Sans modele) en fait apparaitre un.
 test("à l'état Générée le message de blocage n'apparaît que si un élément manque ; aucun sans dispositif (état Sans modèle)", () => {
   const w = loadWidget();
   const generee = donnees({
-    structure: {Adresse: "", Code_postal: "", Ville: ""},
+    action: {Agence: 0},
     conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})],
   });
   assert.notEqual(w.conventionBlocage(1, generee), null);
   assert.deepEqual(textes(blocPour(w, generee)), ["Convention générée le 14/03/2026.", TEXTES.aide]);
-  assert.ok(decoder(blocPour(w, generee)).includes("Renseignez l'adresse du club dans sa fiche."), "message de l'adresse du club");
+  assert.ok(decoder(blocPour(w, generee)).includes("Renseignez l'agence de l'action dans sa fiche."), "message de l'agence");
   const complete = blocPour(w, donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
   assert.ok(!/Renseignez|impossible à générer|conventionBlocageTexte/.test(complete), "rien ne manque : aucun message");
 
@@ -618,13 +617,11 @@ const BLOCAGES = {
   agence: "Renseignez l'agence de l'action dans sa fiche.",
   club: "Renseignez le club de l'action.",
   dispositif: "Renseignez le dispositif de l'action dans sa fiche.",
-  adresse: "Renseignez l'adresse du club dans sa fiche.",
 };
 const MANQUES_PAR_ELEMENT = {
   agence: {action: {Agence: 0}},
   club: {action: {Club: 0}},
   dispositif: {action: {Dispositif: 0}},
-  adresse: {structure: {Adresse: "", Code_postal: "", Ville: ""}},
 };
 
 // Echoue si « Re-générer » apparait dans un autre etat que Generee (A generer, Signee, Sans
@@ -653,7 +650,7 @@ test("« Re-générer » n'existe qu'à l'état Générée, juste après « Voir
   assert.ok(!bloc.includes("btn-sm") && !bloc.includes("btn-primary"), "ni btn-sm ni bouton principal");
 });
 
-// Un element manquant a la fois (agence, club, dispositif, adresse du club). Echoue si « Re-générer »
+// Un element manquant a la fois (agence, club, dispositif). Echoue si « Re-générer »
 // n'est plus grise par aria-disabled="true" (ou prend disabled ou garde aria-haspopup), si
 // aria-describedby ne pointe plus vers le message, si le message n'est pas celui du premier
 // element manquant (texte cache « Convention impossible à générer : » compris), s'il n'est pas

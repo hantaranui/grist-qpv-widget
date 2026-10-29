@@ -1,9 +1,9 @@
 "use strict";
 
-// Tache 7.3, fin : chargement de pdfmake, nom du fichier PDF et controle de « Generer ».
+// Tache 7.3, fin : chargement de pdfmake et nom du fichier PDF.
 //  - chargerPdfmake et conventionChargerPdfmake (delai de 20 secondes) ;
 //  - conventionNomNettoye et conventionNomFichier (decision D-S7-3) ;
-//  - conventionProblemesGenerer (six messages valides, decision D-3).
+//  - E1 : le controle de champs « conventionProblemesGenerer » a disparu (plus aucun champ obligatoire).
 // Les codes d'erreur de conventionGenerer sont dans convention-generation.test.js (ils
 // reutilisent son jeu d'essai). Ce fichier est separe : le chargement a besoin d'un faux
 // <head> et de fausses minuteries, que le jeu d'essai de la generation n'a pas.
@@ -475,112 +475,13 @@ test("conventionNomFichier : jamais de nom de personne", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// conventionProblemesGenerer : tous les problemes a la fois, six messages valides (D-3)
+// E1 : plus aucun controle de champ avant « Generer » (docs/ux/convention.md, §3 « Enregistrer
+// et Generer », D-E1-17). Les six messages de blocage de l'ancienne version sont supprimes.
 // ---------------------------------------------------------------------------
 
-const MESSAGES = {
-  anneeAbsente: "Saisissez l'année de la convention.",
-  anneeInvalide: "Saisissez une année à quatre chiffres.",
-  signataire: "Choisissez le signataire du club.",
-  sansFonction: "Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention.",
-  representant: "Saisissez le nom du représentant.",
-  fonctionRepresentant: "Saisissez la fonction du représentant.",
-};
-
-// Contacts du club 7 : 31 avec fonction, 32 sans fonction ; 33 appartient a un autre club.
-function donneesProblemes({avecAnnee = true} = {}) {
-  return {
-    raw: {
-      Actions: [{id: 1, Club: 7, Dispositif: 3}],
-      Modeles_convention: [{id: 10, Dispositif: 3, Actif: true, Avec_annee: avecAnnee}],
-      Contacts: [
-        {id: 31, Club: 7, Prenom: "Camille", Nom: "Exemple", Fonction: "Présidente"},
-        {id: 32, Club: 7, Prenom: "Alex", Nom: "Modèle", Fonction: ""},
-        {id: 33, Club: 99, Prenom: "Robin", Nom: "Voisin", Fonction: "Trésorier"},
-      ],
-    },
-    tablesRefusees: [],
-  };
-}
-
-const COMPLET = {annee: "2031", anneeIllisible: false, signataire: 31, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
-
-// Echoue si le controle s'arrete au premier probleme au lieu de les rendre tous, si l'ordre
-// n'est pas celui de la fenetre, ou si l'un des quatre messages (annee absente, signataire,
-// representant, fonction du representant) change d'un mot.
-test("conventionProblemesGenerer : tout est vide → les quatre problèmes à la fois, dans l'ordre de la fenêtre", async () => {
+// Echoue si le controle des champs (conventionProblemesGenerer, six messages de blocage de
+// l'ancienne version) revient dans le script : un champ vide doit donner des pointillés, pas un blocage.
+test("E1 : le controle de champs « conventionProblemesGenerer » n'existe plus (un champ vide ne bloque plus)", async () => {
   const w = await widgetDeNoms();
-  const problemes = w.conventionProblemesGenerer(1, {annee: "", anneeIllisible: false, signataire: 0, representant: "", fonctionRepresentant: ""}, donneesProblemes());
-  assert.deepEqual(ordinaire(problemes), [
-    {id: "conventionAnnee", message: MESSAGES.anneeAbsente},
-    {id: "clubSignataire", message: MESSAGES.signataire},
-    {id: "agenceRepresentant", message: MESSAGES.representant},
-    {id: "agenceFonction", message: MESSAGES.fonctionRepresentant},
-  ]);
-});
-
-// Echoue si une annee qui n'a pas quatre chiffres, ou un signataire sans fonction, ne
-// donne pas son message exact, ou si ces deux problemes n'arrivent pas avec les autres.
-test("conventionProblemesGenerer : année à deux chiffres et signataire sans fonction → leurs messages, avec les autres", async () => {
-  const w = await widgetDeNoms();
-  const problemes = w.conventionProblemesGenerer(1, {annee: "20", anneeIllisible: false, signataire: 32, representant: "", fonctionRepresentant: ""}, donneesProblemes());
-  assert.deepEqual(ordinaire(problemes), [
-    {id: "conventionAnnee", message: MESSAGES.anneeInvalide},
-    {id: "clubFonction", message: MESSAGES.sansFonction},
-    {id: "agenceRepresentant", message: MESSAGES.representant},
-    {id: "agenceFonction", message: MESSAGES.fonctionRepresentant},
-  ]);
-});
-
-// Echoue si une annee illisible (champ numerique dont le texte n'est pas un nombre, champ
-// rendu vide) est prise pour une annee absente au lieu d'afficher « quatre chiffres ».
-test("conventionProblemesGenerer : année illisible → « Saisissez une année à quatre chiffres. »", async () => {
-  const w = await widgetDeNoms();
-  const problemes = w.conventionProblemesGenerer(1, {...COMPLET, annee: "", anneeIllisible: true}, donneesProblemes());
-  assert.deepEqual(ordinaire(problemes), [{id: "conventionAnnee", message: MESSAGES.anneeInvalide}]);
-});
-
-// Echoue si le controle de l'annee reste actif pour un modele sans annee (annee vide ou
-// n'importe quel texte), ou si les autres problemes disparaissent avec elle.
-test("conventionProblemesGenerer : modèle sans année → aucun problème d'année, les trois autres restent", async () => {
-  const w = await widgetDeNoms();
-  const donnees = donneesProblemes({avecAnnee: false});
-  const vide = {annee: "", anneeIllisible: false, signataire: 0, representant: "", fonctionRepresentant: ""};
-  const attendu = [
-    {id: "clubSignataire", message: MESSAGES.signataire},
-    {id: "agenceRepresentant", message: MESSAGES.representant},
-    {id: "agenceFonction", message: MESSAGES.fonctionRepresentant},
-  ];
-  assert.deepEqual(ordinaire(w.conventionProblemesGenerer(1, vide, donnees)), attendu);
-  assert.deepEqual(ordinaire(w.conventionProblemesGenerer(1, {...vide, annee: "abc", anneeIllisible: true}, donnees)), attendu);
-  assert.deepEqual(ordinaire(w.conventionProblemesGenerer(1, {...COMPLET, annee: ""}, donnees)), [], "complet sans année : aucun problème");
-});
-
-// Echoue si une saisie correcte est refusee, avec ou sans annee.
-test("conventionProblemesGenerer : saisie complète → liste vide, avec et sans année", async () => {
-  const w = await widgetDeNoms();
-  assert.deepEqual(ordinaire(w.conventionProblemesGenerer(1, COMPLET, donneesProblemes())), []);
-  assert.deepEqual(ordinaire(w.conventionProblemesGenerer(1, COMPLET, donneesProblemes({avecAnnee: false}))), []);
-});
-
-// Echoue si un contact d'un autre club (33), ou un identifiant qui n'existe pas, est accepte
-// comme signataire.
-test("conventionProblemesGenerer : un signataire qui n'est pas un contact du club → « Choisissez le signataire du club. »", async () => {
-  const w = await widgetDeNoms();
-  for (const signataire of [33, 999]) {
-    const problemes = w.conventionProblemesGenerer(1, {...COMPLET, signataire}, donneesProblemes());
-    assert.deepEqual(ordinaire(problemes), [{id: "clubSignataire", message: MESSAGES.signataire}], `signataire ${signataire}`);
-  }
-});
-
-// Echoue si un representant ou une fonction faits seulement d'espaces (ou absents) sont acceptes.
-test("conventionProblemesGenerer : représentant et fonction faits d'espaces ou absents → refusés", async () => {
-  const w = await widgetDeNoms();
-  for (const vide of ["   ", undefined, null]) {
-    const problemes = w.conventionProblemesGenerer(1, {...COMPLET, representant: vide, fonctionRepresentant: vide}, donneesProblemes());
-    assert.deepEqual(ordinaire(problemes), [
-      {id: "agenceRepresentant", message: MESSAGES.representant},
-      {id: "agenceFonction", message: MESSAGES.fonctionRepresentant},
-    ], `valeur ${vide === undefined ? "undefined" : JSON.stringify(vide)}`);
-  }
+  assert.equal(typeof w.conventionProblemesGenerer, "undefined");
 });

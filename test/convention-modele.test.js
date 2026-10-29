@@ -255,7 +255,7 @@ test("apostrophe : une clé avec une autre ponctuation (accent grave) ne remplit
 
 // ---- Cases connues mais vides, cases inconnues (décision du 2026-10-23) ----
 
-const POINTILLES = ".".repeat(28);
+const POINTILLES = ".".repeat(56);
 const CASES_CONNUES = [
   "Année", "Nom du club", "SIRET du club", "Siège du club", "Signataire du club", "Fonction du signataire",
   "Nom de l’agence", "Adresse de l’agence", "SIRET de l’agence", "Représentant de l’agence", "Fonction du représentant",
@@ -290,10 +290,10 @@ test("cases connues toutes remplies : aucun pointillé, aucune case manquante", 
   assert.deepStrictEqual(manquantes(CASES_CONNUES.map(nom => `[${nom}]`).join(" "), cases), []);
 });
 
-// Échoue si une case connue mais vide (club sans SIRET) n'est plus remplacée par 28 points.
-test("case connue mais vide (club sans SIRET) : valeur = 28 points, les autres cases gardent leur valeur", () => {
+// Échoue si une case connue mais vide (club sans SIRET) n'est plus remplacée par 56 points.
+test("case connue mais vide (club sans SIRET) : valeur = 56 points, les autres cases gardent leur valeur", () => {
   const cases = valeursCases(donneesCases({club: {SIRET: ""}}));
-  assert.equal(POINTILLES.length, 28);
+  assert.equal(POINTILLES.length, 56);
   assert.equal(cases["SIRET du club"], POINTILLES);
   assert.equal(cases["Nom du club"], "Club Exemple");
 });
@@ -313,8 +313,8 @@ test("[SIRET de l’agence] : remplie par le SIRET de l'agence, distinct de celu
   assert.deepStrictEqual(remplir("SIRET : [SIRET de l’agence]", cases), [{text: "SIRET : 98765432109876", style: "paragraphe"}]);
 });
 
-// Échoue si un SIRET d'agence vide (ou fait d'espaces) ne devient plus 28 points, ou bloque la génération.
-test("[SIRET de l’agence] vide ou faite d'espaces : 28 points, aucune case manquante, génération non bloquée", () => {
+// Échoue si un SIRET d'agence vide (ou fait d'espaces) ne devient plus 56 points, ou bloque la génération.
+test("[SIRET de l’agence] vide ou faite d'espaces : 56 points, aucune case manquante, génération non bloquée", () => {
   ["", "   "].forEach(vide => {
     const cases = valeursCases(donneesCases({agence: {Siret: vide}}));
     assert.equal(cases["SIRET de l’agence"], POINTILLES);
@@ -334,7 +334,7 @@ test("[SIRET de l'agence] : apostrophe droite ou courbe dans le modèle, la case
 });
 
 // Échoue si un champ du formulaire laissé vide (ou espaces) ne devient plus des points.
-test("cases du formulaire vides ou faites d'espaces (représentant, fonction) : 28 points", () => {
+test("cases du formulaire vides ou faites d'espaces (représentant, fonction) : 56 points", () => {
   const cases = valeursCases(donneesCases(), {...VALEURS_FORMULAIRE, representant: "   ", fonctionRepresentant: ""});
   assert.equal(cases["Représentant de l’agence"], POINTILLES);
   assert.equal(cases["Fonction du représentant"], POINTILLES);
@@ -473,7 +473,7 @@ const SIGNATURES_VALEURS = {
   "Représentant de l’agence": "Alex Durand",
   "Fonction du représentant": "Directeur d’agence",
 };
-const LIEU_DATE = {text: "À ............................, le ............................", style: "paragraphe"};
+const LIEU_DATE = {text: "À ........................................................, le ........................................................", style: "paragraphe"};
 const LIGNES_VIDES = "\n".repeat(MISE_EN_PAGE.signatures.lignesVides);
 
 test("{saut-de-page} seul sur sa ligne : saut de page à cet endroit, entre les deux paragraphes", () => {
@@ -875,7 +875,7 @@ test("le contenu du document ne contient aucun numéro de page ni « Page »", (
 // ---- {signatures:ft-gauche} ----
 
 const FT_GAUCHE = (valeurs = SIGNATURES_VALEURS) => remplir("{signatures:ft-gauche}", valeurs);
-const FAIT_A = "Fait à ............................, le ............................";
+const FAIT_A = "Fait à ........................................................, le ........................................................";
 
 // Échoue si la ligne « Fait à… », l'ordre des colonnes, les intitulés en gras ou l'espace de signature changent.
 test("{signatures:ft-gauche} : ligne « Fait à… » (18 pt avant), puis France Travail à gauche et le club à droite, d'un seul tenant", () => {

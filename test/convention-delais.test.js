@@ -26,7 +26,11 @@ const CLUB = {id: 7, Nom: "Club Exemple", SIRET: "12345678901234", Adresse: "1 r
 const AGENCE = {id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Complement_adresse: "", Code_postal: "75002", Ville: "Exemple-Ville"};
 const MODELE = {id: 10, Dispositif: 3, Actif: true, Titre: "Modèle Exemple", Avec_annee: true, Contenu: "Texte de convention fictif."};
 const CONTACTS = [{id: 31, Club: 7, Prenom: "Camille", Nom: "Exemple", Fonction: "Présidente"}];
-const VALEURS = {annee: "2031", anneeIllisible: false, signataire: 31, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
+// E1 : plus d'annee dans les valeurs (elle vient de la campagne de l'action), nouveauContact vaut null
+// tant que le Nom du formulaire « Ajouter un contact » est vide. L'action d'essai n'a pas de
+// campagne : aucune lecture de la table Campagnes (donc aucune minuterie en plus) sauf aux tests
+// qui lui en donnent une.
+const VALEURS = {signataire: 31, nouveauContact: null, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
 const LIGNE_CONVENTION = {
   id: ID_CONVENTION, Action: 1, Modele: 10, Annee: 2031, Signataire_club: 31,
   Representant_agence: "Dana Exemple", Fonction_representant: "Directrice adjointe",
@@ -36,7 +40,7 @@ const LIGNE_CONVENTION = {
 const MESSAGE_ENVOI_IMPOSSIBLE = "La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. Vos informations sont conservées.";
 const MESSAGE_RATTACHEMENT = "La convention n'a pas pu être enregistrée : le fichier a été fabriqué mais n'a pas pu être rattaché à l'action. Réessayez ou contactez l'équipe du tableau de bord. Vos informations sont conservées.";
 const LIBELLE = "Générer la convention";
-const BOUTONS_DU_PIED = ["conventionFermer", "conventionEnregistrer", "conventionGenererFenetre"];
+const BOUTONS_DU_PIED = ["conventionFermer", "conventionGenererFenetre"];
 
 const attendre = () => new Promise((resolve) => setImmediate(resolve));
 const jamais = () => new Promise(() => {});
@@ -359,7 +363,7 @@ test("génération réussie : une minuterie par appel, dans l'ordre, toutes arr�
 // ---------------------------------------------------------------------------
 // On clique vraiment sur « Generer la convention » (lancerGenerationConvention) avec la vraie
 // conventionGenerer. Seul lireConventionForm est remplacee (la saisie), pour ne pas monter la
-// fenetre entiere. Vu de l'ecran : trois boutons sans aria-disabled, blocs modifiables, libelle
+// fenetre entiere. Vu de l'ecran : les deux boutons du pied sans aria-disabled, les deux blocs modifiables, libelle
 // d'origine, zone d'attente vide, message, focus. Un nouveau clic relance la generation : c'est
 // la preuve que le verrou interne est leve.
 
@@ -371,7 +375,7 @@ async function preparerEcran(options) {
   w.window.lireConventionForm = () => ({...VALEURS});
   w.window.closeConvention = () => {};
   w.window.conventionRafraichirBloc = () => {};
-  const fieldsets = [{disabled: false}, {disabled: false}, {disabled: false}];
+  const fieldsets = [{disabled: false}, {disabled: false}];
   doc.querySelectorAll = (selecteur) => (String(selecteur) === "#conventionDialog fieldset" ? fieldsets : []);
 
   const focus = [];
@@ -394,7 +398,7 @@ function verifierVerrouLeve(ctx, nom) {
   for (const id of BOUTONS_DU_PIED) {
     assert.equal(ctx.element(id).getAttribute("aria-disabled"), null, `${nom} : ${id} n'est plus grisé`);
   }
-  assert.deepEqual(ctx.fieldsets.map((f) => f.disabled), [false, false, false], `${nom} : les trois blocs sont modifiables`);
+  assert.deepEqual(ctx.fieldsets.map((f) => f.disabled), [false, false], `${nom} : les deux blocs sont modifiables`);
   assert.equal(ctx.element("conventionGenererFenetre").querySelector(".btn-content").textContent, LIBELLE, `${nom} : libellé d'origine`);
   assert.equal(ctx.element("conventionAttente").innerHTML, "", `${nom} : zone d'attente vidée`);
 }
@@ -405,7 +409,7 @@ async function verifierVerrouPose(ctx, nom) {
   for (const id of BOUTONS_DU_PIED) {
     assert.equal(ctx.element(id).getAttribute("aria-disabled"), "true", `${nom} : ${id} grisé pendant l'attente`);
   }
-  assert.deepEqual(ctx.fieldsets.map((f) => f.disabled), [true, true, true], `${nom} : blocs bloqués pendant l'attente`);
+  assert.deepEqual(ctx.fieldsets.map((f) => f.disabled), [true, true], `${nom} : blocs bloqués pendant l'attente`);
 }
 
 // Echoue si, apres un delai depasse, la fenetre reste verrouillee, si le message exact n'est pas
@@ -481,4 +485,49 @@ test("écran : logos sans réponse → génération réussie sans logo, fenêtre
   assert.ok(html.includes("sans le logo France Travail"), "le logo absent est signalé");
   assert.equal(ctx.focus[ctx.focus.length - 1], "conventionVoir", "le focus va sur « Voir la convention »");
   assert.equal(ctx.element("conventionMessage").classList.contains("alert-error"), false, "pas d'alerte d'erreur");
+});
+
+// ---------------------------------------------------------------------------
+// 4. E1 : delais de la campagne (annee) et de la creation du contact
+// ---------------------------------------------------------------------------
+
+// Echoue si une lecture de la table Campagnes qui ne repond pas bloque l'enregistrement au-dela de
+// 15 s, si l'annee deja enregistree est ecrasee (Annee ne doit pas etre ecrite : reseau coupe =
+// annee inconnue, pas annee vide), ou si l'enregistrement est tenu pour un echec.
+test("campagne : lecture sans réponse au bout de 15 s → l'enregistrement réussit sans écrire Annee", async () => {
+  const ctx = await preparer();
+  ctx.w.state.raw.Actions[0].Campagne = 4;
+  ctx.w.grist.docApi.fetchTable = (nom) => (nom === "Campagnes" ? jamais() : Promise.resolve({id: []}));
+  const ecritures = [];
+  ctx.w.grist.docApi.applyUserActions = (actions) => { ecritures.push(actions); return Promise.resolve({retValues: [ID_CONVENTION]}); };
+
+  const resultat = ctx.w.conventionEnregistrer(1, VALEURS, {silencieux: true});
+  await ctx.declencher(15000);
+  const ok = await resultat;
+
+  assert.equal(ok, true, "l'enregistrement réussit");
+  assert.equal(ecritures.length, 1, "une seule écriture");
+  assert.equal(Object.prototype.hasOwnProperty.call(ecritures[0][0][3], "Annee"), false, "Annee n'est pas écrite");
+  assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2031, "l'année déjà enregistrée est gardée");
+  assert.equal(ctx.actives().length, 0, "plus aucune minuterie active");
+});
+
+// Echoue si la creation du contact (Contacts) qui ne repond pas n'echoue pas au bout de 20 s, si une
+// ecriture dans Conventions part malgre tout (aucune ecriture ne doit referencer un contact qui
+// n'existe peut-etre pas), ou si l'enregistrement est tenu pour reussi.
+test("création du contact : sans réponse au bout de 20 s → enregistrement en échec, rien n'est écrit dans Conventions", async () => {
+  const ctx = await preparer();
+  const ecritures = [];
+  ctx.w.grist.docApi.applyUserActions = (actions) => { ecritures.push(actions); return jamais(); };
+  const valeurs = {signataire: 0, nouveauContact: {nom: "Martin", prenom: "", email: "martin@exemple.fr", fonction: ""}, representant: "", fonctionRepresentant: ""};
+
+  const resultat = ctx.w.conventionEnregistrer(1, valeurs, {silencieux: true});
+  await ctx.declencher(20000);
+  const ok = await resultat;
+
+  assert.equal(ok, false, "l'enregistrement échoue");
+  assert.equal(ecritures.length, 1, "une seule écriture tentée");
+  assert.equal(ecritures[0][0][1], "Contacts", "c'est la création du contact");
+  assert.equal(ctx.w.state.raw.Contacts.length, CONTACTS.length, "aucun contact gardé en mémoire");
+  assert.equal(ctx.actives().length, 0, "plus aucune minuterie active");
 });

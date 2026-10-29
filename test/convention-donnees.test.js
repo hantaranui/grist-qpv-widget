@@ -297,24 +297,6 @@ test("blocage dispositif : Dispositif vide", () => {
   assert.deepEqual(contenu(resultat), {element: "dispositif", message: MESSAGES.dispositif});
 });
 
-test("blocage adresse : Adresse du club vide", () => {
-  const resultat = conventionBlocage(1, donnees({club: {Adresse: ""}}));
-
-  assert.deepEqual(contenu(resultat), {element: "adresse", message: MESSAGES.adresse});
-});
-
-test("blocage adresse : Code_postal du club vide", () => {
-  const resultat = conventionBlocage(1, donnees({club: {Code_postal: ""}}));
-
-  assert.deepEqual(contenu(resultat), {element: "adresse", message: MESSAGES.adresse});
-});
-
-test("blocage adresse : Ville du club vide", () => {
-  const resultat = conventionBlocage(1, donnees({club: {Ville: ""}}));
-
-  assert.deepEqual(contenu(resultat), {element: "adresse", message: MESSAGES.adresse});
-});
-
 // --- Ordre des blocages et cas sans blocage ---
 
 test("blocage dans l'ordre : action sans agence ni club, l'element renvoye est l'agence", () => {
@@ -333,4 +315,23 @@ test("state.tablesRefusees : apres un refus de Conventions, la liste contient Co
   const {w} = await charger(["Conventions"]);
 
   assert.deepEqual(contenu(w.state.tablesRefusees), ["Conventions"]);
+});
+
+// ---- Evolution 1 : la table Campagnes (annee de la convention et sous-titre de la fenetre) ----
+
+// Echoue si Campagnes sort de la liste TABLES (le sous-titre « Dispositif · Campagne 2026 » ne pourrait
+// plus lire Actions.Campagne), si ses lignes n'arrivent plus dans state.raw, ou si son refus par les
+// regles d'acces bloque le chargement, met le bloc Convention en « Droits insuffisants » (seules
+// Conventions et Modeles_convention le font) ou laisse autre chose qu'une liste vide.
+test("Campagnes : lue avec les autres tables ; refusée, elle devient une liste vide sans bloquer ni changer l'état du bloc", async () => {
+  const lue = await charger();
+  assert.ok(lue.w.TABLES.includes("Campagnes"), "Campagnes est dans TABLES");
+  assert.equal(lue.journal.error.length, 0);
+
+  const refusee = await charger(["Campagnes"]);
+  assert.deepEqual(contenu(refusee.w.state.raw.Campagnes), [], "liste vide");
+  assert.ok(refusee.w.state.tablesRefusees.includes("Campagnes"), "signalée comme refusée");
+  assert.equal(refusee.w.state.raw.Actions.length, 1, "le reste est chargé");
+  const etat = refusee.w.conventionEtat(1, {raw: {Actions: [{id: 1, Dispositif: 4}], Modeles_convention: [{id: 5, Dispositif: 4, Actif: true}], Conventions: []}, tablesRefusees: refusee.w.state.tablesRefusees});
+  assert.equal(etat.etat, "À générer", "un refus de Campagnes ne donne pas « Droits insuffisants »");
 });

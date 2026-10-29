@@ -1,14 +1,17 @@
 "use strict";
 
-// Bouton « Générer la convention » et fenetre « Convention » (taches 5.1a et 5.1b) :
+// Bouton « Générer la convention » et fenetre « Convention » (taches 5.1a et 5.1b, mis a jour
+// pour l'Evolution 1 : docs/ux/convention.md, §3, D-E1-1 a D-E1-21) :
 // bouton present seulement a l'etat A generer, message de blocage, ouverture et
-// fermeture de la fenetre, informations du club et de l'agence en lecture seule,
-// echappement des valeurs venant de Grist, focus (Echap, Tab, Maj+Tab) ; puis, pour
-// la 5.1b, les trois blocs, l'annee, la liste des signataires, la fonction du
-// signataire, le representant, le pied, et le controle de l'annee a « Enregistrer
-// les informations » (section 9). Depuis la 7.2b, le pied a un troisieme bouton,
-// « Générer la convention » : son comportement (verrou, echecs, reussite) est dans
-// test/convention-generer-ecran.test.js.
+// fermeture de la fenetre, echappement des valeurs venant de Grist, focus (Echap, Tab,
+// Maj+Tab) ; puis les deux blocs Club et Agence (plus de bloc « Informations », plus de champ
+// « Modele utilise » ni « Annee »), l'encart du club, le sous-titre, la liste des signataires, la
+// fonction du signataire, le representant, le pied a deux boutons (« Fermer » enregistre en silence ;
+// plus de « Enregistrer les informations ») et le seuil de deux colonnes a 1100 px.
+// Plus aucun champ obligatoire : pas d'asterisque, pas de required, pas de controle d'annee.
+// Le bouton « Ajouter un contact » et la creation du contact sont dans convention-contact.test.js.
+// Depuis la 7.2b, le pied a le bouton « Générer la convention » : son comportement (verrou, echecs,
+// reussite) est dans test/convention-generer-ecran.test.js.
 // Les textes de reference sont ceux de docs/ux/convention.md. Ils sont recopies
 // ici en dur : si le code change un mot, le test doit echouer.
 // Donnees fictives uniquement.
@@ -33,7 +36,6 @@ const BLOCAGES = {
   agence: "Renseignez l'agence de l'action dans sa fiche.",
   club: "Renseignez le club de l'action.",
   dispositif: "Renseignez le dispositif de l'action dans sa fiche.",
-  adresse: "Renseignez l'adresse du club dans sa fiche.",
 };
 
 const CLUB = {
@@ -50,7 +52,9 @@ const AGENCE = {
 function donnees({action = {}, club = {}, agence = {}, conventions = [], modeles, contacts = [], refusees = []} = {}) {
   return {
     raw: {
-      Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, ...action}],
+      Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, Campagne: 4, ...action}],
+      Dispositifs: [{id: 3, Dispositif: "Du stade vers l'emploi"}],
+      Campagnes: [{id: 4, Campagne: "2026"}],
       Structures: [{...CLUB, ...club}],
       Agences: [{...AGENCE, ...agence}],
       Modeles_convention: modeles || [{id: 10, Dispositif: 3, Actif: true}],
@@ -82,7 +86,6 @@ const MANQUES = {
   agence: {action: {Agence: 0}},
   club: {action: {Club: 0}},
   dispositif: {action: {Dispositif: 0}},
-  adresse: {club: {Adresse: "", Code_postal: "", Ville: ""}},
 };
 
 // ---------------------------------------------------------------------------
@@ -137,14 +140,14 @@ function libelleNu(html, id) {
 }
 
 // Choix d'une liste : [{value, texte, invite}], ou null si la liste n'existe pas.
-// invite = l'option « Veuillez sélectionner » (selectionnee et desactivee).
+// invite = l'option « Veuillez sélectionner » (selectionnee, valeur vide ; depuis l'E1 elle n'est plus desactivee).
 function options(html, id) {
   const m = new RegExp(`<select\\b[^>]*\\sid="${id}"[^>]*>([\\s\\S]*?)</select>`).exec(html);
   if (!m) return null;
   return [...m[1].matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/g)].map((o) => ({
     value: attribut(`<option${o[1]}>`, "value"),
     texte: decoder(o[2]),
-    invite: /\sselected\b/.test(o[1]) && /\sdisabled\b/.test(o[1]),
+    invite: /\sselected\b/.test(o[1]) && !/\sdisabled\b/.test(o[1]) && attribut(`<option${o[1]}>`, "value") === "",
   }));
 }
 
@@ -188,6 +191,9 @@ function monter(jeu, options = {}) {
       id, attributs, ecouteurs,
       value: champ(contenu, id) ?? "",
       validity: {badInput: false},
+      hidden: /\shidden\b/.test(balisePosee),
+      // Encart du club (conventionAjusterEncart) : hauteur de son contenu et des bordures.
+      style: {}, scrollHeight: 54, offsetHeight: 56, clientHeight: 54,
       classList: {
         add: (...noms) => noms.forEach((nom) => classes.add(nom)),
         remove: (...noms) => noms.forEach((nom) => classes.delete(nom)),
@@ -207,8 +213,32 @@ function monter(jeu, options = {}) {
       focus: () => { actif = element; },
       click: () => { (ecouteurs.click || []).slice().forEach((f) => f({})); },
     };
+    // Liste de choix : ses options sont lues dans le HTML, et on peut en ajouter (insertBefore) ou en
+    // retirer (remove), comme le fait la saisie libre pour l'option « (nouveau contact) ».
+    if (/^<select\b/.test(balisePosee)) {
+      const corps = new RegExp(`<select\\b[^>]*\\sid="${id}"[^>]*>([\\s\\S]*?)</select>`).exec(contenu);
+      element.options = [...(corps ? corps[1] : "").matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/g)]
+        .map((o) => fabriquerOption(attribut(`<option${o[1]}>`, "value") ?? "", decoder(o[2]), element));
+      element.insertBefore = (option, reference) => {
+        const rang = reference ? element.options.indexOf(reference) : element.options.length;
+        element.options.splice(rang < 0 ? element.options.length : rang, 0, option);
+        option.liste = element;
+        if (option.id) registre.set(option.id, option);
+      };
+    }
     return element;
   }
+
+  // Une option de liste : valeur, texte et retrait.
+  function fabriquerOption(valeur, texte, liste) {
+    const option = {id: "", value: valeur, textContent: texte, liste};
+    option.remove = () => {
+      if (option.liste) option.liste.options = option.liste.options.filter((autre) => autre !== option);
+      if (option.id) registre.delete(option.id);
+    };
+    return option;
+  }
+  doc.createElement = () => fabriquerOption("", "", null);
 
   const hote = fabriquer("conventionModal");
   Object.defineProperty(hote, "innerHTML", {
@@ -236,7 +266,7 @@ function monter(jeu, options = {}) {
     if (!existe(id)) {
       // Fenetre ouverte et identifiant de la fenetre absent de la page (ex. « Année »
       // pour un modele sans annee) : null, comme dans un vrai document.
-      return contenu !== "" && /^(convention|club|agence)[A-Z]/.test(id) ? null : origine.getElementById(id);
+      return contenu !== "" && /^(convention|club|agence|signataire)[A-Z]/.test(id) ? null : origine.getElementById(id);
     }
     if (!registre.has(id)) registre.set(id, fabriquer(id, balise(contenu, id) || ""));
     return registre.get(id);
@@ -259,27 +289,25 @@ function monter(jeu, options = {}) {
     return empeche;
   }
 
-  // conventionEnregistrer ne fait rien pour l'instant (la tache 5.2 la remplira) : on la
-  // remplace dans le widget par un espion qui note ses appels. `w.window` est le global
-  // du bac a sable : y poser une fonction remplace celle que submitConvention appelle.
-  const enregistrements = [];
-  w.window.conventionEnregistrer = (actionId, valeurs) => { enregistrements.push({actionId, valeurs}); };
+  // openConvention ecoute le redimensionnement de la fenetre (hauteur de l'encart) : la doublure
+  // de base n'a pas addEventListener, on la pose ici et on garde les ecouteurs pour les tests.
+  const ecouteursFenetre = {};
+  w.window.addEventListener = (type, f) => { (ecouteursFenetre[type] ||= []).push(f); };
+  w.window.removeEventListener = (type, f) => { ecouteursFenetre[type] = (ecouteursFenetre[type] || []).filter((g) => g !== f); };
 
-  // « Enregistrer les informations » est un bouton d'envoi : le navigateur declenche
-  // alors l'evenement submit du formulaire. Renvoie vrai si le script a appele preventDefault.
+  // On remplace conventionEnregistrer dans le widget par un espion qui note ses appels et dit
+  // « enregistre » (vrai). `w.window` est le global du bac a sable : y poser une fonction remplace
+  // celle que fermerConvention (« Fermer », Echap) et la generation appellent.
+  const enregistrements = [];
+  w.window.conventionEnregistrer = (actionId, valeurs, options) => { enregistrements.push({actionId, valeurs, options}); return true; };
+
+  // Entree dans un champ : le formulaire n'a plus de bouton d'envoi, l'evenement submit ne doit
+  // rien faire (E1) que preventDefault. Renvoie vrai si le script a appele preventDefault.
   function soumettre() {
     let empeche = false;
     const evenement = {preventDefault() { empeche = true; }};
     (doc.getElementById("conventionForm").ecouteurs.submit || []).slice().forEach((f) => f(evenement));
     return empeche;
-  }
-
-  // L'annee saisie. `illisible` imite un texte qui n'est pas un nombre (« abc ») : le
-  // navigateur rend alors une valeur vide, avec validity.badInput.
-  function saisirAnnee(valeur, illisible = false) {
-    const annee = doc.getElementById("conventionAnnee");
-    annee.value = valeur;
-    annee.validity = {badInput: illisible};
   }
 
   // Choix d'un contact dans la liste « Signataire » : la valeur change, puis l'evenement change part.
@@ -289,8 +317,15 @@ function monter(jeu, options = {}) {
     (liste.ecouteurs.change || []).slice().forEach((f) => f({}));
   }
 
+  // Frappe dans un champ de texte : la valeur change, puis l'evenement input part.
+  function ecrire(id, valeur) {
+    const champ = doc.getElementById(id);
+    champ.value = valeur;
+    (champ.ecouteurs.input || []).slice().forEach((f) => f({}));
+  }
+
   return {
-    w, hote, bouton, touche, soumettre, saisirAnnee, choisir, enregistrements,
+    w, hote, bouton, touche, soumettre, choisir, enregistrements, ecouteursFenetre, ecrire,
     actif: () => actif,
     element: (id) => doc.getElementById(id),
     corpsAClasse: (nom) => doc.body.classList.contains(nom),
@@ -366,7 +401,7 @@ test("bouton actif (rien ne manque) : aria-haspopup=\"dialog\", ni aria-disabled
 // 2. Le bouton grise et son message de blocage
 // ---------------------------------------------------------------------------
 
-// Pour chacun des quatre elements. Echoue si le bouton n'est plus grise par
+// Pour chacun des trois elements. Echoue si le bouton n'est plus grise par
 // aria-disabled="true" (ou prend disabled ou aria-haspopup), si aria-describedby ne pointe
 // plus vers le message, si le texte du message change d'un mot, ou si le texte cache disparait.
 for (const [element, variante] of Object.entries(MANQUES)) {
@@ -414,7 +449,7 @@ test("génération bloquée par plusieurs éléments : un seul message, celui du
 // la note le place sous la phrase d'etat et juste au-dessus du bouton grise.
 test("dans le bloc, le message de blocage est sous la phrase d'état et au-dessus du bouton", () => {
   const w = loadWidget();
-  for (const element of ["agence", "club", "adresse"]) {
+  for (const element of ["agence", "club"]) {
     const html = w.conventionBlocHtml(1, donnees(MANQUES[element]));
     const phrase = html.indexOf("Aucune convention générée.");
     const message = html.indexOf('id="conventionBlocageTexte"');
@@ -463,65 +498,156 @@ test("clic sur un bouton actif dont les données sont devenues incomplètes : la
 });
 
 // Echoue si le clic sur le bouton actif n'ouvre plus la fenetre, si elle perd son
-// role de dialogue (role, aria-modal, titre relie) ou si le focus d'ouverture n'est
-// pas sur le champ « Année » (le premier champ modifiable, depuis la 5.1b).
-test("clic sur le bouton actif : la fenêtre s'ouvre, annoncée comme un dialogue, et le focus va sur « Année »", () => {
+// role de dialogue (role, aria-modal, titre relie), si le sous-titre n'est plus relie par
+// aria-describedby, ou si le focus d'ouverture n'est pas sur la liste « Signataire » (le premier
+// champ modifiable, depuis l'E1 : le champ « Année » n'existe plus).
+test("clic sur le bouton actif : la fenêtre s'ouvre, annoncée comme un dialogue, et le focus va sur « Signataire »", () => {
   const {w, hote, actif, corpsAClasse} = ouvrirFenetre(donnees());
   const fenetre = balise(hote.innerHTML, "conventionDialog");
   assert.notEqual(fenetre, null, "la fenêtre est dans la page");
   assert.equal(attribut(fenetre, "role"), "dialog");
   assert.equal(attribut(fenetre, "aria-modal"), "true");
   assert.equal(attribut(fenetre, "aria-labelledby"), "conventionTitle");
+  assert.equal(attribut(fenetre, "aria-describedby"), "conventionSubtitle", "le sous-titre est lu après le titre");
   assert.equal(w.state.conventionOpen, true);
   assert.equal(corpsAClasse("modal-open"), true);
-  assert.equal(actif().id, "conventionAnnee", "le focus est sur le champ Année");
+  assert.equal(actif().id, "clubSignataire", "le focus est sur la liste Signataire");
 });
 
 // ---------------------------------------------------------------------------
-// 4. Contenu de la fenetre : club et agence, en lecture seule
+// 3 bis. E1 : sous-titre « [Dispositif] · Campagne [Campagne] » dans l'en-tete
 // ---------------------------------------------------------------------------
 
-// Echoue si un champ affiche une autre valeur que celle des donnees enregistrees :
-// nom, SIRET, siege (adresse puis code postal et ville) du club ; nom et adresse
-// (adresse, complement, code postal et ville) de l'agence ; ou si un libelle change.
-test("la fenêtre affiche le club (nom, SIRET, siège) et l'agence (nom, adresse) de l'action", () => {
+// Echoue si le sous-titre n'est plus dans l'en-tete, sous le titre « Convention » (avant le corps et
+// avant la phrase d'introduction), s'il n'est plus un simple paragraphe (<p>), si son texte n'est plus
+// « [Dispositif] · Campagne [Campagne] » (point median), ou s'il est lie par un autre identifiant.
+test("sous-titre : « Du stade vers l'emploi · Campagne 2026 », dans l'en-tête sous le titre, avant la phrase d'introduction", () => {
   const {html} = ouvrirFenetre(donnees());
-  assert.equal(champ(html, "clubNom"), "Club Exemple");
-  assert.equal(champ(html, "clubSiret"), "12345678901234");
-  assert.equal(champ(html, "clubSiege"), "1 rue Exemple\n75001 Exemple-sur-Mer");
-  assert.equal(champ(html, "agenceNom"), "Agence Exemple");
-  assert.equal(champ(html, "agenceAdresse"), "2 avenue Exemple\nBâtiment A\n75002 Exemple-Ville");
-  assert.equal(libelleDe(html, "clubNom"), "Nom du club");
-  assert.equal(libelleDe(html, "clubSiret"), "SIRET");
-  assert.equal(libelleDe(html, "clubSiege"), "Siège");
-  assert.equal(libelleDe(html, "agenceNom"), "Agence");
-  assert.equal(libelleDe(html, "agenceAdresse"), "Adresse");
+  assert.equal(texteDe(html, "p", "conventionSubtitle"), "Du stade vers l'emploi · Campagne 2026");
+  const entete = html.indexOf('<div class="modal-header">');
+  const titre = html.indexOf('id="conventionTitle"');
+  const sousTitre = html.indexOf('id="conventionSubtitle"');
+  const corps = html.indexOf('<div class="modal-body">');
+  const intro = html.indexOf('class="convention-intro"');
+  assert.ok(entete !== -1 && entete < titre && titre < sousTitre && sousTitre < corps && corps < intro, "en-tête : titre puis sous-titre, puis le corps et la phrase d'introduction");
+  assert.equal(compte(html, /id="conventionSubtitle"/g), 1, "un seul sous-titre");
 });
 
-// Echoue si un des sept champs prevus en lecture seule (modele, nom du club, SIRET,
-// siege, fonction du signataire, agence, adresse) devient modifiable, si un des
-// quatre champs a remplir (annee, signataire, representant, fonction du
-// representant) devient en lecture seule, ou si les onze champs ne sont plus la.
-test("seuls les champs prévus sont en lecture seule ; année, signataire, représentant et fonction du représentant se remplissent", () => {
+// Echoue si une campagne vide, absente ou introuvable fait ecrire « · Campagne » sans valeur ou
+// « undefined » (D-E1-8 : le dispositif seul), si une campagne texte (ancienne colonne) n'est plus
+// lue, ou si le nom du dispositif ou la campagne ne sont plus echappes (HTML).
+test("sous-titre : campagne vide, absente ou introuvable → le dispositif seul ; campagne ou dispositif avec du HTML → échappé", () => {
+  const w = loadWidget();
+  const seul = "Du stade vers l'emploi";
+  assert.equal(w.conventionSousTitre(1, donnees()), `${seul} · Campagne 2026`);
+  assert.equal(w.conventionSousTitre(1, donnees({action: {Campagne: 0}})), seul, "référence vide");
+  assert.equal(w.conventionSousTitre(1, donnees({action: {Campagne: 99}})), seul, "ligne introuvable dans Campagnes");
+  const sansTable = donnees();
+  delete sansTable.raw.Campagnes;
+  assert.equal(w.conventionSousTitre(1, sansTable), seul, "table Campagnes non chargée");
+  const vide = donnees();
+  vide.raw.Campagnes = [{id: 4, Campagne: "   "}];
+  assert.equal(w.conventionSousTitre(1, vide), seul, "texte de campagne fait d'espaces");
+  assert.equal(w.conventionSousTitre(1, donnees({action: {Campagne: "2027"}})), `${seul} · Campagne 2027`, "ancienne colonne texte");
+  const jeu = donnees();
+  jeu.raw.Dispositifs = [{id: 3, Dispositif: "Dispo <b>X</b>"}];
+  jeu.raw.Campagnes = [{id: 4, Campagne: "<i>2026</i>"}];
+  const html = w.conventionModalHtml(1, jeu);
+  assert.ok(!html.includes("<b>") && !html.includes("<i>"), "le HTML des valeurs n'est pas inséré tel quel");
+  assert.equal(texteDe(html, "p", "conventionSubtitle"), "Dispo <b>X</b> · Campagne <i>2026</i>", "affiché comme du texte");
+});
+
+// ---------------------------------------------------------------------------
+// 4. Contenu de la fenetre : encart du club et nom de l'agence, en lecture seule
+// ---------------------------------------------------------------------------
+
+// Echoue si l'encart n'est plus un seul textarea en lecture seule, de libelle « Club », avec nom du
+// club, SIRET et adresse dans cet ordre sur UNE ligne (aucun retour a la ligne dans le texte),
+// si la fenetre affiche encore des champs separes (nom, SIRET, siege) ou l'adresse de l'agence.
+// Les separateurs exacts ne sont pas figes : la note (3 lignes « SIRET : … ») et le code (une ligne)
+// ne disent pas la meme chose, voir le rapport.
+test("la fenêtre affiche le club dans un seul encart en lecture seule (nom, SIRET, adresse sur une ligne) et l'agence par son nom seul", () => {
+  const {html} = ouvrirFenetre(donnees());
+  const encart = champ(html, "clubEncart");
+  assert.ok(!encart.includes("\n"), "une seule ligne : aucun retour à la ligne");
+  const nom = encart.indexOf("Club Exemple");
+  const siret = encart.indexOf("12345678901234");
+  const adresse = encart.indexOf("1 rue Exemple 75001 Exemple-sur-Mer");
+  assert.ok(nom !== -1 && nom < siret && siret < adresse, `ordre nom, SIRET, adresse dans « ${encart} »`);
+  assert.match(balise(html, "clubEncart"), /\sreadonly\b/, "en lecture seule");
+  assert.match(balise(html, "clubEncart"), /^<textarea\b/, "c'est un textarea");
+  assert.equal(libelleNu(html, "clubEncart"), "Club");
+  assert.match(html, /<label class="form-label sr-only" for="clubEncart">Club<\/label>/, "libellé gardé pour les lecteurs d'écran, non affiché");
+  assert.equal(champ(html, "agenceNom"), "Agence Exemple");
+  assert.equal(libelleNu(html, "agenceNom"), "Agence");
+  for (const disparu of ["clubNom", "clubSiret", "clubSiege", "agenceAdresse", "conventionModele", "conventionAnnee"]) {
+    assert.equal(compte(html, new RegExp(`id="${disparu}"`, "g")), 0, `${disparu} n'existe plus`);
+  }
+  assert.ok(!html.includes("2 avenue Exemple"), "l'adresse de l'agence n'est plus affichée");
+  assert.ok(!html.includes("Bâtiment A"), "le complément d'adresse de l'agence non plus");
+});
+
+// Echoue si un SIRET ou une adresse absents du club laissent un vide dans l'encart : la note dit
+// « SIRET : non renseigné » et « Adresse : non renseignée ». Fonction pure (conventionEncartClub) : une
+// adresse absente bloque l'ouverture de la fenetre (conventionBlocage), donc elle ne se voit pas a l'ecran.
+test("encart du club : SIRET ou adresse absents → « non renseigné(e) », jamais un vide ni « undefined »", () => {
+  const w = loadWidget();
+  const encart = w.conventionEncartClub(w.conventionInfos(1, donnees({club: {SIRET: "", Adresse: "", Code_postal: "", Ville: ""}})));
+  assert.ok(encart.startsWith("Club Exemple"), "le nom reste en premier");
+  assert.match(encart, /SIRET\s*:?\s*non renseigné/i);
+  assert.match(encart, /adresse\s*:?\s*non renseignée/i);
+  assert.ok(!/undefined|null/.test(encart));
+  assert.ok(!encart.includes("\n"), "toujours une seule ligne");
+});
+
+// Echoue si l'encart garde sa poignee de redimensionnement (D-E1-19), un defilement interne, ou
+// si la feuille ne declare plus la regle qui les retire (selecteur plus precis que
+// « .edit-field textarea », qui autorise resize: vertical).
+test("encart du club : plus de poignée de redimensionnement ni de défilement interne (D-E1-19)", () => {
+  assert.match(CSS, /\.edit-field\s+textarea\.convention-encart\s*\{[^}]*resize:\s*none/);
+  assert.match(CSS, /\.edit-field\s+textarea\.convention-encart\s*\{[^}]*overflow:\s*hidden/);
+  const {html} = ouvrirFenetre(donnees());
+  assert.match(balise(html, "clubEncart"), /\sclass="[^"]*\bconvention-encart\b/, "le champ porte la classe de la règle");
+});
+
+// Echoue si la hauteur de l'encart n'est plus reglee d'apres son contenu a l'ouverture (hauteur du
+// contenu plus les bordures), ne suit plus un changement de largeur (evenement resize), ou si
+// l'ecouteur reste en place apres la fermeture (fuite : il agirait sur un champ qui n'existe plus).
+test("encart du club : hauteur réglée sur le contenu à l'ouverture et au redimensionnement, écouteur retiré à la fermeture", async () => {
+  const {element, ecouteursFenetre} = ouvrirFenetre(donnees());
+  const encart = element("clubEncart");
+  assert.equal(encart.style.height, "56px", "scrollHeight 54 + bordures 2");
+  assert.equal((ecouteursFenetre.resize || []).length, 1, "un écouteur de redimensionnement");
+  encart.scrollHeight = 80;
+  ecouteursFenetre.resize.slice().forEach((f) => f({}));
+  assert.equal(encart.style.height, "82px", "la hauteur suit le contenu quand la largeur change");
+  element("conventionFermer").click();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((ecouteursFenetre.resize || []).length, 0, "l'écouteur est retiré à la fermeture");
+});
+
+// Echoue si un des champs prevus en lecture seule (encart du club, fonction du signataire, nom de
+// l'agence) devient modifiable, si un des six champs a remplir (signataire, nom, prenom et e-mail
+// du nouveau contact, representant, fonction du representant) devient en lecture seule, ou si les neuf champs ne sont plus la.
+test("seuls les champs prévus sont en lecture seule ; signataire, nouveau contact, représentant et fonction du représentant se remplissent", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   const champs = [...html.matchAll(/<(?:input|textarea|select)\b([^>]*)>/g)]
     .map((m) => ({id: /\sid="([^"]+)"/.exec(m[1])[1], lecture: /\sreadonly\b/.test(m[1])}));
-  assert.equal(champs.length, 11, "deux champs, puis cinq, puis quatre");
-  assert.deepEqual(champs.filter((c) => c.lecture).map((c) => c.id),
-    ["conventionModele", "clubNom", "clubSiret", "clubSiege", "clubFonction", "agenceNom", "agenceAdresse"]);
+  assert.equal(champs.length, 9, "un encart, une liste, trois champs de nouveau contact, la fonction, puis trois champs de l'agence");
+  assert.deepEqual(champs.filter((c) => c.lecture).map((c) => c.id), ["clubEncart", "clubFonction", "agenceNom"]);
   assert.deepEqual(champs.filter((c) => !c.lecture).map((c) => c.id),
-    ["conventionAnnee", "clubSignataire", "agenceRepresentant", "agenceFonction"]);
+    ["clubSignataire", "signataireNom", "signatairePrenom", "signataireEmail", "agenceRepresentant", "agenceFonction"]);
   assert.equal(compte(html, /<select\b/g), 1, "une seule liste de choix : le signataire");
 });
 
-// Echoue si le titre, l'un des deux intitules de bloc, la phrase d'aide du bloc club
-// (a sa place, entre les deux blocs) ou le libelle « Fermer » change.
-test("la fenêtre porte son titre, ses trois blocs, la phrase « Pour corriger ces informations… » et le bouton Fermer", () => {
+// Echoue si le titre, l'un des deux intitules de bloc (« Club », « Agence »), la phrase d'aide du bloc
+// club (a sa place, entre les deux blocs) ou le libelle « Fermer » change.
+test("la fenêtre porte son titre, ses deux blocs Club et Agence, la phrase « Pour corriger ces informations… » et le bouton Fermer", () => {
   const {html} = ouvrirFenetre(donnees());
   assert.equal(texteDe(html, "h2", "conventionTitle"), "Convention");
-  const club = html.indexOf('<legend class="form-legend">Signataire club</legend>');
+  const club = html.indexOf('<legend class="form-legend">Club</legend>');
   const aide = html.indexOf('<p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>');
-  const agence = html.indexOf('<legend class="form-legend">Signataire agence</legend>');
+  const agence = html.indexOf('<legend class="form-legend">Agence</legend>');
   assert.ok(club !== -1 && aide !== -1 && agence !== -1, "titres et phrase présents");
   assert.ok(club < aide && aide < agence, "la phrase est dans le bloc club");
   assert.equal(texteDe(html, "button", "conventionFermer"), "Fermer");
@@ -531,8 +657,8 @@ test("la fenêtre porte son titre, ses trois blocs, la phrase « Pour corriger c
 // 5. Valeurs venant de Grist : du texte, jamais du HTML
 // ---------------------------------------------------------------------------
 
-// Echoue si un champ « une ligne » (nom du club, SIRET, nom de l'agence) n'echappe
-// plus <, >, & ou les guillemets : le HTML s'executerait, ou casserait l'attribut value.
+// Echoue si l'encart (nom du club, SIRET, adresse) ou le nom de l'agence n'echappe plus <, >, &
+// ou les guillemets : le HTML s'executerait, ou casserait l'attribut value.
 test("des caractères spéciaux dans le nom du club, le SIRET ou le nom de l'agence s'affichent comme du texte", () => {
   const nomClub = 'Club <b>Exemple</b> & "Fils"';
   const siret = "<i>123</i> & 4";
@@ -540,33 +666,39 @@ test("des caractères spéciaux dans le nom du club, le SIRET ou le nom de l'age
   const {html} = ouvrirFenetre(donnees({club: {Nom: nomClub, SIRET: siret}, agence: {Libelle_agence: nomAgence}}));
   for (const balisage of ["<b>", "</b>", "<i>", "<u>"]) assert.ok(!html.includes(balisage), `${balisage} ne doit pas passer tel quel`);
   assert.ok(html.includes("&lt;b&gt;Exemple&lt;/b&gt; &amp; &quot;Fils&quot;"), "le nom du club est échappé");
-  assert.equal(champ(html, "clubNom"), nomClub);
-  assert.equal(champ(html, "clubSiret"), siret);
+  const encart = champ(html, "clubEncart");
+  assert.ok(encart.includes(nomClub) && encart.includes(siret), "l'encart montre les valeurs comme du texte");
   assert.equal(champ(html, "agenceNom"), nomAgence);
 });
 
-// Echoue si une zone de texte (siege du club, adresse de l'agence) n'echappe plus son
-// contenu : une adresse qui ferme la zone puis ouvre un script s'executerait.
-test("des caractères spéciaux dans les adresses (siège du club, adresse de l'agence) s'affichent comme du texte", () => {
+// Echoue si l'encart n'echappe plus l'adresse du club : une adresse qui ferme la zone puis ouvre
+// un script s'executerait.
+test("des caractères spéciaux dans l'adresse du club s'affichent comme du texte", () => {
   const adresseClub = "1 rue <i>Exemple</i> & Cie</textarea><script>alert(1)</script>";
-  const adresseAgence = "2 avenue <b>Exemple</b> & Cie";
-  const {html} = ouvrirFenetre(donnees({club: {Adresse: adresseClub}, agence: {Adresse: adresseAgence}}));
+  const {html} = ouvrirFenetre(donnees({club: {Adresse: adresseClub}}));
   assert.ok(!/<script/i.test(html), "aucune balise script");
-  for (const balisage of ["<b>", "<i>"]) assert.ok(!html.includes(balisage), `${balisage} ne doit pas passer tel quel`);
-  assert.equal(champ(html, "clubSiege"), `${adresseClub}\n75001 Exemple-sur-Mer`);
-  assert.equal(champ(html, "agenceAdresse"), `${adresseAgence}\nBâtiment A\n75002 Exemple-Ville`);
+  assert.ok(!html.includes("<i>"), "<i> ne doit pas passer tel quel");
+  assert.ok(champ(html, "clubEncart").includes(`${adresseClub} 75001 Exemple-sur-Mer`), "l'adresse est affichée comme du texte");
 });
 
 // ---------------------------------------------------------------------------
-// 6. Fermeture : « Fermer », Echap, retour du focus
+// 6. Fermeture : « Fermer » et Echap enregistrent en silence puis ferment (D-E1-5)
 // ---------------------------------------------------------------------------
+// fermerConvention est asynchrone (elle attend l'enregistrement) : on laisse passer les
+// promesses avant de lire la page. L'espion de monter() repond « enregistre ».
 
-// Echoue si « Fermer » ne ferme plus la fenetre, ne retire plus modal-open de la
-// page, ne rend plus le focus au bouton « Générer la convention », ou laisse l'ecouteur du clavier en place.
-test("« Fermer » ferme la fenêtre et le focus revient sur le bouton « Générer la convention »", () => {
-  const {w, hote, bouton, actif, element, corpsAClasse} = ouvrirFenetre(donnees());
+const attendre = () => new Promise((resolve) => setImmediate(resolve));
+
+// Echoue si « Fermer » ne ferme plus la fenetre, ne retire plus modal-open de la page, ne rend plus
+// le focus au bouton « Générer la convention » du bloc, laisse l'ecouteur du clavier en place, ou
+// n'enregistre pas ce qui est saisi (en silence : option silencieux).
+test("« Fermer » enregistre en silence puis ferme la fenêtre ; le focus revient sur le bouton « Générer la convention »", async () => {
+  const {w, hote, bouton, actif, element, corpsAClasse, enregistrements} = ouvrirFenetre(donnees());
   assert.equal(w.state.conventionOpen, true);
   element("conventionFermer").click();
+  await attendre();
+  assert.equal(enregistrements.length, 1, "un enregistrement");
+  assert.equal(enregistrements[0].options.silencieux, true, "en silence");
   assert.equal(hote.innerHTML, "");
   assert.equal(w.state.conventionOpen, false);
   assert.equal(corpsAClasse("modal-open"), false);
@@ -574,16 +706,39 @@ test("« Fermer » ferme la fenêtre et le focus revient sur le bouton « Géné
   assert.equal((hote.ecouteurs.keydown || []).length, 0, "l'écouteur du clavier est retiré");
 });
 
-// Echoue si la touche Echap ne ferme plus la fenetre, n'appelle plus preventDefault,
-// ou ne rend plus le focus au bouton « Générer la convention ».
-test("Échap ferme la fenêtre et le focus revient sur le bouton « Générer la convention »", () => {
-  const {w, hote, bouton, touche, actif, corpsAClasse} = ouvrirFenetre(donnees());
+// Echoue si la touche Echap n'appelle plus preventDefault ou n'a plus le meme effet que « Fermer »
+// (enregistrer en silence, fermer, rendre le focus au bouton « Générer la convention »).
+test("Échap a le même effet que « Fermer » : enregistre en silence, ferme, le focus revient sur « Générer la convention »", async () => {
+  const {w, hote, bouton, touche, actif, corpsAClasse, enregistrements} = ouvrirFenetre(donnees());
   assert.equal(touche("Escape"), true, "preventDefault est appelé");
+  await attendre();
+  assert.equal(enregistrements.length, 1);
   assert.equal(hote.innerHTML, "");
   assert.equal(w.state.conventionOpen, false);
   assert.equal(corpsAClasse("modal-open"), false);
   assert.equal(actif(), bouton, "le focus est revenu sur le bouton");
   assert.equal((hote.ecouteurs.keydown || []).length, 0, "l'écouteur du clavier est retiré");
+});
+
+// Echoue si « Fermer » enregistre autre chose que ce qui est a l'ecran : signataire de la liste,
+// representant et fonction sans espaces autour, pas de nouveau contact, et aucune cle `annee`
+// (le champ n'existe plus : une cle `annee: null` effacerait l'annee deja enregistree).
+test("« Fermer » enregistre les valeurs saisies : signataire de la liste, représentant et fonction nettoyés, pas de nouveau contact, pas d'année", async () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  m.choisir(31);
+  m.element("agenceRepresentant").value = "  Dana Exemple  ";
+  m.element("agenceFonction").value = " Directrice adjointe ";
+  m.element("conventionFermer").click();
+  await attendre();
+  assert.equal(m.enregistrements.length, 1);
+  const {actionId, valeurs} = m.enregistrements[0];
+  assert.equal(actionId, 1);
+  assert.equal(valeurs.signataire, 31);
+  assert.equal(valeurs.nouveauContact, null);
+  assert.equal(valeurs.representant, "Dana Exemple");
+  assert.equal(valeurs.fonctionRepresentant, "Directrice adjointe");
+  assert.equal("annee" in valeurs, false, "aucune clé annee");
+  assert.equal("anneeIllisible" in valeurs, false, "aucune clé anneeIllisible");
 });
 
 // Echoue si une touche autre que Echap et Tab (ici « a ») ferme la fenetre ou est bloquee.
@@ -597,36 +752,34 @@ test("une autre touche ne ferme pas la fenêtre", () => {
 // ---------------------------------------------------------------------------
 // 7. Focus garde dans la fenetre : Tab et Maj+Tab
 // ---------------------------------------------------------------------------
-// Depuis la 5.1b, les controles de la fenetre sont, dans l'ordre : Modele utilise,
-// Annee, Nom du club, SIRET, Siege, Signataire, Fonction du signataire, Agence,
-// Adresse, Representant, Fonction du representant, puis les trois boutons du pied :
-// Fermer, Enregistrer les informations et (depuis la 7.2b) Generer la convention. Le
-// premier est donc « Modèle utilisé » (en lecture seule, mais atteignable au clavier) et
-// le dernier « Générer la convention » (aria-disabled ne le retire pas de la liste :
-// seul l'attribut disabled le ferait).
+// Depuis l'E1, les controles de la fenetre sont, dans l'ordre : l'encart du club, Signataire, le bouton
+// « Ajouter un contact », Nom, Prenom, E-mail, Fonction du signataire, Agence, Representant, Fonction du
+// representant, puis les deux boutons du pied : Fermer et Generer la convention. Le premier est donc
+// l'encart « Club » (en lecture seule, mais atteignable au clavier) et le dernier « Générer la
+// convention » (aria-disabled ne le retire pas de la liste : seul l'attribut disabled le ferait).
 // Si une tache ajoute un champ ou un bouton aux extremites, ces tests seront a adapter.
 
 // Echoue si Tab sur le dernier controle (Generer la convention) ne revient plus au
-// premier (Modele utilise), ou si la touche n'est plus retenue (preventDefault).
-test("Tab sur le dernier élément de la fenêtre (Générer la convention) revient au premier (Modèle utilisé)", () => {
+// premier (l'encart du club), ou si la touche n'est plus retenue (preventDefault).
+test("Tab sur le dernier élément de la fenêtre (Générer la convention) revient au premier (l'encart du club)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
   element("conventionGenererFenetre").focus();
   assert.equal(touche("Tab"), true, "preventDefault est appelé");
-  assert.equal(actif(), element("conventionModele"));
+  assert.equal(actif(), element("clubEncart"));
 });
 
-// Echoue si Maj+Tab sur le premier controle (Modele utilise) ne va plus au dernier
+// Echoue si Maj+Tab sur le premier controle (l'encart du club) ne va plus au dernier
 // (Generer la convention), ou si la touche n'est plus retenue (preventDefault).
-test("Maj+Tab sur le premier élément de la fenêtre (Modèle utilisé) va au dernier (Générer la convention)", () => {
+test("Maj+Tab sur le premier élément de la fenêtre (l'encart du club) va au dernier (Générer la convention)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
-  element("conventionModele").focus();
+  element("clubEncart").focus();
   assert.equal(touche("Tab", {shift: true}), true, "preventDefault est appelé");
   assert.equal(actif(), element("conventionGenererFenetre"));
 });
 
 // Echoue si Maj+Tab depuis la fenetre elle-meme (le focus peut y revenir, par exemple
 // apres un clic dans la fenetre) ne va plus au dernier controle : le focus sortirait
-// de la fenetre. A l'ouverture, le focus n'y est plus (il est sur « Année ») : on l'y met.
+// de la fenetre. A l'ouverture, le focus n'y est plus (il est sur « Signataire ») : on l'y met.
 test("Maj+Tab, quand le focus est sur la fenêtre elle-même, va au dernier élément (Générer la convention)", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
   element("conventionDialog").focus();
@@ -634,30 +787,27 @@ test("Maj+Tab, quand le focus est sur la fenêtre elle-même, va au dernier él�
   assert.equal(actif(), element("conventionGenererFenetre"));
 });
 
-// Echoue si « Enregistrer les informations » (devenu l'avant-dernier controle) est encore
-// pris pour le dernier : Tab dessus ne doit rien intercepter. Echoue aussi si Maj+Tab sur
-// « Générer la convention » (le dernier, mais pas le premier) est intercepte.
-test("Tab sur « Enregistrer les informations » et Maj+Tab sur « Générer la convention » ne sont pas interceptés", () => {
+// Echoue si « Fermer » (devenu l'avant-dernier controle) est encore pris pour le dernier : Tab
+// dessus ne doit rien intercepter. Echoue aussi si Maj+Tab sur « Générer la convention » (le
+// dernier, mais pas le premier) est intercepte.
+test("Tab sur « Fermer » et Maj+Tab sur « Générer la convention » ne sont pas interceptés", () => {
   const {touche, actif, element} = ouvrirFenetre(donneesFenetre());
-  element("conventionEnregistrer").focus();
-  assert.equal(touche("Tab"), false, "Tab sur « Enregistrer » n'est pas retenue");
-  assert.equal(actif(), element("conventionEnregistrer"), "le script ne déplace pas le focus");
+  element("conventionFermer").focus();
+  assert.equal(touche("Tab"), false, "Tab sur « Fermer » n'est pas retenue");
+  assert.equal(actif(), element("conventionFermer"), "le script ne déplace pas le focus");
   element("conventionGenererFenetre").focus();
   assert.equal(touche("Tab", {shift: true}), false, "Maj+Tab sur « Générer » n'est pas retenue");
   assert.equal(actif(), element("conventionGenererFenetre"), "le script ne déplace pas le focus");
 });
 
-// Echoue si le message d'erreur de l'annee, a l'ouverture de la fenetre, n'a pas la
-// meme forme que ceux de la fenetre « Ajout d'une action » : classe invalid-feedback
-// presente, classe help-block absente. Avec help-block, la feuille du design system
-// force l'affichage du message des l'ouverture (bug de la tache 5.1b).
-test("le message d'erreur de l'année a la forme de la fenêtre d'ajout : invalid-feedback, sans help-block", () => {
-  const {hote} = ouvrirFenetre(donnees());
-  const tag = balise(hote.innerHTML, "conventionAnneeErreur");
-  assert.ok(tag, "le message d'erreur de l'année existe");
-  const classes = (attribut(tag, "class") || "").split(/\s+/);
-  assert.ok(classes.includes("invalid-feedback"), "la classe invalid-feedback est présente");
-  assert.equal(classes.includes("help-block"), false, "la classe help-block est absente");
+// Echoue si le piege a focus intercepte Tab ou Maj+Tab sur un controle du milieu
+// (« Signataire », le focus d'ouverture) : seuls le premier et le dernier controle bouclent.
+test("Tab et Maj+Tab depuis « Signataire » (focus d'ouverture) ne sont pas interceptés", () => {
+  const {touche, actif} = ouvrirFenetre(donneesFenetre());
+  assert.equal(actif().id, "clubSignataire");
+  assert.equal(touche("Tab"), false, "Tab n'est pas retenue");
+  assert.equal(touche("Tab", {shift: true}), false, "Maj+Tab n'est pas retenue");
+  assert.equal(actif().id, "clubSignataire", "le script ne déplace pas le focus");
 });
 
 // ---------------------------------------------------------------------------
@@ -671,127 +821,119 @@ test("index.html contient le conteneur #conventionModal de la fenêtre", () => {
 });
 
 // Echoue si style.css ne declare plus l'une des classes de la fenetre ou du bouton
-// (convention-grid, convention-part, convention-champs, convention-actions) ou la
-// regle qui affiche la fenetre (la feuille du design system la masque par defaut).
+// (convention-grid, convention-part, convention-champs, convention-actions, convention-soustitre,
+// convention-intro) ou la regle qui affiche la fenetre (la feuille du design system la masque par defaut).
 test("style.css déclare les classes de la fenêtre et du bouton, et affiche la fenêtre", () => {
-  for (const nom of ["convention-grid", "convention-part", "convention-champs", "convention-actions"]) {
+  for (const nom of ["convention-grid", "convention-part", "convention-champs", "convention-actions", "convention-soustitre", "convention-intro"]) {
     assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
   }
   assert.match(CSS, /#conventionModal\s+\.modal\s*\{[^}]*display:\s*block/, "la fenêtre doit être affichée");
 });
 
-// ---------------------------------------------------------------------------
-// 9. Tache 5.1b : les trois blocs, l'annee, les signataires, le pied, le controle
-// ---------------------------------------------------------------------------
-// ---- 9.0 Note d'introduction ----
+// Echoue si le seuil de bascule a deux colonnes n'est plus 1100 px (D-E1-20, il etait de 1200 px),
+// si les deux colonnes ne sont plus posees dans cette regle, ou si l'ancien seuil de 1200 px reste
+// dans la feuille pour la grille de la fenetre.
+test("seuil de deux colonnes à 1100 px (D-E1-20) : la grille de la fenêtre passe à deux colonnes à partir de 1100 px, plus de 1200 px", () => {
+  const regle = /@media\s*\(min-width:\s*(\d+)px\)\s*\{\s*(?:\/\*[\s\S]*?\*\/\s*)?\.convention-grid\s*\{([^}]*)\}/.exec(CSS);
+  assert.ok(regle, "une règle @media contient .convention-grid");
+  assert.equal(regle[1], "1100", "seuil de 1100 px");
+  assert.match(regle[2], /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(0,\s*2fr\)/, "Club 3 parts, Agence 2 parts");
+  assert.ok(!/min-width:\s*1200px[^{]*\{\s*(?:\/\*[\s\S]*?\*\/\s*)?\.convention-grid/.test(CSS), "plus de seuil à 1200 px pour la grille");
+  assert.match(CSS, /\.convention-grid\s*\{\s*display:\s*grid;\s*gap:\s*24px;\s*\}/, "une seule colonne en dessous du seuil");
+});
 
-// Echoue si la note sous le titre n'est pas exactement
-// « Les champs marqués d'un * sont obligatoires pour générer la convention. »
-// (texte fixé par la note UX du 2026-10-23). Echoue tant que le code ecrit
-// encore « …sont obligatoires. » (src/actions-dashboard/script.js).
-test("la note d'introduction de la fenêtre dit que les champs * sont obligatoires pour générer la convention", () => {
+// ---------------------------------------------------------------------------
+// 9. Evolution 1 : deux blocs, plus aucun champ obligatoire, pied a deux boutons
+// ---------------------------------------------------------------------------
+// ---- 9.0 Phrase d'introduction ----
+
+// Echoue si la phrase n'est pas exactement celle de la note (mise a jour du 2026-10-29, « sans
+// exception ni sauf »), si elle n'est plus un paragraphe ordinaire du corps, ou si l'ancienne
+// phrase « Les champs marqués d'un * sont obligatoires… » revient.
+test("la phrase d'introduction dit qu'un champ laissé vide sera complété à la main en pointillés (sans exception)", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
-  assert.ok(html.includes("<p>Les champs marqués d'un * sont obligatoires pour générer la convention.</p>"),
-    "la note d'introduction doit reprendre le texte exact de la note UX");
+  assert.ok(html.includes('<p class="convention-intro">Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.</p>'),
+    "la phrase doit reprendre le texte exact de la note UX");
+  assert.equal(compte(html, /convention-intro/g), 1, "une seule phrase d'introduction");
+  assert.ok(!html.includes("sont obligatoires"), "plus de phrase sur les champs obligatoires");
+  assert.ok(!/sauf/i.test(html), "aucune exception dans la fenêtre");
 });
 
 // ---- 9.1 Structure : blocs, champs, libelles ----
 
-// Echoue si la fenetre n'a plus exactement trois blocs (fieldset), dans cet ordre, avec
-// leur titre (legend) et leurs champs : informations (modele, annee), signataire club
-// (club, SIRET, siege, signataire, fonction), signataire agence (agence, adresse,
-// representant, fonction du representant).
-test("la fenêtre a trois blocs, dans l'ordre : informations, signataire club, signataire agence, chacun avec ses champs", () => {
+// Echoue si la fenetre n'a plus exactement deux blocs (fieldset), dans cet ordre, avec leur titre
+// (legend) et leurs champs : Club (encart, signataire, nouveau contact, fonction), Agence (nom,
+// representant, fonction du representant) ; ou si le bouton « Ajouter un contact » sort du bloc Club.
+test("la fenêtre a deux blocs, dans l'ordre : Club puis Agence, chacun avec ses champs", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   const blocs = html.split("<fieldset").slice(1);
-  assert.equal(blocs.length, 3, "trois blocs");
-  assert.deepEqual(blocs.map((b) => decoder(/<legend class="form-legend">([^<]*)<\/legend>/.exec(b)[1])),
-    ["Informations relatives à la convention", "Signataire club", "Signataire agence"]);
-  assert.deepEqual(idsDesChamps(blocs[0]), ["conventionModele", "conventionAnnee"]);
-  assert.deepEqual(idsDesChamps(blocs[1]), ["clubNom", "clubSiret", "clubSiege", "clubSignataire", "clubFonction"]);
-  assert.deepEqual(idsDesChamps(blocs[2]), ["agenceNom", "agenceAdresse", "agenceRepresentant", "agenceFonction"]);
+  assert.equal(blocs.length, 2, "deux blocs");
+  assert.deepEqual(blocs.map((b) => decoder(/<legend class="form-legend">([^<]*)<\/legend>/.exec(b)[1])), ["Club", "Agence"]);
+  assert.deepEqual(idsDesChamps(blocs[0]), ["clubEncart", "clubSignataire", "signataireNom", "signatairePrenom", "signataireEmail", "clubFonction"]);
+  assert.deepEqual(idsDesChamps(blocs[1]), ["agenceNom", "agenceRepresentant", "agenceFonction"]);
+  assert.ok(blocs[0].includes('id="signataireAjouter"'), "le bouton « Ajouter un contact » est dans le bloc Club");
+  assert.ok(!blocs[1].includes("signataireAjouter"));
 });
 
-// Echoue si un libelle change d'un mot, si un champ a remplir perd son « * » ou son
-// attribut required, si un champ en lecture seule recoit un « * », ou si le formulaire
-// perd novalidate (le navigateur bloquerait alors « Enregistrer » sur un champ vide,
-// alors que le brouillon doit passer).
-test("les champs obligatoires pour générer portent « * » et required ; le formulaire est en novalidate", () => {
+// Echoue si un libelle change d'un mot, si un champ garde (ou reprend) un « * », un attribut
+// required ou aria-required (D-E1-17 : plus aucun champ obligatoire), ou si le formulaire perd
+// novalidate (le navigateur bloquerait alors la fermeture sur un champ invalide).
+test("plus aucun champ obligatoire : aucun « * », aucun required, formulaire en novalidate", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   const attendus = {
-    conventionModele: "Modèle utilisé",
-    conventionAnnee: "Année *",
-    clubSignataire: "Signataire *",
+    clubEncart: "Club",
+    clubSignataire: "Signataire",
+    signataireNom: "Nom",
+    signatairePrenom: "Prénom",
+    signataireEmail: "E-mail",
     clubFonction: "Fonction du signataire",
-    agenceRepresentant: "Représentant *",
-    agenceFonction: "Fonction du représentant *",
+    agenceNom: "Agence",
+    agenceRepresentant: "Représentant",
+    agenceFonction: "Fonction du représentant",
   };
   for (const [id, libelle] of Object.entries(attendus)) {
-    assert.equal(libelleNu(html, id), libelle, `${id} : libellé`);
-    assert.equal(/\srequired\b/.test(balise(html, id)), libelle.endsWith("*"), `${id} : required`);
+    assert.equal(libelleNu(html, id), libelle, `${id} : libellé exact, sans astérisque`);
+    assert.ok(!/\srequired\b/.test(balise(html, id)), `${id} : pas de required`);
+    assert.ok(!/aria-required/.test(balise(html, id)), `${id} : pas d'aria-required`);
   }
+  assert.equal(compte(html, /\*/g), 0, "aucun astérisque dans la fenêtre");
+  assert.equal(compte(html, /\srequired\b/g), 0, "aucun required dans la fenêtre");
+  assert.equal(compte(html, /span class="required"/g), 0, "aucun span.required");
   assert.match(html, /<form\b[^>]*\snovalidate\b/);
 });
 
-// ---- 9.2 Modele utilise et annee ----
+// ---- 9.2 Modele utilise et annee : disparus ----
 
-// Echoue si « Modèle utilisé » n'affiche plus le titre du modele (Modeles_convention.Titre),
-// si l'annee n'est plus un champ numerique prerempli avec l'annee en cours, ou si
-// l'annee disparait alors que Avec_annee est vrai ou que la colonne n'existe pas
-// (seul Avec_annee a faux retire l'annee).
-test("« Modèle utilisé » affiche le titre ; « Année » est un champ numérique prérempli avec l'année en cours (Avec_annee vrai ou absent)", () => {
-  const anneeEnCours = String(new Date().getFullYear());
-  for (const [nom, modele] of [["Avec_annee vrai", {Avec_annee: true}], ["colonne Avec_annee absente", {Avec_annee: undefined}]]) {
-    const {html} = ouvrirFenetre(donneesFenetre({modele}));
-    assert.equal(champ(html, "conventionModele"), "Modèle Exemple", `${nom} : titre du modèle`);
-    const annee = balise(html, "conventionAnnee");
-    assert.ok(annee, `${nom} : le champ Année existe`);
-    assert.equal(attribut(annee, "type"), "number", `${nom} : champ numérique`);
-    assert.equal(attribut(annee, "value"), anneeEnCours, `${nom} : année en cours`);
+// Echoue si « Modèle utilisé » ou « Année » reviennent dans la fenetre, quel que soit Avec_annee
+// (vrai, faux ou colonne absente) : la fenetre est identique pour les trois modeles. Echoue aussi
+// si le focus d'ouverture n'est plus sur « Signataire ».
+test("plus de « Modèle utilisé » ni d'« Année » dans la fenêtre, avec ou sans Avec_annee ; le focus d'ouverture va sur « Signataire »", () => {
+  for (const [nom, modele] of [["Avec_annee vrai", {Avec_annee: true}], ["Avec_annee faux", {Avec_annee: false}], ["colonne absente", {Avec_annee: undefined}]]) {
+    const {html, actif} = ouvrirFenetre(donneesFenetre({modele}));
+    for (const id of ["conventionModele", "conventionAnnee", "conventionAnneeErreur"]) assert.equal(compte(html, new RegExp(id, "g")), 0, `${nom} : ${id} n'existe plus`);
+    assert.ok(!html.includes("Modèle utilisé"), `${nom} : plus de libellé « Modèle utilisé »`);
+    assert.ok(!html.includes("Modèle Exemple"), `${nom} : le titre du modèle n'est plus affiché`);
+    assert.ok(!/>Année\b/.test(html), `${nom} : plus de libellé « Année »`);
+    assert.ok(!html.includes("Informations relatives à la convention"), `${nom} : plus de colonne d'informations`);
+    assert.equal(actif().id, "clubSignataire", `${nom} : focus sur Signataire`);
   }
-});
-
-// Echoue si l'annee reste affichee quand Avec_annee est faux (Parcours de
-// remobilisation), si son message d'erreur reste dans la page, ou si le bloc
-// « Informations » contient autre chose que le modele.
-test("Avec_annee faux : pas de champ Année ni de message d'erreur d'année ; le bloc ne garde que le modèle", () => {
-  const {html} = ouvrirFenetre(donneesFenetre({modele: {Avec_annee: false}}));
-  assert.equal(compte(html, /conventionAnnee/g), 0, "rien de l'année dans la page");
-  assert.deepEqual(idsDesChamps(html.split("<fieldset")[1]), ["conventionModele"]);
-  assert.equal(champ(html, "conventionModele"), "Modèle Exemple");
-});
-
-// Echoue si le focus d'ouverture ne va pas sur « Signataire » quand il n'y a pas
-// d'annee (si l'annee est absente, le script ne doit pas chercher a la focaliser).
-test("Avec_annee faux : le focus d'ouverture va sur « Signataire »", () => {
-  const {actif} = ouvrirFenetre(donneesFenetre({modele: {Avec_annee: false}}));
-  assert.equal(actif().id, "clubSignataire");
-});
-
-// Echoue si le piege a focus intercepte Tab ou Maj+Tab sur un controle du milieu
-// (« Année », le focus d'ouverture) : seuls le premier et le dernier controle bouclent.
-test("Tab et Maj+Tab depuis « Année » (focus d'ouverture) ne sont pas interceptés", () => {
-  const {touche, actif} = ouvrirFenetre(donneesFenetre());
-  assert.equal(actif().id, "conventionAnnee");
-  assert.equal(touche("Tab"), false, "Tab n'est pas retenue");
-  assert.equal(touche("Tab", {shift: true}), false, "Maj+Tab n'est pas retenue");
-  assert.equal(actif().id, "conventionAnnee", "le script ne déplace pas le focus");
 });
 
 // ---- 9.3 Signataire du club ----
 
 // Echoue si la liste propose un contact d'un autre club, si un libelle n'est plus
-// « Prénom Nom », si l'invite « Veuillez sélectionner » n'est plus la premiere option
-// (selectionnee et desactivee), si l'ordre n'est plus alphabetique, si la fonction
-// d'un contact est ecrite dans la page avant le choix, ou si le message « aucun
-// contact » apparait alors que le club a des contacts.
-test("la liste « Signataire » : l'invite, puis seulement les contacts du club en « Prénom Nom », sans leur fonction", () => {
+// « Prénom Nom », si l'invite « Veuillez sélectionner » n'est plus la premiere option (selectionnee
+// mais NON desactivee : on peut y revenir pour ne choisir personne), si l'ordre n'est plus
+// alphabetique, si la fonction d'un contact est ecrite dans la page avant le choix, ou si le
+// message « aucun contact » apparait alors que le club a des contacts.
+test("la liste « Signataire » : l'invite (non désactivée), puis seulement les contacts du club en « Prénom Nom », sans leur fonction", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   assert.deepEqual(options(html, "clubSignataire"), [
     {value: "", texte: "Veuillez sélectionner", invite: true},
     {value: "32", texte: "Alex Modèle", invite: false},
     {value: "31", texte: "Camille Exemple", invite: false},
   ]);
+  assert.match(html, /<option selected value="">Veuillez sélectionner<\/option>/, "invite sélectionnée, non désactivée");
   assert.ok(!html.includes("Robin") && !html.includes("Voisin"), "le contact d'un autre club n'apparaît pas");
   assert.ok(!html.includes("Présidente") && !html.includes("Trésorier"), "aucune fonction dans la page avant le choix");
   assert.equal(compte(html, /clubSignataireAide/g), 0, "pas de message « aucun contact »");
@@ -812,11 +954,11 @@ test("liste « Signataire » : un contact avec un seul nom s'affiche tel quel, u
     [["", "Veuillez sélectionner"], ["54", "Jo Dupont"], ["52", "Prénom"], ["51", "Seul"]]);
 });
 
-// Echoue si, pour un club sans contact, le message n'est plus exactement celui de la
-// note, s'il n'est plus sous la liste et relie a elle par aria-describedby, si la liste
-// propose autre chose que l'invite, si la fonction n'est plus vide, ou si
-// « Enregistrer les informations » est grise (il doit rester actif).
-test("club sans contact : message relié à la liste par aria-describedby, liste réduite à l'invite, « Enregistrer » reste actif", () => {
+// Echoue si, pour un club sans contact, le message n'est plus exactement celui de la note
+// (mise a jour E1), s'il n'est plus sous la liste et relie a elle par aria-describedby, si la liste
+// propose autre chose que l'invite, si la fonction n'est plus vide, si « Générer la convention » est
+// grise (un club sans contact ne bloque plus), ou si le bouton « Ajouter un contact » manque.
+test("club sans contact : message relié à la liste, liste réduite à l'invite, « Générer la convention » actif, « Ajouter un contact » disponible", () => {
   const variantes = {
     "seulement le contact d'un autre club": [CONTACTS[2]],
     "table Contacts vide": [],
@@ -828,13 +970,15 @@ test("club sans contact : message relié à la liste par aria-describedby, liste
     assert.equal(compte(html, /id="clubSignataireAide"/g), 1, `${nom} : un seul message`);
     assert.equal(attribut(balise(html, "clubSignataireAide"), "class"), "help-block", `${nom} : classe help-block`);
     assert.equal(texteDe(html, "p", "clubSignataireAide"),
-      "Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention.", nom);
+      "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.", nom);
     assert.equal(attribut(balise(html, "clubSignataire"), "aria-describedby"), "clubSignataireAide", `${nom} : liste reliée au message`);
     assert.ok(html.indexOf('id="clubSignataireAide"') > html.indexOf('id="clubSignataire"'), `${nom} : message sous la liste`);
     assert.deepEqual(options(html, "clubSignataire"), [{value: "", texte: "Veuillez sélectionner", invite: true}], nom);
     assert.equal(m.element("clubFonction").value, "", `${nom} : fonction vide`);
-    const enregistrer = balise(html, "conventionEnregistrer");
-    assert.ok(!/\sdisabled\b/.test(enregistrer) && attribut(enregistrer, "aria-disabled") === null, `${nom} : « Enregistrer » actif`);
+    const generer = balise(html, "conventionGenererFenetre");
+    assert.ok(!/\sdisabled\b/.test(generer) && attribut(generer, "aria-disabled") === null, `${nom} : « Générer la convention » actif`);
+    assert.ok(balise(html, "signataireAjouter"), `${nom} : le bouton « Ajouter un contact » est là`);
+    assert.ok(/\shidden\b/.test(balise(html, "signataireLibre")), `${nom} : le formulaire est fermé`);
   }
 });
 
@@ -856,7 +1000,7 @@ test("choisir un signataire affiche sa fonction ; sans fonction : « Fonction no
   assert.equal(fonction(), "Présidente", "la zone suit le dernier choix");
 });
 
-// ---- 9.4 Signataire de l'agence ----
+// ---- 9.4 Agence ----
 
 // Echoue si le representant n'est plus vide a l'ouverture, si la fonction du
 // representant n'est plus prerempli avec « Directeur d'agence », ou si l'un de ces
@@ -875,12 +1019,12 @@ test("« Représentant » vide, « Fonction du représentant » préremplie avec
 
 // ---- 9.5 Pied de la fenetre ----
 
-// Echoue si le pied n'a plus exactement trois boutons, « Fermer » (type button, secondaire),
-// « Enregistrer les informations » (type submit, secondaire) puis « Générer la convention »
-// (type button, principal, en dernier), dans cet ordre ; si un second bouton principal
-// apparait dans la fenetre ; si le bouton du pied reprend l'id du bouton du bloc de la
-// fiche (#conventionGenerer) ; ou si le libelle « Générer la convention » apparait ailleurs que dans ce bouton.
-test("le pied de la fenêtre contient « Fermer », « Enregistrer les informations » puis « Générer la convention » (seul bouton principal, en dernier)", () => {
+// Echoue si le pied n'a plus exactement deux boutons, « Fermer » (type button, secondaire) puis
+// « Générer la convention » (type button, principal, en dernier), dans cet ordre ; si
+// « Enregistrer les informations » revient (bouton ou texte) ; si un second bouton principal apparait ;
+// si le bouton du pied reprend l'id du bouton du bloc de la fiche (#conventionGenerer) ; ou si le
+// libelle « Générer la convention » apparait ailleurs que dans ce bouton.
+test("le pied de la fenêtre contient « Fermer » puis « Générer la convention » (seul bouton principal, en dernier) ; plus d'« Enregistrer les informations »", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
   const pied = /<div class="modal-footer">([\s\S]*?)<\/div>/.exec(html);
   assert.ok(pied, "le pied existe");
@@ -892,160 +1036,200 @@ test("le pied de la fenêtre contient « Fermer », « Enregistrer les informati
   }));
   assert.deepEqual(boutons, [
     {id: "conventionFermer", type: "button", classe: "btn btn-secondary", texte: "Fermer"},
-    {id: "conventionEnregistrer", type: "submit", classe: "btn btn-secondary", texte: "Enregistrer les informations"},
     {id: "conventionGenererFenetre", type: "button", classe: "btn btn-primary", texte: LIBELLE},
   ]);
+  assert.equal(compte(html, /conventionEnregistrer\b/g), 0, "le bouton « Enregistrer les informations » n'existe plus");
+  assert.ok(!html.includes("Enregistrer les informations"), "ni son texte");
+  assert.equal(compte(html, /type="submit"/g), 0, "aucun bouton d'envoi dans la fenêtre");
   assert.equal(compte(html, /btn-primary/g), 1, "un seul bouton principal dans la fenêtre");
   assert.equal(compte(html, /id="conventionGenerer"/g), 0, "pas de second #conventionGenerer (celui du bloc)");
   assert.equal(compte(html, /Générer la convention/g), 1, "le libellé n'est que dans le bouton du pied");
   assert.equal(attribut(balise(html, "conventionGenererFenetre"), "aria-haspopup"), null, "le bouton n'ouvre rien : pas d'aria-haspopup");
 });
 
-// ---- 9.6 Controle de l'annee a « Enregistrer les informations » ----
+// ---- 9.6 Plus de controle de champ ----
 
-// Pour 26, 999 et 10000 (pas quatre chiffres) et « abc » (le navigateur rend une
-// valeur vide avec badInput). Echoue si l'une de ces annees est acceptee, si le champ
-// perd is-invalid, aria-invalid ou aria-describedby, si le message sous le champ change
-// (avec « Erreur : » cache), si l'alerte du haut reste cachee ou change de texte,
-// si le focus ne va pas sur « Année », ou si conventionEnregistrer est appelee.
-test("une année qui n'a pas quatre chiffres (26, 999, 10000, « abc ») est refusée : champ en erreur, message, alerte, focus sur l'année", () => {
-  const cas = [["26", false, "26"], ["999", false, "999"], ["10000", false, "10000"], ["", true, "abc"]];
-  for (const [valeur, illisible, nom] of cas) {
-    const m = ouvrirFenetre(donneesFenetre());
-    m.element("agenceRepresentant").focus();
-    m.saisirAnnee(valeur, illisible);
-    assert.equal(m.soumettre(), true, `${nom} : preventDefault est appelé`);
-
-    const annee = m.element("conventionAnnee");
-    assert.equal(annee.classList.contains("is-invalid"), true, `${nom} : is-invalid`);
-    assert.equal(annee.getAttribute("aria-invalid"), "true", `${nom} : aria-invalid`);
-    assert.equal(annee.getAttribute("aria-describedby"), "conventionAnneeErreur", `${nom} : aria-describedby`);
-    assert.equal(texteDe(m.hote.innerHTML, "div", "conventionAnneeErreur"), "Erreur : Saisissez une année à quatre chiffres.", `${nom} : message`);
-    const alerte = m.element("conventionMessage");
-    assert.equal(alerte.classList.contains("is-hidden"), false, `${nom} : alerte visible`);
-    assert.equal(alerte.querySelector(".alert-content").textContent, "Certains champs sont à corriger.", `${nom} : texte de l'alerte`);
-    assert.equal(m.actif().id, "conventionAnnee", `${nom} : focus sur l'année`);
-    assert.equal(m.enregistrements.length, 0, `${nom} : rien n'est enregistré`);
-  }
-});
-
-// Echoue si une annee de quatre chiffres commençant par 1 a 9 (1000, 9999) ou l'annee
-// prerempli et non touchee est refusee, si une erreur s'affiche, ou si
-// conventionEnregistrer n'est pas appelee exactement une fois.
-test("une année de quatre chiffres (1000, 9999, ou l'année préremplie) est acceptée : pas d'erreur, un seul enregistrement", () => {
-  for (const [nom, saisie] of [["1000", "1000"], ["9999", "9999"], ["année préremplie", null]]) {
-    const m = ouvrirFenetre(donneesFenetre());
-    if (saisie !== null) m.saisirAnnee(saisie);
-    m.soumettre();
-    assert.equal(m.enregistrements.length, 1, `${nom} : un enregistrement`);
-    assert.equal(m.enregistrements[0].valeurs.annee, saisie === null ? String(new Date().getFullYear()) : saisie, nom);
-    assert.equal(m.element("conventionAnnee").classList.contains("is-invalid"), false, `${nom} : pas d'erreur`);
-    assert.equal(m.element("conventionMessage").classList.contains("is-hidden"), true, `${nom} : alerte cachée`);
-  }
-});
-
-// Echoue si « Enregistrer » exige un champ : année vide, aucun signataire, représentant
-// et fonction du représentant vides doivent passer (c'est un brouillon, la note
-// ne controle les champs obligatoires qu'a « Générer »).
-test("« Enregistrer » accepte un brouillon : année vide, aucun signataire, représentant et fonction vides", () => {
+// Echoue si la touche Entree dans un champ (evenement submit du formulaire) enregistre, envoie le
+// formulaire (preventDefault non appele : la page serait rechargee) ou affiche une erreur : le
+// formulaire n'a plus de bouton d'envoi, Entree ne fait rien.
+test("la touche Entrée dans un champ (submit du formulaire) ne fait rien : preventDefault, aucun enregistrement", () => {
   const m = ouvrirFenetre(donneesFenetre());
-  m.saisirAnnee("");
+  assert.equal(m.soumettre(), true, "preventDefault est appelé");
+  assert.equal(m.enregistrements.length, 0, "rien n'est enregistré");
+  assert.equal(m.element("conventionMessage").classList.contains("is-hidden"), true, "aucune alerte");
+});
+
+// Echoue si « Fermer » exige un champ : tout vide (aucun signataire, representant et fonction du
+// representant vides) doit etre enregistre tel quel, sans is-invalid, sans alerte « Certains champs
+// sont a corriger. », sans message d'erreur de champ (D-E1-17 : plus aucun controle).
+test("« Fermer » avec tous les champs vides : enregistré tel quel, aucune erreur de champ ni alerte", async () => {
+  const m = ouvrirFenetre(donneesFenetre());
   m.element("agenceRepresentant").value = "";
   m.element("agenceFonction").value = "";
-  m.soumettre();
+  m.element("conventionFermer").click();
+  await attendre();
   assert.equal(m.enregistrements.length, 1, "un enregistrement");
   const {valeurs} = m.enregistrements[0];
-  assert.equal(valeurs.annee, "");
   assert.equal(valeurs.signataire, 0);
   assert.equal(valeurs.representant, "");
   assert.equal(valeurs.fonctionRepresentant, "");
-  assert.equal(m.element("conventionAnnee").classList.contains("is-invalid"), false);
-  assert.equal(m.element("conventionMessage").classList.contains("is-hidden"), true);
+  assert.equal(m.w.state.conventionOpen, false, "la fenêtre est fermée");
+  assert.equal(compte(m.hote.innerHTML, /is-invalid|aria-invalid|Certains champs/g), 0, "aucune trace d'erreur de champ");
 });
 
-// Echoue si le message d'erreur et l'alerte disparaissent des la saisie (la note les
-// retire au clic suivant sur « Enregistrer », pas pendant la saisie), s'ils restent
-// apres le clic suivant une fois l'annee corrigee, si les trois attributs du champ
-// ne sont pas retires, ou si l'enregistrement n'a pas lieu au clic suivant.
-test("l'erreur de l'année et l'alerte restent pendant la saisie, et disparaissent au clic suivant une fois l'année corrigée", () => {
-  const m = ouvrirFenetre(donneesFenetre());
-  const annee = m.element("conventionAnnee");
-  const alerte = m.element("conventionMessage");
-  assert.equal(alerte.classList.contains("is-hidden"), true, "alerte cachée à l'ouverture");
-  assert.equal(annee.classList.contains("is-invalid"), false, "pas d'erreur à l'ouverture");
+// ---- 9.7 Valeurs venant de Grist ----
 
-  m.saisirAnnee("26");
-  m.soumettre();
-  assert.equal(annee.classList.contains("is-invalid"), true, "erreur après le premier clic");
-  assert.equal(alerte.classList.contains("is-hidden"), false, "alerte après le premier clic");
-
-  m.saisirAnnee("2026");
-  assert.equal(annee.classList.contains("is-invalid"), true, "l'erreur reste pendant la saisie");
-  assert.equal(alerte.classList.contains("is-hidden"), false, "l'alerte reste pendant la saisie");
-  assert.equal(m.enregistrements.length, 0, "rien n'est enregistré avant le clic suivant");
-
-  m.soumettre();
-  assert.equal(annee.classList.contains("is-invalid"), false, "is-invalid retiré");
-  assert.equal(annee.getAttribute("aria-invalid"), null, "aria-invalid retiré");
-  assert.equal(annee.getAttribute("aria-describedby"), null, "aria-describedby retiré");
-  assert.equal(alerte.classList.contains("is-hidden"), true, "alerte cachée");
-  assert.equal(m.enregistrements.length, 1, "enregistré au clic suivant");
-});
-
-// ---- 9.7 Ce que recoit conventionEnregistrer (point d'appel de la tache 5.2) ----
-
-// Echoue si conventionEnregistrer ne recoit plus l'identifiant de l'action, l'annee
-// (texte), l'identifiant du contact choisi, le representant et la fonction du representant
-// sans espaces autour, ou si preventDefault n'est pas appele (la page serait rechargee).
-test("conventionEnregistrer reçoit l'action et les valeurs saisies (textes sans espaces autour, identifiant du signataire)", () => {
-  const m = ouvrirFenetre(donneesFenetre());
-  m.saisirAnnee("2031");
-  m.choisir(31);
-  m.element("agenceRepresentant").value = "  Dana Exemple  ";
-  m.element("agenceFonction").value = " Directrice adjointe ";
-  assert.equal(m.soumettre(), true, "preventDefault est appelé");
-  assert.equal(m.enregistrements.length, 1);
-  const {actionId, valeurs} = m.enregistrements[0];
-  assert.equal(actionId, 1);
-  assert.equal(valeurs.annee, "2031");
-  assert.equal(valeurs.anneeIllisible, false);
-  assert.equal(valeurs.signataire, 31);
-  assert.equal(valeurs.representant, "Dana Exemple");
-  assert.equal(valeurs.fonctionRepresentant, "Directrice adjointe");
-});
-
-// Echoue si, sans annee (Avec_annee faux), « Enregistrer » controle ou cherche encore
-// l'annee (erreur, plantage), ou si annee n'est plus null dans les valeurs transmises.
-test("Avec_annee faux : « Enregistrer » ne contrôle pas d'année et transmet annee = null", () => {
-  const m = ouvrirFenetre(donneesFenetre({modele: {Avec_annee: false}}));
-  m.choisir(31);
-  m.soumettre();
-  assert.equal(m.enregistrements.length, 1, "un enregistrement");
-  const {valeurs} = m.enregistrements[0];
-  assert.equal(valeurs.annee, null);
-  assert.equal(valeurs.anneeIllisible, false);
-  assert.equal(valeurs.signataire, 31);
-  assert.equal(m.element("conventionMessage").classList.contains("is-hidden"), true, "pas d'alerte");
-});
-
-// ---- 9.8 Valeurs venant de Grist ----
-
-// Echoue si le titre du modele ou le nom d'un contact n'echappe plus <, >, & ou les
-// guillemets (le HTML s'executerait ou casserait l'attribut), si la valeur de l'option
-// n'est plus l'identifiant du contact, ou si la fonction du signataire, mise dans
-// la zone apres le choix, est alteree ou ecrite dans la page comme du HTML.
-test("des caractères spéciaux dans le titre du modèle ou le nom d'un contact s'affichent comme du texte", () => {
-  const titre = 'Modèle <u>Exemple</u> & "Cie"';
+// Echoue si le nom d'un contact n'echappe plus <, >, & ou les guillemets (le HTML s'executerait
+// ou casserait l'attribut), si la valeur de l'option n'est plus l'identifiant du contact, ou si la
+// fonction du signataire, mise dans la zone apres le choix, est alteree ou ecrite dans la page comme du HTML.
+test("des caractères spéciaux dans le nom d'un contact s'affichent comme du texte", () => {
   const contacts = [{id: 41, Club: 7, Prenom: "<b>Camille</b>", Nom: 'Exemple & "Fils"', Fonction: "<i>Présidente</i> & Cie"}];
-  const m = ouvrirFenetre(donneesFenetre({modele: {Titre: titre}, contacts}));
+  const m = ouvrirFenetre(donneesFenetre({contacts}));
   const {html} = m;
-  for (const balisage of ["<b>", "</b>", "<u>", "</u>", "<i>"]) assert.ok(!html.includes(balisage), `${balisage} ne doit pas passer tel quel`);
+  for (const balisage of ["<b>", "</b>", "<i>"]) assert.ok(!html.includes(balisage), `${balisage} ne doit pas passer tel quel`);
   assert.ok(html.includes("&lt;b&gt;Camille&lt;/b&gt; Exemple &amp; &quot;Fils&quot;"), "le libellé du contact est échappé");
   assert.deepEqual(options(html, "clubSignataire")[1], {value: "41", texte: '<b>Camille</b> Exemple & "Fils"', invite: false});
-  assert.equal(champ(html, "conventionModele"), titre);
   m.choisir(41);
   assert.equal(m.element("clubFonction").value, "<i>Présidente</i> & Cie", "la fonction s'affiche telle quelle, comme du texte");
   assert.ok(!m.hote.innerHTML.includes("<i>"), "la fonction n'est pas écrite dans la page comme du HTML");
+});
+
+// ---------------------------------------------------------------------------
+// 9 bis. E1 : le bouton « Ajouter un contact » et la regle des deux sources
+// ---------------------------------------------------------------------------
+
+// Echoue si le bouton n'est plus un bouton secondaire « Ajouter un contact » (type button, sans
+// aria-haspopup, avec aria-expanded="false" et aria-controls vers le formulaire), s'il n'est plus
+// place sous la liste « Signataire » et avant la « Fonction du signataire », si l'ancienne ligne
+// depliante (<details>, <summary>, « Le contact n'est pas dans la liste ») reste dans la fenetre, ou
+// si le formulaire n'est pas ferme par defaut (attribut hidden).
+test("« Ajouter un contact » : bouton secondaire sous la liste, formulaire fermé par défaut, plus de ligne dépliante", () => {
+  const {html} = ouvrirFenetre(donneesFenetre());
+  const bouton = balise(html, "signataireAjouter");
+  assert.ok(bouton, "le bouton existe");
+  assert.equal(attribut(bouton, "type"), "button", "il n'envoie jamais le formulaire");
+  assert.equal(attribut(bouton, "class"), "btn btn-secondary");
+  assert.equal(attribut(bouton, "aria-expanded"), "false");
+  assert.equal(attribut(bouton, "aria-controls"), "signataireLibre");
+  assert.equal(attribut(bouton, "aria-haspopup"), null, "aucune fenêtre ne s'ouvre");
+  assert.equal(texteDe(html, "button", "signataireAjouter"), "Ajouter un contact");
+  assert.ok(/\shidden\b/.test(balise(html, "signataireLibre")), "formulaire fermé par défaut");
+  assert.ok(html.indexOf('id="clubSignataire"') < html.indexOf('id="signataireAjouter"') && html.indexOf('id="signataireAjouter"') < html.indexOf('id="clubFonction"'), "après la liste, avant la fonction");
+  for (const ancien of ["<details", "<summary", "n'est pas dans la liste"]) assert.ok(!html.includes(ancien), `plus de « ${ancien} »`);
+});
+
+// Echoue si le formulaire garde un texte d'aide (D-E1-16 : ni « * Nécessaires… », ni « coordonnées
+// professionnelles »), un astérisque ou un required sur Nom / E-mail (D-E1-17), si ses champs ne
+// sont pas Nom, Prénom, E-mail (de type email) dans cet ordre, ou si chacun n'a pas son propre
+// conteneur (espacement entre les champs, D-E1-18 : la grille .convention-champs porte un ecart).
+test("formulaire « Ajouter un contact » : Nom, Prénom, E-mail sans astérisque ni aide, chacun dans son conteneur", () => {
+  const {html} = ouvrirFenetre(donneesFenetre());
+  const formulaire = /<div id="signataireLibre"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/.exec(html)[1];
+  assert.deepEqual(idsDesChamps(formulaire), ["signataireNom", "signatairePrenom", "signataireEmail"]);
+  assert.equal(attribut(balise(html, "signataireEmail"), "type"), "email");
+  for (const id of ["signataireNom", "signatairePrenom", "signataireEmail"]) {
+    assert.ok(!/\srequired\b/.test(balise(html, id)), `${id} : pas de required`);
+    assert.equal(compte(formulaire, new RegExp(`<div class="edit-field"><label class="form-label" for="${id}">`, "g")), 1, `${id} : libellé + champ dans leur propre conteneur`);
+  }
+  assert.equal(libelleNu(html, "signataireNom"), "Nom");
+  assert.equal(libelleNu(html, "signatairePrenom"), "Prénom");
+  assert.equal(libelleNu(html, "signataireEmail"), "E-mail");
+  assert.ok(!formulaire.includes("help-block"), "aucun texte d'aide dans le formulaire");
+  for (const aide of ["Nécessaires", "professionnelles", "personnelles"]) assert.ok(!html.includes(aide), `plus de « ${aide} »`);
+  assert.match(CSS, /\.convention-champs\s*\{[^}]*gap:\s*\S+/, "un écart entre les champs");
+});
+
+// Echoue si un clic sur le bouton n'ouvre pas le formulaire (hidden retire, aria-expanded="true",
+// focus sur Nom), si un second clic ne le referme pas (hidden, aria-expanded="false", focus sur le
+// bouton), ou si fermer le formulaire perd ce qui est saisi.
+test("« Ajouter un contact » : un clic ouvre (focus sur Nom), un second clic ferme (focus sur le bouton), la saisie est gardée", () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  const bouton = m.element("signataireAjouter");
+  const formulaire = m.element("signataireLibre");
+  bouton.click();
+  assert.equal(formulaire.hidden, false, "ouvert");
+  assert.equal(bouton.getAttribute("aria-expanded"), "true");
+  assert.equal(m.actif().id, "signataireNom", "focus sur Nom");
+  m.ecrire("signataireNom", "Martin");
+  bouton.click();
+  assert.equal(formulaire.hidden, true, "refermé par un second clic");
+  assert.equal(bouton.getAttribute("aria-expanded"), "false");
+  assert.equal(m.actif(), bouton, "focus sur le bouton");
+  assert.equal(m.element("signataireNom").value, "Martin", "la saisie n'est pas perdue");
+  assert.equal(texteDe(m.hote.innerHTML, "button", "signataireAjouter"), "Ajouter un contact", "même libellé ouvert ou fermé");
+});
+
+// Echoue si la phrase « Ce contact sera ajouté à la fiche du club. » n'est plus placee APRES le champ
+// « Fonction du signataire » (D-E1-12), si elle est visible alors que rien n'est saisi et que le
+// formulaire est ferme, ou si elle ne devient pas visible des qu'un Nom est tape ou le formulaire ouvert.
+test("phrase « Ce contact sera ajouté à la fiche du club. » : sous « Fonction du signataire », visible seulement si Nom est rempli ou le formulaire ouvert", () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  const html = m.hote.innerHTML;
+  assert.equal(texteDe(html, "p", "signataireLibreAide"), "Ce contact sera ajouté à la fiche du club.");
+  assert.ok(html.indexOf('id="clubFonction"') < html.indexOf('id="signataireLibreAide"'), "sous « Fonction du signataire »");
+  const aide = m.element("signataireLibreAide");
+  assert.equal(aide.classList.contains("is-hidden"), true, "cachée : rien de saisi, formulaire fermé");
+  m.element("signataireAjouter").click();
+  assert.equal(aide.classList.contains("is-hidden"), false, "visible : formulaire ouvert");
+  m.element("signataireAjouter").click();
+  assert.equal(aide.classList.contains("is-hidden"), true, "cachée : formulaire refermé, Nom vide");
+  m.ecrire("signataireNom", "Martin");
+  assert.equal(aide.classList.contains("is-hidden"), false, "visible : un Nom est tapé, même formulaire fermé");
+});
+
+// Echoue si taper un Nom n'active pas la saisie libre : option « Prénom Nom (nouveau contact) »
+// selectionnee en premier choix de la liste (meme formulaire ferme), « Fonction du signataire »
+// modifiable et videe, ou si un Prénom / E-mail / Fonction seuls, sans Nom, l'activent (D-E1-3).
+test("règle des deux sources : un Nom tapé ajoute « (nouveau contact) » et rend la fonction modifiable ; sans Nom, rien", () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  const liste = m.element("clubSignataire");
+  m.ecrire("signatairePrenom", "Jo");
+  m.ecrire("signataireEmail", "jo@exemple.fr");
+  assert.equal(liste.options.length, 3, "sans Nom : aucune option ajoutée");
+  assert.equal(m.element("clubFonction").readOnly === true || m.element("clubFonction").readOnly === undefined, true, "fonction toujours en lecture seule");
+
+  m.ecrire("signataireNom", "Martin");
+  assert.equal(liste.options[1].textContent, "Jo Martin (nouveau contact)", "l'option du nouveau contact est la première après l'invite");
+  assert.equal(liste.value, "nouveau", "elle est sélectionnée");
+  assert.equal(m.element("clubFonction").readOnly, false, "la fonction devient modifiable");
+  assert.equal(m.element("clubFonction").value, "", "…et part de vide");
+  assert.equal(m.element("signataireLibre").hidden, true, "le formulaire peut rester fermé : l'agent voit quand même qui sera le signataire");
+  m.ecrire("signatairePrenom", "");
+  assert.equal(liste.options[1].textContent, "Martin (nouveau contact)", "le libellé suit le Prénom");
+  assert.equal(liste.options.length, 4, "une seule option « nouveau contact », jamais deux");
+});
+
+// Echoue si vider le Nom ne ramene pas la liste au dernier choix, ne retire pas l'option « nouveau
+// contact », ne remet pas la fonction en lecture seule (valeur du contact choisi) ou garde la fonction saisie.
+test("règle des deux sources : vider le Nom abandonne la saisie libre, la liste revient au dernier choix et la fonction à celle du contact", () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  const liste = m.element("clubSignataire");
+  m.choisir(31);
+  m.ecrire("signataireNom", "Martin");
+  m.ecrire("clubFonction", "Trésorier");
+  m.element("clubFonction").value = "Trésorier";
+  m.ecrire("signataireNom", "");
+  assert.equal(liste.options.some((o) => /nouveau contact/.test(o.textContent)), false, "l'option est retirée");
+  assert.equal(liste.value, "31", "la liste revient au contact choisi avant");
+  assert.equal(m.element("clubFonction").readOnly, true, "fonction de nouveau en lecture seule");
+  assert.equal(m.element("clubFonction").value, "Présidente", "…avec celle du contact");
+});
+
+// Echoue si choisir un contact dans la liste ne vide pas Nom, Prénom et E-mail saisis, ne retire pas
+// l'option « nouveau contact » et le message d'erreur sous E-mail, ou change l'etat ouvert/ferme du formulaire.
+test("règle des deux sources : choisir un contact dans la liste vide la saisie libre sans fermer ni ouvrir le formulaire", () => {
+  const m = ouvrirFenetre(donneesFenetre());
+  const liste = m.element("clubSignataire");
+  m.element("signataireAjouter").click();
+  m.ecrire("signataireNom", "Martin");
+  m.ecrire("signatairePrenom", "Jo");
+  m.ecrire("signataireEmail", "jo@exemple.fr");
+  m.choisir(32);
+  for (const id of ["signataireNom", "signatairePrenom", "signataireEmail"]) assert.equal(m.element(id).value, "", `${id} vidé`);
+  assert.equal(liste.options.some((o) => /nouveau contact/.test(o.textContent)), false, "option retirée");
+  assert.equal(m.element("clubFonction").readOnly, true);
+  assert.equal(m.element("clubFonction").value, "Fonction non renseignée");
+  assert.equal(m.element("signataireLibre").hidden, false, "le formulaire reste ouvert");
 });
 
 // ---------------------------------------------------------------------------
@@ -1073,8 +1257,8 @@ test("re-génération : « Le nouveau PDF remplacera la convention générée le
   const corps = html.indexOf('<div class="modal-body">');
   const phrase = html.indexOf("Le nouveau PDF remplacera");
   const alerte = html.indexOf('id="conventionMessage"');
-  const obligatoires = html.indexOf("Les champs marqués d'un * sont obligatoires");
-  assert.ok(corps !== -1 && corps < phrase && phrase < alerte && phrase < obligatoires, "tout en haut du corps, avant l'alerte et avant la phrase sur les champs obligatoires");
+  const intro = html.indexOf('class="convention-intro"');
+  assert.ok(corps !== -1 && corps < phrase && phrase < alerte && phrase < intro, "tout en haut du corps, avant l'alerte et avant la phrase d'introduction");
   assert.match(html.slice(corps, phrase), /^<div class="modal-body">\s*<p>$/, "rien entre le début du corps et la phrase, et le <p> n'a ni classe ni role (ni alerte, ni région annoncée)");
 });
 

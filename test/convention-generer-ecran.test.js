@@ -1,19 +1,20 @@
 "use strict";
 
-// Bouton « Générer la convention » du pied de la fenêtre (tâche 7.2b) : bouton grisé si le
-// club n'a aucun contact, verrouillage immédiat au clic, « Fermer », Échap, « Enregistrer »
-// et Entrée ignorés pendant l'attente, champs à corriger, un message exact par code
-// d'échec (fenêtre ouverte, saisie gardée, tout déverrouillé, focus sur le bouton), noms de
-// cases inconnues affichés comme du texte, et réussite (fenêtre fermée, bloc « Générée »,
-// message, focus).
+// Bouton « Générer la convention » du pied de la fenêtre (tâche 7.2b, mis à jour pour
+// l'Évolution 1 : docs/ux/convention.md, §3) : bouton toujours actif (un club sans contact ne bloque
+// plus), verrouillage immédiat au clic, « Fermer », Échap et Entrée ignorés pendant l'attente,
+// nouveau contact dont l'e-mail est vide ou mal formé (message sous E-mail, rien n'est généré),
+// un message exact par code d'échec (fenêtre ouverte, saisie gardée, tout déverrouillé, focus sur
+// le bouton), noms de cases inconnues affichés comme du texte, et réussite (fenêtre fermée, bloc
+// « Générée », message, focus). Plus de champ obligatoire, plus de « Enregistrer les informations ».
 // La génération elle-même n'est PAS testée ici (voir convention-generation.test.js) :
 // conventionGenerer est remplacée par une doublure qui réussit, échoue avec le code voulu,
 // ou attend qu'on la libère. Les doublures sont posées sur w.window (le vrai global du bac
 // à sable ; w n'en est qu'une copie), comme dans convention-fenetre.test.js.
 // Ce fichier est séparé de convention-fenetre.test.js : celui-ci est déjà long, son faux
 // navigateur (monter) est synchrone et n'est pas partagé. Celui d'ici est asynchrone
-// (la génération l'est) et ajoute ce dont l'écran de la 7.2b a besoin : les trois zones
-// de la fenêtre qui changent (attente, erreurs sous les champs), les fieldset, la zone de
+// (la génération l'est) et ajoute ce dont l'écran de la 7.2b a besoin : les zones
+// de la fenêtre qui changent (attente, erreur sous E-mail), les fieldset, la zone de
 // message et le contenu du bloc de la fiche.
 // Les textes de référence sont ceux de docs/ux/convention.md. Ils sont recopiés ici en dur :
 // si le code change un mot, le test doit échouer. Données fictives uniquement.
@@ -30,9 +31,11 @@ const LIBELLE_EN_COURS = "Génération en cours…";
 const TEXTE_ATTENTE = "Génération de la convention en cours. Cela peut prendre quelques secondes.";
 const MESSAGE_REUSSITE = "Convention générée.";
 const ALERTE_CHAMPS = "Certains champs sont à corriger.";
-const SANS_CONTACT = "Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention.";
-const CHAMPS_CONTROLES = ["conventionAnnee", "clubSignataire", "clubFonction", "agenceRepresentant", "agenceFonction"];
-const BOUTONS_DU_PIED = ["conventionFermer", "conventionEnregistrer", "conventionGenererFenetre"];
+const SANS_CONTACT = "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.";
+const CHAMPS_CONTROLES = ["clubSignataire", "clubFonction", "signataireNom", "signatairePrenom", "signataireEmail", "agenceRepresentant", "agenceFonction"];
+const BOUTONS_DU_PIED = ["conventionFermer", "conventionGenererFenetre"];
+const EMAIL_VIDE = "Saisissez l'e-mail du nouveau signataire.";
+const EMAIL_MAL_FORME = "Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.";
 
 const CLUB = {id: 7, Nom: "Club Exemple", SIRET: "12345678901234", Adresse: "1 rue Exemple", Code_postal: "75001", Ville: "Exemple-sur-Mer"};
 const AGENCE = {id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Complement_adresse: "", Code_postal: "75002", Ville: "Exemple-Ville"};
@@ -44,7 +47,8 @@ const CONTACTS = [
 ];
 
 // Ce que la personne saisit dans la fenêtre avant de cliquer (textes, comme dans les champs).
-const SAISIE = {annee: "2031", signataire: "31", representant: "Dana Exemple", fonction: "Directrice adjointe"};
+// (E1 : plus de champ « Année » ; le nouveau contact est vide, donc rien ne sera créé.)
+const SAISIE = {signataire: "31", representant: "Dana Exemple", fonction: "Directrice adjointe"};
 
 // Messages d'échec de la note UX (§3 « Échecs »), un par code d'erreur de conventionGenerer.
 const ECHECS = {
@@ -146,6 +150,7 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   const registre = new Map();
   const defilements = [];
   const enregistrements = [];
+  const apres = [];
   const rendus = {fiche: 0};
   const ecritures = {alerte: 0, contenu: 0};
   const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionVoir", "conventionRegenerer"];
@@ -163,6 +168,10 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
       id, attributs, ecouteurs,
       value: champ(contenu, id) ?? "",
       innerHTML: "",
+      hidden: /\shidden\b/.test(balisePosee),
+      // Encart du club (conventionAjusterEncart) : hauteur de son contenu et des bordures.
+      style: {}, scrollHeight: 54, offsetHeight: 56, clientHeight: 54,
+      insertAdjacentHTML(position, html) { apres.push({id, position, html}); },
       validity: {badInput: false},
       classList: {
         add: (...noms) => noms.forEach((nom) => classes.add(nom)),
@@ -245,7 +254,7 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   doc.getElementById = (id) => {
     if (!existe(id)) {
       // Fenêtre ouverte et identifiant de la fenêtre absent de la page : null, comme dans un vrai document.
-      return contenu !== "" && /^(convention|club|agence)[A-Z]/.test(id) ? null : origine.getElementById(id);
+      return contenu !== "" && /^(convention|club|agence|signataire)[A-Z]/.test(id) ? null : origine.getElementById(id);
     }
     if (!registre.has(id)) registre.set(id, fabriquer(id, balise(contenu, id) || ""));
     return registre.get(id);
@@ -261,8 +270,12 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   doc.body.contains = (element) => [...registre.values()].includes(element);
   Object.defineProperty(doc, "activeElement", {get: () => actif, configurable: true});
 
-  // L'enregistrement des informations n'est pas l'objet de ces tests : un espion note ses appels.
-  w.window.conventionEnregistrer = (actionId, valeurs) => { enregistrements.push({actionId, valeurs}); };
+  // openConvention écoute le redimensionnement de la fenêtre (hauteur de l'encart du club) : la doublure de base n'a pas addEventListener.
+  w.window.addEventListener = () => {};
+  w.window.removeEventListener = () => {};
+  // L'enregistrement des informations (« Fermer », Échap) n'est pas l'objet de ces tests : un espion
+  // note ses appels et répond « enregistré ».
+  w.window.conventionEnregistrer = (actionId, valeurs, options) => { enregistrements.push({actionId, valeurs, options}); return true; };
   // Un rechargement de la fiche effacerait ce qui est saisi et pas enregistré : un espion le compte.
   w.window.renderEdit = () => { rendus.fiche += 1; };
 
@@ -280,8 +293,8 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
     return empeche;
   }
 
-  // Entrée dans un champ, ou clic sur « Enregistrer les informations » (un bouton d'envoi) :
-  // le navigateur déclenche l'événement submit du formulaire.
+  // Entrée dans un champ : le navigateur déclenche l'événement submit du formulaire (il n'y a plus
+  // de bouton d'envoi depuis l'E1).
   function soumettre() {
     let empeche = false;
     const evenement = {preventDefault() { empeche = true; }};
@@ -292,14 +305,12 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   const element = (id) => doc.getElementById(id);
 
   function remplir(saisie = SAISIE) {
-    element("conventionAnnee").value = saisie.annee;
     element("clubSignataire").value = saisie.signataire;
     element("agenceRepresentant").value = saisie.representant;
     element("agenceFonction").value = saisie.fonction;
   }
 
   const saisie = () => ({
-    annee: element("conventionAnnee").value,
     signataire: element("clubSignataire").value,
     representant: element("agenceRepresentant").value,
     fonction: element("agenceFonction").value,
@@ -316,7 +327,7 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   }
 
   return {
-    w, hote, generation, enregistrements, ecritures, rendus, defilements, touche, soumettre, element, remplir, saisie,
+    w, hote, generation, enregistrements, ecritures, rendus, defilements, touche, soumettre, element, remplir, saisie, apres,
     actif: () => actif,
     fieldsets: () => fieldsets,
     zoneMessage, htmlZone: () => htmlZone, htmlContenu: () => htmlContenu,
@@ -336,14 +347,14 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   };
 }
 
-// Tout est verrouillé : trois boutons aria-disabled (jamais disabled), trois fieldset disabled,
+// Tout est verrouillé : deux boutons aria-disabled (jamais disabled), deux fieldset disabled,
 // libellé « Génération en cours… », phrase d'attente dans la zone role="status".
 function verifierVerrouille(m, nom) {
   for (const id of BOUTONS_DU_PIED) {
     assert.equal(m.element(id).getAttribute("aria-disabled"), "true", `${nom} : ${id} grisé`);
     assert.equal(m.element(id).getAttribute("disabled"), null, `${nom} : ${id} sans l'attribut disabled`);
   }
-  assert.deepEqual(m.fieldsets().map((f) => f.disabled), [true, true, true], `${nom} : les trois blocs ne sont plus modifiables`);
+  assert.deepEqual(m.fieldsets().map((f) => f.disabled), [true, true], `${nom} : les deux blocs ne sont plus modifiables`);
   assert.equal(m.libelleGenerer(), LIBELLE_EN_COURS, `${nom} : libellé du bouton`);
   assert.equal(m.element("conventionAttente").innerHTML, `<p>${TEXTE_ATTENTE}</p>`, `${nom} : phrase d'attente`);
 }
@@ -353,7 +364,7 @@ function verifierDeverrouille(m, nom) {
   for (const id of BOUTONS_DU_PIED) {
     assert.equal(m.element(id).getAttribute("aria-disabled"), null, `${nom} : ${id} n'est plus grisé`);
   }
-  assert.deepEqual(m.fieldsets().map((f) => f.disabled), [false, false, false], `${nom} : les trois blocs sont modifiables`);
+  assert.deepEqual(m.fieldsets().map((f) => f.disabled), [false, false], `${nom} : les deux blocs sont modifiables`);
   assert.equal(m.libelleGenerer(), LIBELLE, `${nom} : le libellé d'origine est revenu`);
   assert.equal(m.element("conventionAttente").innerHTML, "", `${nom} : la zone d'attente est vidée`);
 }
@@ -367,7 +378,7 @@ function alerte(m) {
   };
 }
 
-// Aucun des cinq champs contrôlés n'est marqué en erreur.
+// Aucun des champs contrôlés n'est marqué en erreur.
 function verifierAucunChampEnErreur(m, nom) {
   for (const id of CHAMPS_CONTROLES) {
     assert.equal(m.element(id).classList.contains("is-invalid"), false, `${nom} : ${id} sans is-invalid`);
@@ -403,16 +414,18 @@ async function verifierEchec(m, messageAttendu, nom) {
   await m.cliquerGenerer();
   assert.equal(m.generation.appels.length, avant + 1, `${nom} : un nouveau clic relance la génération`);
   m.element("conventionFermer").click();
+  await attendre();
   assert.equal(m.hote.innerHTML, "", `${nom} : « Fermer » ferme la fenêtre`);
 }
 
 // ---------------------------------------------------------------------------
-// 1. Le bouton : actif, ou grisé quand le club n'a aucun contact
+// 1. Le bouton : toujours actif (un club sans contact ne bloque plus, E1)
 // ---------------------------------------------------------------------------
 
 // Echoue si, pour un club qui a des contacts, le bouton du pied porte aria-disabled,
-// aria-describedby ou disabled, change de libellé, de type ou de classe (principal), ou si
-// un clic ne lance pas exactement une generation avec l'action et les valeurs saisies.
+// aria-describedby ou disabled, change de libelle, de type ou de classe (principal), ou si
+// un clic ne lance pas exactement une generation avec l'action et les valeurs saisies (signataire
+// de la liste, representant, fonction, pas de nouveau contact, et plus aucune cle `annee`).
 test("club avec contacts : « Générer la convention » est actif et un clic lance la génération avec les valeurs saisies", async () => {
   const m = await preparer();
   const tag = balise(m.hote.innerHTML, "conventionGenererFenetre");
@@ -428,36 +441,30 @@ test("club avec contacts : « Générer la convention » est actif et un clic la
   assert.equal(m.generation.appels.length, 1, "une génération");
   const {actionId, valeurs} = m.generation.appels[0];
   assert.equal(actionId, 1);
-  assert.equal(valeurs.annee, "2031");
-  assert.equal(valeurs.anneeIllisible, false);
+  assert.equal("annee" in valeurs, false, "aucune clé annee : le champ n'existe plus");
   assert.equal(valeurs.signataire, 31);
+  assert.equal(valeurs.nouveauContact, null, "le formulaire « Ajouter un contact » est vide : rien ne sera créé");
   assert.equal(valeurs.representant, "Dana Exemple");
   assert.equal(valeurs.fonctionRepresentant, "Directrice adjointe");
 });
 
 // Pour un club sans contact (table vide, ou seulement le contact d'un autre club). Echoue si le
-// bouton n'est plus grise par aria-disabled="true" (jamais disabled), s'il n'est plus relie par
-// aria-describedby au message « Ce club n'a aucun contact… » (qui doit exister), ou si un
-// clic lance la generation, verrouille la fenetre ou la ferme.
-test("club sans contact : « Générer la convention » est grisé et relié au message, et un clic ne fait rien", async () => {
+// bouton est grise (aria-disabled, disabled) ou relie au message par aria-describedby (ancienne
+// regle, supprimee par l'E1), si le message n'est plus celui de la note, ou si un clic ne lance pas
+// la generation : un club sans contact peut generer, le signataire reste vide (pointilles dans le PDF).
+test("club sans contact : « Générer la convention » n'est plus grisé, le message est sous la liste, et un clic lance la génération", async () => {
   const variantes = {"table Contacts vide": [], "seulement le contact d'un autre club": [CONTACTS[2]]};
   for (const [nom, contacts] of Object.entries(variantes)) {
     const m = await preparer({contacts});
     const tag = balise(m.hote.innerHTML, "conventionGenererFenetre");
-    assert.equal(m.element("conventionGenererFenetre").getAttribute("aria-disabled"), "true", `${nom} : grisé`);
+    assert.equal(m.element("conventionGenererFenetre").getAttribute("aria-disabled"), null, `${nom} : pas grisé`);
     assert.ok(!/\sdisabled\b/.test(tag), `${nom} : jamais l'attribut disabled`);
-    assert.equal(m.element("conventionGenererFenetre").getAttribute("aria-describedby"), "clubSignataireAide", `${nom} : relié au message`);
-    assert.equal(texteDe(m.hote.innerHTML, "p", "clubSignataireAide"), SANS_CONTACT, `${nom} : la cible existe, avec le message exact`);
-    assert.equal(texteDe(m.hote.innerHTML, "button", "conventionGenererFenetre"), LIBELLE, `${nom} : le libellé reste affiché`);
+    assert.equal(m.element("conventionGenererFenetre").getAttribute("aria-describedby"), null, `${nom} : plus relié au message`);
+    assert.equal(texteDe(m.hote.innerHTML, "p", "clubSignataireAide"), SANS_CONTACT, `${nom} : message exact sous la liste`);
 
     await m.cliquerGenerer();
-    assert.equal(m.generation.appels.length, 0, `${nom} : aucune génération`);
-    assert.notEqual(m.hote.innerHTML, "", `${nom} : la fenêtre reste ouverte`);
-    assert.equal(m.element("conventionFermer").getAttribute("aria-disabled"), null, `${nom} : pas de verrouillage`);
-    assert.equal(m.element("conventionEnregistrer").getAttribute("aria-disabled"), null, `${nom} : pas de verrouillage`);
-    assert.deepEqual(m.fieldsets().map((f) => f.disabled), [false, false, false], `${nom} : champs modifiables`);
-    assert.equal(m.element("conventionAttente").innerHTML, "", `${nom} : pas de phrase d'attente`);
-    assert.equal(alerte(m).visible, false, `${nom} : pas d'alerte`);
+    assert.equal(m.generation.appels.length, 1, `${nom} : la génération est lancée`);
+    assert.equal(m.generation.appels[0].valeurs.signataire, 0, `${nom} : aucun signataire`);
   }
 });
 
@@ -465,12 +472,12 @@ test("club sans contact : « Générer la convention » est grisé et relié au 
 // 2. Au clic : verrouillage immediat, puis rien ne ferme ni n'enregistre
 // ---------------------------------------------------------------------------
 
-// Echoue si, juste apres le clic (la generation n'est pas finie), un des trois boutons du
-// pied n'est pas en aria-disabled (ou prend disabled), si un des trois fieldset n'est pas
+// Echoue si, juste apres le clic (la generation n'est pas finie), un des deux boutons du
+// pied n'est pas en aria-disabled (ou prend disabled), si un des deux fieldset n'est pas
 // disabled, si le bouton n'affiche pas « Génération en cours… », si la phrase d'attente
 // n'est pas dans la zone #conventionAttente (role="status", presente des l'ouverture), si le
 // focus quitte le bouton, ou si un deuxieme clic lance une deuxieme generation.
-test("au clic, avant la fin de la génération : trois boutons grisés, blocs non modifiables, « Génération en cours… », phrase d'attente, focus gardé", async () => {
+test("au clic, avant la fin de la génération : deux boutons grisés, blocs non modifiables, « Génération en cours… », phrase d'attente, focus gardé", async () => {
   const m = await preparer();
   const attente = enAttente();
   m.generation.comportement = attente.comportement;
@@ -493,10 +500,10 @@ test("au clic, avant la fin de la génération : trois boutons grisés, blocs no
   await attendre();
 });
 
-// Echoue si, pendant l'attente, « Fermer », Echap, « Enregistrer les informations » (clic
-// de son bouton d'envoi, donc evenement submit) ou la touche Entree ferment la fenetre, la
-// modifient, ou lancent un enregistrement ; ou si le verrou ne se leve pas apres l'echec.
-test("pendant l'attente, « Fermer », Échap, « Enregistrer » et Entrée sont ignorés", async () => {
+// Echoue si, pendant l'attente, « Fermer », Echap ou la touche Entree ferment la fenetre, la
+// modifient, ou lancent un enregistrement (fermerConvention doit etre ignoree, D-S7-2) ; ou si
+// le verrou ne se leve pas apres l'echec (Echap doit de nouveau fermer, en enregistrant).
+test("pendant l'attente, « Fermer », Échap et Entrée sont ignorés", async () => {
   const m = await preparer();
   const attente = enAttente();
   m.generation.comportement = attente.comportement;
@@ -505,10 +512,12 @@ test("pendant l'attente, « Fermer », Échap, « Enregistrer » et Entrée sont
   const avant = m.hote.innerHTML;
 
   m.element("conventionFermer").click();
+  await attendre();
   assert.equal(m.hote.innerHTML, avant, "« Fermer » ne ferme pas");
   m.touche("Escape");
+  await attendre();
   assert.equal(m.hote.innerHTML, avant, "Échap ne ferme pas");
-  assert.equal(m.soumettre(), true, "Entrée / « Enregistrer » : preventDefault est appelé (la page ne se recharge pas)");
+  assert.equal(m.soumettre(), true, "Entrée : preventDefault est appelé (la page ne se recharge pas)");
   assert.equal(m.enregistrements.length, 0, "aucun enregistrement n'est lancé");
   assert.equal(m.w.state.conventionOpen, true);
   assert.equal(m.corpsAClasse("modal-open"), true);
@@ -520,84 +529,134 @@ test("pendant l'attente, « Fermer », Échap, « Enregistrer » et Entrée sont
   await attendre();
   verifierDeverrouille(m, "après l'échec");
   m.touche("Escape");
+  await attendre();
   assert.equal(m.hote.innerHTML, "", "une fois l'attente finie, Échap ferme de nouveau");
+  assert.equal(m.enregistrements.length, 1, "…en enregistrant en silence");
 });
 
 // ---------------------------------------------------------------------------
-// 3. Champs a corriger : tous les messages, l'alerte du haut, le focus
+// 3. E1 : nouveau contact dont l'e-mail est vide ou mal forme (message sous E-mail)
 // ---------------------------------------------------------------------------
+// Le Nom du formulaire « Ajouter un contact » est rempli : la saisie libre est active. Sans e-mail
+// valide, rien n'est enregistre ni genere (docs/ux/convention.md, §3 « Cas d'echec : Nom rempli,
+// E-mail vide »). Le formulaire est rouvert s'il etait ferme, le focus va sur E-mail.
 
-// Les problemes que renvoie la generation, dans l'ordre de la fenetre. Les deux cas couvrent
-// ensemble les cinq champs controles et les cinq messages de la note (annee absente, annee pas a quatre chiffres,
-// signataire absent, signataire sans fonction, representant, fonction du representant).
-const CAS_CHAMPS = {
-  "année absente, aucun signataire, représentant et fonction du représentant vides": [
-    {id: "conventionAnnee", message: "Saisissez l'année de la convention."},
-    {id: "clubSignataire", message: "Choisissez le signataire du club."},
-    {id: "agenceRepresentant", message: "Saisissez le nom du représentant."},
-    {id: "agenceFonction", message: "Saisissez la fonction du représentant."},
-  ],
-  "année pas à quatre chiffres, signataire sans fonction": [
-    {id: "conventionAnnee", message: "Saisissez une année à quatre chiffres."},
-    {id: "clubFonction", message: "Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention."},
-  ],
-};
+function saisirContact(m, {nom = "Martin", prenom = "", email = "", fonction = ""} = {}) {
+  m.element("signataireNom").value = nom;
+  m.element("signatairePrenom").value = prenom;
+  m.element("signataireEmail").value = email;
+  m.element("clubFonction").value = fonction;
+}
 
-// Echoue si, pour un echec champs-a-corriger, un champ de la liste n'est pas en is-invalid
-// avec aria-invalid et aria-describedby vers son message, si son message sous le champ n'est
-// pas « Erreur : » + le texte exact, si un champ hors liste est marque, si l'alerte du haut n'est pas
-// visible (alert-error, role alert) avec « Certains champs sont à corriger. », si le focus ne va
-// pas sur le premier champ de la liste, si la fenetre ne reste pas ouverte avec la saisie
-// gardee, ou si l'ecran reste verrouille.
-for (const [nom, problemes] of Object.entries(CAS_CHAMPS)) {
-  test(`champs à corriger (${nom}) : messages sous les champs, alerte en haut, focus sur le premier champ`, async () => {
+// Echoue si, pour un Nom rempli et un E-mail vide, le clic lance la generation ou un enregistrement,
+// verrouille la fenetre (« Génération en cours… »), n'affiche pas le message exact sous E-mail
+// (precede de « Erreur : » cache, champ is-invalid + aria-invalid, aria-describedby vers le message
+// seulement), n'affiche pas une alerte en haut (pas de doublon), ne rouvre pas le formulaire fermé,
+// ne met pas le focus sur E-mail, ou perd la saisie.
+for (const [cas, email, message] of [["vide", "", EMAIL_VIDE], ["mal formé", "martin-sans-arobase", EMAIL_MAL_FORME]]) {
+  test(`nouveau contact, e-mail ${cas} : message sous E-mail, rien n'est enregistré ni généré, formulaire rouvert, focus sur E-mail`, async () => {
     const m = await preparer();
-    m.generation.comportement = echoue("champs-a-corriger", {problemes});
-    m.remplir();
+    saisirContact(m, {nom: "Martin", prenom: "Jo", email, fonction: "Trésorier"});
+    assert.equal(m.element("signataireLibre").hidden, true, "préparation : le formulaire est fermé");
     await m.cliquerGenerer();
 
-    for (const id of CHAMPS_CONTROLES) {
-      const probleme = problemes.find((p) => p.id === id);
-      const champEl = m.element(id);
-      assert.equal(champEl.classList.contains("is-invalid"), Boolean(probleme), `${id} : is-invalid`);
-      assert.equal(champEl.getAttribute("aria-invalid"), probleme ? "true" : null, `${id} : aria-invalid`);
-      if (probleme) {
-        assert.equal(champEl.getAttribute("aria-describedby"), `${id}Erreur`, `${id} : relié à son message`);
-        assert.equal(lire(m.element(`${id}Erreur`).innerHTML), `Erreur : ${probleme.message}`, `${id} : message sous le champ`);
-        assert.match(m.element(`${id}Erreur`).innerHTML, /<span class="sr-only">Erreur : <\/span>/, `${id} : « Erreur : » est un texte caché`);
-      }
-    }
-    const a = alerte(m);
-    assert.equal(a.visible, true, "alerte visible");
-    assert.equal(a.texte, ALERTE_CHAMPS, "texte de l'alerte");
-    assert.equal(a.zone.classList.contains("alert-error"), true, "alert-error");
-    assert.equal(a.zone.getAttribute("role"), "alert", "role=alert");
-    assert.equal(m.actif(), m.element(problemes[0].id), "focus sur le premier champ à corriger");
+    assert.equal(m.generation.appels.length, 0, "aucune génération");
+    assert.equal(m.enregistrements.length, 0, "aucun enregistrement");
+    verifierDeverrouille(m, "après le message");
+    const champEmail = m.element("signataireEmail");
+    assert.equal(champEmail.classList.contains("is-invalid"), true, "is-invalid");
+    assert.equal(champEmail.getAttribute("aria-invalid"), "true", "aria-invalid");
+    assert.equal(champEmail.getAttribute("aria-describedby"), "signataireEmailErreur", "relié au message seulement");
+    const ajout = m.apres.find((a) => a.id === "signataireEmail");
+    assert.ok(ajout && ajout.position === "afterend", "le message est inséré juste après le champ");
+    assert.match(ajout.html, /<div class="invalid-feedback" id="signataireEmailErreur"><span class="sr-only">Erreur : <\/span>/, "forme invalid-feedback avec « Erreur : » caché");
+    assert.equal(lire(ajout.html), `Erreur : ${message}`, "message exact");
+    assert.equal(m.element("signataireLibre").hidden, false, "le formulaire est rouvert");
+    assert.equal(m.element("signataireAjouter").getAttribute("aria-expanded"), "true", "le bouton dit qu'il est ouvert");
+    assert.equal(m.actif(), champEmail, "le focus est sur E-mail");
+    assert.equal(alerte(m).visible, false, "pas d'alerte en haut : le message de champ suffit");
+    assert.equal(m.element("signataireNom").value, "Martin", "Nom gardé");
+    assert.equal(m.element("signatairePrenom").value, "Jo", "Prénom gardé");
+    assert.equal(m.element("clubFonction").value, "Trésorier", "Fonction gardée");
     assert.notEqual(m.hote.innerHTML, "", "la fenêtre reste ouverte");
-    assert.deepEqual(m.saisie(), SAISIE, "la saisie est gardée");
-    verifierDeverrouille(m, "après les champs à corriger");
-    assert.equal(m.enregistrements.length, 0, "aucun enregistrement par ce chemin");
   });
 }
 
-// Echoue si une nouvelle tentative ne retire pas, des son debut, les erreurs de champ et
-// l'alerte de la tentative precedente (la note : « les anciens messages d'erreur sont
-// effaces au debut de chaque tentative »), ou si un echec de generation suivant laisse un
-// champ marque ou remplace son message par « Certains champs sont à corriger. ».
-test("une nouvelle tentative efface d'abord les erreurs de champ et l'alerte ; l'échec suivant n'affiche que son message", async () => {
+// Echoue si « Fermer » enregistre ou ferme quand un Nom est rempli sans e-mail valide (rien n'est
+// enregistre, message sous E-mail), ou si un SECOND « Fermer » ne quitte pas sans enregistrer (D-E1-5).
+test("nouveau contact sans e-mail valide : « Fermer » affiche le message sans enregistrer, un second « Fermer » ferme sans enregistrer", async () => {
   const m = await preparer();
-  m.generation.comportement = echoue("champs-a-corriger", {problemes: CAS_CHAMPS["année absente, aucun signataire, représentant et fonction du représentant vides"]});
+  saisirContact(m, {nom: "Martin", email: ""});
+  m.element("conventionFermer").click();
+  await attendre();
+  assert.equal(m.enregistrements.length, 0, "aucun enregistrement au premier « Fermer »");
+  assert.notEqual(m.hote.innerHTML, "", "la fenêtre reste ouverte");
+  assert.equal(m.element("signataireEmail").classList.contains("is-invalid"), true, "message affiché");
+  assert.equal(m.actif(), m.element("signataireEmail"), "focus sur E-mail");
+
+  m.element("conventionFermer").click();
+  await attendre();
+  assert.equal(m.hote.innerHTML, "", "le second « Fermer » ferme");
+  assert.equal(m.enregistrements.length, 0, "…sans enregistrer : la saisie du contact est perdue");
+});
+
+// Echoue si un Nom vide mais un E-mail mal forme (ou un Prenom, une Fonction seuls) affichent une
+// erreur ou empechent la generation : sans Nom, rien n'est cree et aucune erreur n'apparait.
+test("sans Nom, E-mail mal formé, Prénom ou Fonction seuls ne bloquent rien : pas d'erreur, la génération part", async () => {
+  const m = await preparer();
+  saisirContact(m, {nom: "", prenom: "Jo", email: "pas-un-email", fonction: "Trésorier"});
   m.remplir();
   await m.cliquerGenerer();
-  assert.equal(m.element("conventionAnnee").classList.contains("is-invalid"), true, "préparation : une erreur est affichée");
+  assert.equal(m.generation.appels.length, 1, "la génération est lancée");
+  assert.equal(m.generation.appels[0].valeurs.nouveauContact, null, "aucun contact à créer");
+  assert.equal(m.apres.length, 0, "aucun message d'erreur n'a été inséré");
+  assert.equal(m.element("signataireEmail").classList.contains("is-invalid"), false);
+});
+
+// Echoue si un Nom + un e-mail valide ne sont plus transmis a la generation sous la forme
+// nouveauContact {nom, prenom, email, fonction} (textes sans espaces autour), avec signataire a 0
+// (le contact choisi dans la liste est remplace par la saisie libre) : c'est conventionEnregistrer qui le cree.
+test("nouveau contact complet (Nom et e-mail valide) : la génération reçoit nouveauContact, sans erreur", async () => {
+  const m = await preparer();
+  saisirContact(m, {nom: "  Martin ", prenom: " Jo ", email: " jo.martin@exemple.fr ", fonction: " Trésorier "});
+  m.element("agenceRepresentant").value = "Dana Exemple";
+  m.element("agenceFonction").value = "Directrice adjointe";
+  await m.cliquerGenerer();
+  assert.equal(m.generation.appels.length, 1);
+  const {valeurs} = m.generation.appels[0];
+  assert.deepEqual(JSON.parse(JSON.stringify(valeurs.nouveauContact)), {nom: "Martin", prenom: "Jo", email: "jo.martin@exemple.fr", fonction: "Trésorier"});
+  assert.equal(valeurs.representant, "Dana Exemple");
+  assert.equal(m.element("signataireEmail").classList.contains("is-invalid"), false);
+});
+
+// Echoue si le message sous E-mail ne disparait pas des que l'agent retape dans E-mail (ecouteur
+// « input »), ou si is-invalid / aria-invalid restent, ou si aria-describedby ne revient pas a la phrase d'information.
+test("le message sous E-mail disparaît dès que l'agent retape dans E-mail", async () => {
+  const m = await preparer();
+  saisirContact(m, {nom: "Martin", email: ""});
+  await m.cliquerGenerer();
+  const champEmail = m.element("signataireEmail");
+  assert.equal(champEmail.classList.contains("is-invalid"), true, "préparation : l'erreur est affichée");
+  (champEmail.ecouteurs.input || []).slice().forEach((f) => f({}));
+  assert.equal(champEmail.classList.contains("is-invalid"), false, "is-invalid retiré");
+  assert.equal(champEmail.getAttribute("aria-invalid"), null, "aria-invalid retiré");
+  assert.equal(champEmail.getAttribute("aria-describedby"), "signataireLibreAide", "revient à la phrase d'information");
+});
+
+// Echoue si une nouvelle tentative ne retire pas, des son debut, l'alerte de la tentative
+// precedente (la note : « les anciens messages d'erreur sont effaces au debut de chaque tentative »),
+// ou si un echec de generation suivant laisse un champ marque.
+test("une nouvelle tentative efface d'abord l'alerte ; l'échec suivant n'affiche que son message", async () => {
+  const m = await preparer();
+  m.generation.comportement = echoue("modele-indisponible");
+  m.remplir();
+  await m.cliquerGenerer();
   assert.equal(alerte(m).visible, true, "préparation : l'alerte est affichée");
 
   const attente = enAttente();
   m.generation.comportement = attente.comportement;
   m.cliquerSansAttendre();
-  verifierAucunChampEnErreur(m, "au début de la 2e tentative");
   assert.equal(alerte(m).visible, false, "l'alerte est cachée au début de la 2e tentative");
-  assert.equal(m.element("conventionAnnee").getAttribute("aria-describedby"), null, "le lien vers le message d'erreur est retiré");
 
   attente.rejeter(Object.assign(new Error("échec fictif"), {code: "echec-inattendu"}));
   await attendre();
@@ -778,6 +837,7 @@ test("réussite : seul le contenu du bloc est refait (la fiche n'est pas recharg
   m.w.openConvention(1);
   assert.notEqual(m.hote.innerHTML, "", "la fenêtre se rouvre");
   assert.equal(m.touche("Escape"), true);
+  await attendre();
   assert.equal(m.hote.innerHTML, "", "Échap ferme : le verrou de la génération est levé");
 });
 
@@ -797,23 +857,23 @@ const ANCIENNE_DISPONIBLE = "L'ancienne convention reste disponible.";
 const regeneration = () => preparer({conventions: [CONVENTION_EXISTANTE], ouverture: "regenerer"});
 
 // Echoue si le clic sur « Re-générer » n'ouvre pas la fenetre (state.conventionOpen, modal-open),
-// si elle n'est pas prerempli avec l'annee ENREGISTREE (2029, pas l'annee en cours), le signataire
-// (et sa fonction), le representant et sa fonction, si la phrase « Le nouveau PDF remplacera… »
-// manque dans la fenetre ouverte, si le pied cesse de dire « Générer la convention » (D-S8-1), ou
-// si le focus ne va pas sur le premier champ modifiable (« Année »).
-test("« Re-générer » : un clic ouvre la fenêtre préremplie (année enregistrée, signataire, représentant), avec la phrase de remplacement", async () => {
+// si elle n'est pas prerempli avec le signataire (et sa fonction), le representant et sa fonction
+// ENREGISTRES, si la phrase « Le nouveau PDF remplacera… » manque dans la fenetre ouverte, si un
+// champ « Année » reapparait, si le pied cesse de dire « Générer la convention » (D-S8-1), ou
+// si le focus ne va pas sur le premier champ modifiable (« Signataire »).
+test("« Re-générer » : un clic ouvre la fenêtre préremplie (signataire, représentant), avec la phrase de remplacement", async () => {
   const m = await regeneration();
   assert.notEqual(m.hote.innerHTML, "", "la fenêtre est ouverte");
   assert.equal(m.w.state.conventionOpen, true, "state.conventionOpen");
   assert.equal(m.corpsAClasse("modal-open"), true, "modal-open posé");
   assert.ok(m.hote.innerHTML.includes("<p>Le nouveau PDF remplacera la convention générée le 14/03/2026.</p>"), "la phrase de remplacement est dans la fenêtre");
-  assert.equal(m.element("conventionAnnee").value, "2029", "l'année enregistrée, pas l'année en cours");
+  assert.equal(m.hote.innerHTML.includes("conventionAnnee"), false, "plus de champ Année");
   assert.equal(m.element("clubSignataire").value, "31", "le signataire enregistré");
   assert.equal(m.element("clubFonction").value, "Présidente", "la fonction du signataire s'affiche");
   assert.equal(m.element("agenceRepresentant").value, "Dana Exemple", "le représentant enregistré");
   assert.equal(m.element("agenceFonction").value, "Directrice adjointe", "la fonction du représentant enregistrée");
   assert.equal(texteDe(m.hote.innerHTML, "button", "conventionGenererFenetre"), LIBELLE, "le pied dit toujours « Générer la convention »");
-  assert.equal(m.actif(), m.element("conventionAnnee"), "le focus est sur « Année »");
+  assert.equal(m.actif(), m.element("clubSignataire"), "le focus est sur « Signataire »");
   assert.equal(m.generation.appels.length, 0, "ouvrir la fenêtre ne génère rien");
 });
 
@@ -832,7 +892,7 @@ test("« Re-générer » grisé (agence manquante) : un clic n'ouvre pas la fen�
 // Echoue si « Fermer » ou Echap (sans avoir lance de generation) ne ferme pas la fenetre, ne rend
 // pas le focus a « Re-générer » (le bouton qui l'a ouverte), le rend a « Voir la convention », ou
 // touche a la convention enregistree (l'ancien PDF reste, rien n'est genere).
-test("« Re-générer » : « Fermer » ou Échap sans génération ferme la fenêtre et le focus revient sur « Re-générer »", async () => {
+test("« Re-générer » : « Fermer » ou Échap sans génération enregistre en silence, ferme la fenêtre, et le focus revient sur « Re-générer »", async () => {
   const fermetures = {
     "« Fermer »": (m) => m.element("conventionFermer").click(),
     "Échap": (m) => m.touche("Escape"),
@@ -841,6 +901,7 @@ test("« Re-générer » : « Fermer » ou Échap sans génération ferme la fen
     const m = await regeneration();
     assert.notEqual(m.hote.innerHTML, "", `${nom} : la fenêtre est ouverte avant`);
     fermer(m);
+    await attendre();
     assert.equal(m.hote.innerHTML, "", `${nom} : la fenêtre est fermée`);
     assert.equal(m.w.state.conventionOpen, false, `${nom} : state.conventionOpen`);
     assert.equal(m.corpsAClasse("modal-open"), false, `${nom} : modal-open retiré`);
@@ -925,25 +986,6 @@ test("première génération : aucun message d'échec ne contient « L'ancienne 
       assert.ok(texte.length > 0, `${contexte}, ${code} : un message est affiché`);
       assert.ok(!texte.includes("ancienne convention"), `${contexte}, ${code} : pas de phrase sur l'ancienne convention (« ${texte} »)`);
     }
-  }
-});
-
-// Echoue si, a la re-generation, les champs a corriger affichent la phrase (dans l'alerte du haut ou
-// sous un champ), ou si l'alerte n'est plus « Certains champs sont à corriger. » mot pour mot.
-test("re-génération, champs à corriger : ni l'alerte ni les messages sous les champs ne contiennent « L'ancienne convention reste disponible. »", async () => {
-  for (const [nom, problemes] of Object.entries(CAS_CHAMPS)) {
-    const m = await regeneration();
-    m.generation.comportement = echoue("champs-a-corriger", {problemes});
-    m.remplir();
-    await m.cliquerGenerer();
-    const a = alerte(m);
-    assert.equal(a.visible, true, `${nom} : alerte visible`);
-    assert.equal(a.texte, ALERTE_CHAMPS, `${nom} : texte de l'alerte, sans la phrase`);
-    for (const {id, message} of problemes) {
-      assert.equal(lire(m.element(`${id}Erreur`).innerHTML), `Erreur : ${message}`, `${nom} : message sous ${id}, sans la phrase`);
-    }
-    assert.ok(!m.hote.innerHTML.includes("ancienne convention"), `${nom} : rien dans la fenêtre`);
-    assert.equal(m.element("conventionMessage").querySelector(".alert-content").textContent.includes("ancienne convention"), false, `${nom} : rien dans l'alerte`);
   }
 });
 

@@ -25,8 +25,11 @@ const AGENCE = {id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exem
 const MODELE = {id: 10, Dispositif: 3, Actif: true, Titre: "Modèle Exemple", Avec_annee: true, Contenu: "Texte de convention fictif."};
 const CONTACTS = [{id: 31, Club: 7, Prenom: "Camille", Nom: "Exemple", Fonction: "Présidente"}];
 
-// Ce que lireConventionForm donne au clic sur « Generer la convention ».
-const VALEURS = {annee: "2031", anneeIllisible: false, signataire: 31, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
+// Ce que lireConventionForm donne au clic sur « Generer la convention » (E1 : plus d'annee, elle
+// vient de la campagne de l'action ; nouveauContact vaut null tant que le Nom du formulaire
+// « Ajouter un contact » est vide).
+const VALEURS = {signataire: 31, nouveauContact: null, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
+const ID_CAMPAGNE = 4;
 
 // La ligne existe deja avec exactement les valeurs de VALEURS : l'enregistrement qui
 // precede la generation ne la change pas, donc tout changement vu ensuite vient du rattachement.
@@ -37,7 +40,7 @@ const LIGNE_CONVENTION = {
 
 function tables() {
   return {
-    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
+    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, Campagne: ID_CAMPAGNE}],
     Structures: [{...CLUB}],
     Agences: [{...AGENCE}],
     Modeles_convention: [{...MODELE}],
@@ -89,8 +92,16 @@ async function preparer(options = {}) {
   // compteurs : combien de fois pdfmake est charge et combien de PDF sont fabriques (les
   // tests des codes d'erreur verifient que les etapes suivantes n'ont pas eu lieu).
   const compteurs = {pdfmake: 0, pdf: 0};
+  const docs = [];
   global.chargerPdfmake = () => { compteurs.pdfmake += 1; return Promise.resolve(); };
-  global.pdfMake = {createPdf: () => { compteurs.pdf += 1; return {getBlob: () => Promise.resolve({size: 1234})}; }};
+  global.pdfMake = {createPdf: (document) => { compteurs.pdf += 1; docs.push(document); return {getBlob: () => Promise.resolve({size: 1234})}; }};
+  // La campagne de l'action (reference vers Campagnes) donne l'annee : « 2031 », modifiable par un test.
+  // `illisible` imite un reseau coupe pendant la lecture de la table Campagnes.
+  const campagnes = {valeur: "2031", illisible: false};
+  w.grist.docApi.fetchTable = (nom) => {
+    if (nom !== "Campagnes") return Promise.resolve({id: []});
+    return campagnes.illisible ? Promise.reject(new Error("réseau coupé")) : Promise.resolve({id: [ID_CAMPAGNE], Campagne: [campagnes.valeur]});
+  };
 
   w.grist.docApi.getAccessToken = (opts) => { jetons.push(opts); return Promise.resolve({token: JETON, baseUrl: BASE_URL}); };
   w.grist.docApi.applyUserActions = (actions) => {
@@ -103,7 +114,7 @@ async function preparer(options = {}) {
     if (String(url).includes("/attachments")) return Promise.resolve(reponse(true, 200, [ID_PIECE_JOINTE]));
     return options.patch ? options.patch() : Promise.resolve(reponse(true, 200, {}));
   };
-  return {w, fetchs, appels, jetons, journal, compteurs};
+  return {w, fetchs, appels, jetons, journal, compteurs, docs, campagnes};
 }
 
 const estPatch = (requete) => requete.options && requete.options.method === "PATCH";
@@ -368,21 +379,109 @@ test("génération : ordre des étapes en réussite (enregistrement, jeton, pdfm
   assert.deepEqual(trace, ["enregistrement", "jeton", "pdfmake", "pdf", "envoi", "rattachement"]);
 });
 
-// Echoue si des champs a corriger ne rendent pas champs-a-corriger avec TOUS les problemes
-// dans .problemes, ou si le widget enregistre, charge pdfmake ou envoie quoi que ce soit avant
-// d'avoir verifie les champs.
-test("échec champs-a-corriger : .problemes les contient tous, rien n'est enregistré ni chargé ni envoyé", async () => {
+// Echoue si un champ vide bloque encore la generation (E1, D-E1-17 : plus aucun champ obligatoire,
+// plus de code champs-a-corriger) : aucun signataire, representant et fonction vides doivent
+// passer, et les cases correspondantes du modele deviennent 56 points (a completer a la main).
+test("E1 : champs vides (aucun signataire, représentant et fonction vides) → la génération réussit, les cases deviennent 56 points", async () => {
   const ctx = await preparer();
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Signé par [Signataire du club], [Représentant de l’agence], [Fonction du représentant] fin.";
+
+  const resultat = await ctx.w.conventionGenerer(1, {signataire: 0, nouveauContact: null, representant: "", fonctionRepresentant: ""});
+
+  assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
+  assert.equal(ctx.compteurs.pdf, 1, "un PDF est fabriqué");
+  assert.ok(JSON.stringify(ctx.docs[0]).includes(".".repeat(56)), "des pointillés dans le PDF");
+  assert.ok(!JSON.stringify(ctx.docs[0]).includes(".".repeat(57)), "exactement 56 points");
+  assert.equal(ctx.appels.length, 1, "les informations vides sont enregistrées telles quelles");
+  assert.equal(ctx.appels[0][0][3].Signataire_club, 0);
+});
+
+// Echoue si l'annee du PDF et du nom de fichier ne vient plus de la campagne de l'action
+// (Actions.Campagne -> Campagnes.Campagne), ou si une annee glissee dans `valeurs` l'emporte.
+test("année : le nom du fichier et la case [Année] viennent de la campagne de l'action", async () => {
+  const ctx = await preparer();
+  ctx.campagnes.valeur = "2027";
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
+
+  const resultat = await ctx.w.conventionGenerer(1, {...VALEURS, annee: "1999"});
+
+  assert.ok(resultat.nomFichier.endsWith("-2027.pdf"), `nom du fichier avec 2027 : ${resultat.nomFichier}`);
+  assert.ok(JSON.stringify(ctx.docs[0]).includes("Année 2027."), "la case [Année] vaut 2027");
+  assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2027, "Annee enregistrée");
+});
+
+// Echoue si une campagne vide laisse une annee inventee dans le nom du fichier, ou ne donne pas
+// des pointillés pour la case [Année] (D-E1-8 : l'annee est omise du nom de fichier).
+test("année : campagne vide → pas d'année dans le nom du fichier, case [Année] en pointillés", async () => {
+  const ctx = await preparer();
+  ctx.campagnes.valeur = "";
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
+
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.ok(!/-\d{4}\.pdf$/.test(resultat.nomFichier), `aucune année dans ${resultat.nomFichier}`);
+  assert.ok(JSON.stringify(ctx.docs[0]).includes(`Année ${".".repeat(56)}.`), "pointillés à la place de l’année");
+});
+
+// Echoue si une lecture impossible de la campagne (reseau coupe) fait perdre l'annee deja
+// enregistree : le PDF et le nom du fichier doivent garder Annee de la ligne (2031), pas des pointillés.
+test("année : lecture de la campagne impossible → l'année déjà enregistrée sert au PDF et au nom du fichier", async () => {
+  const ctx = await preparer();
+  ctx.campagnes.illisible = true;
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
+
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.ok(resultat.nomFichier.endsWith("-2031.pdf"), resultat.nomFichier);
+  assert.ok(JSON.stringify(ctx.docs[0]).includes("Année 2031."));
+  assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2031, "Annee non écrasée");
+});
+
+// Echoue si un nouveau contact saisi dans la fenetre n'est pas cree AVANT la fabrication du PDF, ou si
+// le PDF ne porte pas son nom et sa fonction ([Signataire du club], [Fonction du signataire]) : le
+// signataire d'une saisie libre doit etre traite comme un contact de la liste (note UX §3).
+test("nouveau contact : créé avant le PDF, qui porte son nom et sa fonction ; Conventions le référence", async () => {
+  const ctx = await preparer();
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Signé par [Signataire du club], [Fonction du signataire] fin.";
+  const valeurs = {signataire: 0, nouveauContact: {nom: "Martin", prenom: "Jo", email: "jo.martin@exemple.fr", fonction: "Trésorier"}, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
+
+  const resultat = await ctx.w.conventionGenerer(1, valeurs);
+
+  assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
+  assert.equal(ctx.appels[0][0][1], "Contacts", "le contact est créé en premier");
+  assert.equal(ctx.appels[0][0][0], "AddRecord");
+  assert.equal(ctx.appels[1][0][1], "Conventions", "puis Conventions");
+  assert.equal(ctx.appels[1][0][3].Signataire_club, 55, "Conventions référence le contact créé (identifiant rendu par Grist)");
+  assert.ok(JSON.stringify(ctx.docs[0]).includes("Signé par Jo Martin, Trésorier fin."), "le PDF porte le nom et la fonction du nouveau contact");
+  assert.equal(valeurs.nouveauContact, null, "la saisie libre est consommée : pas de second contact");
+});
+
+// Echoue si la creation du contact echoue et que la generation continue : elle doit s'arreter avec
+// enregistrement-echoue, sans ecrire Conventions, sans charger pdfmake ni demander de jeton.
+test("nouveau contact refusé par Grist : enregistrement-echoue, rien d'autre n'est écrit ni fabriqué", async () => {
+  const ctx = await preparer();
+  ctx.w.grist.docApi.applyUserActions = (actions) => { ctx.appels.push(actions); return Promise.reject(new Error(`refus ${NOM_DE_PERSONNE}`)); };
   const avant = ordinaire(ctx.w.state.raw.Conventions);
 
-  const erreur = await attraper(ctx.w.conventionGenerer(1, {...VALEURS, signataire: 0, representant: ""}));
+  const erreur = await attraper(ctx.w.conventionGenerer(1, {signataire: 0, nouveauContact: {nom: "Martin", prenom: "", email: "jo.martin@exemple.fr", fonction: ""}, representant: "", fonctionRepresentant: ""}));
 
-  verifierEchec(ctx, erreur, "champs-a-corriger", avant);
-  assert.deepEqual(ordinaire(erreur.problemes).map((p) => p.id), ["clubSignataire", "agenceRepresentant"]);
-  assert.equal(ctx.appels.length, 0, "rien enregistré");
+  verifierEchec(ctx, erreur, "enregistrement-echoue", avant);
+  assert.equal(ctx.appels.length, 1, "une seule tentative : la création du contact");
   assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
   assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
-  assert.equal(ctx.fetchs.length, 0, "aucune requête");
+});
+
+// Echoue si une adresse de club absente bloque la generation elle-meme (le blocage est a l'ouverture
+// de la fenetre, jamais dans conventionGenerer) ou ne donne pas 56 points pour [Siège du club].
+test("adresse du club absente : la génération réussit et [Siège du club] devient 56 points", async () => {
+  const ctx = await preparer();
+  Object.assign(ctx.w.state.raw.Structures[0], {Adresse: "", Code_postal: "", Ville: ""});
+  ctx.w.state.raw.Modeles_convention[0].Contenu = "Siège : [Siège du club] fin.";
+
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.ok(resultat.nomFichier.endsWith(".pdf"));
+  assert.ok(JSON.stringify(ctx.docs[0]).includes(`Siège : ${".".repeat(56)} fin.`), "56 points à la place de l'adresse");
 });
 
 // Echoue si un refus de Grist a l'enregistrement ne rend pas enregistrement-echoue, si
@@ -494,14 +593,16 @@ test("échec pdfmake-non-charge : pas de réponse au bout de 20 secondes (minute
 
   const promesse = ctx.w.conventionGenerer(1, VALEURS);
   await attendre();
-  assert.equal(minuteries.length, 3, "trois minuteries posées : l'enregistrement (20 s), le jeton (15 s), puis pdfmake (20 s)");
-  assert.equal(minuteries[0].delai, 20000, "la première est celle de l'enregistrement");
-  assert.ok(arretees.has(1), "la minuterie de l'enregistrement est arrêtée : il a répondu");
-  assert.equal(minuteries[1].delai, 15000, "la deuxième est celle du jeton");
-  assert.ok(arretees.has(2), "la minuterie du jeton est arrêtée : le jeton est arrivé");
-  assert.equal(minuteries[2].delai, 20000, "la troisième est celle de pdfmake");
-  assert.ok(!arretees.has(3), "la minuterie de pdfmake est la seule encore active");
-  minuteries[2].fonction();
+  assert.equal(minuteries.length, 4, "quatre minuteries posées : la lecture de la campagne (15 s), l'enregistrement (20 s), le jeton (15 s), puis pdfmake (20 s)");
+  assert.equal(minuteries[0].delai, 15000, "la première est celle de la campagne (l'année)");
+  assert.ok(arretees.has(1), "la minuterie de la campagne est arrêtée : elle a répondu");
+  assert.equal(minuteries[1].delai, 20000, "la deuxième est celle de l'enregistrement");
+  assert.ok(arretees.has(2), "la minuterie de l'enregistrement est arrêtée : il a répondu");
+  assert.equal(minuteries[2].delai, 15000, "la troisième est celle du jeton");
+  assert.ok(arretees.has(3), "la minuterie du jeton est arrêtée : le jeton est arrivé");
+  assert.equal(minuteries[3].delai, 20000, "la quatrième est celle de pdfmake");
+  assert.ok(!arretees.has(4), "la minuterie de pdfmake est la seule encore active");
+  minuteries[3].fonction();
   const erreur = await attraper(promesse);
 
   verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
@@ -587,7 +688,7 @@ for (const [nom, preparerPdf] of FABRICATIONS_RATEES) {
 const ANCIEN_PDF = 41;
 const ANCIENNE_DATE = 1700000000;
 const MODELE_INACTIF = {id: 11, Dispositif: 3, Actif: false, Titre: "Ancien modèle", Avec_annee: true, Contenu: "Ancien texte fictif."};
-const NOUVELLES_VALEURS = {...VALEURS, annee: "2032", representant: "Sam Exemple"};
+const NOUVELLES_VALEURS = {...VALEURS, representant: "Sam Exemple"};
 
 // Charge le widget avec une convention deja generee avec l'ancien modele (11).
 async function preparerRegeneration(options = {}, ligneEnPlus = {}) {
@@ -595,6 +696,8 @@ async function preparerRegeneration(options = {}, ligneEnPlus = {}) {
   const raw = ctx.w.state.raw;
   raw.Modeles_convention = [{...MODELE}, {...MODELE_INACTIF}];
   raw.Conventions = [{...LIGNE_CONVENTION, Modele: 11, PDF_genere: ["L", ANCIEN_PDF], Date_generation: ANCIENNE_DATE, ...ligneEnPlus}];
+  // La campagne de l'action a change depuis la premiere generation : 2032.
+  ctx.campagnes.valeur = "2032";
   return ctx;
 }
 
@@ -640,11 +743,12 @@ test("première génération : la ligne créée reçoit le modèle actif", async
   assert.equal(ctx.appels[0][0][3].Modele, 10);
 });
 
-// Echoue si « Enregistrer les informations » (conventionEnregistrer sans option) change Modele :
-// une convention deja faite garde son modele d'origine (11), meme s'il n'est plus actif.
-test("« Enregistrer les informations » seul ne change pas Modele (reste le modèle d'origine)", async () => {
+// Echoue si l'enregistrement de la fermeture (conventionEnregistrer sans modeleActif, comme
+// « Fermer » et Echap) change Modele : une convention deja faite garde son modele d'origine (11),
+// meme s'il n'est plus actif.
+test("« Fermer » (enregistrement seul) ne change pas Modele (reste le modèle d'origine)", async () => {
   const ctx = await preparerRegeneration();
-  await ctx.w.conventionEnregistrer(1, NOUVELLES_VALEURS);
+  await ctx.w.conventionEnregistrer(1, NOUVELLES_VALEURS, {silencieux: true});
 
   assert.equal(ctx.appels[0][0][3].Modele, 11, "modèle d'origine dans l'opération");
   assert.equal(ligneConvention(ctx.w).Modele, 11, "modèle d'origine en mémoire");
@@ -717,7 +821,7 @@ test("re-génération : PDF_signe et Date_depot ne sont ni écrits ni modifiés"
 
 // Echoue si, a l'une de ces etapes, l'ancien PDF_genere ou l'ancienne Date_generation change
 // (memoire ou ecriture), si le bloc ne pointe plus vers l'ancien fichier, ou si les informations
-// de l'etape 2 (annee, representant) ne restent pas enregistrees.
+// de l'etape 2 (annee de la campagne, representant) ne restent pas enregistrees.
 const ECHECS_REGENERATION = [
   ["modèle inactif", "modele-indisponible", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Actif = false; }],
   ["cases inconnues", "cases-inconnues", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Contenu = "Texte avec [Case inconnue]."; }],
@@ -745,7 +849,12 @@ for (const [nom, code, preparerEchec] of ECHECS_REGENERATION) {
 // Remplace fetchTable pour la relecture et compte ses appels sur la table Conventions.
 function poserRelecture(ctx, comportement) {
   const lectures = [];
-  ctx.w.grist.docApi.fetchTable = (nom) => { lectures.push(nom); return comportement(); };
+  // La lecture de la campagne (annee) n'est pas la relecture de secours : on ne la compte pas.
+  ctx.w.grist.docApi.fetchTable = (nom) => {
+    if (nom === "Campagnes") return Promise.resolve({id: [ID_CAMPAGNE], Campagne: [ctx.campagnes.valeur]});
+    lectures.push(nom);
+    return comportement();
+  };
   return lectures;
 }
 const tableAvec = (pdf) => () => Promise.resolve({id: [ID_CONVENTION], PDF_genere: [pdf]});
