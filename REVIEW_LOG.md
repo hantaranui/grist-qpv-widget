@@ -1167,3 +1167,23 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : a194073 (tests) et 07fbccf (code)
 Reste à faire (10.2) : vérifier les règles d'accès réelles dans DEV7/TEST (Modeles_convention en lecture seule hors propriétaires, ANS/anonyme sans accès) ; mettre à jour CLAUDE.md (écritures sur Conventions, pièces jointes non filtrées par table, jeton d'écriture utilisé aussi pour la lecture par nécessité).
+
+## Tâche C56 — Évolution 1 : allègement de la fenêtre Convention
+
+Date : 2026-10-29
+Agents : designer-ux (plusieurs passes), dev-interface (plusieurs passes), dev-backend (plusieurs passes), testeur (mise à jour massive), relecteur (diagnostic grille)
+Prompt : retours du chef de projet après la mise en production de S7-S10, affinés au fil de nombreux allers-retours (décisions D-E1-1 à D-E1-21, docs/backlog.md)
+
+Note /5 : 4
+Ce qui a changé, résumé :
+- Fenêtre allégée : plus de colonne "Informations", plus de champ Année ni Modèle utilisé dans le formulaire. Deux blocs, Club (encart en lecture seule, nom/SIRET/adresse sur une ligne, hauteur automatique) et Agence (nom seul).
+- Plus aucun champ obligatoire. Seul blocage restant à l'ouverture : club et agence doivent être renseignés sur l'action (le blocage "adresse du club", oublié dans une première passe, a été retiré après coup, trouvé par le testeur).
+- Signataire club : bouton "Ajouter un contact" (remplace une ligne dépliante abandonnée en cours de route) ouvrant un petit formulaire (Nom, Prénom, E-mail, Fonction, aucun obligatoire), qui crée un contact dans Contacts puis le référence dans Conventions.Signataire_club, sans jamais écraser une année existante par erreur.
+- Année : vient désormais de Actions.Campagne → Campagnes.Campagne, plus jamais saisie dans la fenêtre ; un bug grave (Annee: null écrasant une valeur existante à chaque enregistrement) a été trouvé et corrigé avant tout essai à l'écran.
+- Bouton "Enregistrer les informations" supprimé : Fermer/Échap enregistrent silencieusement.
+- Seuil de bascule à deux colonnes abaissé de 1200 px à 1100 px, après qu'un essai à l'écran de Hanta (fenêtre réduite, usage réel de travail) ait montré que 1200 px était trop haut pour un usage courant.
+- Pointillés du PDF doublés (28 → 56 points), sur demande du chef de projet.
+- Une maquette de référence (approximative, hors design system) a servi à cadrer les échanges avec le chef, puis a été intégrée au dépôt (docs/ux/maquette-convention-e1.html/.png) pour que les agents puissent la consulter ; plusieurs écarts entre elle et la note ont été tranchés un par un (sous-titre dans l'en-tête, pas de croix, ligne dépliante repliée par défaut, etc.), avant d'être eux-mêmes remplacés par la décision finale du bouton "Ajouter un contact".
+Ce que j'ai fait corriger en cours de route : bug Annee: null (grave, avant tout essai) ; grille à deux colonnes qui ne basculait pas (fausse alerte, cache navigateur) puis seuil réellement trop haut (vrai correctif) ; titres "Club"/"Agence" en double ; espace vide à droite (grille à trois colonnes jamais réduite à deux) ; espacements insuffisants (gap entre colonnes, champs du formulaire) ; phrase d'introduction erronée (deux fois) ; blocage de l'adresse du club oublié.
+Tests : plusieurs cycles sur la journée, de 733 (avant E1) à 765 puis 761 tests, 0 échec au final (npm test). Vérifié à l'écran par Hanta dans DEV7 : bouton Ajouter un contact, pointillés sur champ vide, bascule à deux colonnes sous 1100 px, encart Club sans poignée.
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html, 9 fichiers de test (dont convention-contact.test.js, nouveau),
