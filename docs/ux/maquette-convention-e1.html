@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Maquette — Fenêtre Convention allégée (E1)</title>
+<style>
+  body{margin:0;font-family:Arial, Helvetica, sans-serif}
+  *{box-sizing:border-box}
+</style>
+</head>
+<body>
+<div style="width:1100px;min-height:780px;background:#EEF0F4;color:#1A1A1A;padding:40px;display:flex;align-items:flex-start;justify-content:center">
+
+  <div style="width:920px;background:#FFFFFF;border-radius:4px;box-shadow:0 8px 24px rgba(20,25,50,0.12);overflow:hidden">
+
+    <!-- En-tête -->
+    <div style="padding:24px 32px;border-bottom:1px solid #E2E5EB;display:flex;align-items:flex-start;justify-content:space-between">
+      <div>
+        <h1 style="margin:0 0 4px 0;font-size:22px;font-weight:700;color:#15264F">Convention</h1>
+        <p style="margin:0;font-size:14px;color:#5B6472">Du stade vers l'emploi · Campagne 2026</p>
+      </div>
+      <button type="button" aria-label="Fermer" style="width:32px;height:32px;border:none;background:transparent;color:#5B6472;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <!-- Phrase d'aide -->
+    <div style="padding:16px 32px 0 32px">
+      <p style="margin:0;font-size:13px;color:#5B6472">Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.</p>
+    </div>
+
+    <!-- Corps : deux colonnes -->
+    <div style="padding:20px 32px 8px 32px;display:flex;gap:32px">
+
+      <!-- Colonne Club -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:16px">
+        <h2 style="margin:0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:#15264F;border-bottom:2px solid #243B7A;padding-bottom:6px">Club</h2>
+
+        <div style="background:#F4F5F8;border:1px solid #E2E5EB;border-radius:4px;padding:12px 14px;font-size:14px;line-height:1.5;color:#1A1A1A">
+          LIGUE AUVERGNE RHÔNE-ALPES D'ATHLÉTISME, 44536722000032, 31 AVENUE D'ITALIE 38300 Bourgoin-Jallieu
+        </div>
+
+        <div>
+          <label for="signataire" style="display:block;font-size:13px;font-weight:600;color:#15264F;margin-bottom:4px">Signataire</label>
+          <select id="signataire" style="width:100%;height:38px;border:1px solid #C7CCD6;border-radius:4px;padding:0 10px;font-size:14px;color:#1A1A1A;background:#FFFFFF">
+            <option selected>Veuillez sélectionner</option>
+            <option>Marie Dupont</option>
+            <option>Karim Belkacem</option>
+          </select>
+        </div>
+
+        <!-- Ligne dépliante : ajouter un contact -->
+        <details open style="border:1px solid #E2E5EB;border-radius:4px;background:#FAFBFC">
+          <summary style="list-style:none;cursor:pointer;padding:10px 14px;font-size:13px;font-weight:600;color:#243B7A;display:flex;align-items:center;gap:6px;user-select:none">
+            <span aria-hidden="true" style="font-size:14px;line-height:1">＋</span>
+            Le contact n'est pas dans la liste : l'ajouter
+          </summary>
+          <div style="padding:4px 14px 14px 14px;border-top:1px solid #E2E5EB;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <div style="flex:1">
+                <label style="display:block;font-size:12px;color:#5B6472;margin-bottom:3px">Nom <span style="color:#B3261E">*</span></label>
+                <input type="text" placeholder="" style="width:100%;height:34px;border:1px solid #C7CCD6;border-radius:4px;padding:0 8px;font-size:13px">
+              </div>
+              <div style="flex:1">
+                <label style="display:block;font-size:12px;color:#5B6472;margin-bottom:3px">Prénom</label>
+                <input type="text" value="Gaylord" style="width:100%;height:34px;border:1px solid #C7CCD6;border-radius:4px;padding:0 8px;font-size:13px">
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:#5B6472;margin-bottom:3px">Email <span style="color:#B3261E">*</span></label>
+              <input type="email" placeholder="" style="width:100%;height:34px;border:1px solid #C7CCD6;border-radius:4px;padding:0 8px;font-size:13px">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;color:#5B6472;margin-bottom:3px">Fonction</label>
+              <input type="text" value="Chef de projet" style="width:100%;height:34px;border:1px solid #C7CCD6;border-radius:4px;padding:0 8px;font-size:13px">
+            </div>
+            <p style="margin:0;font-size:11px;color:#5B6472;font-style:italic">Ce contact sera ajouté à la fiche du club.</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- Colonne Agence -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:16px">
+        <h2 style="margin:0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:#15264F;border-bottom:2px solid #243B7A;padding-bottom:6px">Agence</h2>
+
+        <div style="background:#F4F5F8;border:1px solid #E2E5EB;border-radius:4px;padding:12px 14px;font-size:14px;color:#1A1A1A">
+          ST ETIENNE TECHNOPOLE
+        </div>
+
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#15264F;margin-bottom:4px">Représentant</label>
+          <input type="text" placeholder="" style="width:100%;height:38px;border:1px solid #C7CCD6;border-radius:4px;padding:0 10px;font-size:14px">
+        </div>
+
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#15264F;margin-bottom:4px">Fonction du représentant</label>
+          <input type="text" value="Directeur d'agence" style="width:100%;height:38px;border:1px solid #C7CCD6;border-radius:4px;padding:0 10px;font-size:14px">
+        </div>
+      </div>
+    </div>
+
+    <!-- Pied -->
+    <div style="padding:20px 32px 28px 32px;display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #E2E5EB;margin-top:12px">
+      <button type="button" style="height:40px;padding:0 20px;border:1px solid #C7CCD6;border-radius:4px;background:#FFFFFF;color:#15264F;font-size:14px;font-weight:600;cursor:pointer">Fermer</button>
+      <button type="button" style="height:40px;padding:0 24px;border:none;border-radius:4px;background:#243B7A;color:#FFFFFF;font-size:14px;font-weight:600;cursor:pointer">Générer la convention</button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
