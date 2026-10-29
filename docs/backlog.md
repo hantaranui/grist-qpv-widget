@@ -164,7 +164,7 @@ Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1
 #### Décisions de Hanta du 2026-10-29 (E1)
 
 - **D-E1-1** : l'encart Club affiche nom, SIRET et adresse sur une ligne, dans un textarea en lecture seule.
-- **D-E1-2** : la ligne dépliante du signataire utilise l'élément HTML natif `<details>`, sans classe nouvelle (aucun composant équivalent trouvé dans le design system).
+- **D-E1-2** : la ligne dépliante du signataire utilise l'élément HTML natif `<details>`, sans classe nouvelle (aucun composant équivalent trouvé dans le design system). (remplacée par D-E1-15 : bouton "Ajouter un contact" au lieu d'un <details>)
 - **D-E1-3** : la saisie libre (Prénom/Nom) est active dès que le champ Nom est rempli. Plier la ligne dépliante ne perd rien : la saisie reste visible si l'agent la rouvre.
 - **D-E1-5** : si l'enregistrement à la fermeture de la fenêtre échoue, elle reste ouverte avec l'alerte d'échec habituelle ; un deuxième clic sur Fermer (ou Échap) quitte sans enregistrer.
 - **D-E1-7** (vérifiée) : dans `Contacts`, Nom et Email sont obligatoires (comme le vrai formulaire « Ajout d'un contact » du widget clubs) ; Prénom, Téléphone et Fonction ne le sont pas.
@@ -173,12 +173,20 @@ Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1
 - **D-E1-10** : sous-titre de la fenêtre : « [Dispositif] · Campagne [Campagne] ».
 - **D-E1-13** : les doublons de contact (même personne saisie deux fois en saisie libre) sont acceptés, aucun traitement particulier côté interface.
 - **D-E1-12** (confirmée) : la phrase « Ce contact sera ajouté à la fiche du club. » est placée sous « Fonction du signataire », à la fin des 4 champs de la ligne dépliante.
-- **D-E1-14** (confirmée) : reprendre du vrai formulaire « Ajout d'un contact » le contrôle de forme de l'e-mail (refuser un e-mail mal formé) et la consigne « coordonnées professionnelles, pas personnelles ».
-- **Champs de la ligne dépliante du signataire** (nouvelle décision du 2026-10-29) : elle reprend les champs du vrai formulaire « Ajout d'un contact » (`src/clubs/script.js`) plutôt que d'en inventer un autre : Nom (obligatoire), Prénom (facultatif), Email (obligatoire), Fonction (facultatif). Téléphone n'est PAS repris (pas utile pour signer une convention).
+- **D-E1-14** (confirmée) : reprendre du vrai formulaire « Ajout d'un contact » le contrôle de forme de l'e-mail (refuser un e-mail mal formé) et la consigne « coordonnées professionnelles, pas personnelles ». (la consigne "coordonnées professionnelles" est retirée par D-E1-16 ; le contrôle de forme de l'e-mail reste valable)
+- **Champs de la ligne dépliante du signataire** (nouvelle décision du 2026-10-29) : elle reprend les champs du vrai formulaire « Ajout d'un contact » (`src/clubs/script.js`) plutôt que d'en inventer un autre : Nom (obligatoire), Prénom (facultatif), Email (obligatoire), Fonction (facultatif). Téléphone n'est PAS repris (pas utile pour signer une convention). (obligatoire et astérisque retirés par D-E1-17 : plus aucun champ n'est obligatoire)
   - Si Nom est vide, rien n'est créé dans `Contacts` et `Signataire_club` garde sa valeur actuelle.
   - Si Nom est rempli mais Email est vide, le contact ne peut pas être créé : message d'échec à la fermeture/génération, comme un échec d'enregistrement classique, en attendant la saisie de l'e-mail.
 - **Rappel** : D-E1-4 et D-E1-6, dans leur forme d'origine, restent sans objet (case à cocher supprimée, toujours créer le contact). D-E1-11 reste valable tel que posé par le designer-ux (Nom devient la condition de création plutôt que Prénom OU Nom). D-E1-12, dans sa forme d'origine (phrase d'information sous Prénom/Nom), est remplacée par la D-E1-12 confirmée ci-dessus (phrase sous « Fonction du signataire »).
 - **Documentation à mettre à jour en E1** (hors du périmètre de dev-interface/dev-backend, pour la documentaliste) : CLAUDE.md dit encore que le widget n'écrit jamais dans `Contacts` ; ce n'est plus vrai.
+
+#### Nouvelles décisions du chef de projet et de Hanta du 2026-10-29 (E1)
+
+- **D-E1-15** : la ligne dépliante `<details>` « Le contact n'est pas dans la liste : l'ajouter » est REMPLACÉE par un bouton « Ajouter un contact », qui ouvre le petit formulaire (Nom, Prénom, E-mail, Fonction) à son clic. Même logique de fonctionnement qu'avant (saisie, création à la fermeture/génération) : seul l'habillage change, un bouton au lieu d'un `<details>`. Cela remplace la D-E1-2 (élément `<details>`).
+- **D-E1-16** : les deux textes d'aide sont RETIRÉS : « * Nécessaires pour ajouter ce contact. » et « Saisissez des coordonnées professionnelles (adresse e-mail de la structure), pas des coordonnées personnelles. » Cela remplace la consigne « coordonnées professionnelles » de la D-E1-14 ; le contrôle de forme de l'e-mail de la D-E1-14 reste valable (voir D-E1-17).
+- **D-E1-17** : PLUS AUCUN champ n'est obligatoire dans ce formulaire, y compris Nom et E-mail : pas d'astérisque, pas d'attribut `required`. Si Nom est vide, rien n'est créé (comportement inchangé). Si Nom est rempli mais E-mail est vide ou mal formé, le contact ne peut toujours pas être créé par Grist (règle de `Contacts`, D-E1-7) : garder le message d'erreur existant dans ce cas, mais sans jamais afficher d'astérisque ni bloquer la saisie elle-même.
+- **D-E1-18** : espacement entre les champs Nom, Prénom, E-mail et Fonction du formulaire, actuellement trop serré (Prénom presque collé au champ du dessus). À espacer davantage, avec les variables d'espacement du design system.
+- **D-E1-19** : l'encart Club (lecture seule, nom/SIRET/adresse) ne doit plus être une zone redimensionnable à la main (pas de poignée de redimensionnement) : sa hauteur doit s'ajuster automatiquement à son contenu réel, sans espace vide en dessous. Cela précise la D-E1-1 (textarea en lecture seule).
 
 ## Questions encore ouvertes
 
