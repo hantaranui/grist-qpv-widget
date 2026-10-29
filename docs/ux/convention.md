@@ -12,6 +12,12 @@
 
 **Mis à jour le 2026-10-26 (S8)** : nouvelle section §12 « Re-générer » (bouton, fenêtre, ce qui change, réponses proposées à Q-I et Q-J, échec sans perte de l'ancien PDF), décisions D-S8-1 à D-S8-7 tranchées par Hanta le 2026-10-26 (tableau au §12.10 ; seule la vérification D-S8-7 reste à faire par Hanta dans DEV7, avant la recette R5). Rien d'antérieur n'est changé ; trois renvois ont été ajoutés (§3, §9, §10).
 
+**Mis à jour le 2026-10-29 (E1), Évolution 1 : allègement de la fenêtre « Convention »** (retours du chef, docs/backlog.md, section « Évolution 1 (E1) », qui fait foi). Quatre points : (1) fenêtre allégée : deux blocs « Club » et « Agence », plus de « Modèle utilisé » ni d'« Année », dispositif et campagne en sous-titre (§3) ; (2) **plus aucun champ obligatoire dans la fenêtre**, un champ vide donne des pointillés, le seul blocage reste à l'ouverture (club et agence, §2) ; (3) signataire du club : liste de contacts **ou** ligne dépliante de saisie libre ; un contact saisi ainsi est toujours créé dans Contacts (la case « Ajouter ce contact… » a été retirée par Hanta, 2e série du 2026-10-29) (§3) ; (4) **le bouton « Enregistrer les informations » est supprimé** : Fermer, la croix éventuelle et Échap enregistrent en silence (§3). Les passages concernés portent la mention « mis à jour le 2026-10-29 (E1) ». Là où une ancienne règle est remplacée, elle est dite remplacée. **Les §11 (mise en page du PDF), §12 (Re-générer) et §13 gardent leur texte d'origine, avec un renvoi en tête de chaque section vers ce qui change.** Les décisions qui reviennent à Hanta sont au §10, rubrique « À décider par Hanta (2026-10-29, E1) ». La maquette de référence de l'E1 (claude.ai/artifact/64Z3t7tDL1Nfuu9P3pbLAG) n'a pas pu être ouverte depuis cette session (autre organisation) : la note suit le backlog.
+
+**Mis à jour le 2026-10-29 (E1, précision Email)** : la ligne dépliante du signataire reprend les champs du vrai formulaire « Ajout d'un contact » du widget clubs (src/clubs/script.js, `CHAMPS_CONTACT`), décision de Hanta (docs/backlog.md, Évolution 1, point 3 et D-E1-3, qui font foi) : **Nom\* (obligatoire dans ce cas), Prénom, E-mail\* (obligatoire dans ce cas), Fonction**. Téléphone n'est pas repris. La condition de création devient **« Nom rempli » seul** (elle était « Prénom ou Nom »). Nouveau cas d'échec : Nom rempli mais E-mail vide, message sous le champ E-mail (§3). L'e-mail du signataire rejoint les données personnelles (§7). Tout ce qui parlait de « Prénom ou Nom » est corrigé ; la case à cocher et `Signataire_club_texte` n'apparaissent plus que dans les phrases qui disent qu'ils sont retirés. Les passages changés portent la mention « mis à jour le 2026-10-29 (E1, précision Email) ».
+
+**Mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14)** : relecture de la note face à la maquette de référence validée par le chef (docs/ux/maquette-convention-e1.png et .html, qui ne sert qu'à valider disposition, champs et comportement, jamais l'apparence : aucune couleur ni aucun style n'en est repris) et face au backlog à jour. Trois corrections : (1) **D-E1-12 est confirmée** : la phrase « Ce contact sera ajouté à la fiche du club. » est sous « Fonction du signataire », jamais sous Prénom/Nom ; les mentions « à confirmer par Hanta » sont retirées et le passage ambigu « en fin de zone » est corrigé (§3, §10) ; (2) **D-E1-14 est confirmée** : le contrôle de forme de l'e-mail et la consigne « coordonnées professionnelles, pas personnelles » sont décrits au §3 (« Contrôle de forme de l'e-mail et consigne ») et aux §5, §7, §10 ; (3) la disposition générale a été comparée : deux colonnes, encart Club sur une ligne, encart Agence au nom seul, sous-titre, pied avec seulement Fermer et Générer la convention, tout correspond. Les écarts entre la maquette et la note qui ne sont pas décidés dans le backlog ne sont pas tranchés ici : ils sont au §10, rubrique « Nouvelles questions pour Hanta (2026-10-29, maquette E1) ».
+
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, src/actions-dashboard/index.html, script.js (fiche, fenêtres « Ajout » et « Suppression »), style.css, src/fiche-club/ (contacts, logo), feuille du design system (CDN), pages du site du design system citées plus bas.
 Données de la maquette : entièrement fictives. La signature électronique n'en fait pas partie.
@@ -34,10 +40,10 @@ But : produire la convention entre l'agence et le club en PDF, l'imprimer, la fa
 Parcours 1, générer (état « À générer ») :
 
 1. Ouvrir la fiche de l'action (existant).
-2. Dans le bloc **Convention**, cliquer sur « Générer la convention ». Si un élément manque (agence, club, dispositif, adresse du club), le bouton est grisé et un message dit quoi remplir : le parcours s'arrête là (voir « Génération bloquée », §2).
-3. Dans la fenêtre : choisir le signataire du club **dans la liste des contacts du club**, relire les informations préremplies, saisir le représentant de l'agence et vérifier sa fonction. Si le club n'a aucun contact, un message le dit et la génération est impossible : l'agent ajoute un contact dans la fiche du club (hors de ce widget), puis revient.
-4. « Enregistrer les informations » (facultatif ; mis à jour le 2026-10-23 : il garde ce qui est saisi, même incomplet, comme un brouillon ; « Générer la convention » enregistre aussi).
-5. « Générer la convention » (mis à jour le 2026-10-23 : ce bouton n'arrive qu'en S7, avec la génération du PDF ; il contrôle alors les champs obligatoires, voir §3 « Enregistrer et Générer »). La fenêtre se ferme, le bloc passe à l'état « Générée ».
+2. Dans le bloc **Convention**, cliquer sur « Générer la convention ». Si l'agence ou le club de l'action manque, le bouton est grisé et un message dit quoi remplir : le parcours s'arrête là (voir « Génération bloquée », §2 ; mis à jour le 2026-10-29 (E1) : l'adresse du club ne bloque plus).
+3. Dans la fenêtre (mis à jour le 2026-10-29 (E1)) : **rien n'est obligatoire**. L'agent peut choisir le signataire du club dans la liste des contacts, ou ouvrir la ligne « Le contact n'est pas dans la liste : l'ajouter » et saisir un contact (Nom, Prénom, E-mail, Fonction ; le Nom et l'E-mail sont nécessaires, mis à jour le 2026-10-29 (E1, précision Email)) ; ce contact sera créé dans la fiche du club à la fermeture ou à la génération. Il peut aussi saisir le représentant de l'agence et sa fonction. Ce qu'il laisse vide donne des pointillés dans le PDF.
+4. Il n'y a plus d'étape « Enregistrer les informations » (mis à jour le 2026-10-29 (E1) : bouton supprimé). Si l'agent ferme la fenêtre sans générer (Fermer, croix éventuelle, Échap), ce qui est saisi est enregistré en silence.
+5. « Générer la convention ». Un seul contrôle de champ, seulement si un Nom de nouveau contact est saisi : l'E-mail doit l'être aussi (§3, mis à jour le 2026-10-29 (E1, précision Email)) ; la saisie est enregistrée, puis le PDF est fabriqué. La fenêtre se ferme, le bloc passe à l'état « Générée ».
 6. Hors du widget : imprimer le PDF, compléter à la main les zones en pointillés, faire signer ; puis revenir pour le parcours 4.
 
 Parcours 2, relire (état « Générée ») : « Voir la convention » (un bouton) récupère le PDF et l'ouvre dans un nouvel onglet, sans fenêtre : 1 clic. L'onglet porte une adresse `blob:` (le PDF est lu depuis la mémoire du navigateur) : aucun jeton n'apparaît dans une adresse visible.
@@ -56,7 +62,7 @@ Parcours 4, déposer la version signée (états « Générée » puis « Signée
 
 Parcours 5, remplacer le fichier signé (état « Signée ») : lien « Remplacer le fichier signé », puis les étapes 1 à 3 ci-dessus. Le nouveau fichier remplace l'ancien, sans historique, et la date de dépôt est mise à jour. Aucune vérification n'est demandée.
 
-Les boutons qui ouvrent la fenêtre (« Générer la convention », « Re-générer ») sont dans le bloc Convention, **pas** à côté de Supprimer, Annuler et Enregistrer. Ces trois boutons gardent leur place et leur sens. « Enregistrer les informations » n'enregistre pas la fiche (Intitulé, Statut, etc.), seulement les informations de convention.
+Les boutons qui ouvrent la fenêtre (« Générer la convention », « Re-générer ») sont dans le bloc Convention, **pas** à côté de Supprimer, Annuler et Enregistrer. Ces trois boutons gardent leur place et leur sens. Mis à jour le 2026-10-29 (E1) : la fenêtre Convention (par Fermer, la croix éventuelle, Échap ou Générer) n'enregistre pas la fiche (Intitulé, Statut, etc.), seulement les informations de convention (et, si un Nom est saisi dans la ligne dépliante du signataire, un contact dans la fiche du club ; mis à jour le 2026-10-29 (E1, précision Email)).
 
 ## 2. Écran A : bloc « Convention » dans la fiche
 
@@ -78,19 +84,22 @@ Contenu : en-tête « Convention » (même `section-head` que les autres blocs),
 
 **État « Droits insuffisants » (A7).** Il s'affiche quand Grist refuse la lecture des tables de la convention (Conventions ou Modeles_convention) à un utilisateur, quel que soit son profil (ANS compris). Le widget ne peut alors pas savoir si une convention existe : cet état **l'emporte sur les quatre autres**, aucun bouton ni aucune date n'est montré. Le texte est une phrase simple, en `<p>` dans le bloc (même présentation que les autres phrases d'état), sans couleur d'alerte : ce n'est pas une erreur de l'utilisateur. Le message est lu normalement par les lecteurs d'écran (texte visible dans le flux, pas de `role` particulier : il n'apparaît pas à la suite d'une action de l'utilisateur).
 
-**Génération bloquée (A8 à A11, nouveau).** À l'état « À générer » (et pour « Re-générer » à l'état « Générée »), la génération est bloquée tant qu'un des quatre éléments manque. Le widget vérifie dans cet ordre et **n'affiche que le message du premier élément manquant** (un seul message à la fois) :
+**Génération bloquée (A8 à A11, nouveau).** À l'état « À générer » (et pour « Re-générer » à l'état « Générée »), la génération est bloquée tant qu'un des éléments ci-dessous manque. Le widget vérifie dans cet ordre et **n'affiche que le message du premier élément manquant** (un seul message à la fois).
+
+**Mis à jour le 2026-10-29 (E1) : seuls l'agence et le club bloquent.** Il faut **un club ET une agence** sur l'action pour ouvrir la fenêtre ; sinon l'agent retourne compléter la fiche de l'action. **Ce blocage, posé ici au niveau du bloc avant l'ouverture, suffit** : la fenêtre n'a aucun contrôle de présence à elle (§3 « Enregistrer et Générer »). L'**adresse du club** ne bloque plus (message n° 4 supprimé) : une adresse absente donne des pointillés dans le PDF. Le message n° 3 (dispositif) reste dans la liste, inchangé (D-5) : il ne s'affiche jamais, voir plus bas. Avant l'E1, quatre éléments bloquaient.
 
 | Ordre | Élément manquant | Message exact |
 |---|---|---|
 | 1 | Agence de l'action | « Renseignez l'agence de l'action dans sa fiche. » |
 | 2 | Club de l'action | « Renseignez le club de l'action. » |
 | 3 | Dispositif de l'action | « Renseignez le dispositif de l'action dans sa fiche. » |
-| 4 | Adresse du club | « Renseignez l'adresse du club dans sa fiche. » |
+| ~~4~~ | ~~Adresse du club~~ | ~~« Renseignez l'adresse du club dans sa fiche. »~~ **Supprimé le 2026-10-29 (E1)** : une adresse absente donne des pointillés, ne bloque plus |
 
 **Mis à jour le 2026-10-23 : le message n° 3 (« Renseignez le dispositif… ») ne peut jamais s'afficher dans le bloc.** Sans dispositif, l'état du bloc est « Sans modèle » (règle d'ordre des états plus bas : un dispositif sans modèle n'a jamais de bouton), et le bloc n'arrive donc jamais à l'état « À générer » ou « Générée » où ces messages s'affichent. **Décision D-5 de Hanta (2026-10-23) : le message est gardé dans le code, sans être retiré.** Il ne s'affiche jamais en pratique : sans dispositif, l'état est « Sans modèle », et la phrase « Pas encore de modèle de convention pour ce dispositif. » reste le seul retour visible pour un dispositif absent.
 
 - **Où** : dans le bloc Convention, **sous la phrase d'état et juste au-dessus du bouton grisé**, dans le flux de la page (jamais dans une infobulle seule, jamais dans la fenêtre B : la fenêtre ne s'ouvre pas).
 - **Quand** : dès l'affichage du bloc, sans clic. Le message suit **les données enregistrées** de l'action, du club et de l'agence, jamais une valeur en cours de saisie et pas encore enregistrée. Il reste visible tant que l'élément manque ; il disparaît (et le bouton redevient actif) quand l'élément est renseigné. Il n'y a jamais de message affiché pour un élément qui n'est pas manquant.
+- **Mis à jour le 2026-10-29 (E1)** : les messages valables sont désormais deux (agence, club) ; le n° 3 ne s'affiche jamais ; le n° 4 est supprimé.
 - **Bouton « Générer la convention » (ou « Re-générer »)** : il **reste affiché**, grisé, avec `aria-disabled="true"` (pas l'attribut `disabled`, pour qu'il reste atteignable au clavier et lu par les lecteurs d'écran), `aria-describedby` pointant vers l'`id` du message, et pas d'`aria-haspopup` tant qu'il est grisé. Les clics sont ignorés (le script du design system `disabled-a11y.js` le fait si l'autoloader le charge ; sinon notre script le fait : voir §8). Un lecteur d'écran lit donc « Générer la convention, bouton, estompé », puis le message. Le message visible **est** l'explication : on n'utilise pas l'infobulle `data-ft-tooltip` de l'exemple du design system, car une infobulle n'est pas visible au toucher ni garantie au clavier (on peut ajouter les deux plus tard si le chef le demande).
 - **Annonce** : le message est du texte du bloc, lu en parcourant la page et relié au bouton par `aria-describedby`. Il n'est pas annoncé en direct (`aria-live`) s'il est déjà là à l'ouverture de la fiche. S'il apparaît pendant que la fiche est ouverte (l'agent renseigne par exemple le dispositif, le message suivant remplace le précédent), le conteneur du message est une région `role="status"` toujours présente dans le bloc, dont seul le texte change : il est alors annoncé poliment. Le message ne change qu'une fois la donnée enregistrée (voir « Quand »).
 - **Pas de couleur seule** : le message est du texte ; il commence par un `sr-only` « Convention impossible à générer : » pour que le lecteur d'écran dise de quoi il s'agit.
@@ -157,9 +166,11 @@ Structure et comportement repris de la fenêtre « Ajout d'une action » (script
 
 **Taille : `modal-xl`**, la plus large taille du design system. Dans la feuille du CDN : 800 px de large entre 992 et 1199 px d'écran, puis 1164 px à partir de 1200 px (la feuille contient deux règles pour `.modal-xl`, 1140 px et 1164 px : à vérifier à l'écran). On garde `modal-dialog-scrollable` comme filet : si l'écran est trop court, le corps défile et les boutons restent visibles.
 
-**Disposition (à partir de 1200 px d'écran) : trois colonnes.** Les blocs 1, 2 et 3 se placent côte à côte, sur une seule rangée (il n'y a plus de bloc « Date et lieu »). Ordre de lecture = ordre visuel. Le modèle de convention ne change que le champ « Année » du bloc 1 (voir plus bas), pas la disposition. Estimation : environ 480 px de hauteur pour la fenêtre entière (le bloc 2 est le plus haut), donc sans défilement sur un écran d'au moins 768 px de haut. Je n'ai pas pu mesurer le rendu dans un navigateur : **non vérifié**, à mesurer par Hanta sur la maquette. Sous 1200 px : une seule colonne, la fenêtre défile (la promesse « sans défilement » ne vaut qu'à partir de 1200 px).
+**Disposition (mis à jour le 2026-10-29 (E1)) : deux blocs, côte à côte.** Il n'y a plus de colonne « Informations relatives à la convention », ni de champ « Modèle utilisé », ni de champ « Année » (l'année vient de `Actions.Campagne`, voir « Titre et sous-titre » ci-dessous). Les blocs sont : **1. Club** (à gauche) et **2. Agence** (à droite), chacun dans un `fieldset` avec une `legend` en `form-legend`. Ordre de lecture = ordre visuel : sous-titre, phrase d'introduction, bloc Club, bloc Agence, pied. Deux colonnes à partir de 1200 px (seuil inchangé), une colonne en dessous, la fenêtre défile alors. La hauteur est plus faible qu'avec trois colonnes, mais je ne l'ai pas mesurée : **non vérifié**. Avant l'E1 : trois colonnes (mises à jour du 2026-10-23, remplacées ici).
 
-Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'un * sont obligatoires pour générer la convention. » (mis à jour le 2026-10-23 : l'ancienne phrase « Les champs marqués d'un * sont obligatoires. » laissait croire qu'« Enregistrer les informations » les exige ; il ne les exige pas, voir « Enregistrer et Générer » plus bas), puis trois `fieldset` avec `legend` en `form-legend`, dans cet ordre.
+**Titre et sous-titre (mis à jour le 2026-10-29 (E1)).** Titre (h2, `modal-title`) : « Convention », inchangé. **Le dispositif et l'année vont dans un sous-titre**, un simple `<p>` placé **dans l'en-tête de la fenêtre (`modal-header`), sous le titre « Convention »** (mis à jour le 2026-10-29 (E1, Q-M3 tranchée) : il n'est plus dans le corps ; il précède donc toujours la phrase d'introduction), au format « [Dispositif] · Campagne [Campagne] », par exemple « Du stade vers l'emploi · Campagne 2026 ». Le dispositif est celui de l'action ; la campagne est `Actions.Campagne` (référence vers `Campagnes.Campagne`, texte), jamais demandée à l'agent. Si la campagne est vide : le dispositif seul. Pas de classe nouvelle. Le sous-titre est lié à la fenêtre par `aria-describedby` sur le `div` `role="dialog"` : le lecteur d'écran lit « Convention », puis le sous-titre. Je n'ai pas lu de composant « sous-titre de fenêtre » du design system : **non vérifié**, je n'en fabrique pas.
+
+**Corps (mis à jour le 2026-10-29 (E1), précisé le 2026-10-29 (E1, précision Email)).** En tête du corps (le sous-titre est dans l'en-tête), une phrase d'introduction qui remplace « Les champs marqués d'un * sont obligatoires pour générer la convention. » : « Aucun champ n'est obligatoire, sauf pour ajouter un nouveau contact (ligne « Le contact n'est pas dans la liste »). Ce qui reste vide sera rempli à la main sur le PDF imprimé : des pointillés apparaîtront à la place. » Texte proposé, `<p>` ordinaire. Aucun attribut `required` dans la fenêtre. Les seuls astérisques sont ceux de **Nom** et **E-mail** dans la ligne dépliante (§3).
 
 ### Correspondance dispositif → modèle (décidée)
 
@@ -171,13 +182,9 @@ Titre (h2, `modal-title`) : « Convention ». Corps : « Les champs marqués d'u
 | Aller vers | aucun modèle (état A4 du bloc) |
 | Parcours complet d'insertion par le sport | aucun modèle (état A4 du bloc) |
 
-### Champs de la fenêtre selon le modèle (décidé)
+### Champs de la fenêtre selon le modèle (mis à jour le 2026-10-29 (E1) : plus de différence)
 
-| Champ | Du stade vers l'emploi | Le Match des Métiers | Parcours de remobilisation |
-|---|---|---|---|
-| Année | oui | oui | non (texte fixe dans la convention) |
-
-C'est la seule différence entre les modèles. Tout le reste de la fenêtre est identique. Le nombre d'opérations ou de parcours, la date de fin, « Fait à » et les dates de signature ne sont plus demandés : ils sont remplis à la main sur le PDF imprimé.
+Avant l'E1, le champ « Année » existait pour deux modèles sur trois. **Il n'existe plus pour aucun** : la fenêtre est identique pour les trois modèles. Le modèle reste choisi par le dispositif (tableau ci-dessus) mais n'est plus montré dans la fenêtre. Le nombre d'opérations ou de parcours, la date de fin, « Fait à » et les dates de signature ne sont pas demandés : ils sont remplis à la main sur le PDF imprimé.
 
 ### Cases du modèle (décision de Hanta du 2026-10-23)
 
@@ -185,12 +192,12 @@ Le texte d'un modèle de convention contient des **cases** : un nom entre croche
 
 | Case | Donnée utilisée |
 |---|---|
-| [Année] | année saisie dans la fenêtre ; absente pour les modèles sans année (Parcours de remobilisation) |
+| [Année] | **mis à jour le 2026-10-29 (E1)** : la campagne de l'action (`Actions.Campagne`), jamais saisie dans la fenêtre ; absente pour les modèles sans année (Parcours de remobilisation) ; campagne vide : pointillés. Avant l'E1 : année saisie dans la fenêtre |
 | [Nom du club] | nom du club de l'action |
 | [SIRET du club] | SIRET du club |
 | [Siège du club] | adresse, code postal et ville du club, sur une ligne |
-| [Signataire du club] | Prénom Nom du contact choisi |
-| [Fonction du signataire] | fonction du contact choisi |
+| [Signataire du club] | Prénom Nom du contact référencé par `Signataire_club` (choisi dans la liste, ou créé à partir de la saisie libre) ; sinon pointillés (mis à jour le 2026-10-29 (E1)) |
+| [Fonction du signataire] | fonction du contact référencé par `Signataire_club` (celle de Contacts) ; vide : pointillés (mis à jour le 2026-10-29 (E1)) |
 | [Nom de l'agence] | nom de l'agence de l'action |
 | [Adresse de l'agence] | adresse complète de l'agence, sur une ligne |
 | [Représentant de l'agence] | représentant saisi dans la fenêtre |
@@ -200,95 +207,136 @@ Le texte d'un modèle de convention contient des **cases** : un nom entre croche
 Règles :
 
 1. **Apostrophe.** Le widget accepte l'apostrophe droite (') et l'apostrophe courbe (’) dans les noms de cases : « [Fonction de l'agence] » et « [Fonction de l’agence] » sont lues de la même façon. Cela vaut pour tous les noms de la liste qui contiennent une apostrophe.
-2. **Case connue mais vide** (par exemple un club sans SIRET). Le widget écrit des **pointillés** à la place, à compléter à la main sur le PDF imprimé. La génération n'est **pas bloquée**.
-3. **Case inconnue** (nom absent de la liste ci-dessus). Elle reste **bloquante** : la génération s'arrête avec le message « Échecs » du §3, qui donne le nom de la case.
+2. **Case connue mais vide** (par exemple un club sans SIRET). Le widget écrit des **pointillés** à la place, à compléter à la main sur le PDF imprimé. La génération n'est **pas bloquée**. **Mis à jour le 2026-10-29 (E1)** : la règle vaut désormais aussi pour tout champ de la fenêtre laissé vide (signataire, fonction du signataire, représentant, fonction du représentant) et pour l'adresse du club.
+3. **Case inconnue** (nom absent de la liste ci-dessus). Erreur du modèle, pas d'un champ de la fenêtre : elle reste **bloquante** (inchangé par l'E1) : la génération s'arrête avec le message « Échecs » du §3, qui donne le nom de la case.
 4. **Ce qui n'a pas de donnée dans Grist** (SIRET de l'agence, fédération) n'a **pas de case** : le modèle l'écrit en pointillés directement dans son texte. Le widget n'a rien à remplacer.
 5. **Noms courts des dispositifs dans le nom du fichier (D-S7-3)** : Stade-emploi (Du stade vers l'emploi), Match-metiers (Match des métiers), Remobilisation (Parcours de remobilisation vers l'emploi). Voir « Nom du fichier PDF », plus bas.
 
-### Bloc 1 : « Informations relatives à la convention »
+### Bloc 1 : « Club » (mis à jour le 2026-10-29 (E1))
 
-| Champ | Type | Obligatoire | Remarque |
-|---|---|---|---|
-| Modèle utilisé | lecture seule | non | selon le dispositif (tableau de correspondance ci-dessus) |
-| Année | nombre | oui, pour générer (mis à jour le 2026-10-23) | Du stade vers l'emploi et Match des Métiers seulement ; année en cours proposée (prévu par la note dès le 2026-10-22, le code l'applique : champ prérempli avec l'année en cours, mis à jour le 2026-10-23 ; décision D-4 de Hanta, 2026-10-23 : on garde l'année préremplie avec l'année en cours). Doit avoir quatre chiffres. Absent pour Parcours de remobilisation : le bloc ne contient alors que le modèle utilisé. |
+Le bloc Club contient, dans cet ordre : l'encart du club (lecture seule), le choix du signataire, la ligne dépliante de saisie libre, la fonction du signataire.
 
-### Bloc 2 : « Signataire club »
+**Encart du club : un seul encart en lecture seule** (remplace les trois champs « Nom du club », « SIRET » et « Siège »). Un seul `textarea class="form-control" readonly` (composant du §8, page de la zone de texte non lue : **non vérifié**), libellé « Club », `rows="3"`, de trois lignes :
 
-| Champ | Type | Obligatoire | Remarque |
-|---|---|---|---|
-| Nom du club | lecture seule | non | club de l'action |
-| SIRET | lecture seule | non | repris de la fiche du club |
-| Siège | lecture seule, **sur toute la largeur de la colonne** | non | repris de la fiche du club ; l'adresse s'affiche en entier, sur plusieurs lignes si besoin |
-| Signataire | liste de choix | oui, pour générer (mis à jour le 2026-10-23) | **uniquement** les contacts du club (table Contacts) ; texte d'invite « Veuillez sélectionner » |
-| Fonction du signataire | lecture seule (mis à jour le 2026-10-23 : jamais modifiable ici) | non à la saisie ; **doit être renseignée pour générer** | colonne Fonction de Contacts, affichée après le choix ; « Fonction non renseignée » si elle est vide |
-
-**Il n'y a plus de bouton ni de formulaire « Ajouter un contact » dans la fenêtre.** Un signataire absent de la liste s'ajoute dans la fiche du club (hors de ce widget), puis l'agent revient.
-
-Une phrase d'aide sous les trois champs en lecture seule : « Pour corriger ces informations, modifiez la fiche du club. » (décision 7 : on ne modifie pas le club ici).
-
-**Siège en entier (correction).** Un champ `input` d'une ligne coupe une adresse longue (« 2 avenue du Stade, 00… »). Le siège passe donc dans un `textarea class="form-control"` en `readonly`, sur toute la largeur de la colonne (même placement que « Nom du club »), avec `rows="2"` : le texte revient à la ligne, rien n'est coupé, et le champ reste atteignable au clavier et lu par les lecteurs d'écran. Dev-interface règle la hauteur selon le texte (au moins 2 lignes, davantage si l'adresse est longue) pour qu'aucun défilement interne n'apparaisse. Composant : voir §8 (page du composant « zone de texte » non lue, **non vérifié**).
-
-Liste de choix : une entrée par contact du club, libellé « Prénom Nom » (comme dans la fiche du club, qui affiche « prénom nom » ; voir `renderContacts`, src/fiche-club/script.js). Si le club n'a aucun contact : voir « Club sans contact » plus bas.
-
-**Réglé** (colonne Fonction confirmée : CLAUDE.md la liste dans Contacts, la fiche du club l'affiche, le code de la fenêtre la lit ; Agences.Siret est dans docs/backlog.md) : à l'époque de la note, la fiche du club lisait les colonnes Club, Prenom, Nom, Email, Telephone de la table Contacts, et la colonne **Fonction** annoncée par le chef n'apparaissait pas dans src/fiche-club/. Je n'invente rien : à vérifier dans le modèle de données (dépôt model-de-donnees-aucarre) avant de coder. Idem pour les colonnes de la table Agences (agence, adresse, complément, code postal, ville) et pour le siège et le SIRET de Structures.
-
-Si un contact choisi n'a pas de fonction renseignée : la zone « Fonction du signataire » (lecture seule) affiche « Fonction non renseignée » (mis à jour le 2026-10-23 : le code le fait) ; la génération est bloquée **au clic sur « Générer la convention » (S7)**, avec le message du §3 « Enregistrer et Générer » (le modèle de convention cite la fonction). « Enregistrer les informations » reste possible. Le champ ne se corrige pas ici : la fonction se renseigne dans la fiche du club.
-
-### Club sans contact (remplace l'ancien formulaire « Ajouter un contact »)
-
-Le signataire du club est choisi **uniquement** parmi les contacts du club. Le bouton « Ajouter un contact » et son formulaire (nom, prénom, fonction) sont **supprimés** de la fenêtre : la fenêtre ne crée plus de contact et n'écrit plus dans Contacts. La maquette B bis n'est plus à suivre.
-
-Si le club n'a aucun contact :
-
-- **Message** (dans le bloc « Signataire club », sous la liste « Signataire », en `help-block`, relié à la liste par `aria-describedby`) : « Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention. » Il remplace l'ancien message « Aucun contact enregistré pour ce club. ».
-- **Liste « Signataire »** : elle ne propose que l'invite « Veuillez sélectionner ». La zone « Fonction du signataire » reste vide.
-- **Génération impossible** : « Générer la convention » est affiché grisé (`aria-disabled="true"`, `aria-describedby` vers le message ci-dessus, même règle que pour la génération bloquée du bloc §2). Les clics sont ignorés. « Enregistrer les informations » **reste actif** : l'année et le représentant de l'agence restent enregistrables, le signataire n'étant alors pas enregistré.
-- **Pourquoi la fenêtre s'ouvre quand même** : contrairement aux quatre blocages du §2, le manque se voit à l'intérieur de la fenêtre (liste des contacts) ; l'agent y retrouve les informations du club et de l'agence et comprend ce qu'il doit faire. Le message est visible dès l'ouverture, sans clic.
-- **Annonce** : le message est du texte présent à l'ouverture de la fenêtre, lu en parcourant la fenêtre et relié à la liste ; le focus d'ouverture reste sur le premier champ modifiable (« Signataire » pour Parcours de remobilisation, « Année » sinon), donc l'agent entend le message en arrivant sur la liste.
-- Pour revenir : l'agent ferme la fenêtre (« Fermer » ou Échap), ajoute le contact dans la fiche du club, puis rouvre la fenêtre : la liste est relue à l'ouverture.
-
-Structure (message d'aide du design system, page input--help.html §8) :
-
-```html
-<label class="form-label" for="clubSignataire">Signataire<span class="required">&nbsp;*</span></label>
-<select class="form-control" id="clubSignataire" name="clubSignataire" required aria-describedby="clubSignataireAide">
-  <option selected disabled value="">Veuillez sélectionner</option>
-</select>
-<p class="help-block" id="clubSignataireAide">Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention.</p>
+```
+Club Sportif d'Exemple
+SIRET : 000 000 000 00000
+2 avenue du Stade, 00000 Ville-Exemple
 ```
 
-### Bloc 3 : « Signataire agence »
+Nom, SIRET, puis l'adresse du club **sur une seule ligne** (adresse, code postal, ville : la même chaîne que la case [Siège du club]). Une donnée absente n'est pas bloquante : « SIRET : non renseigné », « Adresse : non renseignée » (textes proposés). Je lis « sur une ligne » du backlog comme « l'adresse sur une ligne » : **à confirmer** (D-E1-1). Une phrase d'aide sous l'encart, inchangée : « Pour corriger ces informations, modifiez la fiche du club. »
 
-Le signataire côté France Travail est le directeur d'agence. L'agence et son adresse sont en lecture seule, repris de la table Agences (agence de l'action). **Le représentant ne vient pas de la table Agences** : il est **vide à l'ouverture, obligatoire**, saisi par l'agent et enregistré avec la convention. Sa fonction est **préremplie « Directeur d'agence »**, modifiable.
+**Signataire du club : liste déroulante.** Un `select` (page select--default.html, §8), libellé « Signataire » **sans astérisque**, une option par contact du club, libellé « Prénom Nom », invite « Veuillez sélectionner » (non désactivée désormais : on peut y revenir pour ne rien choisir). Ne rien choisir est permis : le PDF aura des pointillés.
+
+**Fonction du signataire.** Un champ unique, placé **après** la ligne dépliante (ordre de lecture : liste, saisie libre, fonction). **Lecture seule** pour un contact choisi dans la liste (colonne Fonction de Contacts ; « Fonction non renseignée » si vide) ; **modifiable** quand une saisie libre est active (voir plus bas). Un seul champ, pas deux : deux champs de même nom troubleraient un lecteur d'écran. Il passe de `readonly` à modifiable (et inversement) sans changer de place.
+
+**Ligne dépliante : « Le contact n'est pas dans la liste : l'ajouter ».** Repliée par défaut, juste sous la liste. Le design system n'a pas de composant « zone dépliante » que j'aie pu lire (la page accordion--default.html répond 404) : **je n'en fabrique pas**. Le plus proche, déjà présent dans le dépôt : l'élément HTML natif `<details>` avec `<summary>` (déjà employé dans index.html pour les menus de tri et dans le script pour les filtres, avec des classes du widget). Je propose `<details>` + `<summary>` sans classe nouvelle ; si dev-interface juge qu'il faut une classe pour l'aspect du `summary`, elle la signale à Hanta avant de la créer (même règle que pour le dépôt de fichier, §8). Natif, il est atteignable au clavier (Entrée ou Espace) et annoncé « réduit / développé » par les lecteurs d'écran.
+
+Contenu (réécrit le 2026-10-29 (E1, précision Email)). La ligne reprend les champs du vrai formulaire « Ajout d'un contact » du widget clubs, **dans l'ordre de celui-ci**, sans le Téléphone :
+
+| Champ | Libellé | Obligatoire | Où |
+|---|---|---|---|
+| Nom | « Nom » + astérisque | **oui, dans ce cas** (sans Nom, rien n'est créé : voir « Règle des deux sources ») | dans la ligne dépliante |
+| Prénom | « Prénom » | non | dans la ligne dépliante |
+| E-mail | « E-mail » + astérisque | **oui, dans ce cas** (Nom rempli et E-mail vide : le contact ne peut pas être créé) | dans la ligne dépliante |
+| Fonction | « Fonction du signataire » | non, modifiable | **champ unique** placé juste après la ligne (voir plus haut « Fonction du signataire ») : c'est lui qui est modifiable quand la saisie libre est active |
+
+Libellés et astérisque comme dans le vrai formulaire du widget clubs : `Nom<span class="required">&nbsp;*</span>` et `E-mail<span class="required">&nbsp;*</span>` (structure de la page input--error.html du design system, §8) ; Prénom sans astérisque. Pas d'attribut `required` (il annoncerait « obligatoire » à un lecteur d'écran même quand la ligne est ignorée). Je ne reprends **pas** les boutons Ajouter/Annuler du vrai formulaire : tout passe par Fermer et Générer. Une phrase d'information, **placée sous « Fonction du signataire » et non à la fin de la ligne dépliante** (D-E1-12 confirmée, mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14) ; voir « Où est la phrase d'information » plus bas) : « Ce contact sera ajouté à la fiche du club. » Aucun choix : **un contact saisi ici est toujours créé dans Contacts** (décision de Hanta). Les doublons avec un contact existant restent possibles ; ils sont acceptés (D-E1-13), la liste déroulante, première chose visible, guidant déjà l'agent vers un contact existant.
+
+Juste sous le `summary`, une ligne d'explication des astérisques, en `help-block` : « * Nécessaires pour ajouter ce contact. » (texte proposé ; le vrai formulaire a « * champ obligatoire » : même idée, adaptée parce que ces deux champs ne sont obligatoires que si on ajoute un contact).
+
+```html
+<details id="signataireLibre">
+  <summary>Le contact n'est pas dans la liste : l'ajouter</summary>
+  <p class="help-block" id="signataireLibreRequis">* Nécessaires pour ajouter ce contact.</p>
+  <p class="help-block" id="signataireLibreConsigne">Saisissez des coordonnées professionnelles (adresse e-mail de la structure), pas des coordonnées personnelles.</p>
+  <label class="form-label" for="signataireNom">Nom<span class="required">&nbsp;*</span></label>
+  <input class="form-control" id="signataireNom" name="signataireNom" type="text" autocomplete="off" aria-describedby="signataireLibreAide">
+  <label class="form-label" for="signatairePrenom">Prénom</label>
+  <input class="form-control" id="signatairePrenom" name="signatairePrenom" type="text" autocomplete="off" aria-describedby="signataireLibreAide">
+  <label class="form-label" for="signataireEmail">E-mail<span class="required">&nbsp;*</span></label>
+  <input class="form-control" id="signataireEmail" name="signataireEmail" type="email" autocomplete="off" aria-describedby="signataireLibreAide">
+</details>
+<!-- champ unique « Fonction du signataire » (voir plus haut), puis : -->
+<p class="help-block" id="signataireLibreAide">Ce contact sera ajouté à la fiche du club.</p>
+```
+
+(`id` donnés à titre d'exemple. Le `<summary>` n'a pas d'icône proposée : non vérifié dans la bibliothèque d'icônes.)
+
+**Où est la phrase d'information (vérifié le 2026-10-29, E1, précision Email) : elle ne pouvait plus rester dans la ligne dépliante.** « Fonction du signataire » est un champ unique placé *après* la ligne dépliante (sinon deux champs de même nom troubleraient un lecteur d'écran, voir plus haut). Si la phrase restait à la fin de la ligne dépliante, elle serait sous Nom, Prénom et E-mail mais **au-dessus** de Fonction. Elle est donc placée **juste sous « Fonction du signataire »**, c'est-à-dire sous les quatre champs : Nom, Prénom, E-mail, puis Fonction (D-E1-12, option 2, **confirmée** par Hanta dans le backlog ; mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14) : la phrase n'est jamais sous Prénom/Nom seuls). Elle est **visible tant que la saisie libre est active (Nom rempli) ou que la ligne est dépliée**, et masquée sinon (un contact de la liste, ligne repliée : la phrase n'a pas de sens). Les quatre champs de la saisie libre la référencent par `aria-describedby` ; le champ Fonction ne la référence que quand la saisie libre est active. **Exception pour E-mail** : quand son message d'erreur est affiché, son `aria-describedby` pointe vers le message d'erreur seulement, jamais vers la phrase d'information en même temps (même règle que la fiche C30 : ne jamais associer un `help-block` d'aide et un `invalid-feedback` sur un même champ).
+
+**Règle des deux sources, tranchée (D-E1-3, décidée par Hanta dans le backlog).** Il y a un seul signataire. La **saisie libre est active dès que le Nom n'est pas vide** (mis à jour le 2026-10-29 (E1, précision Email) : elle était active dès que Prénom ou Nom n'était pas vide ; Prénom, E-mail ou Fonction seuls, sans Nom, ne l'activent pas et ne créent rien). Tant qu'elle est active :
+- la liste affiche, en première option sélectionnée, « Prénom Nom (nouveau contact) » : l'agent voit qui sera le signataire, et que ce contact sera créé, même si la ligne est repliée. C'est une option de plus dans le même `select`, rien de nouveau ;
+- le champ « Fonction du signataire » est modifiable.
+Choisir un contact dans la liste **désactive** la saisie libre : Nom, Prénom, E-mail et Fonction saisis sont vidés. Le contraire n'existe pas : taper dans Nom bascule en saisie libre. Si l'agent vide ensuite le Nom, la saisie libre redevient inactive, la fonction saisie est abandonnée et le champ « Fonction du signataire » revient à la valeur du contact sélectionné dans la liste (ou à vide si l'invite est choisie) ; le Prénom et l'E-mail tapés restent à l'écran mais ne servent à rien tant que le Nom est vide, et sont réutilisés si l'agent retape un Nom.
+
+**Plier la ligne ne perd rien (ouvrir la ligne, taper un nom, la refermer).** Plier ou déplier la ligne ne change que l'affichage ; les champs gardent leur contenu et l'option « (nouveau contact) » reste visible dans la liste. Le nom saisi est donc **gardé** et **le contact est créé à la fermeture de la fenêtre ou à la génération**, que la ligne soit pliée ou non. La saisie n'est perdue que dans deux cas : l'agent choisit un contact dans la liste (la saisie libre est remplacée, volontairement), ou l'enregistrement échoue puis l'agent quitte par un second « Fermer » (voir « Fermer la fenêtre »). Si « refermer » désigne la fenêtre, la réponse est la même : le contact est créé à la fermeture.
+
+**Ce qui est écrit à la fermeture et à la génération (mis à jour le 2026-10-29 (E1, 2e série) ; condition de création changée le 2026-10-29 (E1, précision Email)).** Même mécanisme dans les deux cas (la génération passe par la même étape d'enregistrement, voir « Générer la convention »). Il n'y a **plus qu'une colonne**, `Conventions.Signataire_club` (référence vers Contacts), **toujours utilisée**, que le signataire vienne de la liste ou d'une saisie libre. Il n'y a plus de colonne texte pour le signataire.
+
+| Cas | Dans la fenêtre | Dans `Contacts` | Dans `Conventions` |
+|---|---|---|---|
+| **Nom rempli et E-mail rempli** | saisie libre active | **une ligne créée, une seule fois** (Club, Nom, Prénom, Email, Fonction) | `Signataire_club` pointe vers la ligne créée |
+| **Nom rempli, E-mail vide** | saisie libre active, erreur sous le champ E-mail | **rien n'est créé** | **rien n'est écrit** (voir « Cas d'échec : Nom rempli, E-mail vide ») |
+
+Sinon (**Nom vide**, quels que soient Prénom, E-mail et Fonction) : **rien n'est créé** et `Signataire_club` **garde sa valeur actuelle**, celle de la liste : le contact choisi, ou vide si rien n'est choisi (le PDF a alors des pointillés).
+
+**Ordre technique pour dev-backend, à respecter.** La création du contact doit être **attendue**, son identifiant **reçu**, **avant** toute écriture dans `Conventions`. Aucune écriture ne doit référencer un contact qui n'existe pas encore.
+1. **Création du contact** dans `Contacts`, en **une seule** opération `applyUserActions` avec **toutes** les valeurs, club compris (CLAUDE.md, Pièges connus : la règle d'accès refuse une ligne sans club). Jamais de ligne vide remplie ensuite. `DR` et `DD` de Contacts (formules) ne sont jamais écrits. Attendre la réponse.
+2. **Réception de l'identifiant** de la ligne créée. **Bascule de la fenêtre dès cet instant** : le contact créé devient un contact de la liste, sélectionné ; Nom, Prénom, E-mail et Fonction saisis sont vidés ; la ligne est repliée.
+3. **Écriture dans `Conventions`**, en une opération, du reste des informations (signataire = l'identifiant reçu, représentant, fonction du représentant), comme aujourd'hui.
+
+**Si la création du contact échoue** (étape 1), **rien d'autre n'est enregistré** : aucune écriture dans `Conventions`. Le message est le message d'échec habituel, comme pour tout échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » (§5). Il n'y a pas de message propre au contact. La fenêtre reste ouverte, saisie gardée (voir « Fermer la fenêtre »). Aucun contact n'a été créé, donc un nouvel essai repart de zéro.
+
+**Si l'étape 3 échoue après une création réussie**, le contact existe déjà : la bascule de l'étape 2 empêche d'en créer un second. L'essai suivant retrouve le contact choisi dans la liste, sans saisie libre, et n'écrit que `Conventions`. Même chose si l'agent ferme puis rouvre la fenêtre, ou clique sur « Générer » après une fermeture : **un contact n'est créé qu'une seule fois pour une même saisie**. À la réouverture, le contact apparaît dans la liste, choisi, comme tout contact. Cet effet (un contact créé, mais pas encore rattaché à la convention) est accepté ; il n'est pas annoncé à l'agent.
+
+**Cas d'échec : Nom rempli, E-mail vide (nouveau, mis à jour le 2026-10-29 (E1, précision Email)).** Le contact ne peut pas être créé (dans Contacts, Nom et E-mail sont obligatoires, comme dans le vrai formulaire du widget clubs). Au clic sur « Fermer » (ou Échap) ou sur « Générer la convention » :
+- **Rien n'est créé et rien n'est écrit**, ni dans Contacts, ni dans Conventions. La génération s'arrête avant l'enregistrement : aucun PDF n'est fabriqué. La fenêtre reste ouverte et **la saisie n'est pas perdue** (Nom, Prénom, Fonction et ce qui est saisi ailleurs dans la fenêtre restent tels quels).
+- **Message sous le champ E-mail**, comme un message de champ habituel du design system (structure de la page input--error.html, §8) : « Saisissez l'e-mail du nouveau signataire. » Le message est précédé d'un `sr-only` « Erreur : », le champ passe en `is-invalid` avec `aria-invalid="true"`, et son `aria-describedby` pointe vers le message (voir plus haut pour l'exception sur la phrase d'information).
+- Si la ligne dépliante est repliée, elle est **dépliée** pour que l'erreur soit visible, et **le focus va sur le champ E-mail**, ce qui fait lire le message au lecteur d'écran.
+- Pas d'alerte en haut de la fenêtre pour ce cas : le message de champ suffit (une seule indication, pas de doublon).
+- Le message disparaît (et `is-invalid` / `aria-invalid` sont retirés) dès que l'agent tape dans E-mail, ou vide le Nom (la saisie libre redevient inactive), ou choisit un contact dans la liste.
+- Après ce message, un second « Fermer » ou Échap **quitte comme d'habitude** (D-E1-5 : fermeture sans enregistrer) ; la saisie du nouveau contact est alors perdue, comme dans tout échec suivi d'un second « Fermer ».
+- Cet échec n'utilise **pas** le message général « Les informations n'ont pas pu être enregistrées… » : il ne vient pas de Grist, il vient d'un champ à compléter.
+
+**Contrôle de forme de l'e-mail et consigne « coordonnées professionnelles » (D-E1-14, confirmée ; mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14)).** Les deux sont repris du vrai formulaire « Ajout d'un contact » du widget clubs (src/clubs/script.js : `MESSAGES_SAISIE_CONTACT`, et la note `contactDialogNote`).
+- **Consigne** : un `help-block` placé **en haut de la ligne dépliante**, juste sous la ligne des astérisques et avant le champ Nom (même place que dans le vrai formulaire, où elle précède les champs). Texte repris du vrai formulaire, **adapté parce que le Téléphone n'est pas demandé ici** : « Saisissez des coordonnées professionnelles (adresse e-mail de la structure), pas des coordonnées personnelles. » (l'original : « …(adresse e-mail et téléphone de la structure), pas des coordonnées personnelles. »). Elle est du texte dans le flux, lu en parcourant la fenêtre : pas d'`aria-describedby` vers elle (elle précède les champs ; cela évite d'associer deux aides au champ E-mail). Visible quand la ligne est dépliée.
+- **Contrôle de forme** : un E-mail rempli mais **mal formé** est refusé, avec le même contrôle que le vrai formulaire (dev-interface réutilise la fonction `controlerContact` / sa règle de forme, qu'elle lit dans src/clubs/script.js, sans la changer). Au clic sur « Fermer » (ou Échap) ou « Générer la convention » : même mécanique que « E-mail vide » (rien n'est créé ni écrit, aucun PDF, fenêtre ouverte, saisie gardée, ligne dépliée, focus sur E-mail, `is-invalid`, `aria-invalid="true"`, `sr-only` « Erreur : », `aria-describedby` vers le message seulement, message effacé dès que l'agent retape dans E-mail, vide le Nom ou choisit un contact dans la liste, pas d'alerte en haut). **Message, repris du vrai formulaire : « Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. »** Un seul message à la fois sous E-mail : « Saisissez l'e-mail du nouveau signataire. » s'il est vide, celui-ci s'il est mal formé.
+- Ce contrôle ne s'applique **que si un Nom est saisi** : un E-mail mal formé sans Nom ne crée rien et n'affiche aucune erreur (comme un E-mail seul).
+
+**Prénom, Fonction et E-mail seuls ne créent rien.** La création n'est déclenchée que par un **Nom** rempli. Prénom facultatif, Fonction facultative ; E-mail nécessaire dès que le Nom est rempli. Un E-mail seul, un Prénom seul ou une Fonction seule, sans Nom, ne créent rien et n'affichent aucune erreur. (Remplace la règle « Prénom ou Nom » et D-E1-11.)
+
+**Il n'y a qu'une seule erreur de champ dans la fenêtre : l'E-mail du nouveau contact (mis à jour le 2026-10-29 (E1, précision Email)).** Aucun autre champ n'a de `is-invalid`, d'`invalid-feedback` ni de message « Saisissez… », et il n'y a plus d'alerte « Certains champs sont à corriger. » (voir « Enregistrer et Générer »). Ne jamais associer un `help-block` d'aide et un `invalid-feedback` sur un même champ (bug du 2026-10-23, fiche C30) : voir plus haut pour E-mail.
+
+### Club sans contact (mis à jour le 2026-10-29 (E1))
+
+Un club sans contact **ne bloque plus** : l'agent peut saisir le signataire dans la ligne dépliante, ou laisser vide.
+
+- **Message** (en `help-block`, sous la liste, relié par `aria-describedby`), remplace celui du 2026-10-23 : « Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main. » (texte proposé).
+- **Liste** : l'invite seule. **Ligne dépliante** : repliée, comme toujours (le message la désigne). **« Générer la convention »** : actif, pas grisé.
+- Ancienne règle (« Générer » grisé, `aria-describedby` vers le message) : **supprimée** (§3, §6, §7).
+
+### Bloc 2 : « Agence » (mis à jour le 2026-10-29 (E1))
+
+Le signataire côté France Travail reste le directeur d'agence, mais la fenêtre n'affiche plus l'adresse de l'agence : **le nom seul**.
 
 | Champ | Type | Obligatoire | Valeur de départ |
 |---|---|---|---|
-| Agence | lecture seule | non | table Agences |
-| Adresse | lecture seule (zone de texte, plusieurs lignes) | non | table Agences (adresse, complément, code postal et ville réunis) |
-| Représentant | texte | oui, pour générer (mis à jour le 2026-10-23) | **vide** (saisi) |
-| Fonction du représentant | texte | oui, pour générer (mis à jour le 2026-10-23) | « Directeur d'agence », modifiable |
+| Agence | lecture seule (`input readonly`) | non | nom de l'agence de l'action (table Agences) |
+| Représentant | texte | **non** | vide ; la valeur enregistrée si elle existe |
+| Fonction du représentant | texte | **non** | « Directeur d'agence », modifiable ; la valeur enregistrée si elle existe |
 
-**Évolution prévue** : plus tard, le représentant sera choisi dans une liste des utilisateurs de profil « Agence » de cette agence (table Utilisateurs), comme les contacts du club dans le bloc 2. Ce profil n'est pas encore actif : ne pas coder cette liste maintenant. La saisie libre actuelle sera alors remplacée.
-
-Les colonnes de la table Agences qui donnent l'adresse sont à vérifier dans le modèle de données (voir plus haut). Si l'adresse d'une agence est fausse, elle se corrige dans la table Agences, pas ici : **[À CONFIRMER]** qui peut la modifier.
+Vider « Fonction du représentant » est permis : pointillés dans le PDF. L'adresse de l'agence (`[Adresse de l'agence]`) reste utilisée dans le PDF, lue dans Agences ; seul son affichage dans la fenêtre disparaît. **Évolution prévue** (inchangée) : plus tard, le représentant sera choisi dans une liste des utilisateurs de profil « Agence » ; ne pas la coder maintenant. Qui peut corriger l'adresse d'une agence : question Q-G, inchangée.
 
 ### Champs retirés
 
-Par décision du chef : « Contact protection des données du club » (rempli à la main sur le PDF, article 6.1).
+Avant l'E1 : « Contact protection des données du club » (décision du chef), « Nombre d'opérations », « Date de fin », bloc « Date et lieu », règle « action sans fédération » (réponses du client), bouton « Ajouter un contact » et son formulaire (tâche 4.1).
 
-Par les réponses du client (conventions imprimées et signées à la main) : « Nombre d'opérations », « Date de fin », tout le bloc « Date et lieu » (« Fait à » et dates de signature, y compris les deux lieux et dates de Parcours de remobilisation), et la règle « action sans fédération » avec son message (la fédération n'est plus utilisée). Ils n'apparaissent plus nulle part, ni dans la maquette ni dans les textes.
+**Mis à jour le 2026-10-29 (E1), retirés de la fenêtre :** colonne « Informations relatives à la convention » ; « Modèle utilisé » ; « Année » (avec le contrôle des quatre chiffres) ; les trois champs « Nom du club », « SIRET », « Siège » (remplacés par l'encart) ; l'adresse de l'agence ; tous les astérisques ; le bouton « Enregistrer les informations ». **Réintroduit sous une forme légère** : la saisie libre d'un contact (toujours créé dans Contacts, sans case à cocher), dans une ligne dépliante repliée par défaut (la décision de la tâche 4.1, qui retirait tout ajout de contact, est donc **modifiée** par l'E1 ; la note du backlog le dit).
 
-Par la décision de Hanta (tâche 4.1) : le bouton « Ajouter un contact » et son formulaire (Nom, Prénom, Fonction du nouveau contact).
+### Pied de la fenêtre (mis à jour le 2026-10-29 (E1))
 
-### Pied de la fenêtre
-
-`modal-footer`, de gauche à droite : « Fermer » (secondaire), « Enregistrer les informations » (secondaire), « Générer la convention » (principal, un seul bouton principal).
-
-**Mis à jour le 2026-10-23 : jusqu'à S7, le pied ne contient que « Fermer » et « Enregistrer les informations ».** « Générer la convention » y arrivera avec la génération du PDF ; la phrase « un seul bouton principal » reste vraie à ce moment-là. D'ici là, « Enregistrer les informations » est le seul bouton d'action du pied (il garde son style secondaire ; ne pas le passer en principal sans décision de Hanta).
-
-**Mis à jour le 2026-10-23 (S7) : « Générer la convention » dans le pied.**
-- **Place** : en dernier, à droite, après « Enregistrer les informations ». Ordre de Tab = ordre visuel : « Fermer », « Enregistrer les informations », « Générer la convention ». Mobile : les trois boutons gardent leur taille normale et passent à la ligne, dans le même ordre (comportement du `modal-footer` existant).
-- **Style** : `btn btn-primary`, structure de la page https://designsystem.francetravail.io/components/detail/button--primary.html. C'est le seul bouton principal de la fenêtre ; « Fermer » et « Enregistrer les informations » restent `btn btn-secondary`. Aucune icône.
+`modal-footer`, de gauche à droite : « Fermer » (secondaire), « Générer la convention » (principal, seul bouton principal). **Le bouton « Enregistrer les informations » n'existe plus.** Ordre de Tab = ordre visuel. Mobile : les deux boutons gardent leur taille normale et passent à la ligne, dans le même ordre. « Générer la convention » : `btn btn-primary`, structure inchangée (https://designsystem.francetravail.io/components/detail/button--primary.html) :
 
 ```html
 <button class="btn btn-primary" type="button" id="conventionGenererFenetre">
@@ -296,35 +344,27 @@ Par la décision de Hanta (tâche 4.1) : le bouton « Ajouter un contact » et s
 </button>
 ```
 
-  (`id` et `type` donnés à titre d'exemple : dev-interface reprend le mécanisme et les `id` déjà employés par « Enregistrer les informations » ; je n'ai pas relu le code.) Pas d'`aria-haspopup` : le bouton n'ouvre rien.
-- **Club sans contact : grisé.** Il est affiché, avec `aria-disabled="true"` (jamais `disabled`) et `aria-describedby` pointant vers l'`id` du message « Ce club n'a aucun contact… » déjà en place (`clubSignataireAide` dans la structure du §3). Les clics sont ignorés. Il ne reprend son état normal que si le club a au moins un contact (au rechargement de la liste, c'est-à-dire à la réouverture de la fenêtre). Même règle que la génération bloquée du §2 : message visible, pas d'infobulle. Un lecteur d'écran lit « Générer la convention, bouton, estompé », puis le message.
-- **Pendant la génération**, il prend le texte « Génération en cours… » (voir « Générer la convention : de l'ouverture au résultat », plus bas).
+Pas d'`aria-haspopup`. Il n'est **plus jamais grisé** par l'absence de contact. Pendant la génération, il prend le texte « Génération en cours… » (voir plus bas), et « Fermer » est grisé.
 
-### Fermer la fenêtre (mis à jour le 2026-10-23, question Q-H tranchée)
+### Fermer la fenêtre (mis à jour le 2026-10-29 (E1))
 
-Échap et « Fermer » ferment directement la fenêtre, **même si des champs ont été modifiés et pas enregistrés : aucune confirmation**. Ce qui n'a pas été enregistré est perdu. Le focus revient sur le bouton qui a ouvert la fenêtre (§7). Cette règle remplace la confirmation prévue dans la version du 2026-10-22.
+« Fermer » (bouton), la croix et la touche Échap ont **le même effet : ils enregistrent silencieusement ce qui est saisi, puis ferment la fenêtre**, exactement comme le faisait « Enregistrer les informations » (même opération d'écriture, même contenu), suivi de la fermeture. **Aucun message de réussite** (pas de « Informations enregistrées. »). Le focus revient sur le bouton d'ouverture (§7), comme avant. Il n'y a **pas de confirmation** (Q-H inchangée).
 
-### Enregistrer et Générer : quels contrôles, à quel moment (mis à jour le 2026-10-23)
+Précisions :
+- **La croix** : la structure du §8 (reprise du code) n'a pas de croix dans `modal-header`. Le backlog la cite. **Je n'en ajoute pas** : si la fenêtre n'en a pas, la liste se réduit à « Fermer » et Échap ; à confirmer par dev-interface en lisant le code (D-E1-9).
+- **Ce qui est enregistré** : tout ce qui est dans la fenêtre à ce moment, vide compris (un représentant vidé efface la valeur enregistrée ; un signataire vide ne change pas `Signataire_club` s'il vient de la liste), selon la règle « Ce qui est écrit ». Rien n'est écrit si rien n'a changé depuis l'ouverture (à confirmer par dev-backend : l'ancien bouton écrivait toujours, ce n'est pas une règle d'interface).
+- **Si l'enregistrement échoue** (Grist refuse ou réseau), enregistrer en silence et fermer ferait perdre la saisie sans le dire. **Proposition (D-E1-5)** : la fenêtre **reste ouverte** et l'alerte existante s'affiche en haut du corps (`alert alert-error`, `role="alert"`) : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » (texte du §5, inchangé). Un second « Fermer » ou Échap **ferme sans enregistrer**. Aucun texte propre au contact : un échec de création du contact donne ce même message, et rien d'autre n'est enregistré (§3).
+- **Pendant la génération** : « Fermer », la croix éventuelle et Échap sont ignorés (D-S7-2, inchangé).
+- **Fermer avec le Nom vide** (mis à jour le 2026-10-29 (E1, précision Email)) : rien n'est créé, `Signataire_club` garde sa valeur actuelle, même si Prénom, E-mail ou Fonction sont remplis.
+- **Fermer avec le Nom rempli et l'E-mail vide** (mis à jour le 2026-10-29 (E1, précision Email)) : voir « Cas d'échec : Nom rempli, E-mail vide » ; la fenêtre reste ouverte, rien n'est enregistré.
 
-**« Enregistrer les informations » = brouillon.** Il garde ce qui est saisi, même incomplet. Il **ne contrôle aucun champ obligatoire** : un champ vide est accepté (année, représentant, fonction du représentant, signataire). Seul contrôle : **une année saisie doit avoir quatre chiffres**. Sinon, rien n'est enregistré et deux messages s'affichent :
-- sous le champ « Année », après `sr-only` « Erreur : » : « Saisissez une année à quatre chiffres. » (champ en `is-invalid`, `aria-invalid="true"`, `aria-describedby`, structure de la page input--error.html, §8) ;
-- en haut du corps de la fenêtre, alerte `alert alert-error`, `role="alert"` : « Certains champs sont à corriger. ».
-Un champ « Année » vide est accepté (pas de message). Le message sous le champ disparaît **au clic suivant sur « Enregistrer les informations »**, pas pendant la saisie : comme dans la fenêtre « Ajout d'une action » (décision D-6 de Hanta, 2026-10-23). Je n'ai pas vérifié si l'alerte du haut suit la même règle : à confirmer dans le code par dev-interface.
+### Enregistrer et Générer : quels contrôles, à quel moment (réécrit le 2026-10-29 (E1))
 
-**« Générer la convention » (S7) contrôle les champs obligatoires**, au clic, dans cet ordre (ordre de lecture de la fenêtre). Il s'arrête sur **tous** les manques à la fois : chaque champ concerné reçoit son message, l'alerte « Certains champs sont à corriger. » s'affiche en haut, et le focus va sur le premier champ à corriger (même mécanique que les erreurs de champ du §5). Messages (validés tels quels, tous affichés à la fois : décision D-3 de Hanta, 2026-10-23, §10) :
+**Aucun champ n'est obligatoire dans la fenêtre, sauf pour ajouter un nouveau contact. Il n'y a donc plus de contrôle de champ, ni à la fermeture, ni à la génération, à une seule exception (mis à jour le 2026-10-29 (E1, précision Email)) : Nom rempli et E-mail vide, voir « Cas d'échec : Nom rempli, E-mail vide » plus haut.** Les six messages de blocage de l'ancienne version (année absente, année à quatre chiffres, aucun signataire choisi, signataire sans fonction, représentant vide, fonction du représentant vide), l'alerte « Certains champs sont à corriger. », les `is-invalid`, les `aria-invalid` et les `aria-describedby` d'erreur sont **supprimés** (sauf l'erreur de l'E-mail du nouveau contact). Le contrôle de l'ancienne version est **remplacé par les pointillés** : un champ vide donne des pointillés dans le PDF (même règle que les cases connues mais vides, §3 « Cases du modèle », règle 2), y compris l'adresse du club quand elle manque. **Aucun champ vide ne bloque « Générer la convention »**, à l'exception de l'E-mail vide quand un Nom de nouveau contact est saisi.
 
-| Ordre | Cas | Où | Message exact |
-|---|---|---|---|
-| 1 | Année absente (modèles avec année) | sous « Année » | « Saisissez l'année de la convention. » |
-| 1 bis | Année qui n'a pas quatre chiffres | sous « Année » | « Saisissez une année à quatre chiffres. » (même texte qu'à l'enregistrement) |
-| 2 | Aucun signataire choisi | sous « Signataire » | « Choisissez le signataire du club. » (déjà au §5) |
-| 3 | Signataire choisi sans fonction | sous « Fonction du signataire », même forme que les autres messages d'erreur : `invalid-feedback`, sans `help-block`, relié au champ par `aria-describedby`, avec `sr-only` « Erreur : » | « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » |
-| 4 | Représentant vide | sous « Représentant » | « Saisissez le nom du représentant. » (déjà au §5) |
-| 5 | Fonction du représentant vide | sous « Fonction du représentant » | « Saisissez la fonction du représentant. » |
+**Le seul blocage qui reste est à l'ouverture, hors de la fenêtre.** Il faut **un club ET une agence** sur l'action. C'est le blocage du bloc Convention, décrit au §2 (« Génération bloquée »), qui existe déjà : le bouton « Générer la convention » (ou « Re-générer ») est grisé avec le message du premier élément manquant, et la fenêtre ne s'ouvre pas. **Il suffit.** Une fois la fenêtre ouverte, un club et une agence existent forcément (le bloc a été calculé avec eux), donc **aucun autre contrôle de présence n'est nécessaire dans la fenêtre**. Cas limite : si l'agent modifie l'action dans une autre fenêtre pendant que celle-ci est ouverte, c'est le cas « fiche modifiée pendant l'ouverture », déjà accepté sans traitement pour les autres données (voir §12.7) ; rien de plus. Les blocages d'adresse du club (message n° 4 du §2) sont **supprimés** : une adresse absente donne des pointillés.
 
-Notes : le cas 3 ne s'affiche que si un signataire est choisi (sans signataire, c'est le cas 2 seul). La fonction du signataire étant en lecture seule, le message l'envoie vers la fiche du club et non vers un champ à remplir ; `is-invalid` s'applique au champ en lecture seule comme aux autres, avec `sr-only` « Erreur : » devant le texte. Club sans contact : inchangé (« Générer » grisé, §3 « Club sans contact »). Les quatre blocages du bloc (§2) restent contrôlés avant l'ouverture de la fenêtre.
-
-Ne jamais associer `help-block` et `invalid-feedback` : la règle `.help-block.invalid-feedback` du design system rend le message toujours visible (bug corrigé le 2026-10-23, fiche C30).
+**Ce qui reste bloquant, mais qui n'est pas un contrôle de champ** : un modèle qui contient une case inconnue (erreur du modèle, pas de l'agent, §3 « Échecs »), un modèle inactif ou introuvable, une bibliothèque non chargée, un envoi refusé. Ces échecs sont inchangés.
 
 ### Générer la convention : de l'ouverture au résultat (mis à jour le 2026-10-23 (S7))
 
@@ -332,8 +372,8 @@ Tout ce qui suit s'applique aussi à « Re-générer » (même fenêtre, même b
 
 **Étapes, dans cet ordre** (au clic sur « Générer la convention » du pied). La première qui échoue arrête tout ; les suivantes ne sont pas jouées.
 
-1. **Contrôle des champs obligatoires** (les six messages validés ci-dessus, tous à la fois). Rien n'est écrit, aucune attente affichée. Si tout est bon, on passe à l'étape 2.
-2. **Enregistrement des informations**, avant toute fabrication du PDF (décision D-S7-4 de Hanta), avec la même opération que « Enregistrer les informations » (année, signataire, représentant, fonction du représentant). Raison : si la suite échoue, ce que l'agent a saisi est déjà gardé, et la phrase « Vos informations sont conservées » est vraie. Cet enregistrement ne change pas l'état du bloc (« À générer » tant qu'aucun PDF n'est attaché). Il n'affiche pas son propre message de réussite « Informations enregistrées. ». S'il échoue (Grist refuse ou réseau) : le message existant « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. », et la génération s'arrête.
+1. **Plus de contrôle des champs (mis à jour le 2026-10-29 (E1))** : il n'y a plus de champ obligatoire, donc plus de message de blocage ; on passe directement à l'étape 2. Avant l'E1, les six messages du §3 « Enregistrer et Générer » s'affichaient ici.
+2. **Enregistrement des informations**, avant toute fabrication du PDF (décision D-S7-4 de Hanta), avec la même opération que celle de la fermeture de la fenêtre (mis à jour le 2026-10-29 (E1) : signataire du club, représentant, fonction du représentant ; plus d'année ; création du contact si Nom est rempli (et E-mail rempli : sinon l'enregistrement s'arrête avant tout, avec le message sous le champ E-mail, sans PDF ; mis à jour le 2026-10-29 (E1, précision Email)), **attendue avant** l'écriture de `Conventions` : voir « Ordre technique pour dev-backend », §3). Le signataire est traité comme à la fermeture : même règle, même absence de doublon. Raison : si la suite échoue, ce que l'agent a saisi est déjà gardé, et la phrase « Vos informations sont conservées » est vraie. Cet enregistrement ne change pas l'état du bloc (« À générer » tant qu'aucun PDF n'est attaché). Il n'affiche pas son propre message de réussite « Informations enregistrées. ». S'il échoue (Grist refuse ou réseau, **y compris la création du contact**, auquel cas rien d'autre n'est écrit) : le message existant « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. », et la génération s'arrête.
 3. **Modèle** : le modèle est trouvé et actif ; les cases du texte sont toutes connues (contrôle local, sans réseau). Deux échecs possibles, voir « Échecs ».
 4. **Chargement de la bibliothèque pdfmake** (quelques secondes possibles), puis fabrication du PDF.
 5. **Envoi du fichier** et **écriture dans la convention** : le fichier et la date de génération (`PDF_genere`, `Date_generation`). **Une seule requête `PATCH` REST (sur `/tables/Conventions/records`, avec le jeton d'écriture, comme pour le logo du widget clubs) écrit les deux, après l'envoi du fichier** (décision D-S7-1 de Hanta). Pourquoi pas `applyUserActions` : Grist le refuse à un non-propriétaire pour une pièce jointe (voir la fiche C39 de REVIEW_LOG.md). Ainsi il n'existe pas d'état intermédiaire « fichier présent, date absente » : l'état « À générer » est conservé tant que tout n'est pas écrit (règle du plan).
@@ -358,9 +398,9 @@ Un clic de plus sur « Générer la convention » après un échec relance tout 
 ```
 
   (le `<p>` n'existe que pendant l'attente ; le `div` reste, vide, le reste du temps.)
-- **Pas de deuxième clic** : dès le clic, les trois boutons du pied passent à `aria-disabled="true"` et leurs clics sont ignorés (même mécanisme que les boutons grisés du §2). Le verrou est posé **avant** la première opération asynchrone et levé seulement à la fin de la tentative ; il ne dépend pas de l'apparence du bouton. La touche Entrée dans un champ ne relance rien non plus.
+- **Pas de deuxième clic** : dès le clic, les deux boutons du pied passent à `aria-disabled="true"` (mis à jour le 2026-10-29 (E1) : « Fermer » et « Générer la convention ») et leurs clics sont ignorés (même mécanisme que les boutons grisés du §2). Le verrou est posé **avant** la première opération asynchrone et levé seulement à la fin de la tentative ; il ne dépend pas de l'apparence du bouton. La touche Entrée dans un champ ne relance rien non plus.
 - **Fermer et Échap pendant la génération** : ignorés (exception à la règle « Fermer la fenêtre » : fermer pendant l'envoi laisserait l'agent sans savoir si le PDF existe). « Fermer » est grisé comme les deux autres ; Échap ne fait rien. Décision D-S7-2 de Hanta : écart à Q-H, limité à la durée de la génération.
-- **Saisie** (décision D-S7-7 de Hanta) : les champs ne sont plus modifiables pendant l'attente (`disabled` sur les trois `fieldset`, ce qui est un attribut natif et non une classe) pour que le PDF corresponde à ce qui est enregistré. Ils redeviennent modifiables à la fin d'un échec, avec les valeurs saisies intactes. Le focus ne bouge pas : il reste sur « Générer la convention » (hors des `fieldset`).
+- **Saisie** (décision D-S7-7 de Hanta) : les champs ne sont plus modifiables pendant l'attente (`disabled` sur les deux `fieldset`, ce qui est un attribut natif et non une classe ; mis à jour le 2026-10-29 (E1) : la ligne dépliante et sa case sont dans le fieldset Club, elles sont donc bloquées aussi ; un `<summary>` reste utilisable, ce qui est sans effet sur les valeurs figées) pour que le PDF corresponde à ce qui est enregistré. Ils redeviennent modifiables à la fin d'un échec, avec les valeurs saisies intactes. Le focus ne bouge pas : il reste sur « Générer la convention » (hors des `fieldset`).
 
 **Après une réussite.**
 
@@ -414,7 +454,7 @@ Règles de fabrication du nom, dans cet ordre :
    | Parcours de remobilisation vers l'emploi | Remobilisation | `Remobilisation` |
 
    Les deux autres dispositifs n'ont pas de modèle : aucun PDF, donc aucun nom. Si la forme courte est introuvable ou vide après nettoyage, le nom complet du dispositif nettoyé est utilisé (jamais de nom sans dispositif).
-4. [année] = l'année de la convention (quatre chiffres) pour Du stade vers l'emploi et Le Match des Métiers.
+4. [année] = l'année de la convention pour Du stade vers l'emploi et Le Match des Métiers. **Mis à jour le 2026-10-29 (E1)** : elle vient de `Actions.Campagne`, plus d'un champ de la fenêtre. **Campagne vide : l'année et son tiret sont omis**, comme pour Parcours de remobilisation (règle 5). Si la campagne n'est pas une année à quatre chiffres (par exemple « 2026-2027 »), le nettoyage la transforme en `2026-2027` : non vérifié, à confirmer (D-E1-8).
 5. **Quand il n'y a pas d'année** (Parcours de remobilisation) : l'année et son tiret sont omis, le nom devient `Convention-[dispositif]-[club].pdf`. On n'invente pas une année (l'année en cours n'est pas celle de la convention) : le modèle n'a pas d'année.
 6. Jamais le nom d'une personne (signataire, représentant), ni le nom de l'agence, ni l'identifiant de l'action : le nom du fichier est visible dans Grist par tous ceux qui voient la table.
 
@@ -552,7 +592,7 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 - **Format** : `Convention-signee-[dispositif]-[club]-[année].pdf`.
 - **Sans année** (modèle Parcours de remobilisation, qui n'a pas d'année) : `Convention-signee-[dispositif]-[club].pdf`. On n'invente pas d'année, comme au §3.
 - **Règles de nettoyage : exactement celles du nom du PDF généré (D-S7-3), décrites au §3, « Nom du fichier PDF »** : accents retirés ; `œ` devient `oe` et `æ` devient `ae` ; tout caractère qui n'est ni une lettre ni un chiffre est remplacé par un seul tiret (une suite de tels caractères donne un seul tiret) ; tirets de début et de fin retirés ; 40 caractères au plus pour le nom du club ; club vide après nettoyage : le mot `club` ; [dispositif] en forme courte (Stade-emploi, Match-metiers, Remobilisation) ; jamais de nom de personne (signataire, représentant), ni de nom d'agence, ni d'identifiant d'action. Seule différence avec le PDF généré : le mot `signee` après `Convention-`. Les règles ne sont pas copiées ici : si elles changent au §3, elles changent aussi pour le fichier signé.
-- **Source des valeurs** : dispositif et club de l'action ; année = celle enregistrée avec la convention (celle de la génération). Le nom de la colonne n'est pas vérifié ici : dev-backend la lit dans le modèle de données. [À CONFIRMER, par prudence : si l'année enregistrée était absente pour un modèle qui en a une, ce cas ne devrait pas arriver, la génération l'exigeant ; le comportement dans ce cas n'est pas décidé.]
+- **Source des valeurs** : dispositif et club de l'action ; année : mis à jour le 2026-10-29 (E1) : la campagne de l'action (`Actions.Campagne`), lue au moment du dépôt ; plus l'année enregistrée avec la convention. Le nom du fichier signé peut donc changer si la campagne de l'action a changé depuis la génération : acceptable, à confirmer (D-E1-8). [À CONFIRMER, par prudence : si l'année enregistrée était absente pour un modèle qui en a une, ce cas ne devrait pas arriver, la génération l'exigeant ; le comportement dans ce cas n'est pas décidé.]
 - **Un seul code pour les deux noms** : recommandation à dev-backend de réutiliser la fonction qui fabrique le nom du PDF généré (en lui ajoutant le mot `signee`), pour que les deux noms ne divergent jamais.
 - **Quand** : après les contrôles du fichier (§4, qui portent sur le nom et le contenu d'origine), au moment de l'envoi. Un fichier refusé n'est jamais renommé ni envoyé.
 - **Aucun message, aucun champ de saisie, aucun changement visible** pour l'agent : le renommage est silencieux. « Voir la convention signée » ouvre le fichier comme avant.
@@ -562,19 +602,19 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 ## 5. Textes affichés (tous, pour dev-interface)
 
 - Bloc : « Convention » ; « Aucune convention générée. » ; « Convention générée le [date]. » ; « Convention signée, déposée le [date]. » ; « Pas encore de modèle de convention pour ce dispositif. » ; état Droits insuffisants : « Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord. » ; aide à l'état Générée : « Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé. »
-- Génération bloquée (bloc, un seul à la fois, dans cet ordre ; texte caché devant : « Convention impossible à générer : ») : « Renseignez l'agence de l'action dans sa fiche. » ; « Renseignez le club de l'action. » ; « Renseignez le dispositif de l'action dans sa fiche. » ; « Renseignez l'adresse du club dans sa fiche. »
-- Club sans contact (fenêtre B, bloc Signataire club) : « Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention. »
+- Génération bloquée (bloc, un seul à la fois, dans cet ordre ; texte caché devant : « Convention impossible à générer : ») : « Renseignez l'agence de l'action dans sa fiche. » ; « Renseignez le club de l'action. » ; « Renseignez le dispositif de l'action dans sa fiche. » (jamais affiché) ; ~~« Renseignez l'adresse du club dans sa fiche. »~~ supprimé le 2026-10-29 (E1)
+- Club sans contact (fenêtre B, bloc Club) : mis à jour le 2026-10-29 (E1) : « Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main. » (remplace « Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention. »)
 - Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir » (ces deux commandes sont des boutons). Pendant l'ouverture du PDF : « Ouverture en cours… ».
-- Fenêtre B : « Convention » ; « Les champs marqués d'un * sont obligatoires pour générer la convention. » (mis à jour le 2026-10-23) ; « Fonction non renseignée » (fonction du signataire vide, mis à jour le 2026-10-23) ; « Informations relatives à la convention » ; « Signataire club » ; « Signataire agence » ; libellés : voir les tableaux du §3 ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; valeur de départ de la fonction du représentant : « Directeur d'agence ».
-- Boutons de la fenêtre B : « Fermer », « Enregistrer les informations », « Générer la convention » (aussi à la re-génération). Mis à jour le 2026-10-23 : jusqu'à S7, seuls « Fermer » et « Enregistrer les informations » sont dans le pied.
+- Fenêtre B (mis à jour le 2026-10-29 (E1)) : « Convention » ; sous-titre « [Dispositif] · Campagne [Campagne] » (sans « Campagne » si vide) ; introduction « Aucun champ n'est obligatoire, sauf pour ajouter un nouveau contact (ligne « Le contact n'est pas dans la liste »). Ce qui reste vide sera rempli à la main sur le PDF imprimé : des pointillés apparaîtront à la place. » ; blocs « Club » et « Agence » (remplacent « Informations relatives à la convention », « Signataire club », « Signataire agence ») ; libellés : « Club » (encart), « Signataire », « Fonction du signataire », « Agence », « Représentant », « Fonction du représentant » ; encart : « SIRET : non renseigné », « Adresse : non renseignée » ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Fonction non renseignée » ; valeur de départ de la fonction du représentant : « Directeur d'agence ». Ligne dépliante (mis à jour le 2026-10-29 (E1, précision Email)) : « Le contact n'est pas dans la liste : l'ajouter » ; « * Nécessaires pour ajouter ce contact. » ; libellés dans l'ordre « Nom * », « Prénom », « E-mail * », puis le champ « Fonction du signataire » ; consigne en haut de la ligne (D-E1-14) : « Saisissez des coordonnées professionnelles (adresse e-mail de la structure), pas des coordonnées personnelles. » ; phrase d'information sous ces quatre champs, donc sous « Fonction du signataire » (D-E1-12) : « Ce contact sera ajouté à la fiche du club. » ; **message sous E-mail quand il est mal formé : « Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. »** ; **message d'erreur sous le champ E-mail (Nom rempli, E-mail vide) : « Saisissez l'e-mail du nouveau signataire. »** (préfixe caché « Erreur : ») ; option de la liste quand une saisie libre est active : « [Prénom Nom] (nouveau contact) ». Retiré le 2026-10-29 (E1, 2e série) : la case « Ajouter ce contact à la fiche du club » et ses deux aides. Supprimés : « Modèle utilisé », « Année », « Signataire club », « Signataire agence », « Informations relatives à la convention », toute phrase avec un astérisque.
+- Boutons de la fenêtre B : « Fermer », « Générer la convention » (aussi à la re-génération). **Mis à jour le 2026-10-29 (E1) : « Enregistrer les informations » est supprimé** (il était dans le pied depuis le 2026-10-22).
 - Supprimés avec le formulaire « Ajouter un contact » : « Nouveau contact », « Nom », « Prénom », « Fonction » (du formulaire), « Annuler », « Ajouter ce contact », « Ajouter un contact » et son texte caché.
-- Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » (ex. « Saisissez le nom du représentant. »). Signataire : « Choisissez le signataire du club. » Il n'y a plus de contrôle de date ni de code postal : ces champs n'existent plus dans la fenêtre.
-- Mis à jour le 2026-10-23, à l'enregistrement (seul contrôle) : « Saisissez une année à quatre chiffres. » (sous « Année »).
-- Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7, messages validés, détail au §3) : « Saisissez l'année de la convention. » ; « Saisissez une année à quatre chiffres. » ; « Choisissez le signataire du club. » ; « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. » ; « Saisissez le nom du représentant. » ; « Saisissez la fonction du représentant. »
-- Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : « Certains champs sont à corriger. » ; échec d'enregistrement : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. »
+- ~~Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » ; « Choisissez le signataire du club. »~~ **Supprimé le 2026-10-29 (E1)** : plus aucun champ obligatoire, donc plus aucune erreur de champ dans la fenêtre.
+- ~~Mis à jour le 2026-10-23, à l'enregistrement (seul contrôle) : « Saisissez une année à quatre chiffres. »~~ **Supprimé le 2026-10-29 (E1)** : plus de champ « Année ».
+- ~~Mis à jour le 2026-10-23, au clic sur « Générer la convention » (S7) : les six messages de blocage (année, signataire, fonction du signataire, représentant, fonction du représentant)~~ **Supprimés le 2026-10-29 (E1)** : un champ vide donne des pointillés, ne bloque jamais la génération.
+- Alerte d'erreur en haut du corps de la fenêtre B (`alert alert-error`, `role="alert"`) : ~~« Certains champs sont à corriger. »~~ (supprimée le 2026-10-29 (E1)) ; échec d'enregistrement, **à la fermeture comme à la génération** (mis à jour le 2026-10-29 (E1)) : « Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord. » ; échec de génération : « La convention n'a pas pu être générée. Vos informations sont conservées. » ; **échec de création du contact (E1)** : aucun texte propre, c'est le message d'échec d'enregistrement ci-dessus ; second « Fermer » après un échec : ferme sans enregistrer, sans autre texte.
 - Dépôt du fichier signé (bloc, sans fenêtre) : « Envoi en cours… » ; « Convention signée enregistrée. » ; « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. »
 - Mis à jour le 2026-10-26 (S9), dépôt du fichier signé : région d'attente `role="status"` du bloc : « Envoi de la convention signée en cours. Cela peut prendre quelques secondes. » (§4.1 d) ; proposé, à décider (S9-4) : « Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. »
-- Succès (`alert alert-success`, `role="status"`) : « Informations enregistrées. » ; « Convention générée. » ; « Convention signée enregistrée. »
+- Succès (`alert alert-success`, `role="status"`) : ~~« Informations enregistrées. »~~ (jamais affiché depuis le 2026-10-29 (E1) : l'enregistrement à la fermeture est silencieux) ; « Convention générée. » ; « Convention signée enregistrée. »
 - Chargement : sur le bouton, pendant la génération, « Génération en cours… » (le bouton reste en place, `aria-disabled="true"`) ; pendant l'envoi du fichier, « Envoi en cours… ».
 - Mis à jour le 2026-10-23 (S7), génération : région d'attente de la fenêtre : « Génération de la convention en cours. Cela peut prendre quelques secondes. » ; succès dans le bloc : « Convention générée. » ; échecs (alerte en haut de la fenêtre, textes exacts au §3, « Échecs ») : bibliothèque non chargée, une case inconnue, plusieurs cases inconnues, modèle inactif ou introuvable, envoi refusé, envoi impossible, fichier non rattaché, échec inattendu (« La convention n'a pas pu être générée. Vos informations sont conservées. »).
 - Mis à jour le 2026-10-23 (S7), nom du fichier PDF : `Convention-[dispositif]-[club]-[année].pdf`, sans année : `Convention-[dispositif]-[club].pdf` (§3).
@@ -586,17 +626,19 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 
 | État | Ce que voit l'agent |
 |---|---|
-| Ouverture de la fenêtre B | Focus sur le premier champ modifiable : « Année » (Du stade vers l'emploi, Match des Métiers) ; « Signataire » du club (Parcours de remobilisation, qui n'a pas d'année). |
-| Champs invalides | Alerte d'erreur en haut, champs en `is-invalid`, messages sous chaque champ, focus sur le premier champ à corriger. Mis à jour le 2026-10-23 : à l'enregistrement, seule une année qui n'a pas quatre chiffres est invalide (un champ vide est accepté) ; les champs obligatoires vides ne sont contrôlés qu'au clic sur « Générer » (S7). |
-| Fermeture de la fenêtre B (mis à jour le 2026-10-23) | Échap ou « Fermer » : la fenêtre se ferme tout de suite, sans confirmation, même avec des champs modifiés ; le focus revient sur le bouton d'ouverture. |
-| Enregistrement / génération | Bouton en attente, message de succès ou d'erreur dans le corps ; à la génération réussie, la fenêtre se ferme et le bloc passe à « Générée ». |
-| Génération en cours (mis à jour le 2026-10-23 (S7)) | Bouton « Génération en cours… », les trois boutons du pied grisés, champs non modifiables, Échap sans effet, phrase d'attente annoncée. |
+| Ouverture de la fenêtre B (mis à jour le 2026-10-29 (E1)) | Focus sur la liste « Signataire » (premier champ modifiable, pour les trois modèles : plus de champ « Année »). La ligne dépliante est repliée. Aucun message ni astérisque. |
+| ~~Champs invalides~~ (supprimé le 2026-10-29 (E1)) | Il n'y a plus d'état « champ invalide » dans la fenêtre : rien n'est obligatoire. |
+| Fermeture de la fenêtre B (mis à jour le 2026-10-29 (E1)) | « Fermer », croix éventuelle ou Échap : enregistrement silencieux de la saisie, puis fermeture, sans confirmation ni message ; le focus revient sur le bouton d'ouverture. Si l'enregistrement échoue : fenêtre ouverte, alerte, un second Fermer quitte sans enregistrer (D-E1-5). |
+| Génération (mis à jour le 2026-10-29 (E1)) | Bouton en attente ; à la génération réussie, la fenêtre se ferme et le bloc passe à « Générée ». Plus d'enregistrement par bouton. |
+| Génération en cours (mis à jour le 2026-10-23 (S7), et le 2026-10-29 (E1)) | Bouton « Génération en cours… », les deux boutons du pied grisés, champs non modifiables, Échap sans effet, phrase d'attente annoncée. |
 | Génération réussie (mis à jour le 2026-10-23 (S7)) | Fenêtre fermée, bloc « Générée » avec la date, alerte « Convention générée. », focus sur « Voir la convention ». |
 | Génération échouée (mis à jour le 2026-10-23 (S7)) | Fenêtre ouverte, saisie gardée et enregistrée, alerte d'erreur en haut avec la cause, bouton « Générer la convention » à nouveau actif, focus sur lui, état du bloc inchangé. |
 | Bloc, tables de la convention refusées (tout profil, ANS compris) | État « Droits insuffisants » : phrase seule, aucun bouton. |
-| Bloc, génération bloquée (élément manquant) | Phrase d'état, message du premier élément manquant, bouton « Générer la convention » (ou « Re-générer ») grisé (`aria-disabled`, relié au message). La fenêtre ne s'ouvre pas. |
+| Bloc, génération bloquée (agence ou club manquant ; mis à jour le 2026-10-29 (E1)) | Phrase d'état, message du premier élément manquant, bouton « Générer la convention » (ou « Re-générer ») grisé (`aria-disabled`, relié au message). La fenêtre ne s'ouvre pas. |
 | Bloc, état Générée | Phrase d'état, phrase d'aide (imprimer, signer, déposer), puis les boutons. |
-| Fenêtre B, club sans contact | Liste « Signataire » réduite à l'invite, message « Ce club n'a aucun contact… » sous la liste, « Générer la convention » grisé et relié au message. |
+| Fenêtre B, club sans contact (mis à jour le 2026-10-29 (E1)) | Liste « Signataire » réduite à l'invite, message d'aide sous la liste, ligne dépliante repliée, « Générer la convention » **actif**. |
+| Fenêtre B, Nom rempli et E-mail vide, après Fermer ou Générer (nouveau, mis à jour le 2026-10-29 (E1, précision Email)) | Ligne dépliante dépliée, focus sur le champ E-mail, `is-invalid` + message « Saisissez l'e-mail du nouveau signataire. » sous E-mail, fenêtre ouverte, saisie gardée, rien d'écrit, aucun PDF fabriqué. Le message disparaît dès que l'agent tape dans E-mail, vide le Nom ou choisit un contact dans la liste. |
+| Fenêtre B, saisie libre active (nouveau, E1) | Option « [Prénom Nom] (nouveau contact) » choisie dans la liste, fonction modifiable, la ligne dépliante peut être repliée sans rien perdre ; le contact est créé à la fermeture ou à la génération. Choisir un contact de la liste vide la saisie libre. |
 | Re-génération | Fenêtre B préremplie ; à la génération réussie, elle se ferme et l'ancien PDF est remplacé. |
 | Fichier PDF choisi | Envoi aussitôt, « Envoi en cours… », puis confirmation (A6). |
 | Fichier refusé (pas un PDF, vide, plus de 10 Mo) | Alerte dans le bloc avec le motif, rien enregistré. |
@@ -605,19 +647,20 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 
 ## 7. Accessibilité (RGAA), mode sombre, données personnelles
 
-- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les trois blocs sont des `legend` de `fieldset`.
-- Chaque champ a un `label` lié (`for` / `id`). Obligatoire : astérisque dans `span.required` **et** attribut `required` ; la phrase d'introduction explique l'astérisque (mis à jour le 2026-10-23 : « obligatoires pour générer la convention » ; le formulaire a `novalidate`, l'attribut `required` ne bloque donc pas « Enregistrer les informations »).
+- Titres : h1 de la fiche (existant) → h2 de la fenêtre. Les trois blocs sont des `legend` de `fieldset`. **Mis à jour le 2026-10-29 (E1)** : deux blocs (« Club », « Agence »), pas trois.
+- Chaque champ a un `label` lié (`for` / `id`). **Mis à jour le 2026-10-29 (E1) : plus aucun champ obligatoire** : ni astérisque, ni `span.required`, ni attribut `required` dans la fenêtre ; la phrase d'introduction dit « Aucun champ n'est obligatoire… ». Le formulaire garde `novalidate`. Avant l'E1 (2026-10-23) : astérisque et `required` sur les champs obligatoires pour générer.
 - Champ en lecture seule : `readonly` (il reste atteignable au clavier et lu par les lecteurs d'écran).
-- Liste de choix : `label` lié, option d'invite désactivée « Veuillez sélectionner » ; erreur : `is-invalid`, `aria-invalid="true"`, `aria-describedby`.
-- Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`).
-- Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Mis à jour le 2026-10-23 : même avec des informations non enregistrées, Échap ferme directement, sans confirmation (Q-H tranchée ; la version du 2026-10-22 prévoyait une confirmation [à valider avec le chef]).
-- Ordre de lecture = ordre visuel : introduction, blocs 1, 2, 3, boutons du pied. Les trois colonnes se lisent de gauche à droite.
+- Liste de choix : `label` lié, option d'invite désactivée « Veuillez sélectionner » ; erreur : `is-invalid`, `aria-invalid="true"`, `aria-describedby`. **Mis à jour le 2026-10-29 (E1)** : plus d'état d'erreur pour cette liste (rien n'est obligatoire) ; l'option d'invite « Veuillez sélectionner » reste sélectionnable pour revenir à « aucun signataire ». L'option « [Prénom Nom] (nouveau contact) » (affichée dès que le Nom est rempli) est une option normale du même `select`.
+- Erreurs : jamais portées par la couleur seule (texte « Erreur : » en `sr-only`). Mis à jour le 2026-10-29 (E1) : il n'y a plus d'erreur de champ dans la fenêtre ; la règle reste valable pour les alertes du bloc et de l'enregistrement.
+- Focus : à l'ouverture d'une fenêtre, sur le premier champ ; Tab et Maj+Tab tournent dans la fenêtre ouverte ; **Échap ferme** la fenêtre (comme `keepFocusInAddAction`) ; à la fermeture, le focus revient sur le bouton qui l'a ouverte. Mis à jour le 2026-10-23 : même avec des informations non enregistrées, Échap ferme directement, sans confirmation (Q-H tranchée ; la version du 2026-10-22 prévoyait une confirmation [à valider avec le chef]). **Mis à jour le 2026-10-29 (E1)** : à l'ouverture de la fenêtre Convention, le focus va sur la liste « Signataire ». Échap, « Fermer » et la croix éventuelle enregistrent en silence puis ferment ; le focus revient sur le bouton d'ouverture. Si l'enregistrement échoue, la fenêtre reste ouverte et le focus reste où il est (l'alerte `role="alert"` est annoncée sans prendre le focus).
+- Ordre de lecture = ordre visuel : sous-titre, introduction, bloc Club (encart, liste « Signataire », ligne dépliante, fonction), bloc Agence, boutons du pied (mis à jour le 2026-10-29 (E1)). Les deux colonnes se lisent de gauche à droite.
 - Boutons qui ouvrent un nouvel onglet (« Voir ») : le dire dans le texte (`sr-only`).
-- Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`. S'applique à « Générer la convention » et « Re-générer » quand la génération est bloquée (§2) et à « Générer la convention » de la fenêtre quand le club n'a aucun contact (§3). Le message reste visible (pas d'infobulle seule) et est du texte, pas de la couleur.
+- Bouton grisé : `aria-disabled` + message visible relié par `aria-describedby`. Ne pas utiliser l'attribut `disabled`. S'applique à « Générer la convention » et « Re-générer » quand la génération est bloquée (§2) et à « Générer la convention » de la fenêtre quand le club n'a aucun contact (§3). Le message reste visible (pas d'infobulle seule) et est du texte, pas de la couleur. **Mis à jour le 2026-10-29 (E1)** : « Générer la convention » de la fenêtre n'est plus jamais grisé par l'absence de contact ; il reste grisé seulement pendant la génération (texte « Génération en cours… »).
+- Ligne dépliante (mis à jour le 2026-10-29 (E1)) : élément natif `<details>` / `<summary>`, atteignable au clavier (Entrée ou Espace), état « réduit / développé » annoncé par le navigateur et le lecteur d'écran sans attribut ARIA ajouté. Pas de nouveau `role`. Le `summary` a un intitulé clair (« Le contact n'est pas dans la liste : l'ajouter »). Les champs repliés ne sont pas atteignables au clavier (comportement natif) : l'option « (nouveau contact) » de la liste dit alors qui est le signataire. Nom, Prénom et E-mail ont chacun un `label` lié (le champ Fonction a le sien, voir plus haut), et la phrase « Ce contact sera ajouté à la fiche du club. » leur est reliée par `aria-describedby` (mis à jour le 2026-10-29 (E1, précision Email)). Erreur de l'E-mail (vide ou mal formé, D-E1-14) : `is-invalid`, `aria-invalid="true"`, message précédé d'un `sr-only` « Erreur : », `aria-describedby` vers le message seulement, focus placé sur le champ après dépliage de la ligne ; le nom de l'erreur ne repose pas sur la couleur (le texte du message la porte).
 - Bloc « Droits insuffisants » : le message est du texte ordinaire dans le flux (pas de région vide ni de bloc caché), identique pour tous les profils.
 - Mode clair / sombre : n'utiliser que des variables `--ft-…` ou des classes du design system, aucune couleur écrite en dur. **Constat** : style.css déclare `color-scheme: light` ; le tableau de bord n'est donc pas conçu pour le mode sombre aujourd'hui. Je n'ai pas pu vérifier le rendu en mode sombre : à tester par Hanta. La maquette n'ajoute aucune couleur.
 - Zoom 200 % : la fenêtre défile (`modal-dialog-scrollable`), rien n'est coupé ; sous 1200 px d'écran (ce qui arrive à 200 % de zoom sur un écran courant) elle passe en une colonne.
-- Données personnelles : seules données de personnes : **nom, prénom et fonction** du représentant de l'agence et du signataire du club , strictement nécessaires pour désigner qui signe. Le widget n'écrit plus dans Contacts : les noms des signataires du club sont lus dans les contacts existants. Pas de téléphone ni d'adresse personnelle demandés dans ce formulaire. Le champ Commentaire de la fiche reste interdit pour noter des données de personnes. Les PDF contiennent ces noms et les signatures : le PDF généré reste dans Grist après la signature mais n'est plus montré ; la durée de conservation reste à décider (§10). Données de la maquette : fictives.
+- Données personnelles : seules données de personnes : **nom, prénom et fonction** du représentant de l'agence, et **nom, prénom, e-mail et fonction** du signataire du club (mis à jour le 2026-10-29 (E1, précision Email) : l'e-mail du signataire est ajouté à la liste), strictement nécessaires pour désigner qui signe ou, pour l'e-mail, pour créer le contact dans Contacts. L'e-mail est écrit dans Contacts (colonne Email) avec le contact créé ; il n'est pas reproduit dans le PDF (aucune case du modèle ne l'utilise : à confirmer par dev-backend). Pas de téléphone ni d'adresse personnelle demandés dans ce formulaire. Le champ Commentaire de la fiche reste interdit pour noter des données de personnes. Les PDF contiennent ces noms et les signatures : le PDF généré reste dans Grist après la signature mais n'est plus montré ; la durée de conservation reste à décider (§10). Données de la maquette : fictives. **Mis à jour le 2026-10-29 (E1)** : le widget **écrit désormais dans Contacts** (nom, prénom, e-mail et fonction du signataire saisi), **toujours** quand un Nom est saisi dans la ligne dépliante et que l'E-mail l'est aussi (plus de case à cocher) ; il reste interdit d'y écrire autrement. Aucune donnée de personne n'est gardée ailleurs que dans Contacts et dans le PDF : il n'y a pas de colonne texte pour le signataire. CLAUDE.md (« Le widget n'écrit jamais dans Contacts ») et le README sont **à mettre à jour** par la documentaliste, après décision de Hanta. Un e-mail est saisi ici (obligatoire pour créer le contact, D-E1-7, vérifiée) ; aucun téléphone. Le vrai formulaire du widget clubs demande « des coordonnées professionnelles (adresse e-mail et téléphone de la structure), pas des coordonnées personnelles » : **mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14) : cette consigne est reprise dans la ligne dépliante (D-E1-14 confirmée, §3), sans la mention du téléphone, qui n'est pas demandé.**
 
 ## 8. Composants du design system utilisés
 
@@ -641,7 +684,12 @@ Le tableau de bord emploie les classes de la feuille (`.modal`, `.modal-dialog`,
 <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <form class="modal-content" id="conventionForm" novalidate>
-      <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="conventionTitle">Convention</h2>
+        <!-- mis à jour le 2026-10-29 (E1, Q-M3 tranchée) : sous-titre dans l'en-tête, sous le titre ;
+             <p> ordinaire, sans classe nouvelle ; relié au dialogue par aria-describedby="conventionSubtitle" -->
+        <p id="conventionSubtitle">Du stade vers l'emploi · Campagne 2026</p>
+      </div>
       <div class="modal-body"> … </div>
       <div class="modal-footer"> … boutons … </div>
     </form>
@@ -695,13 +743,14 @@ Avec erreur (page input--error.html) :
 
 Champ numérique (année) : mêmes classes avec `type="number"`. La fenêtre ne contient plus de champ date.
 
-### Zone de texte en lecture seule (siège du club, adresse de l'agence)
+### Zone de texte en lecture seule (encart du club ; avant l'E1 : siège du club et adresse de l'agence)
 Aucune page de composant « zone de texte » n'a été lue : **non vérifié**. Structure proposée, identique au champ en lecture seule ci-dessus mais avec `textarea` (la classe `form-control` est celle de la feuille ; à vérifier que le tableau de bord emploie déjà un `textarea` pour le Commentaire, et à contrôler sur la page du composant avant de coder) :
 
 ```html
 <label class="form-label" for="clubSiege">Siège</label>
 <textarea class="form-control" id="clubSiege" name="clubSiege" readonly rows="2">2 avenue du Stade, 00000 Ville-Exemple</textarea>
 ```
+**Mis à jour le 2026-10-29 (E1)** : un seul `textarea` en lecture seule sert d'encart du club (libellé « Club », `rows="3"`, trois lignes : nom, SIRET, adresse sur une ligne). La fenêtre n'affiche plus l'adresse de l'agence : pas de second `textarea`.
 
 ### Liste de choix (signataire du club)
 Page : https://designsystem.francetravail.io/components/detail/select--default.html
@@ -724,6 +773,12 @@ Page : https://designsystem.francetravail.io/components/detail/select--default.h
 ```
 
 La page ne mentionne aucun script associé. Le composant existe : rien à signaler.
+
+### Case à cocher : plus utilisée dans la fenêtre Convention (2026-10-29, E1, 2e série)
+La case « Ajouter ce contact à la fiche du club » est retirée par décision de Hanta : la fenêtre n'emploie plus de case à cocher. La structure du composant (page https://designsystem.francetravail.io/components/detail/checkbox--default.html, lue le 2026-10-29) n'est donc plus recopiée ici.
+
+### Zone dépliante : composant non trouvé (ajouté le 2026-10-29 (E1))
+J'ai essayé la page https://designsystem.francetravail.io/components/detail/accordion--default.html : erreur 404. Je n'ai pas cherché d'autres adresses ; **le design system a peut-être un composant « accordéon » ou « dépliant » sous un autre nom, non vérifié**. Je n'en fabrique pas. Le plus proche, déjà présent dans le dépôt : l'élément HTML natif `<details>` avec `<summary>` (menus de tri et filtres du tableau de bord, avec des classes du widget). Structure proposée dans le §3 (ligne « Le contact n'est pas dans la liste : l'ajouter »). **À valider par Hanta** (D-E1-2), comme le dépôt de fichier ci-dessous.
 
 ### Dépôt de fichier : composant manquant
 J'ai cherché sur le site : aucune page « input fichier », « upload » ou « téléversement » (adresses essayées : input--file, upload--default, file--default, fileupload--default, input-file--default, upload-file--default : toutes en erreur 404). Le seul composant voisin du site est « Drag & drop » (drag-and-drop--card.html, --line.html…), mais sa page ne dit pas qu'il sert à envoyer des fichiers : je ne l'ai pas retenu, sans le fabriquer ni le deviner. La feuille contient des classes `custom-file-input`, `custom-file-label` et `form-control-file`, mais aucune page de composant ne les décrit : je ne les propose pas.
@@ -773,7 +828,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Pas de composant « bloc de fiche » : on reprend les classes du widget (`edit-card`, `section-head`, `edit-fields`, `edit-field`).
 - Pas de composant de dépôt de fichier (voir ci-dessus).
 - Pas de composant de téléchargement ou d'aperçu de PDF : on utilise des boutons du design system, qui ouvrent le PDF dans un nouvel onglet.
-- Classes du widget à créer par dev-interface, sans nom du design system : `convention-grid` (trois colonnes à partir de 1200 px, une colonne en dessous), `convention-part` (fieldset sans bordure), `convention-fields` (grille à deux colonnes dans une colonne de la fenêtre), `convention-actions` (rangée de boutons), `convention-file` (champ fichier caché). Leurs règles sont dans le `<style>` de la maquette ; elles n'utilisent que des variables du design system et du widget. Test à prévoir : test/styles.test.js vérifie qu'elles ne reprennent aucun nom du design system.
+- Classes du widget à créer par dev-interface, sans nom du design system : `convention-grid` (trois colonnes à partir de 1200 px, une colonne en dessous), `convention-part` (fieldset sans bordure), `convention-fields` (grille à deux colonnes dans une colonne de la fenêtre), `convention-actions` (rangée de boutons), `convention-file` (champ fichier caché). Leurs règles sont dans le `<style>` de la maquette ; elles n'utilisent que des variables du design system et du widget. Test à prévoir : test/styles.test.js vérifie qu'elles ne reprennent aucun nom du design system. **Mis à jour le 2026-10-29 (E1)** : `convention-grid` passe de trois à deux colonnes (même seuil de 1200 px) ; aucune classe nouvelle n'est proposée pour la ligne dépliante (voir la zone dépliante plus haut).
 
 ## 9. Risques techniques et points à vérifier avant de coder
 
@@ -783,6 +838,11 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Où stocker le PDF généré, le PDF signé et les informations (nouvelle table ou colonnes dans Grist) : le modèle de données est partagé par plusieurs widgets, rien ne doit être renommé et toute nouvelle colonne est à faire valider. Non décidé ici.
 - Générer un PDF demande probablement une bibliothèque ou un service : « aucune dépendance sans l'accord de Hanta » (CLAUDE.md). À proposer avec avantages, risques et effort avant tout code.
 - Colonnes Grist citées par le chef (Contacts.Fonction, colonnes de Agences) : non vérifiées (voir §3).
+- **Mis à jour le 2026-10-29 (E1, 2e série), colonnes Grist** : plus aucune colonne à créer pour le signataire (`Signataire_club_texte` et la colonne de fonction proposée sont supprimées de la note). `Conventions.Signataire_club` (référence) existe déjà. Les colonnes `Conventions.Annee` et `Modele` ne sont plus écrites par la fenêtre ; leur sort n'est pas décidé ici (ne jamais les renommer, CLAUDE.md). Noms **non vérifiés dans Grist**.
+- **E1, écriture dans Contacts** : (a) la règle d'accès de Contacts refuse une ligne sans club : tout envoyer en une seule opération, club compris (CLAUDE.md) ; (b) mis à jour le 2026-10-29 (E1, précision Email) : Nom et Email sont obligatoires dans Contacts (vérifié par Hanta, D-E1-7) ; la fenêtre les exige donc avant d'écrire (Nom rempli et E-mail vide : aucune écriture, message sous le champ E-mail) et envoie dans la même opération Club, Nom, Prénom, Email, Fonction ; **le contrôle de forme de l'e-mail (le vrai formulaire refuse une adresse mal formée) n'est pas décrit par le backlog : D-E1-14** ; (c) FT National, Régional, Départemental ont des droits sur Contacts dans leur périmètre ; un refus produit le message d'échec d'enregistrement habituel du §5 (rien d'autre n'est enregistré), jamais un échec silencieux ; (c bis) **ordre** : la création du contact est attendue, son identifiant reçu, avant l'écriture de `Conventions` (§3) ; (d) recette avec un vrai compte non propriétaire (règle de CLAUDE.md et du backlog).
+- **E1, enregistrement à la fermeture** : tous les chemins de fermeture (bouton, croix éventuelle, Échap, et clic sur le fond sombre s'il ferme la fenêtre dans le code) doivent passer par la même fonction d'enregistrement ; sinon un chemin perdrait la saisie sans le dire. Dev-interface vérifie dans le code ; je n'ai pas relu `script.js`.
+- **E1, anti-doublon du contact** : la bascule vers « contact de la liste » après la création doit se faire dès que l'identifiant est connu, avant l'écriture dans `Conventions` (§3). À tester : saisir un nom, fermer, rouvrir, fermer, générer : une seule ligne dans Contacts ; simuler l'échec de l'écriture de `Conventions` après la création : l'essai suivant ne recrée pas le contact. Les doublons avec un contact existant saisi à la main sont acceptés (décision de Hanta).
+- **E1, campagne** : le format réel de `Campagnes.Campagne` (année seule ? « 2026-2027 » ?) n'est pas vérifié ; il décide de la case [Année] et du nom du fichier (§3).
 - **Zones en pointillés du PDF** : le PDF généré doit laisser de la place pour écrire à la main (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature). À vérifier sur le PDF produit, qui n'est pas dans cette note.
 - **Ouverture du PDF par bouton** : l'onglet s'ouvre après une récupération asynchrone, ce que certains navigateurs prennent pour une fenêtre non sollicitée et bloquent. L'ouverture d'un onglet depuis le cadre de Grist est confirmée (essai dans Grist DEV), mais pas avec une adresse `blob:` obtenue après chargement : à tester dans Grist DEV, sur plusieurs navigateurs, avant de livrer. Non vérifié ici.
 - **Réglé pour S8 (re-génération)** : Grist supprime-t-il un ancien PDF qu'aucune cellule n'utilise ? Non : vérifié par Hanta le 2026-10-26 dans DEV7 (34 → 35 pièces jointes après une re-génération, d'après docs/backlog.md). Décision D-S8-7 réglée ; l'ancien PDF reste orphelin (D-S8-5).
@@ -818,14 +878,52 @@ Décisions de Hanta du 2026-10-23 :
 
 Mis à jour le 2026-10-26 (S8) : les décisions D-S8-1 à D-S8-7 (dont Q-I et Q-J) sont prises par Hanta le 2026-10-26 ; elles sont au §12.10. D-S8-7 est réglée : Hanta a vérifié dans DEV7 le 2026-10-26 que Grist ne nettoie pas les pièces jointes orphelines.
 
+### À décider par Hanta (2026-10-29, E1)
+
+**Décisions antérieures remplacées par l'E1** (décidées par le chef le 2026-10-29, backlog) : « Enregistrer les informations = brouillon » et son pied à trois boutons (2026-10-23) ; D-3 (les six messages de blocage de « Générer ») ; D-4 (année préremplie avec l'année en cours) ; D-6 (disparition du message d'erreur de l'année) ; la fonction du signataire toujours en lecture seule (2026-10-23, elle est désormais modifiable pour une saisie libre) ; « le signataire est choisi uniquement parmi les contacts » et « Générer grisé pour un club sans contact » (tâche 4.1) ; **2e série du 2026-10-29 (Hanta)** : la case « Ajouter ce contact à la fiche du club », la colonne `Conventions.Signataire_club_texte` et D-E1-4 sont retirées ; **précision du 2026-10-29 (E1, précision Email)** : champs Nom, Prénom, E-mail, Fonction ; condition de création « Nom rempli » (remplace « Prénom ou Nom ») ; Q-H est inchangée (Fermer sans confirmation), D-S7-2 inchangée.
+
+| N° | Question | Ma recommandation |
+|---|---|---|
+| D-E1-1 | Encart du club : « nom, SIRET, adresse, sur une ligne » : l'adresse sur une ligne (ma lecture) ou tout l'encart sur une ligne ? Et quel composant : un `textarea` en lecture seule à trois lignes (composant du §8, non lu) ou des `<p>` ordinaires ? | Adresse sur une ligne, dans un `textarea` en lecture seule de trois lignes : un seul champ lisible au clavier et par les lecteurs d'écran, sans classe nouvelle. |
+| D-E1-2 | Ligne dépliante : accepter l'élément natif `<details>` / `<summary>` (faute de composant du design system trouvé) ? Si le `summary` demande une classe pour son aspect, la créer ? | Oui pour `<details>` ; pour une classe, nouvelle décision de Hanta au moment où dev-interface en a besoin (je ne la prévois pas). Mon essai sur la page accordéon a échoué (404) : à regarder dans la bibliothèque du site avant de coder. |
+| D-E1-3 | Quand la saisie libre et la liste se contredisent, qui l'emporte ? Plier la ligne perd-il la saisie ? | **Mis à jour le 2026-10-29 (E1, précision Email), tranché par Hanta dans le backlog :** la saisie libre est active dès que **Nom** est rempli (plus « Prénom ou Nom ») ; l'option « (nouveau contact) » apparaît dans la liste ; choisir un contact de la liste vide la saisie libre ; plier la ligne ne perd rien, le contact est créé à la fermeture ou à la génération. |
+| ~~D-E1-4~~ | ~~Où écrire la fonction du signataire saisi quand la case n'est pas cochée ?~~ | **Sans objet (2026-10-29, 2e série)** : plus de case, plus de colonne texte. La fonction saisie va dans Contacts avec le contact créé. |
+| D-E1-5 | Si l'enregistrement à la fermeture échoue (droits refusés sur Contacts, réseau) : que voit l'agent ? « Silencieusement » vaut-il aussi pour les échecs ? | Silencieux seulement en cas de réussite. En cas d'échec (y compris la création du contact, qui n'écrit alors rien d'autre) : la fenêtre reste ouverte, message d'échec habituel du §5 (pas de texte propre au contact), et un second « Fermer » quitte sans enregistrer. Sinon la saisie disparaîtrait sans que l'agent le sache. |
+| ~~D-E1-6~~ | ~~Case cochée mais Nom vide : que faire ?~~ | **Sans objet (2026-10-29, 2e série)** : plus de case. Règle remplaçante (mise à jour le 2026-10-29 (E1, précision Email)) : Nom rempli, avec E-mail rempli, crée le contact ; Nom vide, rien n'est créé ; Nom rempli et E-mail vide, message sous le champ E-mail. |
+| ~~D-E1-7~~ | ~~Contacts accepte-t-elle une ligne sans e-mail ?~~ | **Vérifiée par Hanta (mis à jour le 2026-10-29 (E1, précision Email))** : non, Nom et Email sont obligatoires dans Contacts ; Prénom, Téléphone et Fonction ne le sont pas. La ligne dépliante a donc le champ E-mail (obligatoire quand un Nom est saisi). CLAUDE.md et le README restent à mettre à jour par la documentaliste. |
+| D-E1-8 | Année : `Actions.Campagne` vient-elle toujours sous forme d'une année ? Si elle est vide, l'année et son tiret sont omis du nom du fichier et la case [Année] donne des pointillés. | Oui pour l'omission. Format à vérifier dans Grist avant le codage ; si ce n'est pas une année, décider si la case [Année] reprend la campagne telle quelle. Le nom du fichier signé suit la campagne actuelle de l'action (§4.1 k). |
+| D-E1-9 | La croix : la fenêtre a-t-elle une croix de fermeture ? Le §8 n'en montre pas. | Ne pas en ajouter ; « Fermer » et Échap suffisent. Si le code en a une, elle fait comme « Fermer ». |
+| D-E1-10 | Libellé du sous-titre : « [Dispositif] · Campagne [Campagne] » (ex. « Du stade vers l'emploi · Campagne 2026 ») | Oui. Texte du `<p>` ordinaire placé dans l'en-tête sous le titre (mis à jour le 2026-10-29 (E1, Q-M3 tranchée)) ; pas de composant « sous-titre » du design system trouvé. |
+| ~~D-E1-11~~ | ~~Un contact créé avec un Prénom seul est accepté ?~~ | **Sans objet (mis à jour le 2026-10-29 (E1, précision Email))** : la condition de création est « Nom rempli », et E-mail est nécessaire ; un Prénom seul ne crée rien. |
+| D-E1-12 | Où placer la phrase « Ce contact sera ajouté à la fiche du club. » : sous Prénom et Nom (dans la ligne dépliante, ma proposition) ou sous « Fonction du signataire » (qui est un champ unique placé après la ligne, donc hors de celle-ci) ? | **Mis à jour (mis à jour le 2026-10-29 (E1, précision Email)) : sous les quatre champs, donc sous « Fonction du signataire »** (option 2). Les trois premiers champs sont dans la ligne dépliante, Fonction juste après : la phrase à la fin de la ligne n'aurait plus été sous Fonction. Elle est visible quand la saisie libre est active ou la ligne dépliée. Ma première proposition (sous Prénom et Nom) est remplacée. **Confirmée par Hanta (backlog, 2026-10-29), et conforme à la maquette de référence** (mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14)). |
+| D-E1-13 (décidée) | Doublons possibles avec un contact existant, plus de case. | **Décidé par Hanta (2026-10-29, 2e série)** : acceptés, pour simplifier l'écran et les données. Rien à faire côté interface. |
+| D-E1-14 (nouveau, mis à jour le 2026-10-29 (E1, précision Email)) | Le vrai formulaire du widget clubs refuse une adresse e-mail mal formée (« Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. ») et affiche une consigne « coordonnées professionnelles, pas personnelles ». Le backlog ne décrit que « E-mail vide ». Les reprend-on ? | **Confirmée par Hanta (backlog, 2026-10-29) : on reprend le contrôle de forme de l'e-mail et la consigne « coordonnées professionnelles, pas personnelles »** (décrits au §3, « Contrôle de forme de l'e-mail et consigne » ; mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14)). |
+
+### Questions sur la maquette E1 (2026-10-29) : toutes tranchées par Hanta
+
+Écarts constatés entre la maquette de référence (docs/ux/maquette-convention-e1.png) et cette note. **Hanta a répondu aux 8 questions le 2026-10-29** : pour Q-M1, Q-M2, Q-M4, Q-M5, Q-M6, Q-M7 et Q-M8, la note est confirmée telle quelle (aucun changement de contenu) ; pour Q-M3, la maquette l'emporte et la note est modifiée (mis à jour le 2026-10-29 (E1, Q-M3 tranchée)). Seuls la disposition, les champs et le comportement ont été comparés, jamais l'apparence. La colonne « Question » reste pour mémoire.
+
+| N° | Écart | Note actuelle | Maquette | Question |
+|---|---|---|---|---|
+| Q-M1 | Place du champ « Fonction » | Un champ unique « Fonction du signataire » **après** la ligne dépliante (lecture seule pour un contact de la liste, modifiable en saisie libre) | « Fonction » est le quatrième champ **dans le cadre de la ligne dépliante**, sous E-mail ; aucun champ « Fonction du signataire » séparé n'est visible, repliée comme dépliée | Où affiche-t-on la fonction d'un contact choisi dans la liste, ligne repliée ? Le backlog (D-E1-12) dit « sous Fonction du signataire, à la fin des 4 champs de la ligne dépliante » : la note y répond par un champ unique hors de la ligne. **Tranchée, la note est confirmée telle quelle** (champ unique « Fonction du signataire » après la ligne dépliante ; pas de Fonction dans le cadre dépliant). |
+| Q-M2 | Phrase d'introduction | « Aucun champ n'est obligatoire, sauf pour ajouter un nouveau contact (…). Ce qui reste vide sera rempli à la main sur le PDF imprimé : des pointillés apparaîtront à la place. » | « Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature. » (plus courte, sans l'exception du contact) | Quel texte retient-on ? La version courte oublie que Nom et E-mail sont nécessaires pour un nouveau contact, ce que les deux astérisques disent déjà. **Tranchée, la note est confirmée telle quelle** (phrase longue conservée). |
+| Q-M3 | Place du sous-titre | Dans le corps, `<p>` au-dessus de l'introduction | Dans l'en-tête, sous le titre « Convention » | Le sous-titre va-t-il dans l'en-tête ? (Sans conséquence sur le texte, D-E1-10.) **Tranchée : la maquette l'emporte, sous-titre dans l'en-tête, sous le titre « Convention »** (mis à jour le 2026-10-29 (E1, Q-M3 tranchée) ; §3 et structure HTML du §8). |
+| Q-M4 | Croix de fermeture | Aucune (D-E1-9) ; « croix éventuelle » seulement si le code en a une | Une croix en haut à droite | La maquette contredit D-E1-9 (« pas de croix ajoutée »). Garde-t-on D-E1-9 ? Une croix, si elle est ajoutée, ferait comme « Fermer ». **Tranchée, la note est confirmée telle quelle** (D-E1-9, pas de croix). |
+| Q-M5 | Ligne des astérisques | « * Nécessaires pour ajouter ce contact. » sous le résumé de la ligne | Absente ; seuls les deux astérisques sur Nom et E-mail | Garde-t-on cette ligne ? Sans elle, l'astérisque n'est expliqué que par l'introduction. **Tranchée, la note est confirmée telle quelle** (ligne conservée). |
+| Q-M6 | Libellé « E-mail » | « E-mail », comme dans la note depuis la précision Email | « Email » | Quel libellé ? À aligner sur celui du vrai formulaire de clubs, que dev-interface vérifie dans src/clubs/script.js. **Tranchée, la note est confirmée telle quelle** (« E-mail », avec trait d'union). |
+| Q-M7 | Ligne dépliante ouverte à l'ouverture | Repliée par défaut | Montrée dépliée dans l'image, avec un Prénom et une Fonction déjà remplis | Image prise après saisie, ou ouverte par défaut ? Je suppose l'image prise après saisie (repliée par défaut, D-E1-2 et D-E1-3). **Tranchée, la note est confirmée telle quelle** (repliée par défaut ; l'image la montrait ouverte seulement pour en montrer le contenu). |
+| Q-M8 | Consigne « coordonnées professionnelles » | Présente (D-E1-14) | Absente de l'image (qui précède cette décision) | Rien à faire si la maquette n'est pas mise à jour ; à signaler au chef que son image n'en montre pas. **Tranchée, la note est confirmée telle quelle** (D-E1-14 gardée ; l'image précède cette décision). |
+
 À confirmer :
 
-1. **Qui peut modifier** les informations de l'agence reprises de la table Agences (agence, adresse, complément, code postal, ville), maintenant affichées en lecture seule ? **[À CONFIRMER]**
+1. **Qui peut modifier** les informations de l'agence reprises de la table Agences (agence, adresse, complément, code postal, ville), maintenant affichées en lecture seule ? **[À CONFIRMER]** **Mis à jour le 2026-10-29 (E1)** : l'adresse de l'agence n'est plus affichée dans la fenêtre, la question ne concerne plus que le PDF.
 2. **Q-B (déjà ouverte au plan)** : une action en corbeille ou annulée garde-t-elle sa convention ? La génération est-elle interdite pour ces statuts ? Non traitée dans cette note : aucun état ni message n'est prévu pour ce cas.
 6. **Icônes** : aucune icône n'est utilisée dans les nouveaux messages. Si Hanta en veut une (information, avertissement), son nom est **à vérifier** dans la bibliothèque https://designsystem.francetravail.io/docs/bibliotheque/icones.html.
 7. **Variante d'alerte** : si Hanta préfère une alerte du design system plutôt qu'un `help-block` pour les messages de blocage, la variante d'information ou d'avertissement de la feuille est à vérifier (non lue). Le plus proche connu est `alert alert-error`, déjà employé, mais il signale une erreur : je ne le recommande pas ici.
 
 ## 11. Mise en page du PDF (mis à jour le 2026-10-25 (mise en page))
+
+**Mis à jour le 2026-10-29 (E1)** : les logos, polices et mesures ne changent pas. Seul le contenu des cases change : [Année] vient de la campagne ; [Signataire du club] et [Fonction du signataire] peuvent venir d'une saisie libre ; tout champ vide donne des pointillés (§3). Le rappel de périmètre en fin de section (« cette section ne change ni la fenêtre ») reste vrai pour le §11 lui-même.
 
 Public : dev-backend (qui règle `CONVENTION_MISE_EN_PAGE` et `conventionDocumentPdf`), puis Hanta pour les décisions de la fin.
 Sources : les mesures relevées par Hanta dans le Word officiel « Du stade vers l'emploi » (les trois Word ont la même mise en page), et la lecture de `src/actions-dashboard/script.js` (format des modèles, `CONVENTION_MISE_EN_PAGE`, `conventionSignatures`, `conventionDocumentPdf`). Aucune mesure n'est inventée : ce qui n'a pas été relevé est écrit « **non relevé** » et repris dans la liste « Mesures qui manquent » plus bas. Mesures complétées par Hanta dans le Word officiel le 2026-10-25, puis valeurs restantes décidées par Hanta le 2026-10-25 (celles qui ne viennent pas du Word sont marquées « choix de Hanta »). Les points non vérifiés sont marqués « à vérifier ».
@@ -961,6 +1059,8 @@ Aucune mesure manquante (2026-10-25).
 Rappel de périmètre : cette section ne change ni la fenêtre « Convention » ni les textes des §3 et §5, hormis le message de logo du §11.2, ajouté à la liste des textes du §5.
 
 ## 12. Re-générer (S8) (mis à jour le 2026-10-26 (S8))
+
+**Mis à jour le 2026-10-29 (E1), à lire avant ce qui suit.** Ce qui change : (1) le tableau §12.1 ne renvoie plus à des contrôles de champs obligatoires ni à l'enregistrement par bouton (supprimés) ; (2) la fenêtre n'a plus ni « Modèle utilisé » ni champ « Année » : les mentions de l'année enregistrée reprise, du modèle affiché et du champ « Année » du §12.3 et du §12.5 ne s'appliquent plus (D-S8-4 reste vraie pour `Modele` si la colonne est encore écrite : à confirmer par dev-backend, D-E1-8) ; (3) le pied n'a que « Fermer » et « Générer la convention » (§12.3) ; (4) la fenêtre de re-génération est préremplie avec le signataire enregistré (`Signataire_club`, toujours un contact de la liste, y compris un contact créé par la saisie libre), le représentant et sa fonction ; (5) la phrase « Le nouveau PDF remplacera la convention générée le [date]. » et la phrase « L'ancienne convention reste disponible. » restent inchangées ; (6) à la fermeture sans génération, la saisie est enregistrée en silence, **mais l'ancien PDF reste intact** (§12.7 vaut toujours : `PDF_genere` et `Date_generation` ne sont écrits qu'à la fin d'une génération réussie). Le reste du §12 est inchangé.
 
 Public : Hanta (pour décider), puis dev-interface et dev-backend (tâche 8.1), puis le testeur (8.2).
 **Où cette partie est placée, et pourquoi.** Dans une section à part, à la fin de la note, et non dans le §3 : le §3 décrit déjà la fenêtre et la génération en détail, et la re-génération réutilise tout cela. Une section à part dit en un seul endroit ce qui change, sans toucher aux numéros ni aux renvois existants. Le §3 (« Générer la convention : de l'ouverture au résultat ») y renvoie.
@@ -1118,6 +1218,8 @@ Les sept points posés dans cette note sont tranchés. Colonne de droite : ce qu
 Deux cas ajoutés au même moment (§12.7) : « écriture réussie mais réponse réseau perdue » (dev-backend doit éviter l'échec affiché à tort, sinon risque connu signalé) et « fichier signé déposé pendant que la fenêtre de re-génération est ouverte » (accepté sans traitement, à revoir s'il se produit).
 
 ## 13. Dépôt et remplacement du fichier signé (S9) : décisions qui reviennent à Hanta (mis à jour le 2026-10-26 (S9))
+
+**Mis à jour le 2026-10-29 (E1)** : aucune décision du §13 n'est modifiée. Le nom du fichier signé suit `Actions.Campagne` (§4.1 k, D-E1-8).
 
 Les compléments sont au §4.1. Rien d'antérieur n'est changé, sauf l'ordre des contrôles du fichier au §4 (corrigé pour suivre la décision déjà prise : vide, taille, extension, type, contenu). Les 8 décisions ci-dessous (S9-1 à S9-8) sont **prises** : Hanta les a toutes tranchées le 2026-10-26, dans le sens de la recommandation proposée pour chacune. Plus aucune n'est en attente.
 
