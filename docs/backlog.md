@@ -188,6 +188,7 @@ Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1
 - **D-E1-18** : espacement entre les champs Nom, Prénom, E-mail et Fonction du formulaire, actuellement trop serré (Prénom presque collé au champ du dessus). À espacer davantage, avec les variables d'espacement du design system.
 - **D-E1-19** : l'encart Club (lecture seule, nom/SIRET/adresse) ne doit plus être une zone redimensionnable à la main (pas de poignée de redimensionnement) : sa hauteur doit s'ajuster automatiquement à son contenu réel, sans espace vide en dessous. Cela précise la D-E1-1 (textarea en lecture seule).
 - **D-E1-20** : le seuil de bascule à deux colonnes de la fenêtre Convention (initialement 1200 px) était trop haut pour l'usage réel : Hanta travaille habituellement avec un navigateur réduit (pour garder de la place à côté), et le widget passait alors rapidement sous 1200 px, forçant une seule colonne qui défile, ce que le chef de projet refuse. Mesuré : à 1193 px de large, le widget est déjà en une colonne. Décision : le seuil passe de 1200 px à 1100 px, pour garder une marge de confort sous la largeur habituelle de travail de Hanta.
+- **D-E1-21** : les pointillés écrits par le widget lui-même dans le PDF (pour une case connue mais vide, et pour « Fait à…, le… ») sont trop courts. Décision du chef de projet : les doubler (actuellement 28 points, passer à 56 points). Cette longueur est réglée dans `CONVENTION_MISE_EN_PAGE` (`src/actions-dashboard/script.js`), §11 de la note.
 
 ## Questions encore ouvertes
 
