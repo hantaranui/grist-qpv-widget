@@ -148,6 +148,19 @@ S6 supprimée le 2026-10-22 : pas d'ajout de contact dans la convention.
 | R7 | Recette complète sur TEST : R1 à R6 rejouées par le collègue (campagne C03 pour R1/R2, C04/C05/C06 pour R4/R5/R6, ou campagnes propres), avec de vrais comptes (National déjà disponible, Régional disponible, **Départemental à préparer**). | recetteur, collègue | `docs/tests/` | Compte rendu final, carnet Excel à jour. |
 | 10.3 | Structure dans PROD (`Conventions`, `Modeles_convention` avec `Logo`/`Logo_partenaire`, `Structures.Ville`, `Agences.Siret` si absente, règles d'accès) avant la fusion. Les 3 modèles officiels et leurs logos à saisir dans PROD (jamais dans le dépôt). Journal des évolutions dans DEV2 ; fusion dans main seulement sur accord de Hanta. | Hanta | Aucun | Page publiée vérifiée après fusion. |
 
+### Évolution 1 (E1) — Allègement de la fenêtre Convention
+
+Retours du chef de projet du 2026-10-29, après la mise en production de S7-S10 :
+
+1. La fenêtre « Convention » est allégée : plus de colonne « Informations relatives à la convention », plus de champ « Modèle utilisé », plus de champ « Année » (l'année vient désormais de `Actions.Campagne`, une référence vers `Campagnes.Campagne`, texte — jamais demandée à l'agent). Le club tient en un seul bloc en lecture seule (nom, SIRET, adresse, sur une ligne). L'agence n'affiche que son nom, sans adresse.
+2. Plus aucun champ de la fenêtre n'est obligatoire (signataire, fonction du signataire, représentant, fonction du représentant). Un champ vide donne des pointillés dans le PDF, y compris l'adresse du club si elle manque. Seul reste un blocage à l'OUVERTURE de la fenêtre : il faut un club ET une agence sur l'action pour générer (sinon l'agent retourne compléter la fiche Action).
+3. Le signataire du club : deux options, choisir un contact existant dans la liste, OU saisir librement un nouveau contact (Prénom, Nom, Fonction du signataire, modifiable), avec une case à cocher « Ajouter ce contact à la fiche du club ». Décision de Hanta (solution A) : si la case est cochée, une ligne est créée dans `Contacts` (Club, Prénom, Nom, Fonction), puis `Conventions.Signataire_club` (référence) pointe vers cette nouvelle ligne. Si la case n'est pas cochée, rien n'est écrit dans `Contacts` : le nom va dans une NOUVELLE colonne texte à créer, `Conventions.Signataire_club_texte`, et `Signataire_club` (référence) reste vide. Le PDF utilise la référence si elle est remplie, sinon le texte libre. Un contact n'est créé dans `Contacts` qu'UNE SEULE FOIS pour une même saisie, même si l'agent ferme et rouvre la fenêtre plusieurs fois avec la case cochée (pas de doublon à chaque fermeture). La saisie libre demande donc Prénom et Nom séparés, et rend la Fonction du signataire éditable dans ce cas précis (alors qu'elle reste en lecture seule pour un contact choisi dans la liste) : ceci revient, de façon plus légère et encadrée, sur la décision du 23/10 qui avait retiré le formulaire « Ajouter un contact » (tâche 4.1). La zone de saisie libre est une ligne dépliante, repliée par défaut, qui ne s'affiche en ouvert que si l'agent clique pour l'ouvrir (pour ne pas alourdir l'écran dans le cas le plus courant, choisir un contact existant).
+4. Le bouton « Enregistrer les informations » est supprimé. Fermer la fenêtre (bouton Fermer, croix, ou touche Échap) enregistre automatiquement ce qui est saisi, silencieusement, comme le faisait ce bouton.
+
+Maquette de référence (pour illustrer l'intention, pas pour en tirer des pixels exacts) : https://claude.ai/artifact/64Z3t7tDL1Nfuu9P3pbLAG
+
+Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1.3 (données et écriture, dev-backend), E1.4 (tests, testeur), R8 (recette, recetteur).
+
 ## Questions encore ouvertes
 
 - **Q-A** : notes de bas de page regroupées en fin de document (limite de pdfmake). À faire valider par le client : fin de l'article ou fin du document ?
