@@ -172,10 +172,12 @@ Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1
 - **D-E1-9** : pas de croix ajoutée à la fenêtre Convention (elle n'en a pas aujourd'hui).
 - **D-E1-10** : sous-titre de la fenêtre : « [Dispositif] · Campagne [Campagne] ».
 - **D-E1-13** : les doublons de contact (même personne saisie deux fois en saisie libre) sont acceptés, aucun traitement particulier côté interface.
+- **D-E1-12** (confirmée) : la phrase « Ce contact sera ajouté à la fiche du club. » est placée sous « Fonction du signataire », à la fin des 4 champs de la ligne dépliante.
+- **D-E1-14** (confirmée) : reprendre du vrai formulaire « Ajout d'un contact » le contrôle de forme de l'e-mail (refuser un e-mail mal formé) et la consigne « coordonnées professionnelles, pas personnelles ».
 - **Champs de la ligne dépliante du signataire** (nouvelle décision du 2026-10-29) : elle reprend les champs du vrai formulaire « Ajout d'un contact » (`src/clubs/script.js`) plutôt que d'en inventer un autre : Nom (obligatoire), Prénom (facultatif), Email (obligatoire), Fonction (facultatif). Téléphone n'est PAS repris (pas utile pour signer une convention).
   - Si Nom est vide, rien n'est créé dans `Contacts` et `Signataire_club` garde sa valeur actuelle.
   - Si Nom est rempli mais Email est vide, le contact ne peut pas être créé : message d'échec à la fermeture/génération, comme un échec d'enregistrement classique, en attendant la saisie de l'e-mail.
-- **Rappel** : D-E1-4 et D-E1-6, dans leur forme d'origine, restent sans objet (case à cocher supprimée, toujours créer le contact). D-E1-11 et D-E1-12 restent valables tels que posés par le designer-ux (Nom devient la condition de création plutôt que Prénom OU Nom ; phrase d'information sous Prénom/Nom).
+- **Rappel** : D-E1-4 et D-E1-6, dans leur forme d'origine, restent sans objet (case à cocher supprimée, toujours créer le contact). D-E1-11 reste valable tel que posé par le designer-ux (Nom devient la condition de création plutôt que Prénom OU Nom). D-E1-12, dans sa forme d'origine (phrase d'information sous Prénom/Nom), est remplacée par la D-E1-12 confirmée ci-dessus (phrase sous « Fonction du signataire »).
 - **Documentation à mettre à jour en E1** (hors du périmètre de dev-interface/dev-backend, pour la documentaliste) : CLAUDE.md dit encore que le widget n'écrit jamais dans `Contacts` ; ce n'est plus vrai.
 
 ## Questions encore ouvertes
