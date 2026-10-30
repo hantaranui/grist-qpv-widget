@@ -199,8 +199,15 @@ Décisions du chef de projet et de Hanta :
 
 - **E2-1** : « Voir la convention » et « Voir la convention signée » n'ouvrent plus un nouvel onglet : ils ouvrent une pop-up (fenêtre modale), de taille confortable comme la fenêtre « Convention » actuelle (pas plein écran), qui affiche le PDF à l'intérieur du widget.
 - **E2-2** : un bouton « Télécharger » est ajouté, pour le PDF généré ET le PDF signé, à DEUX endroits : dans le bloc Convention (à côté du bouton « Voir » correspondant), et DANS la pop-up elle-même. Il utilise un lien `<a download="[nom exact du fichier].pdf" href="blob:...">` pour forcer le bon nom au téléchargement, quel que soit le navigateur.
-- **E2-3** : le PDF est affiché dans la pop-up avec un `<iframe>` ou `<embed>` pointant vers l'adresse `blob:` déjà récupérée (pas de nouveau téléchargement) ; prévoir un repli (message, lien pour ouvrir dans un nouvel onglet) si le navigateur ne sait pas afficher un PDF dans un cadre.
-- **E2-4** : la pop-up se ferme comme les autres fenêtres du widget (bouton Fermer, touche Échap), avec les mêmes règles d'accessibilité (`role=dialog`, focus géré, retour du focus sur le bouton qui a ouvert la pop-up).
+- **E2-3** : le PDF est affiché dans la pop-up avec un `<iframe>` ou `<embed>` pointant vers l'adresse `blob:` déjà récupérée (pas de nouveau téléchargement) ; prévoir un repli (message, lien pour ouvrir dans un nouvel onglet) si le navigateur ne sait pas afficher un PDF dans un cadre. (le lien du repli est retiré par E2-7 : texte simple sans lien)
+- **E2-4** : la pop-up se ferme comme les autres fenêtres du widget (bouton Fermer, touche Échap), avec les mêmes règles d'accessibilité (`role=dialog`, focus géré, retour du focus sur le bouton qui a ouvert la pop-up). (le bouton Fermer devient une croix dans l'en-tête, voir E2-5 et E2-8)
+
+#### Nouvelles décisions du chef de projet et de Hanta du 2026-10-30 (E2)
+
+- **E2-5** : la pop-up « Voir la convention » / « Voir la convention signée » gagne en hauteur de lecture. Le pied de page (Fermer, Télécharger) disparaît entièrement : ces deux commandes passent dans l'EN-TÊTE de la pop-up, pour libérer un maximum de place verticale pour l'iframe du PDF.
+- **E2-6** : le titre « Convention générée » / « Convention signée » est RETIRÉ. Le nom exact du fichier devient le seul titre affiché (il reste l'élément qui donne son nom accessible à la fenêtre, via `aria-labelledby`).
+- **E2-7** : le lien « Ouvrir dans un nouvel onglet » (filet de secours si le PDF ne s'affiche pas dans l'iframe) est RETIRÉ, car le chef de projet ne veut jamais qu'une adresse `blob:` / github.io soit visible dans la barre du navigateur. Il est remplacé par un texte simple, SANS lien : « Le PDF ne s'affiche pas ? Utilisez « Télécharger ». » **Risque accepté** : si l'affichage du PDF dans l'iframe échoue pour un navigateur (cas rare, non détectable par notre code), l'utilisateur n'a plus que le téléchargement pour accéder au document, sans aperçu possible.
+- **E2-8** : dans l'en-tête de la pop-up, à droite, deux commandes dans cet ordre (de gauche à droite) : le bouton « Télécharger » (vrai lien `<a download>`, comme avant), puis un bouton de fermeture en forme de croix « ✕ » (`aria-label="Fermer"`). Le comportement de fermeture (Échap, focus qui revient sur le bouton d'origine, libération du blob) reste identique à ce qui est déjà décidé en E2-1 à E2-4.
 
 Tâches à venir : E2.1 (note UX, designer-ux), E2.2 (écran et pop-up, dev-interface), E2.3 (téléchargement et nom de fichier, dev-backend), E2.4 (tests, testeur), R9 (recette, recetteur).
 
