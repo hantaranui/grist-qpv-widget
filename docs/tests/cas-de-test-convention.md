@@ -1059,3 +1059,305 @@ Seul **CONV-122** se rejoue sur une vraie convention signée : il ne fait que re
 12. **Nom de club de plus de 40 caractères** (§4.1 k)) : pas de cas écrit, faute d'un club d'essai de ce nom et d'un résultat attendu exact (l'ordre « nettoyer puis couper » n'est pas dit). À ajouter si Hanta le veut, avec le nom du PDF généré du même club comme référence.
 13. **Date de dépôt près de minuit** : `Date_depot` est calculée avec la date du jour au moment de l'écriture (§4.1 f)). Éviter de jouer entre 23 h 30 et 0 h 30 pour que « la date du jour » reste la même du début à la fin d'un cas.
 14. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
+
+---
+
+# Cas de test : Convention, la fenêtre allégée (R8, Évolution 1)
+
+**Brouillon écrit par le recetteur. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste. Les cas CONV-01 à CONV-138 (R1, R2, R4, R5 et R6) ci-dessus n'ont pas été modifiés, mais **40 d'entre eux sont devenus obsolètes** (liste plus bas).
+
+- Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » puis fenêtre « Convention » (générer ou re-générer).
+- Branche : `feature/convention`. Évolution 1 : fiche C56 de REVIEW_LOG.md, décisions D-E1-1 à D-E1-21 de `docs/backlog.md`.
+- Référence : `docs/ux/convention.md` (elle fait foi) : §2 (blocage), §3 (fenêtre, ajouter un contact, fermer, générer), §5 (textes), §6 (états), §7 (accessibilité), §12.3 (re-génération). Les textes attendus en sont copiés mot pour mot. **Une exception** : la note du §3 dit encore « 1200 px » pour le passage à deux colonnes ; le backlog (D-E1-20) dit 1100 px et fait foi pour le seuil (CONV-180).
+- Le fichier `cas-de-test-convention.tsv` contient les 43 cas de R8 (CONV-139 à CONV-181), à la suite des 138 de R1, R2, R4, R5 et R6 : 181 lignes de cas, 18 colonnes.
+- Les actions de R8 s'appellent ESSAI-CONV-U1 à ESSAI-CONV-U32. **« U » veut dire « Évolution 1 »** : à ne pas confondre avec les actions A (R1), B (R2), R (R4), S (R5) et T (R6).
+
+## Ce qui a changé par rapport à R1, R2, R4, R5 et R6
+
+- Plus de champ « Année » ni « Modèle utilisé » : la campagne vient de `Actions.Campagne` (référence vers `Campagnes.Campagne`) et s'affiche en sous-titre : « [Dispositif] · Campagne [Campagne] ».
+- Deux blocs au lieu de trois : « Club » (un encart en lecture seule : nom, SIRET, adresse) et « Agence » (le nom seul, Représentant, Fonction du représentant).
+- Plus aucun champ obligatoire : un champ vide donne des pointillés dans le PDF, doublés à 56 points (D-E1-21). Le seul blocage qui reste est à l'ouverture : il faut un club ET une agence sur l'action. Le blocage « adresse du club » n'existe plus.
+- Bouton « Ajouter un contact » sous la liste « Signataire » (remplace la ligne dépliante abandonnée) : un petit formulaire (Nom, Prénom, E-mail, puis « Fonction du signataire »), aucun astérisque. Le contact est créé dans Contacts à la fermeture de la fenêtre ou à la génération, si Nom est rempli et l'e-mail valide.
+- Le bouton « Enregistrer les informations » est supprimé : « Fermer » et Échap enregistrent en silence, puis ferment. Si l'enregistrement échoue, la fenêtre reste ouverte avec une alerte et un second « Fermer » quitte sans enregistrer.
+- Deux colonnes à partir de 1100 px (au lieu de 1200 px) ; en dessous, les blocs sont l'un sous l'autre.
+
+## Cas volontairement non écrits
+
+1. **Échec de création du contact « pour de bon »** (refus de Grist, pas de réseau coupé) : on ne peut pas le provoquer sans abîmer les règles d'accès. CONV-159 joue le réseau coupé, qui passe par le même message.
+2. **Un Régional ou un Départemental qui ajoute un contact à un club hors de son périmètre** : l'action elle-même ne serait pas visible pour lui.
+3. **Campagne qui n'est pas une année** (par exemple « 2026-2027 ») : d'après `conventionLireAnnee` (script.js, relu sans l'exécuter), le sous-titre l'affiche mais la colonne `Annee` n'est pas écrite ; la note UX dit « non vérifié » pour le nom du fichier (D-E1-8). Pas de cas écrit : voir [À CONFIRMER] 10.
+4. **Fermer sans rien changer** : savoir si Grist reçoit une écriture inutile n'est pas observable à l'écran ([À CONFIRMER] 2).
+5. **Mode sombre** : à traiter à part pour tout le tableau de bord (comme en R5 et R6).
+
+## Cas anciens (CONV-01 à 138) devenus obsolètes ou à reprendre
+
+Ces cas ne sont **ni supprimés ni modifiés** dans le fichier `.tsv`. Cette liste dit lesquels ne se jouent plus tels quels.
+
+### A. Obsolètes : ne plus les jouer (40 cas)
+
+| Cas | Pourquoi | Remplacé par |
+| --- | --- | --- |
+| CONV-18 | le message « Renseignez l'adresse du club dans sa fiche. » et le grisé n'existent plus | CONV-142 |
+| CONV-19 | trois blocs, phrase avec astérisque, bouton « Enregistrer les informations » | CONV-139 |
+| CONV-20 | champs « Signataire club » (nom, SIRET, siège) et « Signataire agence » remplacés par l'encart et le nom seul | CONV-143, CONV-146 |
+| CONV-21, CONV-22 | champs « Modèle utilisé » et « Année » | CONV-140 |
+| CONV-25 | ancien message « Ajoutez-en un dans la fiche du club… » et bouton « Enregistrer les informations » | CONV-154, CONV-155 |
+| CONV-26, CONV-27, CONV-28, CONV-29 | testent le champ « Année » (quatre chiffres) | aucun : le champ n'existe plus |
+| CONV-30, CONV-31, CONV-32 | passent par « Enregistrer les informations » et l'année | CONV-156, CONV-169, CONV-170 |
+| CONV-33 | modèle sans année, avec « Enregistrer les informations » | CONV-162 |
+| CONV-34, CONV-35 | « Enregistrer les informations » avec « Voir en tant que » | CONV-171, CONV-172 (vrais comptes) |
+| CONV-38 | la saisie non enregistrée est perdue : c'est l'inverse aujourd'hui | CONV-156, CONV-157 |
+| CONV-39 | clavier avec trois boutons dans le pied | CONV-173 |
+| CONV-40, CONV-41 | VoiceOver sur les champs « Année » et le message de réussite d'« Enregistrer » | CONV-174, CONV-175, CONV-176 |
+| CONV-42, CONV-43 | zoom et mobile avec trois colonnes et « Informations enregistrées. » | CONV-177, CONV-178 |
+| CONV-53 à CONV-60 | les six messages de blocage et « Certains champs sont à corriger. » | CONV-166 |
+| CONV-67 | trois boutons du pied, « Enregistrer les informations » | CONV-160 |
+| CONV-73 | ordre de trois boutons, champ « Modèle utilisé » | CONV-173 |
+| CONV-76 | messages d'erreur de champ (VoiceOver) | CONV-176 |
+| CONV-78, CONV-79 | effacer « Année », trois boutons du pied | CONV-177, CONV-178 |
+| CONV-82 | année enregistrée reprise, puis remplacée par 2027 dans la fenêtre | CONV-168 |
+| CONV-85 | la saisie abandonnée par « Fermer » n'est plus perdue | CONV-156, CONV-157, CONV-158 |
+| CONV-91, CONV-103 | « Re-générer » grisé par l'adresse du club manquante (action ESSAI-CONV-S12) | CONV-142 |
+| CONV-95 | effacer « Année » bloque la génération | CONV-166 |
+
+### B. À adapter avant de les rejouer (le contrôle principal reste valable)
+
+| Cas | Ce qui est à corriger |
+| --- | --- |
+| CONV-44, CONV-45, CONV-46, CONV-47 | les étapes lisent « Année » et « Modèle utilisé » ; l'année du PDF et du nom de fichier vient maintenant de la Campagne : **compléter la Campagne** des actions ESSAI-CONV-R1, R2 et R4 (sinon l'année est omise) ; CONV-46 : le focus est sur « Signataire » |
+| CONV-48 | « SIRET » se lit maintenant dans l'encart « Club » (« SIRET : non renseigné », voir CONV-144) ; les pointillés du PDF restent à vérifier |
+| CONV-70 | la fenêtre préremplie n'a plus d'année |
+| CONV-80, CONV-81, CONV-104, CONV-105 | trois boutons du pied (il y en a deux) ; CONV-80 liste le champ « Année » |
+| CONV-92, CONV-94, CONV-96 | l'étape « remplacer l'année par … » n'existe plus : changer le Représentant à la place ; CONV-96 : l'année du PDF vient de la Campagne |
+
+### C. À relire (probablement valables, des mots peuvent avoir changé)
+
+CONV-07 (la partie « aucun bouton » est dépassée depuis R2 ; la partie « aucun message d'adresse » reste vraie) ; CONV-23 et CONV-24 (noms de blocs « Signataire club ») ; CONV-36 et CONV-37 (« Fermer » enregistre maintenant en silence) ; CONV-49 à CONV-52 et CONV-61 à CONV-66 (logos et échecs : l'année vient de la Campagne) ; CONV-71, CONV-72, CONV-74, CONV-75, CONV-77 (droits et VoiceOver de la génération : vérifier qu'ils ne citent ni « Année » ni trois boutons) ; CONV-83, CONV-84, CONV-86, CONV-87, CONV-93, CONV-98, CONV-99 (re-génération : CONV-87 repose sur `Avec_annee` d'un modèle, à relire par Hanta).
+
+### D. Toujours valables
+
+CONV-01 à CONV-06, CONV-08 à CONV-17 (CONV-16 : agence manquante ; CONV-17 : club manquant, ces deux blocages restent les seuls), CONV-88, CONV-89, CONV-90, CONV-97, CONV-100 à CONV-102, et **CONV-106 à CONV-138 (R6)** : le dépôt du fichier signé n'ouvre pas la fenêtre.
+
+**Attention, R6** : n'ouvrez JAMAIS la fenêtre « Convention » d'une action ESSAI-CONV-T pendant R8. « Fermer » écrit maintenant dans Conventions, et la colonne `Annee` est relue depuis la Campagne à chaque enregistrement (vidée si la Campagne est vide, d'après `conventionLireAnnee`). Une action T ouverte puis fermée perdrait son `Annee` = 2026, ce qui fausserait les noms de fichier attendus par CONV-109, CONV-110 et CONV-112, et rendrait fausse la règle « T8 et T9 ne sont jamais modifiées ».
+
+## Données d'essai de R8 à créer dans TEST avant de jouer
+
+Données fictives uniquement (exemple.fr). Aucun nom de document Grist, aucune adresse réelle. **Les données de R1, R2, R4, R5 et R6 restent en place.** On réutilise le Club Exemple, les clubs « sans adresse », « sans SIRET » et « sans contact », et l'agence d'essai ; on crée deux clubs et trois contacts.
+
+### Réponse sur les actions ESSAI-CONV-T1 à T24
+
+- **Le fichier `.md` ne dit nulle part que les actions T ont une Campagne** : la colonne n'est dans aucun tableau de R6. Je ne peux pas le savoir depuis le dépôt (et je n'ai pas lu le document Grist). À vérifier par Hanta.
+- **Je ne les réutilise pas**, pour deux raisons : (1) ouvrir puis fermer la fenêtre écrit dans leur ligne Conventions et peut vider `Annee` (voir plus haut) ; (2) elles sont déjà « consommées » par R6 (lignes écrites, fichiers signés).
+- À la place : **32 nouvelles actions ESSAI-CONV-U1 à U32**, avec leur Campagne.
+- Aucun changement à faire sur T, sauf si Hanta veut aussi y mettre une Campagne : sans effet sur R6.
+
+### Campagnes (table Campagnes, déjà dans le document)
+
+Trois lignes dont le texte est exactement `2026`, `2027` et `2028` ([À CONFIRMER] 1). 2027 et 2028 servent à distinguer l'année de la campagne de l'année en cours (2026).
+
+### Structures (clubs)
+
+DR et DD : pour les deux nouveaux clubs, **mêmes DR et DD que Club Exemple** (sinon un vrai compte FT Régional ou FT Départemental ne peut pas créer de contact, CONV-171 et 172 seraient Bloqués : la règle d'accès de Contacts suit le club).
+
+| Club | Adresse | Code postal | Ville | SIRET | Contacts |
+| --- | --- | --- | --- | --- | --- |
+| Club Exemple (existe) | 1 rue Exemple | 75001 | Exemple-sur-Mer | 12345678900012 | Alex Martin-Exemple (Président), Sam Test-Exemple (sans fonction) |
+| Club Exemple Sans Adresse (existe) | (vide) | (vide) | (vide) | 12345678900046 (à compléter si vide) | Robin Autre-Exemple (Trésorier) |
+| Club Exemple Sans SIRET (existe, R4) | 3 rue Exemple | 75003 | Exemple-sur-Mer | (vide) | Jo Sansiret-Exemple |
+| Club Exemple Sans Contact (existe, R2) | 2 rue Exemple | 75002 | Exemple-sur-Mer | 12345678900020 | AUCUN (supprimer tout contact ajouté par erreur) |
+| Club Exemple Adresse Longue (**nouveau**) | Bâtiment C, Résidence des Exemples Réunis, 120 avenue du Général Exemple-Fictif | 75006 | Exemple-sur-Mer-les-Bains-Fictifs | 12345678900053 | Ana Longue-Exemple (Présidente, ana.longue@exemple.fr) |
+| Club Exemple Contacts (**nouveau**) | 5 rue Exemple | 75005 | Exemple-sur-Mer | 12345678900061 | Lou Base-Exemple (Président, lou.base@exemple.fr), Max Base-Exemple (Trésorier, max.base@exemple.fr) |
+
+Club Exemple Contacts sert à tous les cas qui **créent** un contact : ainsi la liste du Club Exemple (CONV-23, CONV-24, R2) reste à deux contacts.
+
+### Agence d'essai
+
+On reprend celle de R1 à R6 (adresse fictive complète, SIRET fictif, rattachée aux DR et DD des profils Régional et Départemental). Aucune nouvelle agence.
+
+### Actions d'essai (Corbeille = non)
+
+Stade = Du stade vers l'emploi ; Match = Match des métiers ; Remob. = Parcours de remobilisation vers l'emploi. Toutes utilisent l'agence d'essai. Contacts = Club Exemple Contacts. **Aucune ligne dans Conventions au départ**, sauf pour U13, U27 et U28 (plus bas). « Fermer » enregistre : **toute action dont la fenêtre a été fermée peut avoir une ligne Conventions** ([À CONFIRMER] 2).
+
+| Intitulé | Dispositif | Club | Campagne | Sert au cas |
+| --- | --- | --- | --- | --- |
+| ESSAI-CONV-U1 | Stade | Club Exemple | 2026 | CONV-139, 143, 146, 147, 173, 174, 175, 177, 178, 179, 180, 181 (lecture, mais « Fermer » peut écrire) |
+| ESSAI-CONV-U2 | Match | Club Exemple | 2027 | CONV-140 |
+| ESSAI-CONV-U3 | Remob. | Club Exemple | 2026 | CONV-140 |
+| ESSAI-CONV-U4 | Stade | Club Exemple | **vide** | CONV-141 |
+| ESSAI-CONV-U5 | Stade | Club Exemple Sans Adresse | 2026 | CONV-142 |
+| ESSAI-CONV-U6 | Stade | Club Exemple Sans SIRET | 2026 | CONV-144 |
+| ESSAI-CONV-U7 | Stade | Club Exemple Adresse Longue | 2026 | CONV-145 |
+| ESSAI-CONV-U8 | Stade | Contacts | 2026 | CONV-148, 149 (rien n'est créé) |
+| ESSAI-CONV-U9 | Stade | Club Exemple Sans Contact | 2026 | CONV-154 (rien n'est créé) |
+| ESSAI-CONV-U10 | Stade | Club Exemple Sans Contact | 2026 | CONV-155 (écrit) |
+| ESSAI-CONV-U11 | Stade | Contacts | 2026 | CONV-150 (écrit) |
+| ESSAI-CONV-U12 | Stade | Contacts | 2026 | CONV-169 (écrit) |
+| ESSAI-CONV-U13 | Stade | Contacts | 2026 | CONV-151 (état Générée, voir plus bas) |
+| ESSAI-CONV-U14 | Stade | Contacts | 2026 | CONV-152 |
+| ESSAI-CONV-U15 | Stade | Contacts | 2026 | CONV-153 (écrit) |
+| ESSAI-CONV-U16 | Stade | Club Exemple | 2026 | CONV-156 (écrit) |
+| ESSAI-CONV-U17 | Stade | Club Exemple | 2026 | CONV-157 (écrit) |
+| ESSAI-CONV-U18 | Stade | Club Exemple | 2026 | CONV-158 (coupure réseau) |
+| ESSAI-CONV-U19 | Stade | Contacts | 2026 | CONV-159 (coupure réseau, écrit) |
+| ESSAI-CONV-U20 | Stade | Club Exemple | 2026 | CONV-160 (débit réduit, écrit) |
+| ESSAI-CONV-U21 | Stade | Club Exemple | 2027 | CONV-161 (écrit) |
+| ESSAI-CONV-U22 | Remob. | Club Exemple | 2026 | CONV-162 (écrit) |
+| ESSAI-CONV-U23 | Match | Club Exemple | 2028 | CONV-163 (écrit) |
+| ESSAI-CONV-U24 | Stade | Club Exemple | **vide** | CONV-164 (écrit) |
+| ESSAI-CONV-U25 | Stade | Contacts | 2026 | CONV-165 (écrit) |
+| ESSAI-CONV-U26 | Stade | Club Exemple Sans Adresse | 2026 | CONV-166 (écrit) |
+| ESSAI-CONV-U27 | Stade | Club Exemple | 2026 | CONV-167 (état Générée, écrit) |
+| ESSAI-CONV-U28 | Stade | Club Exemple | 2026, puis 2027 | CONV-168 (état Générée, écrit) |
+| ESSAI-CONV-U29 | Stade | Contacts | 2026 | CONV-170 (écrit) |
+| ESSAI-CONV-U30 | Stade | Contacts | 2026 | CONV-171 (FT Régional, vrai compte, écrit) |
+| ESSAI-CONV-U31 | Stade | Contacts | 2026 | CONV-172 (FT Départemental, vrai compte, écrit) |
+| ESSAI-CONV-U32 | Stade | Contacts | 2026 | CONV-176 (VoiceOver) |
+
+### Lignes Conventions à préparer (par un propriétaire du document)
+
+Même principe que R6 : « PDF fictif » = `convention-essai-fictif.pdf`. `PDF_genere` = PDF fictif, `Date_generation` = 14/10/2026 à 12:00 (midi, pour que la date reste la même), `PDF_signe` et `Date_depot` vides, `Modele` = le modèle actif de Du stade vers l'emploi.
+
+| Action | Signataire_club | Representant_agence | Fonction_representant |
+| --- | --- | --- | --- |
+| ESSAI-CONV-U13 | Lou Base-Exemple | Dominique Exemple | Directeur d'agence |
+| ESSAI-CONV-U27 | Alex Martin-Exemple | Dominique Exemple | Directeur d'agence |
+| ESSAI-CONV-U28 | Alex Martin-Exemple | Dominique Exemple | Directeur d'agence |
+
+Ne jamais renommer ni écrire à la main les colonnes `DR` et `DD` de `Conventions` ni de `Contacts`.
+
+### Contacts créés pendant les cas (à supprimer pour rejouer)
+
+À supprimer dans la fiche du club (widget clubs, suppression réelle), avec la ligne Conventions de l'action : « Nouveau-Exemple » (CONV-150), « Premier-Exemple » (CONV-155), « Reseau-Exemple » (CONV-159), « Malforme-Exemple » (CONV-153), « Signataire-Exemple » (CONV-165), « Persistant-Exemple » (CONV-169), « Unique-Exemple » (CONV-170), « Regional-Exemple » (CONV-171), « Departemental-Exemple » (CONV-172). **Ne doivent pas être créés** : « Garde-Exemple », « Source-Exemple », « Sansmail-Exemple », « Zoom-Exemple », « Annonce-Exemple », « Zoé » (CONV-148, 149, 151, 152, 176, 177) : s'ils apparaissent, c'est une anomalie.
+
+### Profils
+
+- Prérequis commun : le profil FT National est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai.
+- CONV-171 (FT Régional) et CONV-172 (FT Départemental) : **vrais comptes**, éditeurs, jamais propriétaires, profil complet, navigateur à part. **Pas de « Voir en tant que »** (fiche C41). Aucun compte n'est inventé ici : voir [À CONFIRMER] 11. Le compte FT Départemental réel est encore à préparer (backlog, Risques).
+
+## Provoquer les pannes réseau (CONV-158, 159, 160)
+
+Même méthode qu'en R4, R5 et R6, dans les outils du navigateur (F12), onglet **Réseau** :
+- **Coupure (CONV-158, 159)** : régler sur « Hors connexion » **juste avant** de cliquer sur « Fermer ». Attendre le message, **jusqu'à 2 minutes** (au-delà : KO). Le délai maximum de l'enregistrement (20 s d'après la fiche C51) n'est pas testé directement en code : noter le temps réel.
+- **Allonger la génération (CONV-160)** : débit « Slow 3G » ou « Fast 3G », case « Désactiver le cache » cochée, page rechargée avant.
+- **Dans tous les cas : remettre le réseau normal à la fin.** Aucun jeton Grist dans une fiche d'anomalie, une capture ou ce document.
+
+## Les 43 cas de R8
+
+Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`. **Aucun cas ne se rejoue en PROD** : ouvrir puis fermer la fenêtre écrit.
+
+### Ouverture de la fenêtre allégée (profil FT National)
+
+- **CONV-139 : fenêtre allégée complète** (Nominal, Bloquant, fumée) : sous-titre « Du stade vers l'emploi · Campagne 2026 », introduction, deux blocs, deux boutons, aucun astérisque, focus sur « Signataire ».
+- **CONV-140 : sous-titre Match et Remobilisation** (Nominal, Majeur).
+- **CONV-141 : campagne vide, dispositif seul** (Limite, Majeur).
+- **CONV-142 : club sans adresse, plus de blocage** (Limite, Majeur) : bouton actif, « Adresse : non renseignée ».
+
+### Blocs Club et Agence
+
+- **CONV-143 : encart Club, contenu exact** (Nominal, Majeur) : nom, SIRET, adresse sur une ligne, lecture seule, sans poignée.
+- **CONV-144 : SIRET manquant** (Limite, Majeur) : « SIRET : non renseigné ».
+- **CONV-145 : adresse longue, hauteur automatique** (Limite, Majeur).
+- **CONV-146 : bloc Agence, nom seul** (Nominal, Majeur).
+
+### Ajouter un contact
+
+- **CONV-147 : ouverture du formulaire, aucun champ obligatoire visible** (Nominal, Bloquant).
+- **CONV-148 : deuxième clic ferme sans rien perdre** (Nominal, Majeur).
+- **CONV-149 : choisir un contact vide la saisie libre** (Nominal, Majeur).
+- **CONV-150 : création réussie** (Nominal, Bloquant, fumée) : Contacts, Conventions, liste.
+- **CONV-151 : Nom vide, rien n'est créé** (Limite, Majeur).
+- **CONV-152 : Nom rempli, E-mail vide** (Erreur, Bloquant) : « Saisissez l'e-mail du nouveau signataire. »
+- **CONV-153 : E-mail mal formé, à la génération** (Erreur, Majeur) : « Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. »
+- **CONV-154 : club sans contact** (Limite, Majeur).
+- **CONV-155 : premier contact d'un club sans contact** (Limite, Majeur).
+
+### Fermeture et enregistrement silencieux
+
+- **CONV-156 : « Fermer » enregistre sans message** (Nominal, Bloquant, fumée).
+- **CONV-157 : Échap enregistre sans message** (Nominal, Majeur).
+- **CONV-158 : échec de l'enregistrement, second « Fermer »** (Erreur, Bloquant).
+- **CONV-159 : échec de création du contact, puis « Générer »** (Erreur, Majeur).
+- **CONV-160 : pendant la génération, deux boutons et formulaire verrouillés** (Limite, Majeur).
+
+### Génération avec les nouvelles données
+
+- **CONV-161 : PDF Du stade vers l'emploi, année de la Campagne, pointillés à 56** (Nominal, Bloquant, fumée).
+- **CONV-162 : PDF Parcours de remobilisation, sans année, « Fait à » à 56** (Nominal, Majeur).
+- **CONV-163 : PDF Match des métiers, année 2028, adresse de l'agence** (Nominal, Majeur).
+- **CONV-164 : Campagne vide, pointillés à la place de l'année** (Limite, Majeur).
+- **CONV-165 : signataire nouvellement créé dans le PDF** (Nominal, Bloquant).
+- **CONV-166 : tous les champs vides, aucun blocage** (Limite, Bloquant).
+- **CONV-167 : « Re-générer », fenêtre préremplie** (Nominal, Majeur).
+- **CONV-168 : la Campagne change, le sous-titre et le PDF suivent** (Limite, Majeur).
+
+### Persistance
+
+- **CONV-169 : après rechargement, la fenêtre et la fiche du club** (Persistance, Majeur).
+- **CONV-170 : un seul contact créé malgré plusieurs fermetures** (Persistance, Majeur).
+
+### Droits (vrais comptes, pas « Voir en tant que »)
+
+- **CONV-171 : FT Régional ajoute un contact et génère** (Droits, Bloquant, fumée).
+- **CONV-172 : FT Départemental ajoute un contact (chemin « Fermer ») et génère** (Droits, Bloquant).
+
+### Accessibilité et affichage
+
+- **CONV-173 : clavier, ordre de Tab, aria-expanded** (Majeur).
+- **CONV-174 : VoiceOver, ouverture et sous-titre** (Majeur).
+- **CONV-175 : VoiceOver, bouton et formulaire** (Majeur).
+- **CONV-176 : VoiceOver, message sous E-mail** (Majeur).
+- **CONV-177 : zoom 200 %** (Majeur).
+- **CONV-178 : mobile (375 px)** (Mineur).
+- **CONV-179 : deux colonnes à 1280 px** (Majeur).
+- **CONV-180 : le seuil de 1100 px** (Majeur) : 1193, 1150, 1100, 1099, 1000 px.
+- **CONV-181 : une colonne sous le seuil** (Majeur).
+
+## Tests de fumée de R8 (5 sur 43)
+
+- CONV-139 : la fenêtre allégée s'ouvre telle que décrite.
+- CONV-150 : un contact ajouté est créé et devient le signataire.
+- CONV-156 : « Fermer » enregistre en silence.
+- CONV-161 : le PDF porte l'année de la Campagne et les pointillés doublés.
+- CONV-171 : un vrai compte FT Régional ajoute un contact et génère.
+
+Au total, avec R1, R2, R4, R5 et R6 : 19 tests de fumée sur 181 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98, 106, 107, 128, 139, 150, 156, 161, 171). Parmi eux, CONV-19 et CONV-30 sont obsolètes (remplacés par CONV-139 et CONV-156) : **17 tests de fumée valables**.
+
+## Ordre conseillé pour jouer
+
+1. Créer les données (clubs, contacts, Campagnes, actions U1 à U32, lignes Conventions de U13, U27, U28).
+2. D'abord ce qui ne fait que regarder : CONV-139 à 149, 154, 173 à 181 (« Fermer » peut quand même écrire une ligne Conventions).
+3. Ensuite les écritures simples : CONV-150 à 153, 155 à 157, 161 à 166, 167, 168, 169, 170.
+4. Puis celles qui demandent un réglage du réseau : CONV-160, puis CONV-158 et 159 (remettre le réseau normal après chacun).
+5. Les vrais comptes : CONV-171 et 172, à tout moment.
+6. VoiceOver : CONV-174 à 176, dans une session à part.
+
+## Cas déjà couverts par un test en code
+
+`Automatisable = Oui` pour CONV-139 à 144, 146 à 157 et 160 à 166 ; `Non` pour CONV-145 (hauteur à l'écran), 158 et 159 (pannes réseau réelles), 167 à 181 (rechargement, droits, accessibilité, affichage). C'est **déclaratif** : d'après la fiche C56 (9 fichiers de test mis à jour, dont `test/convention-contact.test.js`, nouveau), mais je n'ai relu ni ces fichiers ni leurs noms. Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles.
+
+## Après une correction
+
+Rejouer le cas concerné, puis ses voisins (ouverture : CONV-139 à 142 ; blocs : CONV-143 à 146 ; ajouter un contact : CONV-147 à 155 ; fermeture : CONV-156 à 160 ; génération : CONV-161 à 168 ; persistance : CONV-169 et 170 ; droits : CONV-171 et 172 ; affichage : CONV-173 à 181), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur `conventionNomFichierAvec` ou sur la lecture de la Campagne touche aussi CONV-44 à 47 (R4) et CONV-109 à 112 (R6). Un changement dans le widget clubs touche CONV-169 (carte Contacts).
+
+## Rejouer en PROD
+
+**Aucun cas de R8 ne se rejoue en PROD.** Même les cas qui ne font que regarder ouvrent la fenêtre, et « Fermer » écrit dans Conventions ; les autres créent des contacts réels.
+
+## [À CONFIRMER] de R8
+
+1. **Campagnes** : les trois lignes `2026`, `2027` et `2028` existent-elles dans TEST, avec exactement ce texte ? Où se choisit la Campagne d'une action (cellule de la table Actions) ? La fiche d'une action ne permet pas de la modifier (CLAUDE.md).
+2. **Que fait « Fermer » quand rien n'a changé, ou quand la ligne Conventions n'existe pas ?** La note dit « à confirmer par dev-backend » (§3 « Ce qui est enregistré »). Si « Fermer » crée toujours une ligne (avec « Directeur d'agence » par défaut), toutes les actions U ouvertes puis fermées ont une ligne Conventions ; le bloc reste « Aucune convention générée. » parce que l'état suit les PDF (même question que R2, [À CONFIRMER] 2). Les cas qui contrôlent « aucune valeur écrite » (CONV-152, 158, 159) disent « aucune valeur de signataire » et non « aucune ligne ».
+3. **Forme du SIRET dans l'encart** : la note montre « 000 000 000 00000 » (avec espaces) ; mes attendus écrivent le SIRET sans espaces (« 12345678900012 »). Noter la forme réelle.
+4. **« Nom, SIRET et adresse sur une ligne »** (D-E1-1, backlog) : la note lit « l'adresse sur une ligne » et dessine trois lignes. J'ai écrit trois lignes. Si Hanta voulait tout sur une seule ligne, CONV-143, 144 et 145 sont à corriger.
+5. **Option « (nouveau contact) » quand le Prénom est vide** (CONV-148) et **quel signataire revient quand on vide le Nom** (CONV-149, étape 7) : la note ne décrit ni l'un ni l'autre. À noter à l'écran.
+6. **Compter les 56 points** : « 56 points » (D-E1-21) se compte en caractères « . » ou en points typographiques ? J'ai supposé des caractères. Méthode proposée : copier la ligne depuis le PDF dans un éditeur de texte. À valider par Hanta ; l'ancienne valeur était 28.
+7. **Largeur de référence du seuil de 1100 px** : la règle CSS s'applique probablement à la largeur du cadre du widget, pas à celle de la fenêtre du navigateur. Comment la mesurer (outils du navigateur, largeur de l'iframe) ? Et la hauteur de la fenêtre à deux colonnes n'a pas été mesurée par la note (« non vérifié ») : CONV-179 demande de noter si un défilement est nécessaire. La note UX du §3 dit encore 1200 px à plusieurs endroits : à corriger par le designer-ux.
+8. **Règle de forme de l'e-mail** : d'après `conventionEmailBienForme` (script.js, relu sans l'exécuter), « nom@exemple » (sans point) est accepté. Pas de cas écrit : à ajouter si Hanta veut que l'e-mail ait un point.
+9. **Campagne affichée pour Parcours de remobilisation** (CONV-140) : la note dit « [Dispositif] · Campagne [Campagne] » sans exception, alors que le modèle n'a pas d'année. J'ai écrit que le sous-titre porte la campagne dans ce cas.
+10. **Colonne `Annee` de Conventions et campagne qui n'est pas une année** : d'après `conventionLireAnnee`, `Annee` est lue depuis la Campagne à chaque enregistrement ; si elle est vide, `Annee` est vidée ; si ce n'est pas une année à quatre chiffres, `Annee` n'est pas écrite. Aucun cas ne contrôle la colonne `Annee`. Cas « 2026-2027 » : non écrit. À ajouter si Hanta le veut (avec une action ESSAI-CONV-U33).
+11. **Comptes réels** pour CONV-171 et 172 : quel compte FT Régional, quel compte FT Départemental (éditeurs, non propriétaires, profil complet) ? Les règles de `Contacts` (création) pour ces deux profils sont à vérifier dans TEST avant de jouer ; elles ont été vérifiées dans DEV7 (CLAUDE.md). Aucun compte n'est inventé ici.
+12. **« Fonction du signataire » avant toute saisie** (CONV-147) : la note dit lecture seule tant qu'une saisie libre n'est pas active (Nom vide). Écrit ainsi ; à confirmer à l'écran.
+13. **E-mail du signataire dans le PDF** (CONV-165) : la note dit qu'aucune case ne l'utilise, « à confirmer par dev-backend ». J'ai écrit qu'il n'apparaît pas.
+14. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
+15. **Compte du testeur « National »** : même question qu'en R1, R2, R4, R5 et R6 (vrai profil FT National, ou propriétaire du document ?).
+16. **Version testée** : le commit publié sur TEST n'est pas dans ce document (la demande dit « à préciser dans le carnet »). À noter par le testeur au début de la campagne.
