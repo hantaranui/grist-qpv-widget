@@ -822,12 +822,18 @@ test("index.html contient le conteneur #conventionModal de la fenêtre", () => {
 
 // Echoue si style.css ne declare plus l'une des classes de la fenetre ou du bouton
 // (convention-grid, convention-part, convention-champs, convention-actions, convention-soustitre,
-// convention-intro) ou la regle qui affiche la fenetre (la feuille du design system la masque par defaut).
-test("style.css déclare les classes de la fenêtre et du bouton, et affiche la fenêtre", () => {
+// convention-intro) ou la regle qui affiche la fenetre (la feuille du design system la masque par defaut),
+// ou si la regle n'affiche plus aussi la pop-up du PDF (#conventionPdfModal), si la classe
+// convention-pdf-plein-ecran n'a plus pleine largeur, pleine hauteur et aucune marge, ou si le cadre du PDF
+// n'a plus toute la largeur.
+test("style.css déclare les classes de la fenêtre et du bouton, et affiche la fenêtre ainsi que la pop-up plein écran du PDF", () => {
   for (const nom of ["convention-grid", "convention-part", "convention-champs", "convention-actions", "convention-soustitre", "convention-intro"]) {
     assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
   }
-  assert.match(CSS, /#conventionModal\s+\.modal\s*\{[^}]*display:\s*block/, "la fenêtre doit être affichée");
+  // Depuis l'evolution 2, la regle est partagee : « #conventionModal .modal, #conventionPdfModal .modal { display: block }».
+  assert.match(CSS, /#conventionModal\s+\.modal\s*,\s*#conventionPdfModal\s+\.modal\s*\{[^}]*display:\s*block/, "la fenêtre et la pop-up du PDF doivent être affichées");
+  assert.match(CSS, /#conventionPdfModal\s+\.convention-pdf-plein-ecran\s*\{[^}]*max-width:\s*none[^}]*width:\s*100%[^}]*height:\s*100%[^}]*margin:\s*0/, "la pop-up du PDF est en plein écran (pleine largeur, pleine hauteur, sans marge)");
+  assert.match(CSS, /\.convention-pdf-cadre\s*\{[^}]*width:\s*100%/, "le cadre du PDF prend toute la largeur");
 });
 
 // Echoue si le seuil de bascule a deux colonnes n'est plus 1100 px (D-E1-20, il etait de 1200 px),
