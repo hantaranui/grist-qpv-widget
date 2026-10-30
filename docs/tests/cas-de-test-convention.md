@@ -1250,12 +1250,12 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 - **CONV-139 : fenêtre allégée complète** (Nominal, Bloquant, fumée) : sous-titre « Du stade vers l'emploi · Campagne 2026 », introduction, deux blocs, deux boutons, aucun astérisque, focus sur « Signataire ».
 - **CONV-140 : sous-titre Match et Remobilisation** (Nominal, Majeur).
 - **CONV-141 : campagne vide, dispositif seul** (Limite, Majeur).
-- **CONV-142 : club sans adresse, plus de blocage** (Limite, Majeur) : bouton actif, « Adresse : non renseignée ».
+- **CONV-142 : club sans adresse, plus de blocage** (Limite, Majeur) : bouton actif, « adresse non renseignée » inséré dans la ligne unique de l'encart.
 
 ### Blocs Club et Agence
 
-- **CONV-143 : encart Club, contenu exact** (Nominal, Majeur) : nom, SIRET, adresse sur une ligne, lecture seule, sans poignée.
-- **CONV-144 : SIRET manquant** (Limite, Majeur) : « SIRET : non renseigné ».
+- **CONV-143 : encart Club, contenu exact** (Nominal, Majeur) : nom, SIRET (nu, sans « SIRET : »), adresse, le tout sur UNE SEULE ligne logique séparée par des virgules, lecture seule, sans poignée.
+- **CONV-144 : SIRET manquant** (Limite, Majeur) : « SIRET non renseigné » inséré dans la ligne unique (pas de « SIRET : »).
 - **CONV-145 : adresse longue, hauteur automatique** (Limite, Majeur).
 - **CONV-146 : bloc Agence, nom seul** (Nominal, Majeur).
 
@@ -1361,3 +1361,273 @@ Rejouer le cas concerné, puis ses voisins (ouverture : CONV-139 à 142 ; blocs 
 14. **Tests en code** : les noms exacts des tests, non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
 15. **Compte du testeur « National »** : même question qu'en R1, R2, R4, R5 et R6 (vrai profil FT National, ou propriétaire du document ?).
 16. **Version testée** : le commit publié sur TEST n'est pas dans ce document (la demande dit « à préciser dans le carnet »). À noter par le testeur au début de la campagne.
+
+---
+
+# Cas de test : Convention, voir le PDF dans une pop-up plein écran et le télécharger (R9, Évolution 2)
+
+**Brouillon écrit par le recetteur. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste. Les cas CONV-01 à CONV-181 ci-dessus n'ont pas été modifiés, mais **plusieurs sont devenus obsolètes ou à adapter** (liste plus bas).
+
+- Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » (boutons « Voir », « Télécharger ») et pop-up du PDF.
+- Branche : `feature/convention`. Évolution 2 : fiche C57 de REVIEW_LOG.md, décisions E2-1 à E2-11 de `docs/backlog.md`.
+- Référence : `docs/ux/convention.md`, **§14 (elle fait foi)** : 14.1 parcours, 14.2 bloc, 14.3 pop-up, 14.4 textes, 14.6 accessibilité, 14.10 risques. Les textes attendus en sont copiés mot pour mot.
+- Le fichier `cas-de-test-convention.tsv` contient les 41 cas de R9 (CONV-182 à CONV-222), à la suite des 181 de R1, R2, R4, R5, R6 et R8 : 222 lignes de cas, 18 colonnes.
+- Les actions de R9 s'appellent ESSAI-CONV-V1 à ESSAI-CONV-V10. **« V » veut dire « Évolution 2 »** : à ne pas confondre avec A, B, R, S, T et U.
+- **Règle pour tout le monde** : la pop-up couvre toute la fiche. Dans les cas anciens qui disent « cliquer sur Voir… et lire le PDF », il faut maintenant **fermer la pop-up (croix ou Échap) avant l'étape suivante**, sinon les boutons de la fiche sont cachés.
+
+## Ce qui a changé par rapport à R1, R2, R4, R5, R6 et R8
+
+| Avant | Maintenant (note §14) |
+| --- | --- |
+| « Voir la convention » ouvre un nouvel onglet, adresse « blob: », libérée après 60 secondes | une pop-up qui occupe tout le cadre du widget (pas l'écran de l'ordinateur), aucun onglet, aucune adresse visible |
+| Titre « Convention générée » / « Convention signée » | le nom exact du fichier est le seul titre |
+| Pied de page avec « Fermer » et « Télécharger » | pas de pied de page ; dans l'en-tête, à droite du titre : « Télécharger » puis la croix « ✕ » (nom accessible « Fermer ») |
+| Lien de repli « Ouvrir dans un nouvel onglet » | texte sans lien, toujours visible sous le PDF : « Le PDF ne s'affiche pas ? Utilisez « Télécharger ». » |
+| Fond assombri derrière la fenêtre | recommandé : plus de fond assombri (la pop-up recouvre tout) |
+| Fermeture : focus rendu à « Voir » | inchangé (« Voir la convention » ou « Voir la convention signée ») |
+| Aucun bouton « Télécharger » | DEUX boutons « Télécharger », indépendants : dans le bloc (sans ouvrir la pop-up) et dans la pop-up (après consultation) |
+| Rangée du bloc, état Générée : Voir · Re-générer · Déposer | Voir · **Télécharger** · Re-générer · Déposer |
+| Rangée du bloc, état Signée : Voir signée, puis Remplacer en dessous | Voir signée · **Télécharger**, puis Remplacer en dessous |
+| Texte caché de « Voir » : « (s'ouvre dans un nouvel onglet) » | « (s'ouvre dans une fenêtre) » |
+
+## Cas volontairement non écrits
+
+1. **Libération de l'adresse « blob: » à la fermeture et vidage de l'aperçu** : non observable à l'écran. CONV-197 et CONV-203 vérifient seulement que tout refonctionne après une fermeture. Fait pour le test en code (fiche C57, non relue).
+2. **Échec du « Télécharger » de la pop-up** : il n'y en a pas de récupération à faire (le PDF est déjà en mémoire, note §14.3). Aucun message n'est prévu. Seul l'échec du « Télécharger » du bloc se joue (CONV-195).
+3. **Changement de fiche pendant que la pop-up est ouverte** (note §14.10 n° 4) : la pop-up couvre la fiche, on ne peut pas changer de fiche à l'écran.
+4. **FT National hors périmètre, FT Régional ou Départemental hors périmètre, ANS** : l'action n'est pas visible, donc « Voir » et « Télécharger » ne sont pas atteignables ; le profil ANS (lecture seule) n'est pas écrit faute de précision dans la note. À ajouter si Hanta le veut.
+5. **Nom du fichier quand le club ou le dispositif a été renommé depuis la génération** : la note dit « accepté » (le nom suit les données actuelles).
+6. **Mode sombre** : à traiter à part pour tout le tableau de bord (comme en R5, R6 et R8).
+7. **Vrai plein écran de l'ordinateur** : hors du périmètre d'E2-11 (note §14.3).
+
+## Cas anciens (CONV-01 à 181) devenus obsolètes ou à adapter
+
+Ces cas ne sont **ni supprimés ni modifiés** dans le fichier `.tsv`. La recherche a été faite par lecture du `.tsv` (mots « onglet », « blob », « Voir la convention », « 60 s »), sans rien exécuter : un cas oublié est possible.
+
+**R1 et R2 (CONV-01 à 43) : aucun cas ne teste « Voir » ni « Télécharger ».** **R8 (CONV-139 à 181) : aucun cas obsolète** ; CONV-161 à 168, 171 et 172 disent seulement « Voir la convention et lire le PDF » (voir D). **Aucun cas ne mentionne le délai de 60 secondes** (recherche sans résultat).
+
+### A. Obsolètes : ne plus les jouer (4 cas)
+
+| Cas | Pourquoi | Remplacé par |
+| --- | --- | --- |
+| CONV-68 (R4) | exige un nouvel onglet dont l'adresse commence par « blob: » ; « Si le navigateur bloque l'onglet… » | CONV-182 (ouverture), CONV-208 (adresse), CONV-192 (« Télécharger » du bloc) |
+| CONV-69 (R4) | « aucun onglet vide ne reste ouvert » ; à l'étape 5 « le PDF s'ouvre dans un nouvel onglet » | CONV-207 |
+| CONV-122 (R6) | exige un nouvel onglet « blob: » pour le PDF signé | CONV-184 (ouverture), CONV-208 (adresse) |
+| CONV-123 (R6) | l'étape 5 et l'attendu parlent d'un « onglet blob: » ouvert pendant l'envoi | CONV-217 |
+
+### B. Partiellement obsolètes : une étape ou une phrase est fausse, le reste vaut (13 cas)
+
+| Cas | Ce qui est à corriger | Cas de remplacement pour la partie obsolète |
+| --- | --- | --- |
+| CONV-44 (R4) | étape 7 et attendu : « le PDF s'ouvre dans un nouvel onglet » ; lire dans la pop-up puis la fermer | CONV-182, CONV-188 |
+| CONV-71, CONV-72 (R4) | « Le PDF s'ouvre dans un nouvel onglet » (droits de la génération) | CONV-211, CONV-212 (droits de « Voir ») |
+| CONV-73 (R4) | « Entrée l'active et ouvre le PDF dans un nouvel onglet » ; l'ordre de Tab du bloc a un bouton de plus | CONV-218 |
+| CONV-75 (R4) | annonce « Voir la convention (s'ouvre dans un nouvel onglet), bouton » | CONV-219 |
+| CONV-81, CONV-98, CONV-99 (R5) | « Le PDF s'ouvre dans un nouvel onglet » | CONV-215 (re-génération), CONV-211, CONV-212 |
+| CONV-107 (R6) | étape 2 « fermer l'onglet » : fermer la pop-up | CONV-184, CONV-200 |
+| CONV-128 (R6) | « Le PDF s'ouvre dans un nouvel onglet (scan A) » | CONV-216 |
+| CONV-133 (R6) | étapes 4 et 6 « adresse de l'onglet » et attendu « onglets… « blob: » » ; la partie console et jeton reste valable | CONV-208, CONV-210 |
+| CONV-135, CONV-136 (R6) | VoiceOver : « (s'ouvre dans un nouvel onglet) » ; le bloc a un bouton « Télécharger » de plus | CONV-219, CONV-220 |
+
+### C. À adapter : le bloc a un bouton « Télécharger » juste après « Voir »
+
+Les attendus qui listent les boutons du bloc dans l'ordre (ou comptent « trois boutons ») sont à corriger : CONV-80, 97, 101, 102, 105, 106, 120, 131, 132, 134, 137, 138. Le contrôle principal reste valable. CONV-102 : l'annonce attendue est maintenant « Voir la convention (s'ouvre dans une fenêtre), bouton ».
+
+### D. À relire : fermer la pop-up avant l'étape suivante
+
+Cas dont une étape dit « cliquer sur Voir… et lire le PDF » : CONV-45 à 52, 70, 82, 83, 85, 88, 89, 91 à 96, 109, 120, 124 à 126, 129, 131, 132, 161 à 168, 171, 172. Le contrôle ne change pas ; ajouter « puis fermer la pop-up » après la lecture.
+
+## Données d'essai de R9 à créer dans TEST avant de jouer
+
+Données fictives uniquement (exemple.fr). Aucun nom de document Grist, aucune adresse réelle. **Les données de R1, R2, R4, R5, R6 et R8 restent en place.** On réutilise le Club Exemple, « Club Exemple Adresse Longue » (créé en R8), « Étoile & Cœur FC » (créé en R4), l'agence d'essai et le modèle actif de chaque dispositif. **Aucun club, contact, agence ou Campagne nouveau.**
+
+### Réponse sur les actions ESSAI-CONV-U1 à U32
+
+**Je ne les réutilise pas**, pour trois raisons :
+1. La plupart n'ont **aucune ligne dans Conventions** ou ont été **écrites par R8** (« Fermer » enregistre, la colonne `Annee` est relue depuis la Campagne). Seules U13, U27 et U28 sont à l'état Générée.
+2. **U13, U27 et U28 ne fixent pas `Annee`** dans leur ligne préparée : le nom de fichier attendu en titre ne serait pas certain. U27 et U28 sont en plus re-générées par R8 (le PDF n'est plus le PDF fictif).
+3. Il faut aussi des actions **Signées**, un PDF **de 4 pages**, un PDF **illisible** et des actions qui **écrivent** : aucune U ne convient.
+
+À la place : **10 nouvelles actions ESSAI-CONV-V1 à V10.** Les actions T8 et T9 de R6 (jamais modifiées) pourraient servir en lecture seule, mais je ne les utilise pas, pour que R9 ne dépende pas de R6.
+
+### Fichiers d'essai
+
+Ceux de R6 suffisent, sauf un nouveau fichier :
+
+| Fichier | Ce que c'est | Sert aux cas |
+| --- | --- | --- |
+| `convention-essai-fictif.pdf` (R6) | le « PDF fictif » : « Convention d'essai, données fictives » | 182 à 184 et la plupart des autres |
+| `signe-ancien-fictif.pdf` (R6) | « Ancienne convention signée d'essai, données fictives » : dans `PDF_signe` des actions Signées | 184, 190, 193, 200, 201, 216, 217 |
+| `scan-signe-fictif-B.pdf` (R6) | « Convention signée d'essai B, données fictives » : à choisir | 216 |
+| `lent-1Mo.pdf` (R6) | copie de `scan-signe-fictif-A.pdf` d'environ 1 Mo : à choisir | 217 |
+| `faux-pdf-texte.pdf` (R6) | quelques mots de texte brut dans un fichier nommé `.pdf` : dans `PDF_genere` de V7 | 206 |
+| **`convention-essai-4pages.pdf` (NOUVEAU)** | un PDF fictif de 4 pages ; chaque page porte « Page N sur 4, données fictives » | 188 |
+
+Le fichier de 4 pages est à préparer par Hanta (par exemple en imprimant en PDF un document fictif de 4 pages). Je n'ai lancé aucune commande et n'en propose pas ([À CONFIRMER] 5).
+
+### Lignes Conventions à préparer (par un propriétaire du document)
+
+Même principe que R6 (voir « Deux lignes `Conventions` types »), avec ces valeurs : `Modele` = le modèle actif du dispositif ; `Annee` = 2026 ; `Signataire_club` = un contact du club ; `Representant_agence` = Dominique Exemple ; `Fonction_representant` = Directeur d'agence ; `Date_generation` = 14/10/2026 à 12:00 ; `PDF_genere` = PDF fictif (sauf V6 et V7) ; pour une action Signée : `PDF_signe` = `signe-ancien-fictif.pdf` et `Date_depot` = 20/10/2026 à 12:00 ; pour une action Générée : `PDF_signe` et `Date_depot` vides. Ne jamais renommer ni écrire à la main les colonnes `DR` et `DD` de `Conventions`.
+
+### Actions d'essai (Corbeille = non, Campagne 2026, agence d'essai)
+
+Stade = Du stade vers l'emploi ; Match = Match des métiers. **Les actions « lecture » ne sont jamais modifiées** (« Voir » et « Télécharger » ne font que lire) : si l'une change, c'est une anomalie. N'ouvrir JAMAIS la fenêtre « Convention » d'une action V (« Fermer » écrit, voir R8).
+
+| Intitulé | Dispositif | Club | État au départ | Titre / nom de fichier attendu | Sert au cas |
+| --- | --- | --- | --- | --- | --- |
+| ESSAI-CONV-V1 | Stade | Club Exemple | Générée | Convention-Stade-emploi-Club-Exemple-2026.pdf | la plupart des cas (lecture) |
+| ESSAI-CONV-V2 | Stade | Club Exemple | Signée | Convention-signee-Stade-emploi-Club-Exemple-2026.pdf | 184, 190, 193, 200, 201, 208, 211, 212, 214, 220 (lecture) |
+| ESSAI-CONV-V3 | Match | Club Exemple | Générée | Convention-Match-metiers-Club-Exemple-2026.pdf (forme à noter) | 183, 196, 197 (lecture) |
+| ESSAI-CONV-V4 | Match | Étoile & Cœur FC | Signée | Convention-signee-Match-metiers-Etoile-Coeur-FC-2026.pdf | 185 (lecture) |
+| ESSAI-CONV-V5 | Stade | Club Exemple Adresse Longue | Générée | Convention-Stade-emploi-Club-Exemple-Adresse-Longue-2026.pdf (forme à noter) | 185 (lecture) |
+| ESSAI-CONV-V6 | Stade | Club Exemple | Générée, `PDF_genere` = `convention-essai-4pages.pdf` | Convention-Stade-emploi-Club-Exemple-2026.pdf | 188 (lecture) |
+| ESSAI-CONV-V7 | Stade | Club Exemple | Générée, `PDF_genere` = `faux-pdf-texte.pdf` | Convention-Stade-emploi-Club-Exemple-2026.pdf | 206 (lecture) |
+| ESSAI-CONV-V8 | Stade | Club Exemple | Générée | idem | 215 (**écrit**, re-génération) |
+| ESSAI-CONV-V9 | Stade | Club Exemple | Signée | Convention-signee-Stade-emploi-Club-Exemple-2026.pdf | 216 (**écrit**, remplacement) |
+| ESSAI-CONV-V10 | Stade | Club Exemple | Signée | idem | 217 (**écrit**, remplacement lent) |
+
+**Pour rejouer** un cas qui écrit : remettre la ligne `Conventions` à son état de départ (V8 : PDF fictif et 14/10/2026 à 12:00 ; V9 et V10 : `signe-ancien-fictif.pdf` et 20/10/2026 à 12:00) ou recréer l'action.
+
+### Profils
+
+- Prérequis commun : le profil FT National est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai.
+- CONV-211 (FT Régional) et CONV-212 (FT Départemental) : **vrais comptes**, éditeurs, jamais propriétaires, profil complet, navigateur à part. **Pas de « Voir en tant que »** (fiche C41). Aucun compte n'est inventé ici : voir [À CONFIRMER] 6.
+- CONV-214, 215, 216 : un compte **propriétaire** du document pour lire les tables.
+
+## Navigateurs
+
+La note (§14.10 n° 1 et 2) demande d'essayer le téléchargement et l'aperçu dans **Chrome, Firefox et Safari** avant de livrer. Jouer au minimum **CONV-182, 189, 190, 192, 206 et 209 dans les trois**, et noter pour chacun : le nom du fichier obtenu, ce que montre le cadre du PDF, la barre d'état.
+
+## Provoquer les pannes réseau (CONV-194, 195, 204, 207, 217)
+
+Même méthode qu'en R4, R5 et R6, dans les outils du navigateur (F12), onglet **Réseau** :
+- **Blocage (CONV-195, 207)** : bloquer les requêtes de téléchargement d'une pièce jointe (adresse qui contient « download », comme CONV-69), puis **recharger la page**. Si rien n'est bloqué, l'adresse choisie est fausse : la relire sans copier le jeton.
+- **Ralentir (CONV-194, 204)** : débit « Slow 3G », case « Désactiver le cache » cochée, page rechargée avant.
+- **Allonger l'envoi (CONV-217)** : débit « Fast 3G » avec `lent-1Mo.pdf` (voir CONV-123).
+- **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Aucun jeton Grist dans une fiche d'anomalie, une capture ou ce document.
+
+## Les 41 cas de R9
+
+Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
+
+### Ouverture et affichage de la pop-up (profil FT National)
+
+- **CONV-182 : ouverture plein cadre, état Générée** (Nominal, Bloquant, fumée) : pas de bande, pas de fond assombri, aucun onglet.
+- **CONV-183 : titre = nom exact du fichier** (Nominal, Majeur).
+- **CONV-184 : ouverture, état Signée** (Nominal, Bloquant).
+- **CONV-185 : titre long, accents et « & »** (Limite, Mineur).
+- **CONV-186 : widget peu haut** (Limite, Majeur).
+- **CONV-187 : en-tête, Télécharger puis croix, pas de pied de page** (Nominal, Majeur).
+- **CONV-188 : lecture d'un PDF de 4 pages** (Nominal, Majeur).
+- **CONV-204 : double clic sur « Voir », une seule pop-up** (Limite, Majeur).
+
+### Télécharger
+
+- **CONV-189 : « Télécharger » de la pop-up, PDF généré, bon nom** (Nominal, Bloquant, fumée).
+- **CONV-190 : « Télécharger » de la pop-up, PDF signé, bon nom** (Nominal, Bloquant).
+- **CONV-191 : deux téléchargements de suite, l'aperçu reste** (Limite, Majeur).
+- **CONV-192 : « Télécharger » du bloc sans ouvrir « Voir »** (Nominal, Bloquant, fumée).
+- **CONV-193 : « Télécharger » du bloc, état Signée** (Nominal, Majeur).
+- **CONV-194 : téléchargement lent, un seul fichier, « Voir » reste utilisable** (Limite, Majeur).
+- **CONV-195 : échec du « Télécharger » du bloc** (Erreur, Majeur).
+
+### Coexistence des deux boutons « Télécharger »
+
+- **CONV-196 : bloc, puis pop-up** (Nominal, Majeur).
+- **CONV-197 : pop-up, fermeture, puis bloc** (Limite, Majeur).
+
+### Fermeture
+
+- **CONV-198 : la croix, focus sur « Voir la convention »** (Nominal, Bloquant, fumée).
+- **CONV-199 : Échap, focus sur « Voir la convention »** (Nominal, Majeur).
+- **CONV-200 : la croix, focus sur « Voir la convention signée »** (Nominal, Majeur).
+- **CONV-201 : Échap, focus sur « Voir la convention signée »** (Nominal, Majeur).
+- **CONV-202 : focus dans le PDF, Échap ne ferme pas (constat)** (Limite, Mineur).
+- **CONV-203 : réouverture trois fois** (Limite, Majeur).
+
+### Échec d'affichage et de récupération
+
+- **CONV-205 : texte de repli toujours visible, sans aucun lien** (Nominal, Majeur).
+- **CONV-206 : PDF illisible (V7)** (Erreur, Majeur).
+- **CONV-207 : récupération impossible, aucune pop-up, alerte** (Erreur, Majeur).
+
+### Sécurité à l'écran
+
+- **CONV-208 : barre d'adresse jamais « blob: » ni « github.io »** (Nominal, Bloquant).
+- **CONV-209 : barre d'état vide au survol** (Nominal, Majeur).
+- **CONV-210 : console sans jeton, aucun lien dans la pop-up** (Nominal, Bloquant).
+
+### Droits (vrais comptes, pas « Voir en tant que »)
+
+- **CONV-211 : FT Régional, « Voir » et « Télécharger »** (Droits, Bloquant, fumée).
+- **CONV-212 : FT Départemental, « Voir » et « Télécharger »** (Droits, Bloquant).
+
+### Persistance
+
+- **CONV-213 : rechargement avec la pop-up ouverte** (Persistance, Majeur).
+- **CONV-214 : « Voir » et « Télécharger » n'écrivent rien** (Persistance, Majeur).
+- **CONV-215 : après une re-génération, la pop-up et les fichiers suivent** (Persistance, Majeur).
+- **CONV-216 : après un remplacement du fichier signé, idem** (Persistance, Majeur).
+- **CONV-217 : « Voir » signée pendant un remplacement en cours** (Limite, Majeur).
+
+### Accessibilité et affichage
+
+- **CONV-218 : clavier, ordre de Tab, focus à l'ouverture** (Majeur).
+- **CONV-219 : VoiceOver, état Générée** (Majeur).
+- **CONV-220 : VoiceOver, état Signée** (Majeur).
+- **CONV-221 : zoom 200 %** (Majeur).
+- **CONV-222 : mobile (375 px)** (Mineur).
+
+## Tests de fumée de R9 (5 sur 41)
+
+- CONV-182 : la pop-up s'ouvre en plein cadre, avec le bon titre.
+- CONV-189 : « Télécharger » de la pop-up enregistre le fichier avec son vrai nom.
+- CONV-192 : « Télécharger » du bloc enregistre le fichier sans ouvrir la pop-up.
+- CONV-198 : la croix ferme et rend le focus à « Voir ».
+- CONV-211 : un vrai compte FT Régional utilise « Voir » et « Télécharger ».
+
+Au total, avec R1, R2, R4, R5, R6 et R8 : 24 tests de fumée sur 222 cas. Parmi eux, CONV-19, CONV-30 et CONV-68 sont obsolètes : **21 tests de fumée valables**, dont 6 à adapter (CONV-44, 71, 81, 98, 107, 128, voir B).
+
+## Ordre conseillé pour jouer
+
+1. Créer les données (actions V1 à V10, leurs lignes Conventions, le fichier de 4 pages, `faux-pdf-texte.pdf` dans V7).
+2. D'abord ce qui ne fait que regarder : CONV-182 à 188, 205, 208, 209, 213.
+3. Les téléchargements : CONV-189 à 193, 196, 197 (supprimer les fichiers téléchargés ensuite).
+4. La fermeture : CONV-198 à 203.
+5. Les réglages du réseau : CONV-194, 195, 204, 207, puis 217 (remettre le réseau normal après chacun).
+6. Les cas qui écrivent : CONV-215, 216 (CONV-217 avec le réseau).
+7. Les contrôles d'un propriétaire : CONV-210, 214.
+8. Les vrais comptes : CONV-211 et 212, à tout moment.
+9. VoiceOver : CONV-219 et 220, dans une session à part. Puis clavier, zoom et mobile : CONV-218, 221, 222.
+
+## Cas déjà couverts par un test en code
+
+`Automatisable = Oui` pour CONV-182, 183, 184, 187, 189, 190, 192, 193, 195, 198 à 201, 205 et 207 ; `Non` pour les autres (rendu et taille dans Grist, droits réels, pannes réseau réelles, navigateurs, accessibilité, persistance). C'est **déclaratif** : d'après la fiche C57 (« pop-up plein écran, bouton Télécharger : 22 tests, 25 mis à jour »), mais je n'ai relu ni ces fichiers ni leurs noms. Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni le téléchargement réel par le navigateur.
+
+## Après une correction
+
+Rejouer le cas concerné, puis ses voisins (ouverture : CONV-182 à 188 ; téléchargement : CONV-189 à 195 ; coexistence : CONV-196 et 197 ; fermeture : CONV-198 à 204 ; échecs : CONV-205 à 207 ; sécurité : CONV-208 à 210 ; droits : CONV-211 et 212 ; persistance : CONV-213 à 217 ; accessibilité : CONV-218 à 222), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur `conventionNomFichier` ou `conventionNomFichierSigne` touche aussi CONV-44 à 47 (R4) et CONV-109 à 112 (R6). Un changement sur le verrou de « Voir » touche CONV-123 et CONV-124 (R6).
+
+## Rejouer en PROD
+
+**Aucun cas de R9 ne se rejoue en PROD par défaut** : la pop-up et les téléchargements montrent de vrais PDF (noms, signatures manuscrites du PDF signé), et plusieurs cas enregistrent des fichiers sur le poste. Si Hanta veut une vérification en PROD, la limiter à CONV-182 et CONV-198 sur une convention déjà générée (le PDF généré porte des noms de personnes), avec son accord : [À CONFIRMER] 14.
+
+## [À CONFIRMER] de R9
+
+1. **Plein écran et fond assombri** : la note laisse à dev-interface le choix de la classe plein écran et recommande de ne plus insérer le fond assombri. Je n'ai pas relu le code. CONV-182 et CONV-186 décrivent ce que la note veut obtenir (pas de bande, pas de fond gênant) ; noter ce qui est vu.
+2. **Forme exacte du titre** pour Match des métiers en 2026 (V3) et pour le club « Club Exemple Adresse Longue » (V5) : déduite du motif des noms déjà vus dans R4, R5 et R6. Noter la forme réelle.
+3. **Info-bulle « Fermer » de la croix** : facultative dans la note (`title` « peut être ajouté »). Son absence n'est pas une anomalie (CONV-187).
+4. **Comment régler la hauteur et la largeur du widget** (CONV-186, 221, 222) : dans la page Grist ? Dans les outils du navigateur ? À décrire par Hanta.
+5. **PDF de 4 pages** (CONV-188) : à préparer par Hanta. Je n'ai lancé aucune commande.
+6. **Comptes réels** pour CONV-211 et 212 : quel compte FT Régional, quel compte FT Départemental (éditeurs, non propriétaires, profil complet) ? Les règles d'accès de `Conventions` pour ces deux profils sont à vérifier dans TEST avant de jouer. Le compte FT Départemental réel est encore à préparer (CLAUDE.md). Aucun compte n'est inventé ici.
+7. **Provoquer l'échec d'affichage** (CONV-206) : le fichier de texte brut nommé `.pdf` est la seule méthode proposée. Ce que montre chaque navigateur varie. D'autres moyens (réglage « télécharger les PDF » de Chrome, téléphone) n'ont pas été vérifiés : à essayer et à noter.
+8. **Barre d'état dans Safari** (CONV-209) : elle est masquée par défaut ; la manière de l'afficher n'a pas été vérifiée ici. À décrire par la personne qui teste.
+9. **Après rechargement, la pop-up ne se rouvre pas** (CONV-213) : la note ne le dit pas explicitement ; c'est le comportement attendu d'une fenêtre ouverte par un clic. À confirmer.
+10. **Où lire le nombre de pièces jointes du document** (CONV-214) : je ne sais pas où le voir dans Grist. À indiquer par Hanta ; à défaut, vérifier seulement le contenu des cellules `PDF_genere` et `PDF_signe`.
+11. **Alerte « Convention signée enregistrée. » pendant que la pop-up est ouverte** (CONV-217) : la note ne décrit ni son affichage ni son annonce dans ce cas. À noter à l'écran.
+12. **Contour de focus sur la fenêtre à l'ouverture** (CONV-218) : la note met le focus sur la fenêtre (`tabindex="-1"`), sans dire si un contour est visible. À noter.
+13. **Téléphone réel** (CONV-222) : le mode appareil d'un ordinateur ne reproduit pas la visionneuse PDF d'un téléphone. Quel appareil, quel navigateur ?
+14. **PROD** : accord de Hanta nécessaire avant tout essai (données réelles).
+15. **Tests en code** : les noms exacts des tests (fiche C57, 22 tests, 25 mis à jour), non relus, sont à ajouter dans la colonne `Remarques` si on veut la même précision qu'en R2.
+16. **Compte du testeur « National »** et **version testée** : mêmes questions qu'en R1 à R8 (vrai profil FT National ou propriétaire ? commit publié sur TEST ?). À noter par le testeur au début de la campagne.
+17. **Ancien cas de la liste B ou C non repéré** : la recherche a été faite à la lecture du texte, sans exécution. Si un cas oublié mentionne « Voir », le signaler.
