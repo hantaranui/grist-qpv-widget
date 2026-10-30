@@ -20,6 +20,8 @@
 
 **Mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)** : cinq décisions du backlog (D-E1-15 à D-E1-19, section « Évolution 1 », qui fait foi) : (1) **D-E1-15** : la ligne dépliante `<details>` « Le contact n'est pas dans la liste : l'ajouter » est remplacée par un **bouton secondaire « Ajouter un contact »**, sous la liste « Signataire », qui ouvre le petit formulaire (Nom, Prénom, E-mail, Fonction) à son clic ; il se referme par **un autre clic sur le même bouton** (confirmé par Hanta, mis à jour le 2026-10-29 (E1, réponses de Hanta)) ; (2) **D-E1-16** : les deux textes d'aide (« * Nécessaires pour ajouter ce contact. » et la consigne « coordonnées professionnelles ») sont **retirés** ; il n'en reste aucun dans le formulaire ; le contrôle de forme de l'e-mail reste ; (3) **D-E1-17** : **plus aucun astérisque ni `required`**, y compris sur Nom et E-mail ; Nom vide : rien n'est créé ; Nom rempli et E-mail vide ou mal formé : le message d'erreur existant sous E-mail, sans jamais bloquer la saisie ; (4) **D-E1-18** : **espacement généreux** entre Nom, Prénom, E-mail et Fonction, comme dans les autres formulaires de la fenêtre ; (5) **D-E1-19** : l'encart Club (lecture seule) **n'a plus de poignée de redimensionnement** et sa hauteur suit son contenu, sans espace vide. Les passages changés portent la mention « mis à jour le 2026-10-29 (E1, bouton Ajouter un contact) » ; ils sont dans le §3 (corps, bloc Club, ligne remplacée par le bouton, cas d'échec, contrôle de forme), le §6 (états), le §7 (accessibilité, données personnelles), le §8 (composants, classes) et le §10 (D-E1-2, D-E1-14, Q-M1 à Q-M8, nouvelles lignes D-E1-15 à D-E1-19). **Dans les passages plus anciens, « ligne dépliante » se lit désormais « formulaire du bouton Ajouter un contact » (même emplacement, même rôle).** La D-E1-2 (élément `<details>`) est remplacée.
 
+**Ajouté le 2026-10-30 (E2)** : nouvelle section §14 « Voir le PDF dans une pop-up et le télécharger avec son vrai nom » (backlog, Évolution 2, E2-1 à E2-4, qui fait foi). **« Voir la convention » et « Voir la convention signée » n'ouvrent plus de nouvel onglet : ils ouvrent une pop-up dans le widget** ; un bouton « Télécharger » est ajouté dans le bloc et dans la pop-up. Là où le §2 parle d'un « nouvel onglet » pour « Voir », le §14 l'emporte. Trois questions tranchées par Hanta le 2026-10-30, voir §14.9.
+
 **Mis à jour le 2026-10-29 (E1, phrase d'introduction corrigée)** : réponses de Hanta à trois questions de la mise à jour précédente. (1) La fermeture du formulaire par un second clic sur « Ajouter un contact » est **confirmée**. (2) La phrase « Ce contact sera ajouté à la fiche du club. » est **gardée telle quelle**, sous « Fonction du signataire ». (3) La **phrase d'introduction** de la fenêtre (§3 « Corps », §5 « Textes », §10 Q-M2) devient « Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature. », **sans exception ni « sauf »** : plus aucune référence à un cas où quelque chose serait obligatoire.
 
 Public : le chef (pour décider), puis dev-interface (pour coder). Maquette à ouvrir dans le navigateur : [maquette-convention.html](maquette-convention.html).
@@ -170,7 +172,7 @@ Structure et comportement repris de la fenêtre « Ajout d'une action » (script
 
 **Taille : `modal-xl`**, la plus large taille du design system. Dans la feuille du CDN : 800 px de large entre 992 et 1199 px d'écran, puis 1164 px à partir de 1200 px (la feuille contient deux règles pour `.modal-xl`, 1140 px et 1164 px : à vérifier à l'écran). On garde `modal-dialog-scrollable` comme filet : si l'écran est trop court, le corps défile et les boutons restent visibles.
 
-**Disposition (mis à jour le 2026-10-29 (E1)) : deux blocs, côte à côte.** Il n'y a plus de colonne « Informations relatives à la convention », ni de champ « Modèle utilisé », ni de champ « Année » (l'année vient de `Actions.Campagne`, voir « Titre et sous-titre » ci-dessous). Les blocs sont : **1. Club** (à gauche) et **2. Agence** (à droite), chacun dans un `fieldset` avec une `legend` en `form-legend`. Ordre de lecture = ordre visuel : sous-titre, phrase d'introduction, bloc Club, bloc Agence, pied. Deux colonnes à partir de 1200 px (seuil inchangé), une colonne en dessous, la fenêtre défile alors. La hauteur est plus faible qu'avec trois colonnes, mais je ne l'ai pas mesurée : **non vérifié**. Avant l'E1 : trois colonnes (mises à jour du 2026-10-23, remplacées ici).
+**Disposition (mis à jour le 2026-10-29 (E1)) : deux blocs, côte à côte.** Il n'y a plus de colonne « Informations relatives à la convention », ni de champ « Modèle utilisé », ni de champ « Année » (l'année vient de `Actions.Campagne`, voir « Titre et sous-titre » ci-dessous). Les blocs sont : **1. Club** (à gauche) et **2. Agence** (à droite), chacun dans un `fieldset` avec une `legend` en `form-legend`. Ordre de lecture = ordre visuel : sous-titre, phrase d'introduction, bloc Club, bloc Agence, pied. Deux colonnes à partir de **1100 px** (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne) ; D-E1-20 du backlog, le seuil de 1200 px était trop haut), une colonne en dessous, la fenêtre défile alors. La hauteur est plus faible qu'avec trois colonnes, mais je ne l'ai pas mesurée : **non vérifié**. Avant l'E1 : trois colonnes (mises à jour du 2026-10-23, remplacées ici).
 
 **Titre et sous-titre (mis à jour le 2026-10-29 (E1)).** Titre (h2, `modal-title`) : « Convention », inchangé. **Le dispositif et l'année vont dans un sous-titre**, un simple `<p>` placé **dans l'en-tête de la fenêtre (`modal-header`), sous le titre « Convention »** (mis à jour le 2026-10-29 (E1, Q-M3 tranchée) : il n'est plus dans le corps ; il précède donc toujours la phrase d'introduction), au format « [Dispositif] · Campagne [Campagne] », par exemple « Du stade vers l'emploi · Campagne 2026 ». Le dispositif est celui de l'action ; la campagne est `Actions.Campagne` (référence vers `Campagnes.Campagne`, texte), jamais demandée à l'agent. Si la campagne est vide : le dispositif seul. Pas de classe nouvelle. Le sous-titre est lié à la fenêtre par `aria-describedby` sur le `div` `role="dialog"` : le lecteur d'écran lit « Convention », puis le sous-titre. Je n'ai pas lu de composant « sous-titre de fenêtre » du design system : **non vérifié**, je n'en fabrique pas.
 
@@ -220,17 +222,15 @@ Règles :
 
 Le bloc Club contient, dans cet ordre : l'encart du club (lecture seule), le choix du signataire, le bouton « Ajouter un contact » et son formulaire (fermé par défaut), la fonction du signataire (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)).
 
-**Encart du club : un seul encart en lecture seule** (remplace les trois champs « Nom du club », « SIRET » et « Siège »). Un seul `textarea class="form-control" readonly` (composant du §8, page de la zone de texte non lue : **non vérifié**), libellé « Club », `rows="3"` (hauteur de départ seulement : voir « Hauteur de l'encart » plus bas, D-E1-19), de trois lignes :
+**Encart du club : un seul encart en lecture seule** (remplace les trois champs « Nom du club », « SIRET » et « Siège »). Un seul `textarea class="form-control" readonly` (composant du §8, page de la zone de texte non lue : **non vérifié**), libellé « Club », `rows="3"` (hauteur de départ seulement : voir « Hauteur de l'encart » plus bas, D-E1-19). **Mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)** : tout le contenu tient sur **une seule ligne logique**, séparé par des virgules, sans retour à la ligne voulu et **sans « SIRET : » devant** (le SIRET est nu). La zone peut seulement passer à la ligne d'elle-même quand le texte est trop long pour la largeur de la colonne. Ce n'est plus l'ancienne présentation en trois lignes (nom, SIRET, adresse chacun sur sa ligne), remplacée.
 
 ```
-Club Sportif d'Exemple
-SIRET : 000 000 000 00000
-2 avenue du Stade, 00000 Ville-Exemple
+Club Sportif d'Exemple, 000 000 000 00000, 2 avenue du Stade, 00000 Ville-Exemple
 ```
 
-Nom, SIRET, puis l'adresse du club **sur une seule ligne** (adresse, code postal, ville : la même chaîne que la case [Siège du club]). Une donnée absente n'est pas bloquante : « SIRET : non renseigné », « Adresse : non renseignée » (textes proposés). Je lis « sur une ligne » du backlog comme « l'adresse sur une ligne » : **à confirmer** (D-E1-1). Une phrase d'aide sous l'encart, inchangée : « Pour corriger ces informations, modifiez la fiche du club. »
+Ordre : nom, SIRET, puis l'adresse du club (adresse, code postal, ville : la même chaîne que la case [Siège du club], ses éventuels retours à la ligne remplacés par des espaces). Décision D-E1-1, confirmée par l'exemple du chef de projet ; le code (`conventionEncartClub`) fait de même. Une donnée absente n'est pas bloquante : le code écrit « SIRET non renseigné » ou « adresse non renseignée » à sa place, dans la même ligne. Une phrase d'aide sous l'encart, inchangée : « Pour corriger ces informations, modifiez la fiche du club. »
 
-**Hauteur de l'encart (D-E1-19, mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)).** L'encart n'est **plus redimensionnable à la main** : pas de poignée en bas à droite du champ. Sa hauteur **s'ajuste à son contenu réel**, sans espace vide sous la dernière ligne et sans barre de défilement interne : trois lignes en général (nom, SIRET, adresse), quatre si l'adresse est assez longue pour passer à la ligne dans la largeur de la colonne. Elle est recalculée à l'ouverture de la fenêtre et quand la largeur change (passage de deux colonnes à une colonne, rotation d'un téléphone). Le champ reste un `textarea` en lecture seule (D-E1-1), avec le même contenu et le même libellé. dev-interface supprime le redimensionnement par une classe du widget (propriété CSS `resize`, sans nom du design system, à signaler à Hanta comme toute classe nouvelle) et règle la hauteur sur celle du contenu (par exemple d'après la hauteur de défilement du champ) ; je n'ai pas vérifié si le CSS seul suffit sur tous les navigateurs : **non vérifié**, la méthode est laissée à dev-interface.
+**Hauteur de l'encart (D-E1-19, mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)).** L'encart n'est **plus redimensionnable à la main** : pas de poignée en bas à droite du champ. Sa hauteur **s'ajuste à son contenu réel**, sans espace vide sous la dernière ligne et sans barre de défilement interne : une seule ligne logique, qui passe d'elle-même sur deux lignes ou plus quand le texte est trop long pour la largeur de la colonne (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)). Elle est recalculée à l'ouverture de la fenêtre et quand la largeur change (passage de deux colonnes à une colonne, rotation d'un téléphone). Le champ reste un `textarea` en lecture seule (D-E1-1), avec le même contenu et le même libellé. dev-interface supprime le redimensionnement par une classe du widget (propriété CSS `resize`, sans nom du design system, à signaler à Hanta comme toute classe nouvelle) et règle la hauteur sur celle du contenu (par exemple d'après la hauteur de défilement du champ) ; je n'ai pas vérifié si le CSS seul suffit sur tous les navigateurs : **non vérifié**, la méthode est laissée à dev-interface.
 
 **Signataire du club : liste déroulante.** Un `select` (page select--default.html, §8), libellé « Signataire » **sans astérisque**, une option par contact du club, libellé « Prénom Nom », invite « Veuillez sélectionner » (non désactivée désormais : on peut y revenir pour ne rien choisir). Ne rien choisir est permis : le PDF aura des pointillés.
 
@@ -634,7 +634,7 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 - Génération bloquée (bloc, un seul à la fois, dans cet ordre ; texte caché devant : « Convention impossible à générer : ») : « Renseignez l'agence de l'action dans sa fiche. » ; « Renseignez le club de l'action. » ; « Renseignez le dispositif de l'action dans sa fiche. » (jamais affiché) ; ~~« Renseignez l'adresse du club dans sa fiche. »~~ supprimé le 2026-10-29 (E1)
 - Club sans contact (fenêtre B, bloc Club) : mis à jour le 2026-10-29 (E1) : « Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main. » (remplace « Ce club n'a aucun contact. Ajoutez-en un dans la fiche du club, puis revenez générer la convention. »)
 - Boutons du bloc : « Générer la convention », « Voir la convention », « Re-générer », « Déposer la convention signée », « Voir la convention signée », « Remplacer le fichier signé ». Textes cachés pour lecteurs d'écran : « (s'ouvre dans un nouvel onglet) » après chaque « Voir » (ces deux commandes sont des boutons). Pendant l'ouverture du PDF : « Ouverture en cours… ».
-- Fenêtre B (mis à jour le 2026-10-29 (E1)) : « Convention » ; sous-titre « [Dispositif] · Campagne [Campagne] » (sans « Campagne » si vide) ; introduction « Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature. » (mis à jour le 2026-10-29 (E1, phrase d'introduction corrigée) : sans exception ni « sauf », aucune référence à un cas où quelque chose serait obligatoire ; remplace « Aucun champ n'est obligatoire, sauf pour ajouter un nouveau contact… ») ; blocs « Club » et « Agence » (remplacent « Informations relatives à la convention », « Signataire club », « Signataire agence ») ; libellés : « Club » (encart), « Signataire », « Fonction du signataire », « Agence », « Représentant », « Fonction du représentant » ; encart : « SIRET : non renseigné », « Adresse : non renseignée » ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Fonction non renseignée » ; valeur de départ de la fonction du représentant : « Directeur d'agence ». Bouton et formulaire d'ajout de contact (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)) : bouton « Ajouter un contact » ; libellés dans l'ordre « Nom », « Prénom », « E-mail » (sans astérisque, D-E1-17), puis le champ « Fonction du signataire » ; aucun texte d'aide dans le formulaire (D-E1-16 : « * Nécessaires pour ajouter ce contact. » et la consigne « coordonnées professionnelles » sont retirés) ; phrase d'information sous ces quatre champs, donc sous « Fonction du signataire » (D-E1-12) : « Ce contact sera ajouté à la fiche du club. » ; **message sous E-mail quand il est mal formé : « Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. »** ; **message d'erreur sous le champ E-mail (Nom rempli, E-mail vide) : « Saisissez l'e-mail du nouveau signataire. »** (préfixe caché « Erreur : ») ; option de la liste quand une saisie libre est active : « [Prénom Nom] (nouveau contact) ». Retiré le 2026-10-29 (E1, 2e série) : la case « Ajouter ce contact à la fiche du club » et ses deux aides. Supprimés : « Modèle utilisé », « Année », « Signataire club », « Signataire agence », « Informations relatives à la convention », toute phrase avec un astérisque.
+- Fenêtre B (mis à jour le 2026-10-29 (E1)) : « Convention » ; sous-titre « [Dispositif] · Campagne [Campagne] » (sans « Campagne » si vide) ; introduction « Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature. » (mis à jour le 2026-10-29 (E1, phrase d'introduction corrigée) : sans exception ni « sauf », aucune référence à un cas où quelque chose serait obligatoire ; remplace « Aucun champ n'est obligatoire, sauf pour ajouter un nouveau contact… ») ; blocs « Club » et « Agence » (remplacent « Informations relatives à la convention », « Signataire club », « Signataire agence ») ; libellés : « Club » (encart), « Signataire », « Fonction du signataire », « Agence », « Représentant », « Fonction du représentant » ; encart (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)) : « SIRET non renseigné », « adresse non renseignée » (ces textes sont insérés dans la ligne, après une virgule) ; « Pour corriger ces informations, modifiez la fiche du club. » ; « Veuillez sélectionner » ; « Fonction non renseignée » ; valeur de départ de la fonction du représentant : « Directeur d'agence ». Bouton et formulaire d'ajout de contact (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)) : bouton « Ajouter un contact » ; libellés dans l'ordre « Nom », « Prénom », « E-mail » (sans astérisque, D-E1-17), puis le champ « Fonction du signataire » ; aucun texte d'aide dans le formulaire (D-E1-16 : « * Nécessaires pour ajouter ce contact. » et la consigne « coordonnées professionnelles » sont retirés) ; phrase d'information sous ces quatre champs, donc sous « Fonction du signataire » (D-E1-12) : « Ce contact sera ajouté à la fiche du club. » ; **message sous E-mail quand il est mal formé : « Saisissez une adresse e-mail valide, par exemple nom@exemple.fr. »** ; **message d'erreur sous le champ E-mail (Nom rempli, E-mail vide) : « Saisissez l'e-mail du nouveau signataire. »** (préfixe caché « Erreur : ») ; option de la liste quand une saisie libre est active : « [Prénom Nom] (nouveau contact) ». Retiré le 2026-10-29 (E1, 2e série) : la case « Ajouter ce contact à la fiche du club » et ses deux aides. Supprimés : « Modèle utilisé », « Année », « Signataire club », « Signataire agence », « Informations relatives à la convention », toute phrase avec un astérisque.
 - Boutons de la fenêtre B : « Fermer », « Générer la convention » (aussi à la re-génération). **Mis à jour le 2026-10-29 (E1) : « Enregistrer les informations » est supprimé** (il était dans le pied depuis le 2026-10-22).
 - Supprimés avec le formulaire « Ajouter un contact » : « Nouveau contact », « Nom », « Prénom », « Fonction » (du formulaire), « Annuler », « Ajouter ce contact », « Ajouter un contact » et son texte caché.
 - ~~Erreur de champ (sous le champ, après `sr-only` « Erreur : ») : « Saisissez [le libellé en minuscules]. » ; « Choisissez le signataire du club. »~~ **Supprimé le 2026-10-29 (E1)** : plus aucun champ obligatoire, donc plus aucune erreur de champ dans la fenêtre.
@@ -688,7 +688,7 @@ Le fichier choisi par l'agent est **renommé au moment de l'envoi**, au dépôt 
 - Bouton « Ajouter un contact » et son formulaire (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact) ; remplace la ligne dépliante `<details>`) : vrai `<button type="button">` du design system, atteignable au clavier (Tab, puis Entrée ou Espace), avec `aria-expanded` (« développé » ou « réduit » annoncé par le lecteur d'écran) et `aria-controls` vers le formulaire ; même libellé ouvert ou fermé, l'état n'est jamais porté par la couleur seule. Formulaire fermé = attribut `hidden` : ses champs sont hors de l'ordre de Tab, leurs valeurs sont gardées. À l'ouverture, le focus va sur Nom ; à la fermeture, il reste sur le bouton ; l'option « (nouveau contact) » de la liste dit qui est le signataire même formulaire fermé. Nom, Prénom et E-mail ont chacun un `label` lié (sans astérisque ni `required`, D-E1-17 ; le champ Fonction a le sien, voir plus haut), et la phrase « Ce contact sera ajouté à la fiche du club. » leur est reliée par `aria-describedby`. Aucun autre texte d'aide dans le formulaire (D-E1-16). Erreur de l'E-mail (vide ou mal formé, D-E1-14) : `is-invalid`, `aria-invalid="true"`, message précédé d'un `sr-only` « Erreur : », `aria-describedby` vers le message seulement, focus placé sur le champ après réouverture du formulaire s'il était fermé ; l'erreur ne repose pas sur la couleur (le texte du message la porte). Encart Club (D-E1-19) : toujours un `textarea` en lecture seule avec son `label`, sans poignée de redimensionnement ; la hauteur suit le contenu, donc aucun texte caché par une barre de défilement interne.
 - Bloc « Droits insuffisants » : le message est du texte ordinaire dans le flux (pas de région vide ni de bloc caché), identique pour tous les profils.
 - Mode clair / sombre : n'utiliser que des variables `--ft-…` ou des classes du design system, aucune couleur écrite en dur. **Constat** : style.css déclare `color-scheme: light` ; le tableau de bord n'est donc pas conçu pour le mode sombre aujourd'hui. Je n'ai pas pu vérifier le rendu en mode sombre : à tester par Hanta. La maquette n'ajoute aucune couleur.
-- Zoom 200 % : la fenêtre défile (`modal-dialog-scrollable`), rien n'est coupé ; sous 1200 px d'écran (ce qui arrive à 200 % de zoom sur un écran courant) elle passe en une colonne.
+- Zoom 200 % : la fenêtre défile (`modal-dialog-scrollable`), rien n'est coupé ; sous 1100 px d'écran (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne) ; ce qui arrive à 200 % de zoom sur un écran courant) elle passe en une colonne.
 - Données personnelles : seules données de personnes : **nom, prénom et fonction** du représentant de l'agence, et **nom, prénom, e-mail et fonction** du signataire du club (mis à jour le 2026-10-29 (E1, précision Email) : l'e-mail du signataire est ajouté à la liste), strictement nécessaires pour désigner qui signe ou, pour l'e-mail, pour créer le contact dans Contacts. L'e-mail est écrit dans Contacts (colonne Email) avec le contact créé ; il n'est pas reproduit dans le PDF (aucune case du modèle ne l'utilise : à confirmer par dev-backend). Pas de téléphone ni d'adresse personnelle demandés dans ce formulaire. Le champ Commentaire de la fiche reste interdit pour noter des données de personnes. Les PDF contiennent ces noms et les signatures : le PDF généré reste dans Grist après la signature mais n'est plus montré ; la durée de conservation reste à décider (§10). Données de la maquette : fictives. **Mis à jour le 2026-10-29 (E1)** : le widget **écrit désormais dans Contacts** (nom, prénom, e-mail et fonction du signataire saisi), **toujours** quand un Nom est saisi dans le formulaire « Ajouter un contact » et que l'E-mail l'est aussi (plus de case à cocher) ; il reste interdit d'y écrire autrement. Aucune donnée de personne n'est gardée ailleurs que dans Contacts et dans le PDF : il n'y a pas de colonne texte pour le signataire. CLAUDE.md (« Le widget n'écrit jamais dans Contacts ») et le README sont **à mettre à jour** par la documentaliste, après décision de Hanta. Un e-mail est saisi ici (obligatoire pour créer le contact, D-E1-7, vérifiée) ; aucun téléphone. Le vrai formulaire du widget clubs demande « des coordonnées professionnelles (adresse e-mail et téléphone de la structure), pas des coordonnées personnelles » : **mis à jour le 2026-10-29 (E1, alignement sur la maquette et D-E1-12/14) : cette consigne n'est plus reprise dans la fenêtre (D-E1-16, mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)) ; le téléphone n'est pas demandé non plus.**
 
 ## 8. Composants du design system utilisés
@@ -779,7 +779,7 @@ Aucune page de composant « zone de texte » n'a été lue : **non vérifié**. 
 <label class="form-label" for="clubSiege">Siège</label>
 <textarea class="form-control" id="clubSiege" name="clubSiege" readonly rows="2">2 avenue du Stade, 00000 Ville-Exemple</textarea>
 ```
-**Mis à jour le 2026-10-29 (E1)** : un seul `textarea` en lecture seule sert d'encart du club (libellé « Club », `rows="3"`, trois lignes : nom, SIRET, adresse sur une ligne). La fenêtre n'affiche plus l'adresse de l'agence : pas de second `textarea`. **Mis à jour le 2026-10-29 (E1, bouton Ajouter un contact) (D-E1-19)** : ce `textarea` n'a plus de poignée de redimensionnement et sa hauteur suit son contenu (voir §3, « Hauteur de l'encart »).
+**Mis à jour le 2026-10-29 (E1)** : un seul `textarea` en lecture seule sert d'encart du club (libellé « Club », `rows="3"` au départ, une seule ligne logique : nom, SIRET, adresse, séparés par des virgules, sans « SIRET : » devant ; mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)). La fenêtre n'affiche plus l'adresse de l'agence : pas de second `textarea`. **Mis à jour le 2026-10-29 (E1, bouton Ajouter un contact) (D-E1-19)** : ce `textarea` n'a plus de poignée de redimensionnement et sa hauteur suit son contenu (voir §3, « Hauteur de l'encart »).
 
 ### Liste de choix (signataire du club)
 Page : https://designsystem.francetravail.io/components/detail/select--default.html
@@ -857,7 +857,7 @@ Succès : `alert alert-success` (classe présente dans la feuille), avec `role="
 - Pas de composant « bloc de fiche » : on reprend les classes du widget (`edit-card`, `section-head`, `edit-fields`, `edit-field`).
 - Pas de composant de dépôt de fichier (voir ci-dessus).
 - Pas de composant de téléchargement ou d'aperçu de PDF : on utilise des boutons du design system, qui ouvrent le PDF dans un nouvel onglet.
-- Classes du widget à créer par dev-interface, sans nom du design system : `convention-grid` (trois colonnes à partir de 1200 px, une colonne en dessous), `convention-part` (fieldset sans bordure), `convention-fields` (grille à deux colonnes dans une colonne de la fenêtre), `convention-actions` (rangée de boutons), `convention-file` (champ fichier caché). Leurs règles sont dans le `<style>` de la maquette ; elles n'utilisent que des variables du design system et du widget. Test à prévoir : test/styles.test.js vérifie qu'elles ne reprennent aucun nom du design system. **Mis à jour le 2026-10-29 (E1)** : `convention-grid` passe de trois à deux colonnes (même seuil de 1200 px) ; aucune classe nouvelle n'est proposée pour le bouton « Ajouter un contact » (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)). **À prévoir, à signaler à Hanta avant de créer** : une classe du widget qui supprime le redimensionnement de l'encart Club (D-E1-19) et, seulement si les classes existantes de la fenêtre ne suffisent pas, une règle d'espacement pour les champs du formulaire d'ajout (D-E1-18) ; dans les deux cas, uniquement des variables du design system.
+- Classes du widget à créer par dev-interface, sans nom du design system : `convention-grid` (trois colonnes à partir de 1200 px, une colonne en dessous ; remplacé, voir la mise à jour ci-dessous), `convention-part` (fieldset sans bordure), `convention-fields` (grille à deux colonnes dans une colonne de la fenêtre), `convention-actions` (rangée de boutons), `convention-file` (champ fichier caché). Leurs règles sont dans le `<style>` de la maquette ; elles n'utilisent que des variables du design system et du widget. Test à prévoir : test/styles.test.js vérifie qu'elles ne reprennent aucun nom du design system. **Mis à jour le 2026-10-29 (E1)** : `convention-grid` passe de trois à deux colonnes, avec un seuil de **1100 px** (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)) ; aucune classe nouvelle n'est proposée pour le bouton « Ajouter un contact » (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)). **À prévoir, à signaler à Hanta avant de créer** : une classe du widget qui supprime le redimensionnement de l'encart Club (D-E1-19) et, seulement si les classes existantes de la fenêtre ne suffisent pas, une règle d'espacement pour les champs du formulaire d'ajout (D-E1-18) ; dans les deux cas, uniquement des variables du design system.
 
 ## 9. Risques techniques et points à vérifier avant de coder
 
@@ -913,7 +913,7 @@ Mis à jour le 2026-10-26 (S8) : les décisions D-S8-1 à D-S8-7 (dont Q-I et Q-
 
 | N° | Question | Ma recommandation |
 |---|---|---|
-| D-E1-1 | Encart du club : « nom, SIRET, adresse, sur une ligne » : l'adresse sur une ligne (ma lecture) ou tout l'encart sur une ligne ? Et quel composant : un `textarea` en lecture seule à trois lignes (composant du §8, non lu) ou des `<p>` ordinaires ? | Adresse sur une ligne, dans un `textarea` en lecture seule de trois lignes : un seul champ lisible au clavier et par les lecteurs d'écran, sans classe nouvelle. |
+| D-E1-1 | Encart du club : « nom, SIRET, adresse, sur une ligne » : l'adresse sur une ligne (ma lecture) ou tout l'encart sur une ligne ? Et quel composant : un `textarea` en lecture seule à trois lignes (composant du §8, non lu) ou des `<p>` ordinaires ? | **Tranché (mis à jour le 2026-10-29 (E1, alignement note/code : seuil 1100px, encart Club sur une ligne)) : tout l'encart sur une seule ligne logique**, séparé par des virgules, SIRET nu, dans un `textarea` en lecture seule : un seul champ lisible au clavier et par les lecteurs d'écran, sans classe nouvelle. |
 | D-E1-2 | Ligne dépliante : accepter l'élément natif `<details>` / `<summary>` (faute de composant du design system trouvé) ? Si le `summary` demande une classe pour son aspect, la créer ? | Oui pour `<details>` ; pour une classe, nouvelle décision de Hanta au moment où dev-interface en a besoin (je ne la prévois pas). Mon essai sur la page accordéon a échoué (404) : à regarder dans la bibliothèque du site avant de coder. **Remplacée par D-E1-15 (mis à jour le 2026-10-29 (E1, bouton Ajouter un contact)) : plus de `<details>`, donc plus de question.** |
 | D-E1-3 | Quand la saisie libre et la liste se contredisent, qui l'emporte ? Plier la ligne perd-il la saisie ? | **Mis à jour le 2026-10-29 (E1, précision Email), tranché par Hanta dans le backlog :** la saisie libre est active dès que **Nom** est rempli (plus « Prénom ou Nom ») ; l'option « (nouveau contact) » apparaît dans la liste ; choisir un contact de la liste vide la saisie libre ; plier la ligne ne perd rien, le contact est créé à la fermeture ou à la génération. |
 | ~~D-E1-4~~ | ~~Où écrire la fonction du signataire saisi quand la case n'est pas cochée ?~~ | **Sans objet (2026-10-29, 2e série)** : plus de case, plus de colonne texte. La fonction saisie va dans Contacts avec le contact créé. |
@@ -1267,3 +1267,177 @@ Les compléments sont au §4.1. Rien d'antérieur n'est changé, sauf l'ordre de
 | S9-6 | Fichier PDF dont le navigateur ne renseigne pas le type (type vide) : refusé (comme la règle écrite) ou accepté si l'extension et le « %PDF- » sont bons ? | **Accepter le type vide** (les contrôles d'extension et de contenu suffisent à écarter un faux PDF), refuser tout type renseigné autre que `application/pdf`. À défaut, un vrai PDF sans type serait refusé à tort. Non vérifié sur les navigateurs de l'équipe. |
 | S9-7 | Taille limite : « 10 Mo » = 10 × 1024 × 1024 octets (10 485 760), comme les 5 Mo du logo de clubs (`5 * 1024 * 1024`) ? | **Oui**, même convention que le logo ; un fichier de exactement 10 485 760 octets est accepté. |
 | S9-8 | Conservation des fichiers signés orphelins (ancien fichier après remplacement, nouveau fichier après un rattachement raté) | Même suite que D-S8-5 / D-S8-7 : rien n'est supprimé par le widget ; Hanta vérifie dans DEV7 si Grist nettoie tout seul avant la recette. Durée de conservation des noms et signatures : à décider (§7). |
+
+## 14. Voir le PDF dans une pop-up et le télécharger avec son vrai nom (ajouté le 2026-10-30 (E2))
+
+Source des décisions : docs/backlog.md, « Évolution 2 (E2) », E2-1 à E2-4 (font foi). **La D-E1-22 est remplacée par E2-1** : « Voir » n'ouvre plus de nouvel onglet. Ce que cette section change dans les sections plus anciennes : §2 (paragraphe « Voir un PDF » et sa structure HTML : plus de nouvel onglet, plus de texte caché « s'ouvre dans un nouvel onglet », `aria-haspopup="dialog"` ajouté), §8 (« Ce qui manque au design system » : la ligne « nouvel onglet » ne s'applique plus). Tout le reste (jeton, verrou, alerte d'échec, focus après une génération) reste valable, sauf ce qui est dit ci-dessous.
+
+Sources lues : docs/backlog.md (E2), §2, §3 (fenêtre), §8 de cette note, src/actions-dashboard/script.js (`conventionVoir`, `conventionVoirSignee`, `conventionVoirSigneeClic`, `conventionTelechargerPdf`, `conventionTelechargerPdfSigne`, `conventionNomFichier`, `conventionNomFichierSigne`, `openConvention`, `closeConvention`, `keepFocusInConvention`), index.html, style.css. **Pages du site du design system : non relues pour cette section** (pas d'accès web dans cette session) ; les structures ci-dessous sont celles déjà employées dans le dépôt, avec la source indiquée.
+
+### 14.1 Parcours
+
+Qui : un agent France Travail, dans la fiche d'une action dont la convention est à l'état « Générée » ou « Signée » (§2).
+
+1. Il clique sur « Voir la convention » (ou « Voir la convention signée »). Le bouton passe à « Ouverture en cours… » le temps de récupérer le PDF (comme aujourd'hui).
+2. Une pop-up s'ouvre dans le widget et affiche le PDF.
+3. Dans la pop-up, il lit, puis soit clique sur « Télécharger » (le fichier est enregistré avec son vrai nom), soit sur « Fermer » (ou Échap). Le focus revient sur le bouton « Voir ».
+
+Variante : sans ouvrir la pop-up, il clique sur « Télécharger » dans le bloc : le fichier est enregistré directement.
+
+### 14.2 Ce qui change dans le bloc Convention (écran A)
+
+Rangée `convention-actions` (classe existante, `display: flex; flex-wrap: wrap; gap: 12px`), ordre de gauche à droite :
+
+| État | Rangée |
+|---|---|
+| Générée | « Voir la convention » · **« Télécharger »** · « Re-générer » · « Déposer la convention signée » |
+| Signée | « Voir la convention signée » · **« Télécharger »** (puis, en dessous, le lien « Remplacer le fichier signé », inchangé) |
+
+« Télécharger » est juste après « Voir » : les deux boutons qui agissent sur le même fichier restent côte à côte. Il est `btn btn-secondary` (comme « Voir » : le style « principal » `btn-primary` est réservé à l'action principale d'une fenêtre). Aucune icône (je n'ai pas vérifié qu'une icône de téléchargement existe dans la feuille ; ne pas en inventer).
+
+**Point d'écart avec le backlog, tranché par Hanta le 2026-10-30 (Q-E2-1).** Le backlog demande « un lien `<a download href="blob:...">` » aux deux endroits. Dans le bloc, c'est impossible tel quel : l'adresse `blob:` n'existe qu'après la récupération du PDF avec le jeton, et la règle de la note (§2, « Jeton ») interdit de récupérer le PDF ou le jeton avant le clic (rien dans la page avant le clic ; pas de téléchargement à chaque ouverture de fiche). **Proposition : dans le bloc, « Télécharger » est un `<button>`** (même fabrication que « Voir »). Au clic, le code récupère le PDF (même fonction, même jeton, même délai), fabrique l'adresse `blob:`, crée un lien `<a download="[nom exact].pdf" href="blob:...">` **temporaire**, le déclenche par programme (`.click()`), puis le retire et libère l'adresse. Le résultat pour l'agent est le même qu'avec un vrai lien : le fichier porte son vrai nom. **Dans la pop-up, c'est un vrai lien `<a>`** (l'adresse est déjà en mémoire). Si Hanta refuse cette proposition, la seule autre voie est de récupérer le PDF dès l'affichage du bloc, ce que je déconseille (jeton demandé et fichier téléchargé à chaque fiche ouverte, même si l'agent ne le lit jamais).
+
+Structure du bouton du bloc (même gabarit que « Voir », §2 ; classes `btn`, `btn-secondary`, `btn-content`, `sr-only` déjà employées) :
+
+```html
+<button class="btn btn-secondary" type="button" id="conventionTelecharger">
+  <span class="btn-content">Télécharger<span class="sr-only"> le fichier PDF de la convention générée</span></span>
+</button>
+```
+
+Pour l'état « Signée » : `id="conventionTelechargerSignee"` et texte caché « le fichier PDF de la convention signée ».
+
+Comportement du bouton du bloc :
+- Pendant la récupération : texte « Téléchargement en cours… » (texte caché retiré), `aria-disabled="true"` (jamais `disabled`, pour garder le focus), clics ignorés, comme « Voir » (§2). Le texte d'origine revient ensuite. Le focus ne bouge pas.
+- Un verrou propre à ce bouton ; « Voir » et « Télécharger » restent utilisables l'un pendant l'autre.
+- Réussite : le navigateur enregistre le fichier (ou affiche sa propre barre de téléchargement). **Aucun message du widget** (rien d'annonçable de façon fiable).
+- Échec : alerte `alert alert-error` `role="alert"` dans la zone d'alerte du bloc (`conventionAlerte`, une seule alerte à la fois, effacée au clic suivant, comme celle de « Voir »), avec le message exact : « Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord. »
+- Le nom du fichier est celui de la pop-up (voir 14.4).
+
+Les deux « Voir » changent seulement de texte caché et d'attribut :
+- Texte caché : « (s'ouvre dans une fenêtre) » à la place de « (s'ouvre dans un nouvel onglet) ».
+- `aria-haspopup="dialog"` ajouté (comme « Générer la convention », §2 : une fenêtre s'ouvre maintenant dans le widget).
+- « Ouverture en cours… », `aria-disabled`, verrou, alerte d'échec : inchangés.
+
+### 14.3 La pop-up (écran D)
+
+**Structure : celle de la fenêtre « Convention » (§8, « Fenêtre modale »)**, mêmes classes de la feuille (`modal-backdrop`, `modal`, `modal-dialog`, `modal-xl`, `modal-dialog-scrollable`, `modal-content`, `modal-header`, `modal-body`, `modal-footer`, `modal-title`), même technique : elle n'est insérée dans la page que pendant qu'elle est ouverte. Taille `modal-xl`, **pas plein écran**. Ce n'est pas un `<form>` (rien à saisir) : le contenu est un `<div class="modal-content">`.
+
+Proposition de nouveaux éléments (à valider, aucun nom du design system repris) :
+- **Un conteneur `<div id="conventionPdfModal"></div>`** dans index.html, à côté de `#conventionModal` (même rôle).
+- **Sa règle d'affichage** : ajouter `#conventionPdfModal .modal` à la règle `#conventionModal .modal { display: block; overflow-y: auto; }` de style.css (la feuille masque `.modal`, voir §8).
+- **Une classe `convention-pdf-cadre`** pour l'`<iframe>` : largeur 100 %, hauteur fixe, sans bordure. Hauteur : le PDF a besoin de place pour être lu, et la hauteur du widget dans Grist peut être faible ; je propose `height: calc(100vh - 280px)` avec `min-height: 420px` (les 280 px couvrent l'en-tête, le pied et le texte de repli de la pop-up), la fenêtre défilant (`modal-dialog-scrollable`) si le widget est plus petit. **Valeurs à ajuster par dev-interface à l'œil dans Grist DEV** : le design system n'a pas de variable pour une hauteur d'aperçu. Aucune couleur.
+
+```html
+<div class="modal-backdrop fade show"></div>
+<div class="modal fade show" id="conventionPdfDialog" role="dialog" aria-modal="true"
+     aria-labelledby="conventionPdfTitle" aria-describedby="conventionPdfNom" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="conventionPdfTitle">Convention générée</h2>
+          <p class="convention-soustitre" id="conventionPdfNom">Convention-Stade-Club-Exemple-2026.pdf</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <iframe class="convention-pdf-cadre" id="conventionPdfCadre"
+                title="Aperçu de la convention générée" src="blob:…"></iframe>
+        <p class="help-block" id="conventionPdfRepli">Le PDF ne s'affiche pas ?
+          <a href="blob:…" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet</a>,
+          ou utilisez « Télécharger ».</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="conventionPdfFermer"><span class="btn-content">Fermer</span></button>
+        <a class="btn btn-primary" id="conventionPdfTelecharger" href="blob:…" download="Convention-Stade-Club-Exemple-2026.pdf"><span class="btn-content">Télécharger<span class="sr-only"> le fichier PDF de la convention générée</span></span></a>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+Sources de chaque pièce : structure de fenêtre, `convention-soustitre`, `help-block` : déjà dans le dépôt (§8, `conventionModalHtml`). Lien habillé en bouton : voir 14.5. Pied « Fermer à gauche, action principale à droite » : celui de la fenêtre Convention (`conventionFermer` puis `conventionGenererFenetre`).
+
+**Version « signée »** : mêmes éléments, avec `Convention signée` comme titre, `title="Aperçu de la convention signée"`, texte caché « de la convention signée », nom du fichier signé.
+
+**`<iframe>` ou `<embed>` : je recommande `<iframe>`.** Raisons : (1) il porte un `title`, que les lecteurs d'écran annoncent pour nommer le cadre (`<embed>` n'a pas d'équivalent aussi bien pris en charge) ; (2) c'est le moyen le plus courant d'afficher un PDF `blob:` avec la visionneuse intégrée de Chrome, Edge, Firefox et Safari ; (3) la taille se règle en CSS comme n'importe quel bloc. Ni `<iframe>` ni `<embed>` n'offre de contenu de repli fiable quand le PDF ne s'affiche pas : c'est pourquoi le **texte de repli est écrit à côté du cadre, toujours visible** (voir plus bas), au lieu d'être caché dans le cadre. `<object>` aurait un repli intégré, mais il est moins sûr selon les navigateurs : non retenu, non testé. **Pas d'attribut `sandbox` sur l'`<iframe>`** : la visionneuse PDF de Chrome refuse de s'afficher dans un cadre « bac à sable » ; le contenu est un PDF dont le type est forcé à `application/pdf` par le code (`conventionTelechargerPdf`), pas une page web. À contrôler par l'auditeur-securite.
+
+**Texte de repli (toujours visible sous le cadre).** « Le PDF ne s'affiche pas ? [Ouvrir dans un nouvel onglet], ou utilisez « Télécharger ». » Le lien « Ouvrir dans un nouvel onglet » est un `<a href="blob:…" target="_blank" rel="noopener">` vers la **même adresse déjà en mémoire** : c'est le secours « comme avant ». Pas d'erreur détectée automatiquement (un navigateur ne signale pas qu'un PDF n'a pas pu s'afficher dans un cadre) : le texte est donc là en permanence, discret (`help-block`). Il est lu par les lecteurs d'écran dans l'ordre normal, après le cadre.
+
+**Récupération du PDF avant l'ouverture.** La pop-up s'ouvre **seulement quand le PDF est récupéré** (pas de fenêtre vide qui attend). En cas d'échec de la récupération, rien ne s'ouvre : l'alerte d'échec de « Voir » (« Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. », inchangée) s'affiche dans le bloc.
+
+### 14.4 Textes exacts
+
+| Où | Texte |
+|---|---|
+| Titre de la pop-up (PDF généré) | Convention générée |
+| Titre de la pop-up (PDF signé) | Convention signée |
+| Sous-titre | le nom exact du fichier, par exemple `Convention-Stade-Club-Exemple-2026.pdf` (c'est le nom sous lequel « Télécharger » l'enregistre) |
+| `title` de l'iframe | Aperçu de la convention générée / Aperçu de la convention signée |
+| Texte de repli | Le PDF ne s'affiche pas ? [Ouvrir dans un nouvel onglet], ou utilisez « Télécharger ». |
+| Pied de la pop-up | Fermer · Télécharger |
+| Texte caché de « Télécharger » (bloc et pop-up) | « le fichier PDF de la convention générée » / « le fichier PDF de la convention signée » (placé après le mot visible : le nom accessible commence par le texte visible) |
+| Texte caché de « Voir » | (s'ouvre dans une fenêtre) |
+| « Télécharger » du bloc, pendant l'attente | Téléchargement en cours… |
+| Échec de « Télécharger » du bloc | Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord. |
+| Échec de « Voir » | inchangé : Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord. |
+
+**Nom du fichier (`download`)** : le même que celui utilisé à la génération et au dépôt, sans rien inventer :
+- PDF généré : `conventionNomFichier(actionId, {annee: [Annee enregistrée dans Conventions]}, state)` → `Convention-[dispositif]-[club]-[année].pdf`.
+- PDF signé : `conventionNomFichierSigne(actionId, state)` → `Convention-signee-[dispositif]-[club]-[année].pdf`.
+Jamais de nom de personne (règle existante). Si le dispositif ou le club a été renommé depuis la génération, le nom suit les données actuelles : accepté (le nom stocké dans Grist ne sert pas). Le nom est écrit dans l'attribut `download` avec `escapeAttr`, et dans le sous-titre avec `escapeHtml`.
+
+### 14.5 Un lien `<a>` habillé comme un bouton
+
+Déjà fait dans le dépôt : src/clubs/script.js (ligne 1121), `<a class="btn btn-secondary btn-sm action-open" href="…"><span class="btn-content">Voir</span></a>`. On reprend donc **`<a class="btn btn-primary" href="blob:…" download="…"><span class="btn-content">…</span></a>`**, sans classe nouvelle. **À vérifier par dev-interface dans la feuille du CDN avant de coder** : que `.btn` rend bien un `<a>` comme un bouton (pas de soulignement, même hauteur) ; je n'ai pas lu la page « Bouton » pour ce cas. Différence de clavier à connaître : un `<a href>` s'active par **Entrée** seulement (pas Espace), contrairement à un `<button>`. C'est la bonne sémantique pour un téléchargement.
+
+### 14.6 Accessibilité
+
+- Pop-up : `role="dialog"`, `aria-modal="true"`, `aria-labelledby` (titre), `aria-describedby` (nom du fichier), `tabindex="-1"` : comme la fenêtre Convention (§8, §7).
+- **« Télécharger » de la pop-up est un lien** (`<a href download>`) : les lecteurs d'écran l'annoncent « lien », donc pas confondu avec un bouton d'action. Le texte caché dit ce qu'il enregistre. Dans le bloc, c'est un bouton (Q-E2-1) : annoncé « bouton » ; son texte caché dit « le fichier PDF… ».
+- **Focus à l'ouverture : sur la fenêtre elle-même** (`#conventionPdfDialog`, `tabindex="-1"`). Le lecteur d'écran annonce « Convention générée, boîte de dialogue » puis le nom du fichier. Je déconseille de mettre le focus sur « Télécharger » (un Entrée distrait déclencherait un téléchargement alors que l'agent voulait lire) et **jamais sur l'`<iframe>`** (voir le piège plus bas). Choix confirmé par Hanta le 2026-10-30 (Q-E2-2).
+- **Piège clavier** : quand le focus est à l'intérieur du PDF (cadre), les touches ne remontent pas au widget : Échap ne ferme plus et la boucle de Tab ne s'applique plus. Dans l'ordre de tabulation (cadre, lien de repli, Fermer, Télécharger), « Fermer » reste atteignable avec Tab. À noter dans la recette (R9), pas de contournement proposé.
+- **Tab et Maj+Tab** tournent entre les éléments de la pop-up : cadre, lien de repli, Fermer, Télécharger (même mécanisme que `keepFocusInConvention`, en ajoutant `a[href]` et `iframe` aux éléments cherchés).
+- **Échap** ferme la pop-up (sans enregistrer rien : il n'y a rien à enregistrer). Pas de fermeture au clic sur le fond (comme les autres fenêtres du widget).
+- **Retour du focus** : sur le bouton qui a ouvert (« Voir la convention » ou « Voir la convention signée »). Si ce bouton a été refait entre-temps (le bloc est reconstruit après certaines actions), retrouver le bouton par son `id` (`conventionVoir` ou `conventionVoirSignee`).
+- **Mode sombre, contrastes** : aucune couleur nouvelle ; tout vient des classes de la feuille.
+- **Mobile** : `modal-xl` s'adapte à la largeur ; le cadre prend 100 % de la largeur ; les boutons du pied passent à la ligne si besoin. Beaucoup de navigateurs mobiles n'affichent pas un PDF dans un cadre : le texte de repli est alors le chemin normal.
+- **Données personnelles** : le PDF signé porte des noms et des signatures manuscrites (CLAUDE.md). La pop-up les montre à l'agent qui a déjà le droit de lire la ligne `Conventions` (règles d'accès inchangées). Le nom de fichier n'en contient aucun.
+
+### 14.7 Pour dev-backend et dev-interface : ce qui change, ce qui reste
+
+**Reste identique :**
+- `conventionTelechargerPdf(pieceJointe)` et `conventionTelechargerPdfSigne(actionId)` : même récupération avec le jeton d'écriture (`getAccessToken({readOnly: false})`, ne jamais remettre `readOnly: true`), `credentials: 'omit'`, en-tête `X-Requested-With`, délai `CONVENTION_TELECHARGEMENT_DELAI_MS`, Blob de type `application/pdf` (le type reste indispensable à l'affichage dans le cadre). Seul le commentaire « l'onglet affiche ainsi le PDF » est à mettre à jour.
+- Le jeton reste dans des variables locales : jamais dans la console, un message, une adresse affichée. L'adresse `blob:` ne contient pas de jeton ; l'identifiant de la pièce jointe n'est écrit nulle part (ni dans le cadre, ni dans le `download`, ni dans un `id`). Rien n'est écrit dans la console.
+- Le verrou « Ouverture en cours… » (`conventionOuvertureEnCours`, `conventionOuvertureSigneeEnCours`), `aria-disabled`, l'alerte d'échec commune (`conventionAlerteVoirEchec`), le focus après une génération réussie (sur « Voir la convention »).
+
+**Change :**
+- `conventionVoir(actionId)` et `conventionVoirSignee(actionId)` : on **supprime** `window.open('', '_blank')`, le contrôle « onglet bloqué », `onglet.opener = null`, `onglet.location.href`, `onglet.close()` et le `setTimeout(() => URL.revokeObjectURL(adresse), CONVENTION_VOIR_LIBERATION_MS)`. On garde : verrou, texte « Ouverture en cours… », récupération avec délai, `URL.createObjectURL(pdf)`. **À la place**, une fois l'adresse créée, on appelle une nouvelle fonction qui ouvre la pop-up avec l'adresse, le nom du fichier, le titre et le bouton déclencheur. `conventionVoirSignee` continue de renvoyer `true` (pop-up ouverte) ou `false` (échec, alerte affichée).
+- **Libération de l'adresse `blob:`** : plus après 60 secondes, mais **à la fermeture de la pop-up** (`URL.revokeObjectURL`), et aussi si l'ouverture échoue. Une seule adresse en mémoire à la fois. `CONVENTION_VOIR_LIBERATION_MS` n'a plus d'usage pour « Voir » (le bouton « Télécharger » du bloc libère son adresse peu après le `.click()`, par exemple au bout de quelques secondes).
+- `CONVENTION_TEXTE_VOIR_CACHE` devient « (s'ouvre dans une fenêtre) » ; ajouter `aria-haspopup="dialog"` aux deux boutons « Voir ».
+- Nouveaux : le bouton « Télécharger » du bloc (état Générée et état Signée), sa fonction de clic, la pop-up (ouverture, fermeture, `keepFocus…` à l'image de `keepFocusInConvention`), un état `state.conventionPdfOpen` (même rôle que `state.conventionOpen`), l'ajout de `body.modal-open` comme les autres fenêtres, `requestResize()` à l'ouverture et à la fermeture.
+- Tests existants qui supposent un nouvel onglet (`window.open`, `onglet.location`) sont à réécrire par le testeur : hors de cette note.
+
+### 14.8 Ce qui manque au design system (signalé, non fabriqué)
+
+- Pas de composant « aperçu de PDF » : on utilise un `<iframe>` nu dans une fenêtre modale, avec une seule classe du widget (`convention-pdf-cadre`) pour sa taille.
+- Pas de composant « lien de téléchargement » : on utilise `<a class="btn …">` (précédent dans clubs).
+- Aucune icône de téléchargement vérifiée : aucune icône.
+
+### 14.9 Questions pour Hanta
+
+Les trois questions ont été tranchées par Hanta le 2026-10-30 : **oui, confirmé** pour chacune.
+
+| N° | Question | Décision |
+|---|---|---|
+| Q-E2-1 | Dans le bloc, « Télécharger » ne peut pas être un vrai lien (l'adresse n'existe qu'après la récupération avec le jeton, qu'on ne fait pas avant le clic). Accepter un bouton qui déclenche un lien temporaire ? | **Tranchée le 2026-10-30 : oui, confirmé** (14.2). Dans le bloc, « Télécharger » est un `<button>` qui crée le lien temporaire au clic. Dans la pop-up, c'est un vrai `<a>`. |
+| Q-E2-2 | Focus à l'ouverture de la pop-up : sur la fenêtre (titre annoncé) ou sur « Télécharger » ? | **Tranchée le 2026-10-30 : oui, confirmé** (14.6). Le focus va sur la fenêtre elle-même, pas sur « Télécharger » : évite un téléchargement involontaire avec Entrée. |
+| Q-E2-3 | Titres « Convention générée » et « Convention signée » pour la pop-up, au lieu de « Convention » (déjà le titre de la fenêtre de génération). OK ? | **Tranchée le 2026-10-30 : oui, confirmé.** Titres retenus : « Convention générée » et « Convention signée ». |
+
+### 14.10 Risques à vérifier avant ou pendant le code
+
+1. **Téléchargement depuis un cadre Grist** : CLAUDE.md dit que télécharger un fichier et ouvrir un onglet depuis le cadre de Grist fonctionnent, mais cela n'a pas été vérifié pour un lien `<a download>` vers une adresse `blob:`, ni pour un PDF `blob:` affiché dans un `<iframe>` imbriqué dans le cadre du widget. À essayer dans Grist DEV avec Chrome, Firefox et Safari avant de livrer. Si le cadre de Grist refuse, le repli « Ouvrir dans un nouvel onglet » reste le secours.
+2. **Nom de fichier** : l'attribut `download` d'une adresse `blob:` est respecté par les navigateurs actuels (c'est la cause du bug de la D-E1-22). Contrôler le nom obtenu dans chaque navigateur.
+3. **Hauteur de la pop-up** si le widget est placé dans un cadre bas dans la page Grist : voir la valeur proposée en 14.3.
+4. **Fuite d'adresse `blob:`** si la pop-up n'est pas fermée proprement (changement de fiche, rechargement) : libérer aussi l'adresse dans tout chemin qui détruit la pop-up.
+5. **Navigateurs mobiles** : l'aperçu PDF dans un cadre est souvent absent ; le texte de repli est prévu pour cela.
