@@ -189,6 +189,20 @@ Tâches à venir : E1.1 (note UX, designer-ux), E1.2 (écran, dev-interface), E1
 - **D-E1-19** : l'encart Club (lecture seule, nom/SIRET/adresse) ne doit plus être une zone redimensionnable à la main (pas de poignée de redimensionnement) : sa hauteur doit s'ajuster automatiquement à son contenu réel, sans espace vide en dessous. Cela précise la D-E1-1 (textarea en lecture seule).
 - **D-E1-20** : le seuil de bascule à deux colonnes de la fenêtre Convention (initialement 1200 px) était trop haut pour l'usage réel : Hanta travaille habituellement avec un navigateur réduit (pour garder de la place à côté), et le widget passait alors rapidement sous 1200 px, forçant une seule colonne qui défile, ce que le chef de projet refuse. Mesuré : à 1193 px de large, le widget est déjà en une colonne. Décision : le seuil passe de 1200 px à 1100 px, pour garder une marge de confort sous la largeur habituelle de travail de Hanta.
 - **D-E1-21** : les pointillés écrits par le widget lui-même dans le PDF (pour une case connue mais vide, et pour « Fait à…, le… ») sont trop courts. Décision du chef de projet : les doubler (actuellement 28 points, passer à 56 points). Cette longueur est réglée dans `CONVENTION_MISE_EN_PAGE` (`src/actions-dashboard/script.js`), §11 de la note.
+- **D-E1-22** : bug constaté par le chef de projet le 29/10 : impossible de télécharger le PDF (généré ou signé) avec son vrai nom depuis « Voir la convention » / « Voir la convention signée ». Cause confirmée par le relecteur : une adresse `blob:` n'a jamais de nom de fichier associé ; un navigateur qui l'ouvre dans sa visionneuse PDF invente un nom (un UUID) à l'enregistrement, quel que soit l'objet (Blob ou File) utilisé pour la créer. Décision : ajouter un vrai bouton « Télécharger » à côté de « Voir la convention » et de « Voir la convention signée », qui utilise un lien `<a download="[nom exact du fichier].pdf" href="blob:...">` pour forcer le bon nom, quel que soit le navigateur. « Voir » garde son comportement actuel (ouverture dans un nouvel onglet, pour lire sans télécharger) ; « Télécharger » déclenche directement l'enregistrement avec le bon nom. (remplacée par E2-1 : ouverture dans une pop-up à la place d'un nouvel onglet)
+
+### Évolution 2 (E2) — Voir en pop-up et télécharger avec le bon nom
+
+Bug constaté par le chef de projet le 29/10 : le PDF (généré ou signé), ouvert dans un nouvel onglet via une adresse `blob:`, se télécharge avec un nom généré par le navigateur (type UUID) au lieu du vrai nom du fichier. Cause confirmée par le relecteur : une adresse `blob:` n'a jamais de nom de fichier associé ; le navigateur en invente un à l'enregistrement, quel que soit l'objet utilisé pour la créer (Blob ou File).
+
+Décisions du chef de projet et de Hanta :
+
+- **E2-1** : « Voir la convention » et « Voir la convention signée » n'ouvrent plus un nouvel onglet : ils ouvrent une pop-up (fenêtre modale), de taille confortable comme la fenêtre « Convention » actuelle (pas plein écran), qui affiche le PDF à l'intérieur du widget.
+- **E2-2** : un bouton « Télécharger » est ajouté, pour le PDF généré ET le PDF signé, à DEUX endroits : dans le bloc Convention (à côté du bouton « Voir » correspondant), et DANS la pop-up elle-même. Il utilise un lien `<a download="[nom exact du fichier].pdf" href="blob:...">` pour forcer le bon nom au téléchargement, quel que soit le navigateur.
+- **E2-3** : le PDF est affiché dans la pop-up avec un `<iframe>` ou `<embed>` pointant vers l'adresse `blob:` déjà récupérée (pas de nouveau téléchargement) ; prévoir un repli (message, lien pour ouvrir dans un nouvel onglet) si le navigateur ne sait pas afficher un PDF dans un cadre.
+- **E2-4** : la pop-up se ferme comme les autres fenêtres du widget (bouton Fermer, touche Échap), avec les mêmes règles d'accessibilité (`role=dialog`, focus géré, retour du focus sur le bouton qui a ouvert la pop-up).
+
+Tâches à venir : E2.1 (note UX, designer-ux), E2.2 (écran et pop-up, dev-interface), E2.3 (téléchargement et nom de fichier, dev-backend), E2.4 (tests, testeur), R9 (recette, recetteur).
 
 ## Questions encore ouvertes
 
