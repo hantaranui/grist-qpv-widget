@@ -41,7 +41,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
@@ -2480,6 +2480,11 @@ function bindConvention(actionId) {
   // « Voir la convention signée » n'existe qu'a l'etat « Signee ».
   const voirSignee = document.getElementById('conventionVoirSignee');
   if (voirSignee) voirSignee.addEventListener('click', () => conventionVoirSigneeClic(actionId));
+  // « Telecharger » existe aux etats « Generee » et « Signee » (a cote de chaque « Voir »).
+  [false, true].forEach(signee => {
+    const telecharger = document.getElementById(conventionTelechargerId(signee));
+    if (telecharger) telecharger.addEventListener('click', () => conventionTelecharger(actionId, signee));
+  });
   bindConventionDepot(actionId);
 }
 
@@ -3615,18 +3620,28 @@ function conventionAnnoncerReussite(logosManquants) {
   requestResize();
 }
 
-// ---- Convention : bouton « Voir la convention » (tache 7.4) ----
-// Au clic : on lit un jeton de LECTURE, on telecharge la piece jointe PDF_genere par l'API
-// REST, puis on l'ouvre dans un nouvel onglet a une adresse blob: (le PDF est lu depuis la
-// memoire du navigateur). Le jeton n'est lu qu'au clic, vit dans des variables locales et
-// n'est ni garde, ni ecrit dans la page, la console, un message ou une adresse visible.
+// ---- Convention : boutons « Voir la convention » et « Telecharger » (tache 7.4, evolution 2) ----
+// Au clic sur « Voir » : on lit un jeton d'ECRITURE (voir conventionTelechargerPdf), on telecharge la
+// piece jointe PDF_genere par l'API REST, puis on l'affiche dans une pop-up du widget, a une adresse
+// blob: (le PDF est lu depuis la memoire du navigateur). « Telecharger » (bloc) recupere le meme
+// fichier et l'enregistre sous son vrai nom. Le jeton n'est lu qu'au clic, vit dans des variables
+// locales et n'est ni garde, ni ecrit dans la page, la console, un message ou une adresse visible.
 // Rien n'est ecrit dans la console : une erreur de reseau peut recopier l'adresse.
 const CONVENTION_TEXTE_VOIR = 'Voir la convention';
-const CONVENTION_TEXTE_VOIR_CACHE = " (s'ouvre dans un nouvel onglet)";
+const CONVENTION_TEXTE_VOIR_CACHE = " (s'ouvre dans une fenêtre)";
 const CONVENTION_TEXTE_OUVERTURE = 'Ouverture en cours…';
 const CONVENTION_MESSAGE_VOIR_ECHEC = "Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord.";
-// L'adresse blob: est liberee apres ce delai : l'onglet a alors fini de lire le PDF.
-const CONVENTION_VOIR_LIBERATION_MS = 60000;
+// Bouton « Telecharger » du bloc (a cote de chaque « Voir »). Le texte cache vient apres le mot visible :
+// le nom accessible commence par le texte visible.
+const CONVENTION_TEXTE_TELECHARGER = 'Télécharger';
+const CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE = ' le fichier PDF de la convention générée';
+const CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE = ' le fichier PDF de la convention signée';
+const CONVENTION_TEXTE_TELECHARGEMENT = 'Téléchargement en cours…';
+const CONVENTION_MESSAGE_TELECHARGER_ECHEC = "Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord.";
+// « Telecharger » du bloc : le lien temporaire et l'adresse blob: sont retires apres ce delai, le
+// temps que le navigateur ait commence l'enregistrement. « Voir » ne s'en sert plus : la pop-up
+// libere son adresse a sa fermeture (conventionPdfFermer).
+const CONVENTION_VOIR_LIBERATION_MS = 5000;
 
 // Vrai pendant l'ouverture : les clics sur le bouton sont alors ignores.
 let conventionOuvertureEnCours = false;
@@ -3636,9 +3651,32 @@ function conventionVoirLibelleHtml() {
   return `${escapeHtml(CONVENTION_TEXTE_VOIR)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
 }
 
-// `apres` (facultatif) : boutons places sur la meme rangee, juste apres « Voir la convention ».
+// `apres` (facultatif) : boutons places sur la meme rangee, apres « Voir la convention » et « Telecharger ».
 function conventionVoirHtml(apres) {
-  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button>${apres || ''}</div>`;
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir" aria-haspopup="dialog"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button>${conventionTelechargerHtml(false)}${apres || ''}</div>`;
+}
+
+// Verrou propre a chaque bouton « Telecharger » (cle : son id). « Voir » et « Telecharger » restent
+// utilisables l'un pendant l'autre.
+const conventionTelechargementEnCours = {conventionTelecharger: false, conventionTelechargerSignee: false};
+
+function conventionTelechargerId(signee) {
+  return signee ? 'conventionTelechargerSignee' : 'conventionTelecharger';
+}
+
+// Libelle du bouton : le mot visible, puis le texte cache pour les lecteurs d'ecran.
+function conventionTelechargerLibelleHtml(signee) {
+  const cache = signee ? CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE : CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE;
+  return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(cache)}</span>`;
+}
+
+// Un <button> (et non un lien) : l'adresse blob: n'existe qu'apres la recuperation du PDF avec le jeton,
+// qu'on ne fait jamais avant le clic. Si le bloc est refait pendant la recuperation, texte et
+// aria-disabled sont reposes d'apres le verrou.
+function conventionTelechargerHtml(signee) {
+  const id = conventionTelechargerId(signee);
+  const attente = conventionTelechargementEnCours[id];
+  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(signee)}</span></button>`;
 }
 
 // Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
@@ -3663,7 +3701,8 @@ async function conventionTelechargerPdf(pieceJointe) {
   if (!reponse.ok) throw new Error('telechargement');
   const octets = await reponse.arrayBuffer();
   if (!octets.byteLength) throw new Error('fichier vide');
-  // Le type est pose ici : l'onglet affiche ainsi le PDF au lieu de le telecharger.
+  // Le type est force ici a application/pdf (jamais celui que renvoie Grist) : le cadre de la pop-up
+  // affiche ainsi le PDF, et le navigateur ne peut pas l'interpreter comme une page web.
   return new Blob([octets], {type: 'application/pdf'});
 }
 
@@ -3695,54 +3734,126 @@ function conventionAlerteVoirEchec() {
   requestResize();
 }
 
-// Clic sur « Voir la convention ». L'onglet est ouvert tout de suite, pendant le clic (avant
-// toute attente), sinon le navigateur le prend pour une fenetre non sollicitee et le bloque ;
-// il recoit l'adresse blob: quand le PDF est pret. La page du widget n'est jamais remplacee.
-// Le focus ne bouge pas : il reste sur le bouton, en cas de reussite comme d'echec.
+// PDF de la convention d'une action, en Blob : le fichier genere (PDF_genere) ou, si `signee` est vrai,
+// le fichier signe (PDF_signe). Echoue sans detail s'il n'y a pas de fichier. Aucun jeton dans les erreurs.
+function conventionRecupererPdf(actionId, signee) {
+  if (signee) return conventionTelechargerPdfSigne(actionId);
+  const {convention} = conventionEtat(actionId, state);
+  const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
+  if (!pieceJointe) return Promise.reject(new Error('pas de fichier'));
+  return conventionTelechargerPdf(pieceJointe);
+}
+
+// Nom exact du fichier, le meme pour le titre de la pop-up et pour « Telecharger » (note UX §14.4).
+// Jamais de nom de personne ; l'annee est celle enregistree avec la convention.
+function conventionNomAffiche(actionId, signee) {
+  if (signee) return conventionNomFichierSigne(actionId, state);
+  const {convention} = conventionEtat(actionId, state);
+  return conventionNomFichier(actionId, {annee: convention && convention.Annee ? String(convention.Annee) : ''}, state);
+}
+
+// Recupere le PDF puis ouvre la pop-up. Echoue (sans detail) si le fichier est introuvable, si le jeton
+// est refuse ou si le delai est depasse : rien ne s'ouvre alors, et l'adresse blob: eventuelle est liberee.
+// Delai depasse (reseau coupe) = echec : sans lui, le bouton restait sur « Ouverture en cours… » et les
+// clics suivants etaient ignores pour toujours.
+async function conventionOuvrirApercu(actionId, signee, declencheur) {
+  const nom = conventionNomAffiche(actionId, signee);
+  const pdf = await conventionAvecDelai(
+    conventionRecupererPdf(actionId, signee),
+    CONVENTION_TELECHARGEMENT_DELAI_MS,
+    () => new Error('delai')
+  );
+  const adresse = URL.createObjectURL(pdf);
+  try {
+    conventionPdfOuvrir({adresse, nom, signee, declencheur});
+  } catch (erreur) {
+    conventionPdfFermer();
+    URL.revokeObjectURL(adresse);
+    throw erreur;
+  }
+}
+
+// Clic sur « Voir la convention » : la pop-up s'ouvre seulement quand le PDF est recupere (pas de
+// fenetre vide qui attend). Le bouton reste sur la page : le focus lui revient a la fermeture.
 async function conventionVoir(actionId) {
   const bouton = document.getElementById('conventionVoir');
   if (!bouton || conventionOuvertureEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
   conventionAlerteVoirEffacer();
   conventionOuvertureEnCours = true;
-  let onglet = null;
-  try {
-    onglet = window.open('', '_blank');
-  } catch (erreur) {
-    onglet = null;
-  }
   conventionVoirAttente(true);
-  let adresse = '';
-  let reussi = false;
   try {
-    // Onglet refuse par le navigateur : on s'arrete avant de telecharger.
-    if (!onglet) throw new Error('onglet bloque');
-    const {convention} = conventionEtat(actionId, state);
-    const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
-    if (!pieceJointe) throw new Error('pas de fichier');
-    // Delai depasse (reseau coupe) = echec d'ouverture : sans lui, le bouton restait sur
-    // « Ouverture en cours… » et les clics suivants etaient ignores pour toujours.
-    const pdf = await conventionAvecDelai(
-      conventionTelechargerPdf(pieceJointe),
-      CONVENTION_TELECHARGEMENT_DELAI_MS,
-      () => new Error('delai')
-    );
-    adresse = URL.createObjectURL(pdf);
-    // L'onglet ne doit pas pouvoir agir sur la page du widget.
-    try { onglet.opener = null; } catch (erreur) { /* sans effet : on continue */ }
-    onglet.location.href = adresse;
-    reussi = true;
-    setTimeout(() => URL.revokeObjectURL(adresse), CONVENTION_VOIR_LIBERATION_MS);
+    await conventionOuvrirApercu(actionId, false, 'conventionVoir');
   } catch (erreur) {
-    if (adresse && !reussi) URL.revokeObjectURL(adresse);
-    // L'onglet vide ouvert pour rien est referme.
-    if (onglet) {
-      try { onglet.close(); } catch (autre) { /* deja ferme */ }
-    }
     conventionAlerteVoirEchec();
   } finally {
     conventionOuvertureEnCours = false;
     conventionVoirAttente(false);
   }
+}
+
+// Texte du bouton « Telecharger » du bloc pendant (ou apres) la recuperation. aria-disabled, jamais
+// disabled : le focus reste sur le bouton.
+function conventionTelechargerAttente(signee, attente) {
+  const bouton = document.getElementById(conventionTelechargerId(signee));
+  if (!bouton) return;
+  const libelle = bouton.querySelector('.btn-content') || bouton;
+  if (attente) {
+    bouton.setAttribute('aria-disabled', 'true');
+    libelle.textContent = CONVENTION_TEXTE_TELECHARGEMENT;
+  } else {
+    bouton.removeAttribute('aria-disabled');
+    libelle.innerHTML = conventionTelechargerLibelleHtml(signee);
+  }
+}
+
+// Clic sur « Telecharger » du bloc : recupere le PDF (meme fonction, meme jeton que « Voir »), fabrique
+// l'adresse blob:, cree un lien <a download="[nom].pdf"> temporaire, le declenche par programme, puis
+// retire le lien et libere l'adresse apres CONVENTION_VOIR_LIBERATION_MS. Reussite : aucun message
+// (le navigateur affiche son propre telechargement). Echec : l'alerte du bloc. Le focus ne bouge pas.
+async function conventionTelecharger(actionId, signee) {
+  const id = conventionTelechargerId(signee);
+  const bouton = document.getElementById(id);
+  if (!bouton || conventionTelechargementEnCours[id] || bouton.getAttribute('aria-disabled') === 'true') return;
+  conventionAlerteVoirEffacer();
+  conventionTelechargementEnCours[id] = true;
+  conventionTelechargerAttente(signee, true);
+  let adresse = '';
+  let lien = null;
+  try {
+    const nom = conventionNomAffiche(actionId, signee);
+    const pdf = await conventionAvecDelai(
+      conventionRecupererPdf(actionId, signee),
+      CONVENTION_TELECHARGEMENT_DELAI_MS,
+      () => new Error('delai')
+    );
+    adresse = URL.createObjectURL(pdf);
+    lien = document.createElement('a');
+    lien.href = adresse;
+    lien.download = nom;
+    lien.rel = 'noopener';
+    lien.hidden = true;
+    document.body.appendChild(lien);
+    lien.click();
+    const aRetirer = {adresse, lien};
+    setTimeout(() => {
+      aRetirer.lien.remove();
+      URL.revokeObjectURL(aRetirer.adresse);
+    }, CONVENTION_VOIR_LIBERATION_MS);
+  } catch (erreur) {
+    if (lien) lien.remove();
+    if (adresse) URL.revokeObjectURL(adresse);
+    conventionAlerteTelechargerEchec();
+  } finally {
+    conventionTelechargementEnCours[id] = false;
+    conventionTelechargerAttente(signee, false);
+  }
+}
+
+function conventionAlerteTelechargerEchec() {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_TELECHARGER_ECHEC)}</p></div>`;
+  requestResize();
 }
 
 // Telecharge le fichier signe (colonne PDF_signe) : meme methode que conventionTelechargerPdf
@@ -3755,40 +3866,17 @@ async function conventionTelechargerPdfSigne(actionId) {
   return conventionTelechargerPdf(pieceJointe);
 }
 
-// POINT D'APPEL pour « Voir la convention signee » (le bouton et l'ecran viennent avec la
-// tache de dev-interface). Meme deroulement que conventionVoir : l'onglet est ouvert tout de
-// suite pendant le clic, puis recoit l'adresse blob:, liberee apres un delai. Ne touche ni au
-// bouton ni a l'ecran sauf l'alerte d'echec commune. Renvoie true si le fichier est ouvert,
-// false sinon (l'appelant gere le texte du bouton et le verrou).
+// Point d'appel pour « Voir la convention signee » : meme deroulement que conventionVoir (la pop-up
+// s'ouvre quand le PDF signe est recupere). Ne touche ni au bouton ni a l'ecran sauf l'alerte d'echec
+// commune. Renvoie true si la pop-up est ouverte, false sinon (l'appelant gere le texte du bouton et le verrou).
 async function conventionVoirSignee(actionId) {
-  let onglet = null;
   try {
-    onglet = window.open('', '_blank');
+    await conventionOuvrirApercu(actionId, true, 'conventionVoirSignee');
+    return true;
   } catch (erreur) {
-    onglet = null;
-  }
-  let adresse = '';
-  let reussi = false;
-  try {
-    if (!onglet) throw new Error('onglet bloque');
-    const pdf = await conventionAvecDelai(
-      conventionTelechargerPdfSigne(actionId),
-      CONVENTION_TELECHARGEMENT_DELAI_MS,
-      () => new Error('delai')
-    );
-    adresse = URL.createObjectURL(pdf);
-    try { onglet.opener = null; } catch (erreur) { /* sans effet : on continue */ }
-    onglet.location.href = adresse;
-    reussi = true;
-    setTimeout(() => URL.revokeObjectURL(adresse), CONVENTION_VOIR_LIBERATION_MS);
-  } catch (erreur) {
-    if (adresse && !reussi) URL.revokeObjectURL(adresse);
-    if (onglet) {
-      try { onglet.close(); } catch (autre) { /* deja ferme */ }
-    }
     conventionAlerteVoirEchec();
+    return false;
   }
-  return reussi;
 }
 
 // ---- Convention : bouton « Voir la convention signée » (tâche 9.1c) ----
@@ -3810,7 +3898,7 @@ function conventionVoirSigneeLibelleHtml() {
 // Si le bloc est refait pendant l'ouverture, texte et aria-disabled sont reposes d'apres le verrou.
 function conventionVoirSigneeHtml() {
   const attente = conventionOuvertureSigneeEnCours;
-  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button></div>`;
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee" aria-haspopup="dialog"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button>${conventionTelechargerHtml(true)}</div>`;
 }
 
 // Contenu des boutons de l'etat « Signee » : « Voir la convention signee », puis en dessous
@@ -3834,9 +3922,8 @@ function conventionVoirSigneeAttente(attente) {
   }
 }
 
-// Clic sur « Voir la convention signee ». conventionVoirSignee ouvre l'onglet tout de suite,
-// avant sa premiere attente : le clic reste donc compris comme un geste de l'utilisateur. Elle
-// affiche elle-meme l'alerte d'echec ; ici, on gere seulement le verrou et le texte du bouton.
+// Clic sur « Voir la convention signee ». conventionVoirSignee affiche elle-meme l'alerte
+// d'echec ; ici, on gere seulement le verrou et le texte du bouton.
 async function conventionVoirSigneeClic(actionId) {
   const bouton = document.getElementById('conventionVoirSignee');
   if (!bouton || conventionOuvertureSigneeEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
@@ -3848,6 +3935,136 @@ async function conventionVoirSigneeClic(actionId) {
   } finally {
     conventionOuvertureSigneeEnCours = false;
     conventionVoirSigneeAttente(false);
+  }
+}
+
+// ---- Convention : pop-up d'apercu du PDF (evolution 2, note UX §14) ----
+// « Voir la convention » et « Voir la convention signee » affichent le PDF dans une pop-up du widget
+// (structure de la fenetre « Convention »). Garde-fous de l'audit de securite du 2026-10-30 :
+//  1. le Blob garde son type application/pdf force (conventionTelechargerPdf) ;
+//  2. l'adresse n'entre dans le cadre que par `cadre.src = adresse`, jamais dans un texte HTML ;
+//  3. le cadre porte referrerpolicy="no-referrer", sans attribut `allow` ni `sandbox` (la visionneuse
+//     PDF de Chrome refuse un cadre en bac a sable) ;
+//  4. a la FERMETURE (et si l'ouverture echoue), le src du cadre est vide et l'adresse est liberee ;
+//  5. aucun lien permanent ni window.open ne mene a l'adresse blob: : le seul lien est le lien
+//     temporaire (attribut download) cree au clic sur « Telecharger », puis retire aussitot.
+// Une seule adresse en memoire a la fois.
+// Mise a jour E2-5 a E2-11 : plein ecran dans l'espace du widget (sans fond assombri), le nom exact
+// du fichier est le seul titre, « Telecharger » et la croix sont dans l'en-tete, plus de pied de page.
+
+// Adresse blob: et nom du fichier de la pop-up ouverte ('' sinon), et id du bouton qui l'a ouverte
+// (« Voir » ou « Voir signee ») : le bloc peut etre refait entre-temps, on retrouve donc le bouton
+// par son id. L'adresse et le nom restent en memoire ici, jamais dans un attribut de la page.
+let conventionPdfAdresse = '';
+let conventionPdfNom = '';
+let conventionPdfDeclencheur = '';
+
+// Structure de la note §14.3. Ni l'adresse ni le jeton ne sont dans ce texte : elle est posee ensuite,
+// par propriete, dans conventionPdfOuvrir. Le nom du fichier est echappe. Pas de modal-backdrop : la
+// fenetre recouvre tout le widget. La classe convention-pdf-plein-ecran donne la taille (la feuille du
+// design system n'a pas de classe plein ecran pour modal-dialog). « Telecharger » est un bouton, sans
+// href : aucune adresse ne s'affiche au survol. La croix reprend le gabarit des boutons icone de clubs.
+function conventionPdfModalHtml(nom, signee) {
+  const sorte = signee ? 'signée' : 'générée';
+  const cache = signee ? CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE : CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE;
+  return `<div class="modal fade show" id="conventionPdfDialog" role="dialog" aria-modal="true" aria-labelledby="conventionPdfTitle" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable convention-pdf-plein-ecran">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="conventionPdfTitle">${escapeHtml(nom)}</h2>
+          <div class="convention-actions">
+            <button type="button" class="btn btn-primary" id="conventionPdfTelecharger"><span class="btn-content">${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(cache)}</span></span></button>
+            <button type="button" class="btn btn-secondary btn-ratio-square" id="conventionPdfFermer" aria-label="Fermer" title="Fermer"><span aria-hidden="true" class="icon icon-close"></span></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <iframe class="convention-pdf-cadre" id="conventionPdfCadre" title="Aperçu de la convention ${sorte}" referrerpolicy="no-referrer"></iframe>
+          <p class="help-block" id="conventionPdfRepli">Le PDF ne s'affiche pas ? Utilisez « Télécharger ».</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Clic sur « Telecharger » de la pop-up : cree un lien <a download="[nom]"> temporaire vers l'adresse
+// deja en memoire, le declenche par programme, puis le retire aussitot. Pas de recuperation, pas de
+// texte d'attente, pas de verrou, pas d'alerte (contrairement au bouton du bloc). L'adresse n'est PAS
+// liberee ici : elle sert encore a l'apercu, elle l'est a la fermeture (conventionPdfFermer).
+function conventionPdfTelecharger() {
+  if (!conventionPdfAdresse) return;
+  const lien = document.createElement('a');
+  lien.href = conventionPdfAdresse;
+  lien.download = conventionPdfNom;
+  lien.rel = 'noopener';
+  lien.hidden = true;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+}
+
+// Ouvre la pop-up. `adresse` : l'adresse blob: deja creee (liberee par conventionPdfFermer) ; `nom` : le
+// nom exact du fichier ; `declencheur` : id du bouton qui reprendra le focus. Le focus d'ouverture va
+// sur la fenetre elle-meme, jamais sur « Telecharger » (une touche Entree distraite lancerait un
+// telechargement) ni sur le cadre (les touches n'en sortent plus).
+function conventionPdfOuvrir({adresse, nom, signee, declencheur}) {
+  // Une seule pop-up a la fois : l'ancienne, s'il en restait une, est fermee et son adresse liberee.
+  if (state.conventionPdfOpen) conventionPdfFermer();
+  const host = document.getElementById('conventionPdfModal');
+  conventionPdfAdresse = adresse;
+  conventionPdfNom = nom;
+  conventionPdfDeclencheur = declencheur;
+  state.conventionPdfOpen = true;
+  host.innerHTML = conventionPdfModalHtml(nom, signee);
+  document.getElementById('conventionPdfCadre').src = adresse;
+  document.getElementById('conventionPdfTelecharger').addEventListener('click', conventionPdfTelecharger);
+  document.getElementById('conventionPdfFermer').addEventListener('click', conventionPdfFermer);
+  host.addEventListener('keydown', keepFocusInConventionPdf);
+  document.body.classList.add('modal-open');
+  document.getElementById('conventionPdfDialog').focus();
+  requestResize();
+}
+
+// Fermeture (Fermer, Echap, ou ouverture qui echoue) : le src du cadre est vide et l'adresse blob:
+// est liberee a ce moment precis, puis la pop-up disparait et le bouton d'origine reprend le focus.
+function conventionPdfFermer() {
+  const host = document.getElementById('conventionPdfModal');
+  host.removeEventListener('keydown', keepFocusInConventionPdf);
+  const cadre = document.getElementById('conventionPdfCadre');
+  if (cadre) cadre.src = '';
+  if (conventionPdfAdresse) URL.revokeObjectURL(conventionPdfAdresse);
+  conventionPdfAdresse = '';
+  conventionPdfNom = '';
+  host.innerHTML = '';
+  if (!state.conventionOpen) document.body.classList.remove('modal-open');
+  state.conventionPdfOpen = false;
+  const bouton = conventionPdfDeclencheur ? document.getElementById(conventionPdfDeclencheur) : null;
+  conventionPdfDeclencheur = '';
+  if (bouton) bouton.focus();
+  requestResize();
+}
+
+// Echap ferme la pop-up (rien a enregistrer) ; Tab et Maj+Tab tournent entre Telecharger, la croix et
+// le cadre. Quand le focus est dans le PDF, les touches ne remontent plus ici : la croix reste
+// atteignable avec Tab (a noter dans la recette).
+function keepFocusInConventionPdf(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    conventionPdfFermer();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const dialog = document.getElementById('conventionPdfDialog');
+  const focusable = [...document.querySelectorAll('#conventionPdfDialog button:not(:disabled), #conventionPdfDialog iframe')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  // Le focus d'ouverture est sur la fenetre elle-meme : Maj+Tab y boucle sur le dernier element.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 

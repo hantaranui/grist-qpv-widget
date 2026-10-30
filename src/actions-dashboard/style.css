@@ -817,7 +817,23 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    (3 parts) plus large qu'Agence (2 parts), soit 60 % / 40 %, pour que l'encart du club
    tienne en largeur. Rien n'est reserve pour un troisieme bloc. Aucune couleur : tout
    vient du design system. */
-#conventionModal .modal { display: block; overflow-y: auto; }
+#conventionModal .modal, #conventionPdfModal .modal { display: block; overflow-y: auto; }
+/* Pop-up d'apercu du PDF (« Voir la convention ») : plein ecran DANS le widget (pas l'ecran de
+   l'ordinateur), sans fond assombri. La feuille du design system n'a pas de classe plein ecran pour
+   modal-dialog (verifie : seul modal-side existe, un panneau lateral) : cette classe du widget
+   donne seulement la taille et retire les marges. Les max-height neutralisent ceux de
+   modal-dialog-scrollable, qui laisseraient une bande de 3,5 rem en bas. Aucune couleur. */
+#conventionPdfModal .convention-pdf-plein-ecran { max-width: none; width: 100%; height: 100%; max-height: none; margin: 0; }
+#conventionPdfModal .convention-pdf-plein-ecran .modal-content { height: 100%; max-height: none; border-radius: 0; }
+/* En-tete : le nom du fichier (titre) passe a la ligne s'il est long, et les commandes passent
+   sous lui si la largeur manque (mobile). modal-header range deja titre a gauche, commandes a droite. */
+#conventionPdfModal .modal-header { flex-wrap: wrap; gap: 12px; }
+#conventionPdfModal .modal-title { min-width: 0; overflow-wrap: anywhere; }
+/* Cadre du PDF : toute la largeur, sans bordure. Pas de variable du design system pour une hauteur
+   d'apercu. 150 px = en-tete (une ligne, environ 70) + texte de repli (environ 45) + remplissage du
+   corps (environ 35) : estimations de la note UX, a ajuster a l'oeil dans Grist DEV. 100vh est la
+   hauteur du cadre du widget. La fenetre defile si le widget est plus bas. */
+.convention-pdf-cadre { display: block; width: 100%; height: calc(100vh - 150px); min-height: 420px; border: 0; }
 .convention-grid { display: grid; gap: 24px; }
 @media (min-width: 1100px) {
   /* Cote a cote : 40 px entre les deux colonnes (meme valeur que les marges de la fiche d'action),
