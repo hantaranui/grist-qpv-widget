@@ -1187,3 +1187,26 @@ Ce qui a changé, résumé :
 Ce que j'ai fait corriger en cours de route : bug Annee: null (grave, avant tout essai) ; grille à deux colonnes qui ne basculait pas (fausse alerte, cache navigateur) puis seuil réellement trop haut (vrai correctif) ; titres "Club"/"Agence" en double ; espace vide à droite (grille à trois colonnes jamais réduite à deux) ; espacements insuffisants (gap entre colonnes, champs du formulaire) ; phrase d'introduction erronée (deux fois) ; blocage de l'adresse du club oublié.
 Tests : plusieurs cycles sur la journée, de 733 (avant E1) à 765 puis 761 tests, 0 échec au final (npm test). Vérifié à l'écran par Hanta dans DEV7 : bouton Ajouter un contact, pointillés sur champ vide, bascule à deux colonnes sous 1100 px, encart Club sans poignée.
 Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html, 9 fichiers de test (dont convention-contact.test.js, nouveau),
+
+## Tâche C57 — Évolution 2 : pop-up plein écran pour Voir, téléchargement avec le bon nom
+
+Date : 2026-10-30
+Agents : relecteur (deux diagnostics), designer-ux (plusieurs passes), auditeur-securite (examen de l'iframe), dev-interface (code), testeur (mise à jour complète)
+Prompt : bugs constatés par le chef de projet (PDF non téléchargeable avec le bon nom, adresse github.io trompeuse), affinés en plusieurs décisions (E2-1 à E2-11, docs/backlog.md)
+
+Note /5 : 4
+Ce qui a changé, résumé :
+- "Voir la convention" et "Voir la convention signée" ouvrent une pop-up PLEIN ÉCRAN (dans l'espace du widget) au lieu d'un nouvel onglet : plus d'adresse blob:/github.io visible dans la barre d'adresse du navigateur.
+- Bouton "Télécharger" ajouté à deux endroits : dans le bloc (indépendant, rapide) ET dans l'en-tête de la pop-up (après consultation) ; les deux garantissent le bon nom de fichier ("Convention-..."), quel que soit le navigateur.
+- Le bouton "Télécharger" de la pop-up n'est jamais un vrai lien permanent (pour qu'aucune adresse ne soit visible même au survol) : il fabrique un lien temporaire au clic, comme celui du bloc.
+- Plus de titre générique : le nom du fichier devient le seul titre de la pop-up.
+- Plus de pied de page : Télécharger et la croix de fermeture passent dans l'en-tête, pour maximiser la hauteur de lecture du PDF.
+- Plus de lien "Ouvrir dans un nouvel onglet" (risque d'exposer l'adresse) : un texte simple en cas d'échec d'affichage.
+- Vrai plein écran du navigateur étudié et écarté : dépend d'une autorisation que Grist devrait donner à l'iframe du widget, non garantie ; on reste sur le plein écran de l'espace du widget, fiable à coup sûr.
+- Audit de sécurité sur l'absence de sandbox de l'iframe : point mineur non bloquant, grâce au type du Blob toujours forcé à application/pdf ; 5 garde-fous appliqués (type forcé, src posé par JS, referrerpolicy, libération à la fermeture, pas de lien permanent exposant l'adresse).
+Ce que j'ai fait corriger en cours de route : bug du nom de fichier (UUID au lieu du vrai nom) diagnostiqué par le relecteur comme une limite structurelle des adresses blob: (pas un bug du code) ; plusieurs allers-retours de cadrage avec le chef de projet (taille de la pop-up, position des boutons, risque de survol d'adresse) avant de stabiliser la note.
+Tests : 761 tests avant l'évolution, 25 échecs attendus après le premier code, 783 passés au final (22 ajoutés), 0 échec (npm test). Le testeur a volontairement cassé le code 11 fois dans une copie jetable pour vérifier que ses tests détectent bien chaque régression. Vérifié à l'écran par Hanta dans DEV7 : pop-up plein écran sans bande visible, titre = nom du fichier, boutons en en-tête, téléchargement avec le bon nom, fermeture correcte (croix et Échap).
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html, 6 fichiers de test, test/helpers/convention-popup.js (nouveau), docs/ux/convention.md, docs/backlog.md
+Build refait : oui
+Commit : bedf338 (code) et fe1b558 (tests)
+Reste à faire : vérifier le rendu réel dans Chrome, Firefox et Safari (iframe PDF, téléchargement, absence de bande visible) ; mesurer la hauteur réelle du cadre PDF (calc(100vh - 150px) est une estimation) ; R9, la recette de cette évolution, à écrire.
