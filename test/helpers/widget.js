@@ -50,15 +50,23 @@ function makeElement() {
   };
 }
 
-function loadWidget() {
+// Options facultatives (sans elles, le comportement est inchange). Elles servent
+// aux tests des filtres gardes, qui ont besoin de ce que le script lit AU
+// chargement et qu'on ne peut donc pas poser apres coup :
+//   - sessionStorage, getDocName, fetchTable : l'ecriture/lecture des filtres et
+//     le nom du document se font pendant load(), lance par le script lui-meme ;
+//   - elements : des elements prepares (ex. resetBtn), car le script y branche
+//     ses ecouteurs des le chargement ;
+//   - console : pour verifier que rien n'est journalise.
+function loadWidget(options = {}) {
   const code = fs.readFileSync(SCRIPT, "utf8")
     + `\n;globalThis.__widget = {${EXPORTED.join(", ")}};\n`;
 
   // Le chargement asynchrone du widget journalise ses replis : inutile de polluer
   // la sortie des tests avec.
-  const quiet = {log() {}, warn() {}, error() {}, info() {}};
+  const quiet = options.console || {log() {}, warn() {}, error() {}, info() {}};
 
-  const elements = new Map();
+  const elements = options.elements || new Map();
 
   // Le stockage local du navigateur, reduit a ce dont le widget se sert. Les
   // tests y deposent la note laissee par le widget clubs.
@@ -93,12 +101,14 @@ function loadWidget() {
       docApi: {
         // Une table vide au format colonnes de Grist : le widget demarre sans
         // donnee, les tests fournissent ensuite leurs propres jeux d'essai.
-        fetchTable: () => Promise.resolve({id: []}),
+        fetchTable: options.fetchTable || (() => Promise.resolve({id: []})),
         getAccessToken: () => Promise.reject(new Error("pas de jeton en test")),
         applyUserActions: () => Promise.resolve({}),
       },
     },
   };
+  if (options.getDocName) sandbox.grist.docApi.getDocName = options.getDocName;
+  if (options.sessionStorage) sandbox.sessionStorage = options.sessionStorage;
   sandbox.window = sandbox;
   sandbox.globalThis = sandbox;
 
