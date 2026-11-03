@@ -376,3 +376,18 @@ Tests : aucun (documentation)
 Fichiers modifiés : docs/tests/cas-de-test-contacts.tsv, docs/tests/cas-de-test-contacts.md (créés)
 Build refait : non
 Commit : 15c1258 sur feature/contacts-fiche-club
+
+## Tâche 26 — Tableau de bord : conservation des filtres entre deux pages (dev-backend, testeur)
+
+Date : 03/11/2026
+Agents : dev-backend (code), testeur (32 tests)
+Prompt : demande du chef de projet, « je souhaite que mes filtres du dashboard soient conservés, même si je navigue vers une autre page entre temps »
+
+Note /5 : sans objet
+Ce qui allait : filtres gardés en sessionStorage (perdus à la fermeture de l'onglet, pas au changement de page) ; clé séparée par document (DEV/TEST/PROD ne se mélangent jamais) ; chaque utilisateur garde ses propres filtres ; Réinitialiser efface aussi les filtres gardés ; un filtre devenu incohérent est ignoré au démarrage, avec le même nettoyage que les filtres dépendants DR → DD → agence ; tout accès à sessionStorage et à getDocName() protégé (try/catch), sans message à l'écran ni dans la console en cas d'échec
+Ce que j'ai fait corriger : rien, le code suivait les 5 décisions dès la première tâche
+Tests : 244 tests avant, 276 passés après (32 ajoutés), 0 échec (npm test). Vérifié à l'écran dans DEV7 : filtres conservés après un changement de page, Réinitialiser efface bien tout, pas de réapparition après
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/helpers/widget.js, test/filtres-gardes.test.js (créé)
+Build refait : oui
+Commit : ee547d9 (code) et 9fd8fd3 (tests) sur feature/conserver-filtres
+Reste à faire : recette à écrire et jouer (carnet du tableau de bord) ; vérifier dans Grist DEV/TEST que sessionStorage n'est pas restreint par le navigateur quand le widget est chargé en iframe tiers (risque signalé par le testeur, non vérifié formellement)
