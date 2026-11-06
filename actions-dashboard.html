@@ -988,8 +988,67 @@ const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non fina
 
 const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
 
+// Conservation des filtres le temps de la session (tant que l'onglet reste
+// ouvert) : quand on quitte la page puis qu'on y revient, Grist recharge le
+// widget et state.filters repartirait de zero. On les garde dans sessionStorage,
+// propre a chaque onglet donc a chaque utilisateur. La cle contient le nom du
+// document pour que DEV, TEST et PROD ne se melangent pas. Seules les valeurs
+// des filtres sont gardees : ni tri, ni blocs replies, ni jeton.
+const FILTRES_CLE_PREFIXE = 'dashboard-filtres-v1:';
+let filtresCle = null; // reste null tant que le nom du document n'est pas connu
+
+// Ecrit les filtres courants. Tout est protege : en navigation privee ou si le
+// stockage est bloque, le widget marche normalement, sans filtres gardes.
+function sauverFiltres() {
+  if (!filtresCle) return;
+  try {
+    window.sessionStorage.setItem(filtresCle, JSON.stringify(state.filters));
+  } catch (error) {
+    // Stockage indisponible : on continue sans rien afficher.
+  }
+}
+
+// Vide les filtres gardes (bouton Reinitialiser).
+function effacerFiltresGardes() {
+  if (!filtresCle) return;
+  try {
+    window.sessionStorage.removeItem(filtresCle);
+  } catch (error) {
+    // Stockage indisponible : rien a effacer.
+  }
+}
+
+// Appelee au demarrage, une fois les donnees chargees (optionsFor en a besoin).
+// Garde seulement les filtres qui correspondent encore a quelque chose.
+async function restaurerFiltres() {
+  try {
+    const nom = await grist.docApi.getDocName();
+    if (!nom) return;
+    filtresCle = FILTRES_CLE_PREFIXE + nom;
+  } catch (error) {
+    return;
+  }
+  let gardes = null;
+  try {
+    gardes = JSON.parse(window.sessionStorage.getItem(filtresCle));
+  } catch (error) {
+    return;
+  }
+  if (!gardes || typeof gardes !== 'object' || Array.isArray(gardes)) return;
+  // On suit l'ordre de FILTERS (dr avant dd avant agence) : chaque filtre est
+  // verifie avec les precedents deja acceptes, comme optionsFor le fait.
+  FILTERS.forEach(([key]) => {
+    const valeur = gardes[key];
+    if (typeof valeur !== 'string' || !valeur) return;
+    if (TEXT_FILTERS.has(key) || optionsFor(key).includes(valeur)) state.filters[key] = valeur;
+  });
+  pruneGeoFilters();
+  sauverFiltres();
+}
+
 document.getElementById('resetBtn').addEventListener('click', () => {
   state.filters = {};
+  effacerFiltresGardes();
   render();
 });
 
@@ -1043,6 +1102,7 @@ async function load() {
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
     state.actions = buildActions(state.raw);
+    await restaurerFiltres();
     ouvrirActionDemandee();
     render();
   } catch (error) {
@@ -1364,6 +1424,7 @@ function renderFilters() {
       state.filters[key] = event.target.value;
       if (!state.filters[key]) delete state.filters[key];
       pruneGeoFilters();
+      sauverFiltres();
       render();
     });
   });
@@ -1376,6 +1437,7 @@ function renderFilters() {
     const value = input ? input.value.trim() : '';
     if (value) state.filters[key] = value;
     else delete state.filters[key];
+    sauverFiltres();
     renderResults();
   };
 
@@ -1412,6 +1474,7 @@ function renderFilters() {
       if (value) state.filters[key] = value;
       else delete state.filters[key];
       pruneGeoFilters();
+      sauverFiltres();
       render();
     });
   });

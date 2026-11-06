@@ -50,9 +50,16 @@ function makeElement() {
   };
 }
 
-// Options facultatives, pour les tests qui simulent le chargement des tables :
-//   fetchTable(nom) : remplace la lecture des tables par l'API Grist (peut refuser) ;
-//   console : remplace la console muette, pour lire ce que le widget journalise.
+// Options facultatives, pour les tests qui simulent le chargement des tables et
+// les filtres gardes (sans elles, le comportement est inchange) :
+//   - fetchTable(nom) : remplace la lecture des tables par l'API Grist (peut refuser) ;
+//   - console : remplace la console muette, pour lire ce que le widget journalise ;
+//   - sessionStorage, getDocName : l'ecriture et la lecture des filtres gardes et
+//     le nom du document se font pendant load(), lance par le script lui-meme, donc
+//     il faut les fournir AVANT le chargement, pas apres coup ;
+//   - elements : des elements prepares (ex. resetBtn), car le script y branche
+//     ses ecouteurs des le chargement.
+
 function loadWidget(options = {}) {
   const code = fs.readFileSync(SCRIPT, "utf8")
     + `\n;globalThis.__widget = {${EXPORTED.join(", ")}};\n`;
@@ -61,7 +68,7 @@ function loadWidget(options = {}) {
   // la sortie des tests avec.
   const quiet = options.console || {log() {}, warn() {}, error() {}, info() {}};
 
-  const elements = new Map();
+  const elements = options.elements || new Map();
 
   // Le stockage local du navigateur, reduit a ce dont le widget se sert. Les
   // tests y deposent la note laissee par le widget clubs.
@@ -103,6 +110,8 @@ function loadWidget(options = {}) {
       },
     },
   };
+  if (options.getDocName) sandbox.grist.docApi.getDocName = options.getDocName;
+  if (options.sessionStorage) sandbox.sessionStorage = options.sessionStorage;
   sandbox.window = sandbox;
   sandbox.globalThis = sandbox;
 
