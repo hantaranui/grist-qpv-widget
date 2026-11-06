@@ -284,3 +284,12 @@ Décisions :
   - (c) ajouter une phrase d'aide courte près du bouton « Déposer » aux états « À générer » et « Sans modèle » : « Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. » ;
   - (d) mise en page du document Word : reprendre celle du PDF (A4, marges 2,5 cm, justifié, interligne 1,2), SAUF la police : Arial à la place de Roboto (non embarquée par Word) ;
   - (e) interprétation de « droits insuffisants » confirmée : masqué seulement à l'état correspondant (A7) ; un refus d'écriture réel donne le message déjà prévu (S9-4).
+- E3-19 : dernières réponses de Hanta aux questions ouvertes du §15.13 de la note UX :
+  - Q-E3-1 : oui, confirmé. Un seul bouton « Télécharger la convention », plus de bouton « Voir » pour le document généré ;
+  - Q-E3-2 : oui, confirmé. Masqué seulement à l'état A7 ;
+  - Q-E3-3 : oui, accepté tel quel ;
+  - Q-E3-4 : oui, confirmé ;
+  - Q-E3-5 (a) : oui. Utiliser le nom complet du dispositif (pas de forme abrégée) dans « Aller vers » et « Parcours complet » ;
+  - Q-E3-6 : les trois autres textes (phrases d'aide de l'état « Générée », introduction de la fenêtre B, messages d'échec de génération) sont validés tels quels, avec seulement le mot « PDF » remplacé par « document » ;
+  - Q-E3-7 : oui aux deux. Alerte d'échec si l'extension est inconnue ; .docx sur téléphone accepté sans test particulier ;
+  - Q-E3-8 : validé. On garde la ligne « Format : document Word (.docx). » / « Format : document PDF (.pdf). ».
