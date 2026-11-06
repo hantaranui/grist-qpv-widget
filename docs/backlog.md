@@ -293,3 +293,7 @@ Décisions :
   - Q-E3-6 : les trois autres textes (phrases d'aide de l'état « Générée », introduction de la fenêtre B, messages d'échec de génération) sont validés tels quels, avec seulement le mot « PDF » remplacé par « document » ;
   - Q-E3-7 : oui aux deux. Alerte d'échec si l'extension est inconnue ; .docx sur téléphone accepté sans test particulier ;
   - Q-E3-8 : validé. On garde la ligne « Format : document Word (.docx). » / « Format : document PDF (.pdf). ».
+- E3-20 : réponses de Hanta aux 3 points soulevés par dev-backend pendant le code :
+  - A : les textes de la fenêtre B et du message de re-génération, tels qu'appliqués par dev-backend (§15.7), sont confirmés ;
+  - B : PAS d'heuristique automatique sur les points tapés à la main dans le texte des modèles (proposition « 5 points ou plus » rejetée, trop risqué sur du texte géré par les gestionnaires). Les points résiduels restent de simples points dans le Word pour l'instant. Hanta vérifie manuellement dans Grist si les 3 modèles officiels en contiennent encore ; à traiter au cas par cas si besoin, jamais par automatisme ;
+  - C : accepté tel quel. La ligne « Format » et les textes associés n'apparaissent qu'après un clic ou une génération dans la session en cours (pas de lecture de `_grist_Attachments`, pas de nouvelle colonne Grist pour l'instant).
