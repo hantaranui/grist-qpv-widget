@@ -1,3 +1,244 @@
+# Nettoyage du carnet de recette Convention (2026-11-04)
+
+Passe de nettoyage faite par le recetteur sur demande de Hanta. Elle ne touche que `cas-de-test-convention.tsv` et ce fichier. Les numéros ne sont jamais réutilisés ni changés : il y a des trous (cas supprimés ou regroupés) et les nouveaux cas consolidés commencent à CONV-227.
+
+## Les chiffres
+
+| Quoi | Nombre |
+| --- | --- |
+| Cas avant le nettoyage | 222 |
+| Cas supprimés (obsolètes, remplacement vérifié) | 38 |
+| Cas regroupés dans un cas consolidé (donc retirés) | 51 |
+| Nouveaux cas consolidés (CONV-227 à 254) | 28 |
+| Cas réécrits (étapes et résultat attendu corrigés, sans renvoi) | 47 |
+| Cas gardés tels quels (déjà prêts à jouer) | 61 |
+| **Cas après le nettoyage** | **161** |
+| dont déjà joués par Jean-Louis (intacts) | 25 |
+| **dont restant à jouer** | **136** |
+
+Calcul : 222 − 38 − 51 + 28 = 161.
+
+Les phrases des anciennes introductions (« Aucun cas n'a été joué », « contient N cas », « 40 cas obsolètes ») et les listes de numéros des anciennes sections [À CONFIRMER] sont périmées. Les tableaux de données d'essai (colonne « Sert aux cas ») peuvent encore citer d'anciens numéros : les actions d'essai restent valables pour les cas qui les utilisent.
+
+## Trois sortes de cas (décision de Hanta, 2026-11-04)
+
+La colonne `Parcours` (et `Ordre`) du `.tsv` dit qui joue quoi. Un cas déjà fait ou déjà couvert par un test automatique reste dans le carnet comme preuve, mais **personne ne le rejoue**. Le chef de projet revoit l'ensemble avant la livraison au client.
+
+| Parcours | Qui joue | Nombre |
+| --- | --- | --- |
+| Déjà joué (conservé) | personne (résultat de Jean-Louis) | 25 |
+| Recette courte (testeur) | le testeur, environ 2 heures | 14 |
+| Couvert par test automatique (ne pas rejouer) | personne (le test automatique, lancé par Hanta avec `npm test`) | 67 |
+| Recette approfondie (développeur) | le développeur, après une correction ou avant une grosse livraison | 55 |
+| **Total** | | **161** |
+
+### Recette courte : 14 cas, 3 connexions, dans cet ordre
+
+Une seule chaîne par profil, sans retour en arrière. Sur FT National, on enchaîne ; puis une connexion FT Régional ; puis une connexion FT Départemental.
+
+| Ordre | Cas | Profil | Sujet |
+| --- | --- | --- | --- |
+| 1 | CONV-139 | FT National | Ouverture de la fenêtre Convention allégée |
+| 2 | CONV-150 | FT National | Ajouter un contact depuis la fenêtre Convention |
+| 3 | CONV-156 | FT National | Fermeture et enregistrement silencieux de la fenêtre Convention |
+| 4 | CONV-161 | FT National | Génération du PDF avec les données de l'Évolution 1 |
+| 5 | CONV-182 | FT National | Voir la convention dans une pop-up plein écran |
+| 6 | CONV-189 | FT National | Télécharger la convention avec son vrai nom |
+| 7 | CONV-192 | FT National | Télécharger la convention avec son vrai nom |
+| 8 | CONV-240 | FT National | Fermer la pop-up du PDF (état Générée) : fermer la pop-up par la croix |
+| 9 | CONV-80 | FT National | Re-génération du PDF de la convention |
+| 10 | CONV-81 | FT National | Re-génération du PDF de la convention |
+| 11 | CONV-106 | FT National | Dépôt et remplacement du fichier signé de la convention |
+| 12 | CONV-107 | FT National | Dépôt et remplacement du fichier signé de la convention |
+| 13 | CONV-234 | FT Régional | Droits : FT Régional, parcours complet de la convention : FT Régional, de l'ajout du contact au téléchargement |
+| 14 | CONV-235 | FT Départemental | Droits : FT Départemental, parcours complet de la convention : FT Départemental, de l'ajout du contact au téléchargement |
+
+Les cas 80, 81, 106 et 107 se jouent sur des actions déjà générées ou signées préparées à l'avance (voir les données d'essai) : ils n'ont pas à suivre les cas 139 à 240 sur la même action.
+
+### Recette approfondie (55 cas)
+
+CONV-94, CONV-100, CONV-108, CONV-125 à 127, CONV-130, CONV-133, CONV-145, CONV-158 à 159, CONV-167 à 170, CONV-185 à 186, CONV-188, CONV-191, CONV-194, CONV-196 à 197, CONV-202 à 204, CONV-206, CONV-208 à 210, CONV-217, CONV-227 à 233, CONV-236 à 239, CONV-241 à 254.
+
+### Couverts par un test automatique, à ne pas rejouer (67 cas)
+
+CONV-16 à 17, CONV-23 à 24, CONV-46 à 52, CONV-61 à 66, CONV-83 à 84, CONV-86 à 90, CONV-92 à 93, CONV-97, CONV-109 à 115, CONV-117, CONV-120 à 121, CONV-124, CONV-140 à 144, CONV-146 à 149, CONV-151 à 155, CONV-157, CONV-160, CONV-162 à 166, CONV-183 à 184, CONV-187, CONV-190, CONV-193, CONV-195, CONV-205, CONV-207.
+
+**Limite à connaître** : la colonne `Automatisable` et les remarques « Déjà couvert par test/… » viennent de mon brouillon ; je n'ai relu ni lancé ces tests (les noms sont marqués « non relus »). Un test automatique prouve la logique, pas le rendu du PDF ni les droits réels. C'est pourquoi les cas de fumée du rendu (161, 182, 189, 192) restent dans la recette courte. Hanta ou le chef de projet doit confirmer, avec `npm test`, que les tests cités existent et passent avant de ne plus rejouer ces cas.
+
+## Les 25 cas déjà joués (intacts)
+
+Ils ont un vrai résultat de Jean-Louis : CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06, CONV-07, CONV-08, CONV-09, CONV-10, CONV-11, CONV-12, CONV-13, CONV-14, CONV-15, CONV-20, CONV-21, CONV-33, CONV-34, CONV-41, CONV-42, CONV-43, CONV-44, CONV-45, CONV-58. Aucune de leurs colonnes n'a été modifiée, sauf `Remarques` où une note « Déjà joué… conservé tel quel malgré… » a été ajoutée pour ceux dont une phrase est dépassée aujourd'hui (CONV-01, 02, 03, 04, 07, 20, 21, 33, 34, 41, 42, 43, 44, 45, 58). Dates : 02/11/2026 pour CONV-01 à 15 ; la date n'est pas renseignée dans l'export de suivi pour CONV-20, 21, 33, 34, 41 à 45 et 58.
+
+## Cas supprimés (38)
+
+Chaque suppression a un cas de remplacement qui couvre le contrôle (ou le comportement n'existe plus du tout).
+
+| Cas supprimé | Pourquoi | Remplacé par |
+| --- | --- | --- |
+| CONV-18 | le message « Renseignez l'adresse du club dans sa fiche. » et le bouton grisé n'existent plus | CONV-142 |
+| CONV-19 | trois blocs, phrase avec astérisque, bouton « Enregistrer les informations » : supprimés | CONV-139 |
+| CONV-22 | champs « Modèle utilisé » et « Année » : supprimés | CONV-140 |
+| CONV-25 | ancien message « Ajoutez-en un dans la fiche du club… » et bouton « Enregistrer les informations » | CONV-154, CONV-155 |
+| CONV-26 | teste le champ « Année » (quatre chiffres) : le champ n'existe plus | aucun (le champ Année n'existe plus) |
+| CONV-27 | idem | aucun (le champ Année n'existe plus) |
+| CONV-28 | idem | aucun (le champ Année n'existe plus ; l'enregistrement sans champ obligatoire est couvert par 156 et 166) |
+| CONV-29 | idem | aucun (le champ Année n'existe plus) |
+| CONV-30 | passe par « Enregistrer les informations » et l'année | CONV-156, CONV-169, CONV-170 |
+| CONV-31 | idem | CONV-156, CONV-169, CONV-170 |
+| CONV-32 | idem | CONV-156, CONV-169, CONV-170 |
+| CONV-35 | « Enregistrer les informations » avec « Voir en tant que » | CONV-172 (devenu 235) |
+| CONV-36 | « Fermer » : même contrôle que le cas qui le remplace (fermeture immédiate, sans confirmation, focus rendu au bouton) | CONV-156 |
+| CONV-37 | « Échap » : idem | CONV-157 |
+| CONV-38 | la saisie non enregistrée est perdue : c'est l'inverse aujourd'hui (« Fermer » enregistre en silence) | CONV-156, CONV-157 |
+| CONV-39 | clavier avec trois boutons dans le pied | CONV-227 (clavier) |
+| CONV-40 | VoiceOver sur les champs « Année » | CONV-229 (VoiceOver, fenêtre) |
+| CONV-53 | messages de blocage de champ disparus (plus aucun champ obligatoire) | CONV-166 |
+| CONV-54 | idem | CONV-166 |
+| CONV-55 | idem | CONV-166 |
+| CONV-56 | idem | CONV-166 |
+| CONV-57 | idem | CONV-166 |
+| CONV-59 | idem | CONV-166 |
+| CONV-60 | idem | CONV-166 |
+| CONV-67 | trois boutons du pied, « Enregistrer les informations » | CONV-160 |
+| CONV-68 | exige un nouvel onglet « blob: » (la pop-up le remplace) | CONV-182, CONV-208, CONV-192 |
+| CONV-69 | « aucun onglet vide ne reste ouvert » (la pop-up le remplace) | CONV-207 |
+| CONV-73 | ordre de trois boutons, champ « Modèle utilisé » | CONV-227 (clavier) |
+| CONV-76 | messages d'erreur de champ (VoiceOver) disparus | CONV-229 (VoiceOver, fenêtre) |
+| CONV-78 | effacer « Année », trois boutons du pied | CONV-231 (zoom) |
+| CONV-79 | idem | CONV-232 (mobile) |
+| CONV-82 | année enregistrée reprise puis remplacée dans la fenêtre : l'année vient de la Campagne | CONV-168 |
+| CONV-85 | la saisie abandonnée par « Fermer » n'est plus perdue | CONV-156, CONV-157, CONV-158 |
+| CONV-91 | « Re-générer » grisé par l'adresse du club manquante : blocage disparu | CONV-142 |
+| CONV-95 | effacer « Année » bloque la génération : plus de champ « Année » | CONV-166 |
+| CONV-103 | idem (bouton grisé par l'adresse du club) ; le bouton grisé pour agence manquante est lu dans CONV-244 | CONV-244 (VoiceOver : bouton grisé « Re-générer ») |
+| CONV-122 | exige un nouvel onglet « blob: » pour le PDF signé | CONV-184, CONV-208 |
+| CONV-123 | un onglet « blob: » ouvert pendant l'envoi (une pop-up aujourd'hui) | CONV-217 |
+
+## Cas consolidés (28 nouveaux cas, 51 anciens retirés)
+
+| Nouveau cas | Sujet | Remplace |
+| --- | --- | --- |
+| CONV-227, CONV-242, CONV-243 | Clavier (fenêtre, re-génération, pop-up, dépôt) | CONV-101, CONV-134, CONV-173, CONV-218 |
+| CONV-228, CONV-244 | VoiceOver : bloc et pop-up (et bouton grisé) | CONV-102, CONV-135, CONV-136, CONV-219, CONV-220 |
+| CONV-229, CONV-245 | VoiceOver : fenêtre et ajout de contact | CONV-174, CONV-175, CONV-176 |
+| CONV-230, CONV-246 | VoiceOver : attente, réussite, échecs (génération et dépôt) | CONV-74, CONV-75, CONV-77 |
+| CONV-231, CONV-247 | Zoom 200 % | CONV-104, CONV-137, CONV-177, CONV-221 |
+| CONV-232, CONV-248, CONV-249 | Mobile 375 px | CONV-105, CONV-138, CONV-178, CONV-222 |
+| CONV-233 | Mise en page une ou deux colonnes | CONV-179, CONV-180, CONV-181 |
+| CONV-234, CONV-250 | FT Régional : parcours complet | CONV-71, CONV-98, CONV-128, CONV-171, CONV-211 |
+| CONV-235, CONV-251 | FT Départemental : parcours complet | CONV-72, CONV-99, CONV-129, CONV-172, CONV-212 |
+| CONV-236, CONV-252 | Persistance après génération et re-génération | CONV-70, CONV-96, CONV-215 |
+| CONV-237, CONV-253 | Persistance après dépôt et remplacement | CONV-131, CONV-132, CONV-216 |
+| CONV-238 | « Voir » et « Télécharger » n'écrivent rien | CONV-213, CONV-214 |
+| CONV-239 | Dépôt : fichier qui n'est pas un PDF | CONV-116, CONV-118, CONV-119 |
+| CONV-240, CONV-254 | Fermer la pop-up (croix, Échap), état Générée | CONV-198, CONV-199 |
+| CONV-241 | Fermer la pop-up (croix, Échap), état Signée | CONV-200, CONV-201 |
+
+Découpage (demande de Hanta) : un cas consolidé de plus de 8 étapes est découpé en cas de 5 à 8 étapes, un seul thème chacun, pour isoler un échec sans tout rejouer. Les parties d'un même thème sont groupées dans la colonne « Nouveau cas » ; la première garde le numéro d'origine. CONV-250 et 251 se jouent APRÈS CONV-234 et 235 (même action).
+
+Regroupements retenus : l'accessibilité (clavier, VoiceOver, zoom, mobile, mise en page) qui était dispersée dans 6 recettes ; les droits FT Régional et FT Départemental, répétés à chaque évolution ; la persistance après rechargement ; les fichiers refusés « ce n'est pas un PDF » ; la fermeture de la pop-up. Les cas des autres refus de fichier (vide, trop gros, limite exacte, priorité des messages), des pannes réseau et des logos restent séparés : leurs données ou leurs messages diffèrent.
+
+## Cas réécrits (47)
+
+CONV-23 à 24, CONV-46 à 52, CONV-62 à 64, CONV-66, CONV-80 à 81, CONV-83 à 84, CONV-86 à 89, CONV-92 à 94, CONV-97, CONV-106 à 107, CONV-109, CONV-113, CONV-120, CONV-124 à 126, CONV-130, CONV-133, CONV-140 à 141, CONV-161 à 168, CONV-184, CONV-192.
+
+Ce qui a été corrigé : ouverture du PDF dans une pop-up à fermer avec la croix « ✕ » (plus de nouvel onglet) ; bouton « Télécharger » ajouté à la rangée du bloc ; fenêtre à deux boutons (« Fermer », « Générer la convention ») ; plus de champ « Année » ni « Modèle utilisé » (l'année vient de la Campagne de l'action) ; liste « Signataire » avec bouton « Ajouter un contact » ; renvois « voir CONV-xx » ou « mêmes règles que CONV-xx » remplacés par le texte lui-même.
+
+## Tests de fumée (17)
+
+- CONV-01 : Afficher le bloc Convention (FT National).
+- CONV-03 : Afficher le bloc Convention (FT National).
+- CONV-08 : Afficher le bloc Convention (FT Régional).
+- CONV-44 : Génération et ouverture du PDF de la convention (FT National).
+- CONV-80 : Re-génération du PDF de la convention (FT National).
+- CONV-81 : Re-génération du PDF de la convention (FT National).
+- CONV-106 : Dépôt et remplacement du fichier signé de la convention (FT National).
+- CONV-107 : Dépôt et remplacement du fichier signé de la convention (FT National).
+- CONV-139 : Ouverture de la fenêtre Convention allégée (FT National).
+- CONV-150 : Ajouter un contact depuis la fenêtre Convention (FT National).
+- CONV-156 : Fermeture et enregistrement silencieux de la fenêtre Convention (FT National).
+- CONV-161 : Génération du PDF avec les données de l'Évolution 1 (FT National).
+- CONV-182 : Voir la convention dans une pop-up plein écran (FT National).
+- CONV-189 : Télécharger la convention avec son vrai nom (FT National).
+- CONV-192 : Télécharger la convention avec son vrai nom (FT National).
+- CONV-234 : Droits : FT Régional, parcours complet de la convention : FT Régional, de l'ajout du contact au téléchargement (FT Régional).
+- CONV-240 : Fermer la pop-up du PDF (état Générée) : fermer la pop-up par la croix (FT National).
+
+## Ordre conseillé pour jouer
+
+Voir « Trois sortes de cas » plus haut : la recette courte donne l'ordre complet. La recette approfondie suit l'ordre des numéros, en regroupant les cas par profil de connexion.
+## Après une correction : cas à rejouer
+
+Rejouer le cas concerné, puis ses voisins (même sujet) ; rappeler à Hanta de relancer toute la suite automatique (`npm test`).
+
+| Sujet (colonne `Fonction`) | Cas |
+| --- | --- |
+| Accessibilité de la convention (VoiceOver : attente, réussite, échecs) : VoiceOver, dépôt : attente, réussite, refus | CONV-246 |
+| Accessibilité de la convention (VoiceOver : attente, réussite, échecs) : VoiceOver, génération : attente, réussite, échec | CONV-230 |
+| Accessibilité de la convention (VoiceOver : bloc et pop-up) : VoiceOver, bloc et pop-up (état Générée) | CONV-228 |
+| Accessibilité de la convention (VoiceOver : bloc et pop-up) : VoiceOver, état Signée et bouton grisé | CONV-244 |
+| Accessibilité de la convention (VoiceOver : fenêtre et ajout de contact) : VoiceOver, fenêtre et bouton « Ajouter un contact » | CONV-229 |
+| Accessibilité de la convention (VoiceOver : fenêtre et ajout de contact) : VoiceOver, messages sous « E-mail » | CONV-245 |
+| Accessibilité de la convention (clavier) : clavier, bloc, re-génération et pop-up | CONV-242 |
+| Accessibilité de la convention (clavier) : clavier, dépôt du fichier signé | CONV-243 |
+| Accessibilité de la convention (clavier) : clavier, fenêtre et ajout de contact | CONV-227 |
+| Affichage de la convention (mobile, 375 px) : mobile 375 px, bloc, re-génération et dépôt | CONV-248 |
+| Affichage de la convention (mobile, 375 px) : mobile 375 px, fenêtre | CONV-232 |
+| Affichage de la convention (mobile, 375 px) : mobile 375 px, pop-up | CONV-249 |
+| Affichage de la convention (zoom 200 %) : zoom 200 %, dépôt et pop-up | CONV-247 |
+| Affichage de la convention (zoom 200 %) : zoom 200 %, fenêtre et re-génération | CONV-231 |
+| Afficher le bloc Convention | CONV-01 à 15 |
+| Ajouter un contact depuis la fenêtre Convention | CONV-147 à 155 |
+| Blocs Club et Agence de la fenêtre Convention | CONV-143 à 146 |
+| Coexistence des deux boutons Télécharger | CONV-196 à 197 |
+| Droits : FT Départemental, parcours complet de la convention : FT Départemental, de l'ajout du contact au téléchargement | CONV-235 |
+| Droits : FT Départemental, parcours complet de la convention : FT Départemental, re-génération et fichier signé | CONV-251 |
+| Droits : FT Régional, parcours complet de la convention : FT Régional, de l'ajout du contact au téléchargement | CONV-234 |
+| Droits : FT Régional, parcours complet de la convention : FT Régional, re-génération et fichier signé | CONV-250 |
+| Dépôt du fichier signé : fichier qui n'est pas un PDF | CONV-239 |
+| Dépôt et remplacement du fichier signé de la convention | CONV-106 à 115, CONV-117, CONV-120 à 121, CONV-124 à 127, CONV-130, CONV-133 |
+| Fenêtre et enregistrement de la convention | CONV-16 à 17, CONV-20 à 21, CONV-23 à 24, CONV-33 à 34, CONV-41 à 43 |
+| Fermer la pop-up du PDF | CONV-202 à 203 |
+| Fermer la pop-up du PDF (état Générée) : fermer la pop-up par la croix | CONV-240 |
+| Fermer la pop-up du PDF (état Générée) : fermer la pop-up par Échap | CONV-254 |
+| Fermer la pop-up du PDF (état Signée) | CONV-241 |
+| Fermeture et enregistrement silencieux de la fenêtre Convention | CONV-156 à 160 |
+| Génération du PDF avec les données de l'Évolution 1 | CONV-161 à 168 |
+| Génération et ouverture du PDF de la convention | CONV-44 à 52, CONV-58, CONV-61 à 66 |
+| Mise en page de la fenêtre Convention (une ou deux colonnes) | CONV-233 |
+| Ouverture de la fenêtre Convention allégée | CONV-139 à 142 |
+| Persistance : « Voir » et « Télécharger » n'écrivent rien | CONV-238 |
+| Persistance après dépôt et remplacement du fichier signé : persistance après le premier dépôt | CONV-237 |
+| Persistance après dépôt et remplacement du fichier signé : persistance après le remplacement | CONV-253 |
+| Persistance après génération et re-génération : persistance après la première génération | CONV-236 |
+| Persistance après génération et re-génération : persistance après la re-génération | CONV-252 |
+| Persistance de la fenêtre Convention allégée | CONV-169 à 170 |
+| Persistance de la pop-up du PDF | CONV-217 |
+| Re-génération du PDF de la convention | CONV-80 à 81, CONV-83 à 84, CONV-86 à 90, CONV-92 à 94, CONV-97, CONV-100 |
+| Sécurité de la pop-up du PDF | CONV-208 à 210 |
+| Télécharger la convention avec son vrai nom | CONV-189 à 195 |
+| Voir la convention dans une pop-up plein écran | CONV-182 à 188, CONV-204 |
+| Échec d'affichage et de récupération du PDF | CONV-205 à 207 |
+
+## Rejouer en PROD
+
+Seuls les cas qui ne font que regarder se rejouent sur de vraies conventions : CONV-01 à 17, CONV-20 à 21, CONV-42, CONV-97. Tous les autres écrivent dans `Conventions`, envoient un fichier ou modifient un modèle : TEST (ou DEV7) seulement.
+
+## [À CONFIRMER] du nettoyage
+
+1. **Écart entre le dépôt et l'export de suivi.** Le dépôt avait 222 cas, l'export de Jean-Louis 220 lignes (CONV-59, 123, 124, 125 et 126 n'y sont pas ; CONV-01, 03 et 08 y sont en double) et ni l'un ni l'autre n'avait de CONV-223 à 226. CONV-59 et 123 ont été supprimés (obsolètes) ; CONV-124, 125 et 126 sont gardés : à ajouter au suivi si Jean-Louis doit les jouer.
+2. **Numérotation de l'accessibilité.** Les cas consolidés commencent à CONV-227 (décision de Hanta). CONV-223 à 226 ne sont pas utilisés : ne pas les réutiliser sans vérifier le suivi.
+3. **Dates des cas déjà joués.** L'export ne donne aucune date pour CONV-20, 21, 33, 34, 41 à 45 et 58 : les notes l'indiquent.
+4. **CONV-46 et CONV-162** décrivent deux textes différents pour le bloc de signature du modèle Parcours de remobilisation (« À …, le … » en tête de chaque colonne, ou « Fait à…, le… »). Comparer au Word officiel et corriger le cas qui se trompe.
+5. **CONV-83 et CONV-87** : la colonne `Annee` de `Conventions` n'est plus vérifiée (le widget la relit depuis la Campagne à chaque enregistrement) ; CONV-87 repose sur `Avec_annee` d'un modèle, à relire par Hanta.
+6. **Campagne à renseigner avant de jouer** sur les actions d'essai ESSAI-CONV-R4, S1, S2, S17 et R26 (valeur 2026), sinon l'année est omise des noms de fichier attendus par CONV-47, 80, 81 et 252.
+7. **Noms de fichier de CONV-234, 235, 250 et 251** (« …-Club-Exemple-Contacts-2026.pdf ») : déduits de la règle de nommage (nom du club avec des tirets), non vérifiés à l'écran.
+8. **« Fermer » et Échap écrivent dans `Conventions`** (enregistrement silencieux). Les cas qui ouvrent la fenêtre d'une action (CONV-23, 24, 227, 242, 231, 247, 232, 248, 249, 233) y laissent donc une ligne : sans conséquence pour eux, mais ne pas les jouer sur une action dont la ligne doit rester intacte.
+9. **CONV-244, étape 4** : le bouton « Re-générer » grisé (agence retirée) était lu par un cas supprimé (CONV-103, lié à l'adresse du club) ; il est repris ici avec le blocage « agence manquante » qui existe encore. À confirmer que le texte lu par VoiceOver est bien celui de la note UX.
+10. **Lecture des fichiers et commandes.** Pour lire les 222 cas et écrire les deux fichiers sans erreur de recopie, le recetteur a utilisé des commandes de lecture seule et deux petits scripts d'écriture limités à ces deux fichiers (autorisé par Hanta). Aucun test, aucun build, aucun npm.
+
+---
+
 # Cas de test : Convention, afficher le bloc Convention (R1)
 
 **Brouillon écrit par le recetteur, corrigé après relecture de Hanta. Il n'a pas été relu** (colonne `Relu_par` vide). Aucun cas n'a été joué : les résultats sont à noter par la personne qui teste.
@@ -273,7 +514,7 @@ B6 est l'action « À générer » de dispositif Parcours de remobilisation (lec
 
 Prérequis commun : le profil FT [National / Régional / Départemental] est présent dans la table Utilisateurs de TEST, dans le périmètre de l'agence d'essai. CONV-34 et CONV-35 se jouent avec « Voir en tant que » (le développeur du projet). ESSAI-CONV-B1 n'a pas d'agence : seul le profil National la voit.
 
-## Les 28 cas de R2
+## Les cas de R2 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. « Rejouable en PROD » = Oui seulement pour les cas qui ne font que regarder. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
 
@@ -281,72 +522,34 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. « Re
 
 - **CONV-16 : agence manquante** (Erreur, Majeur) : « Renseignez l'agence de l'action dans sa fiche. », bouton grisé, la fenêtre ne s'ouvre pas.
 - **CONV-17 : club manquant** (Erreur, Majeur) : « Renseignez le club de l'action. »
-- **CONV-18 : adresse du club manquante** (Erreur, Majeur) : « Renseignez l'adresse du club dans sa fiche. »
 
 ### Ouverture de la fenêtre
 
-- **CONV-19 : trois blocs, introduction, pied** (Nominal, Bloquant, fumée).
 - **CONV-20 : club et agence en lecture seule** (Nominal, Majeur).
 - **CONV-21 : modèle Match des métiers, année préremplie** (Nominal, Majeur).
-- **CONV-22 : Parcours de remobilisation, pas de champ Année** (Limite, Majeur).
 
 ### Signataires
 
 - **CONV-23 : la liste ne montre que les contacts du club** (Nominal, Majeur).
 - **CONV-24 : fonction affichée après le choix, ou « Fonction non renseignée »** (Nominal, Majeur).
-- **CONV-25 : club sans contact, « Enregistrer » reste actif** (Limite, Majeur).
 
-### Année
 
-- **CONV-26 : 26 refusée** (Erreur, Majeur).
-- **CONV-27 : année à cinq chiffres (10000) refusée** (Erreur, Mineur).
-- **CONV-28 : année vide acceptée** (Limite, Majeur).
-- **CONV-29 : le message disparaît au clic suivant, après correction** (Erreur, Majeur).
 
 ### Enregistrement et persistance
 
-- **CONV-30 : première sauvegarde, ligne créée** (Nominal, Bloquant, fumée).
-- **CONV-31 : réouverture préremplie, aussi après rechargement** (Persistance, Majeur).
-- **CONV-32 : deuxième enregistrement, même ligne** (Persistance, Majeur).
 - **CONV-33 : modèle sans année** (Limite, Majeur).
 
 ### Droits (« Voir en tant que », par le développeur du projet)
 
 - **CONV-34 : FT Régional enregistre dans son périmètre** (Droits, Bloquant).
-- **CONV-35 : FT Départemental enregistre dans son périmètre** (Droits, Bloquant).
 
-### Fermeture
 
-- **CONV-36 : « Fermer », focus rendu au bouton** (Nominal, Majeur).
-- **CONV-37 : Échap, focus rendu au bouton** (Nominal, Majeur).
-- **CONV-38 : saisie non enregistrée perdue à la réouverture, sans confirmation** (Persistance, Majeur).
 
 ### Mobile et accessibilité
 
-- **CONV-39 : clavier, Tab reste dans la fenêtre** (Majeur).
-- **CONV-40 : VoiceOver, titre et champs** (Majeur).
 - **CONV-41 : VoiceOver, message d'erreur et message de succès annoncés** (Majeur).
 - **CONV-42 : zoom 200 %** (Majeur).
 - **CONV-43 : mobile, le message après « Enregistrer » est visible ou annoncé** (Majeur).
-
-## Tests de fumée de R2 (2 sur 28)
-
-- CONV-19 : la fenêtre s'ouvre avec ses trois blocs.
-- CONV-30 : un enregistrement crée la ligne attendue dans `Conventions`.
-
-Au total, avec R1 : 5 tests de fumée sur 43 cas (CONV-01, 03, 08, 19, 30).
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-16 à CONV-33 et CONV-36 à CONV-39 (fiches C28, C31 et C34). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist ni les droits. Le nom du test est dans la colonne `Remarques`. Pas de test en code pour les droits (CONV-34, 35), VoiceOver (CONV-40, 41), le zoom (CONV-42) et le mobile (CONV-43).
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (blocs : CONV-16 à CONV-18 ; ouverture : CONV-19 à CONV-25 ; année : CONV-26 à CONV-29 ; enregistrement : CONV-30 à CONV-35), et rappeler à Hanta de relancer toute la suite automatique (npm test).
-
-## Rejouer en PROD
-
-Seuls les cas qui ne font que regarder se rejouent sur de vraies actions (CONV-16 à CONV-24, 36 à 40 et 42). Les autres écrivent dans `Conventions` et ne se jouent que dans TEST.
 
 ## [À CONFIRMER] de R2
 
@@ -503,7 +706,7 @@ Dans le navigateur, outils pour développeurs (F12), onglet **Réseau** :
 - **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Si rien n'est bloqué, l'adresse choisie est fausse : la relire sans copier le jeton.
 - Un jeton Grist ne doit **jamais** figurer dans une fiche d'anomalie, une capture ou ce document.
 
-## Les 36 cas de R4
+## Les cas de R4 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
 
@@ -524,14 +727,7 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 
 ### Contrôle des champs obligatoires au clic sur « Générer »
 
-- **CONV-53 : année absente** (Erreur, Majeur) : « Saisissez l'année de la convention. »
-- **CONV-54 : année invalide (26)** (Erreur, Majeur) : « Saisissez une année à quatre chiffres. »
-- **CONV-55 : aucun signataire** (Erreur, Majeur) : « Choisissez le signataire du club. »
-- **CONV-56 : signataire sans fonction** (Erreur, Majeur) : « Le signataire choisi n'a pas de fonction. Renseignez-la dans la fiche du club, puis revenez générer la convention. »
-- **CONV-57 : représentant vide** (Erreur, Majeur) : « Saisissez le nom du représentant. »
 - **CONV-58 : fonction du représentant vide** (Erreur, Majeur) : « Saisissez la fonction du représentant. »
-- **CONV-59 : quatre manques à la fois (sans signataire), tous affichés** (Erreur, Majeur).
-- **CONV-60 : quatre manques à la fois (signataire sans fonction), puis correction** (Erreur, Majeur).
 
 ### Échecs de génération
 
@@ -541,59 +737,14 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 - **CONV-64 : plusieurs cases inconnues** (Limite, Mineur).
 - **CONV-65 : nom de case avec une balise HTML, affiché comme du texte** (Limite, Majeur).
 - **CONV-66 : modèle inactif** (Erreur, Majeur).
-- **CONV-67 : pendant la génération, boutons, Échap et champs verrouillés** (Limite, Majeur).
 
-### Voir la convention
 
-- **CONV-68 : ouverture réussie dans un nouvel onglet** (Nominal, Bloquant, fumée).
-- **CONV-69 : échec (réseau coupé), alerte dans le bloc** (Erreur, Majeur).
 
-### Persistance
 
-- **CONV-70 : après rechargement, état Générée, « Voir » et fenêtre préremplie** (Persistance, Majeur).
 
-### Droits (vrais comptes, pas « Voir en tant que »)
 
-- **CONV-71 : FT Régional génère et ouvre le PDF** (Droits, Bloquant, fumée).
-- **CONV-72 : FT Départemental génère et ouvre le PDF** (Droits, Bloquant).
 
-### Mobile et accessibilité
 
-- **CONV-73 : clavier, ordre des trois boutons du pied, Entrée** (Majeur).
-- **CONV-74 : VoiceOver, annonce de l'attente** (Majeur).
-- **CONV-75 : VoiceOver, annonce de la réussite** (Majeur).
-- **CONV-76 : VoiceOver, messages d'erreur de champ** (Majeur).
-- **CONV-77 : VoiceOver, annonce d'un échec de génération** (Majeur).
-- **CONV-78 : zoom 200 %, rien de coupé dans la fenêtre** (Majeur).
-- **CONV-79 : mobile (375 px), pied de la fenêtre et message de réussite** (Majeur).
-
-## Tests de fumée de R4 (3 sur 36)
-
-- CONV-44 : un PDF se génère et s'enregistre pour Du stade vers l'emploi.
-- CONV-68 : « Voir la convention » ouvre le PDF.
-- CONV-71 : un vrai compte FT Régional génère et ouvre le PDF.
-
-Au total, avec R1 et R2 : 8 tests de fumée sur 79 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71).
-
-## Ordre conseillé pour jouer
-
-1. D'abord les cas qui ne modifient rien : CONV-44 à CONV-49, 53 à 60, 67 à 70, 73 à 76, 78 et 79.
-2. Ensuite les cas avec blocage réseau : CONV-61, 62, 77 (puis retirer le blocage).
-3. Les vrais comptes : CONV-71 et CONV-72, à tout moment.
-4. Dans DEV7 (pas sur TEST) : les cas qui modifient un modèle, CONV-50 à 52, puis 63 à 66.
-5. Dans DEV7 : remettre les modèles en état, recharger, rejouer CONV-44, 45 et 46 pour prouver la remise en état.
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-44 à CONV-69 (fiches C36, C37, C40, C42, C43, C46, C48, C49), `Non` pour CONV-70 à CONV-79 (rechargement, droits, lecteur d'écran, clavier, zoom, mobile). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu du PDF dans le navigateur ni les droits dans Grist. Les fichiers de test sont cités dans la colonne `Remarques`, mais **les noms exacts des tests n'ont pas été relus** (contrairement à R2).
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (génération par dispositif : CONV-44 à CONV-48 ; logos : CONV-49 à CONV-52 ; contrôle des champs : CONV-53 à CONV-60 ; échecs : CONV-61 à CONV-67 ; « Voir » : CONV-68 et CONV-69), et rappeler à Hanta de relancer toute la suite automatique (npm test).
-
-## Rejouer en PROD
-
-Seuls CONV-68 et CONV-69 se rejouent en PROD (sur une vraie convention déjà générée) : ils ne font que regarder. Tous les autres génèrent un fichier, écrivent dans `Conventions` ou modifient un modèle : TEST seulement.
 
 ## [À CONFIRMER] de R4
 
@@ -713,18 +864,16 @@ Même méthode qu'en R4 (voir « Provoquer une panne réseau » plus haut) :
 - **CONV-102** : « Slow 3G » pour rendre l'attente audible.
 - **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Un jeton Grist ne doit **jamais** figurer dans une fiche d'anomalie, une capture ou ce document.
 
-## Les 26 cas de R5
+## Les cas de R5 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
 
 ### Re-génération réussie (profil FT National)
 
-- **CONV-80 : bouton « Re-générer », fenêtre préremplie, phrase de remplacement** (Nominal, Bloquant, fumée) : ordre des trois boutons, phrase « Le nouveau PDF remplacera la convention générée le 14/10/2026. », champs préremplis.
+- **CONV-80 : bouton « Re-générer », fenêtre préremplie, phrase de remplacement** (Nominal, Bloquant, fumée) : ordre des quatre boutons, phrase « Le nouveau PDF remplacera la convention générée le 14/10/2026. », champs préremplis.
 - **CONV-81 : le nouveau PDF remplace l'ancien** (Nominal, Bloquant, fumée) : un seul fichier dans `PDF_genere`, `Date_generation` à jour, `Modele` = modèle actif, `PDF_signe` et `Date_depot` vides, focus sur « Voir la convention ».
-- **CONV-82 : année enregistrée reprise, puis corrigée** (Nominal, Majeur) : 2025 proposée (pas l'année en cours), nom du fichier avec 2027.
 - **CONV-83 : Parcours de remobilisation** (Limite, Majeur) : pas de champ Année, nom sans année.
 - **CONV-84 : pas de phrase de remplacement à la première génération** (Nominal, Majeur).
-- **CONV-85 : « Fermer » et Échap sans générer** (Persistance, Majeur) : focus sur « Re-générer », saisie perdue, rien d'écrit.
 
 ### Modèle actif (DEV7)
 
@@ -736,68 +885,26 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 
 - **CONV-89 : agence retirée après la génération** (Erreur, Majeur) : « Renseignez l'agence de l'action dans sa fiche. »
 - **CONV-90 : club retiré** (Erreur, Majeur) : « Renseignez le club de l'action. »
-- **CONV-91 : adresse du club manquante** (Erreur, Majeur) : « Renseignez l'adresse du club dans sa fiche. »
 
 ### Échecs : l'ancienne convention reste disponible
 
-- **CONV-92 : pdfmake non chargé** (Erreur, Bloquant) : message, ancien PDF ouvrable, nouvelle année gardée.
+- **CONV-92 : pdfmake non chargé** (Erreur, Bloquant) : message, ancien PDF ouvrable, nouveau Représentant gardé.
 - **CONV-93 : envoi du fichier impossible** (Erreur, Majeur).
 - **CONV-94 : coupure réseau complète** (Erreur, Bloquant) : la fenêtre n'est jamais bloquée.
-- **CONV-95 : champ obligatoire vide** (Erreur, Majeur) : pas de phrase « L'ancienne convention… » pour une erreur de champ.
 
-### Persistance
 
-- **CONV-96 : après rechargement, nouvelle date et nouveau fichier** (Persistance, Majeur).
 
 ### Pas de confusion avec l'état Signée
 
 - **CONV-97 : jamais de « Re-générer » à l'état Signée** (Nominal, Majeur) : S18, A3 et A6.
 
-### Droits (vrais comptes, pas « Voir en tant que »)
 
-- **CONV-98 : FT Régional re-génère et ouvre le PDF** (Droits, Bloquant, fumée).
-- **CONV-99 : FT Départemental re-génère et ouvre le PDF** (Droits, Bloquant).
 
 ### Ancien fichier
 
 - **CONV-100 : l'ancien fichier n'est pas supprimé par le widget** (Persistance, Mineur, DEV7) : N pièces jointes puis N+1.
 
-### Mobile et accessibilité
 
-- **CONV-101 : clavier, ordre et focus de retour** (Majeur).
-- **CONV-102 : VoiceOver, phrase de remplacement, attente et réussite** (Majeur).
-- **CONV-103 : VoiceOver, « Re-générer » grisé** (Majeur).
-- **CONV-104 : zoom 200 %** (Majeur).
-- **CONV-105 : mobile (375 px)** (Mineur).
-
-## Tests de fumée de R5 (3 sur 26)
-
-- CONV-80 : le bouton « Re-générer » apparaît et ouvre la fenêtre préremplie avec sa phrase.
-- CONV-81 : la re-génération remplace bien le PDF.
-- CONV-98 : un vrai compte FT Régional re-génère.
-
-Au total, avec R1, R2 et R4 : 11 tests de fumée sur 105 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98).
-
-## Ordre conseillé pour jouer
-
-1. D'abord les cas qui ne modifient rien : CONV-80, 84, 85, 91, 95, 97, 101, 103, 104 et 105.
-2. Ensuite les re-générations qui réussissent : CONV-81, 82, 83, 96, 102.
-3. Puis les cas avec blocage ou coupure réseau : CONV-92, 93, 94 (puis retirer le blocage).
-4. Les cas qui modifient l'action : CONV-89 et 90 (remettre l'agence et le club).
-5. Les vrais comptes : CONV-98 et 99, à tout moment.
-6. Dans DEV7 (pas sur TEST) : CONV-86, 87, 88, puis CONV-100. Remettre les modèles en état et recharger après chaque cas.
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-80 à CONV-93, CONV-95 et CONV-97 (fiches C50 et C51), `Non` pour CONV-94 (la coupure réseau réelle ; le délai maximum est testé à part, `test/convention-delais.test.js`), CONV-96 et CONV-98 à CONV-105 (rechargement, droits, pièces jointes, clavier, VoiceOver, zoom, mobile). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles. Les fichiers de test sont cités dans la colonne `Remarques` (convention-bloc, convention-fenetre, convention-generation, convention-generer-ecran, convention-modele, convention-delais), mais **les noms exacts des tests n'ont pas été relus**.
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (re-génération réussie : CONV-80 à CONV-85 ; modèle : CONV-86 à CONV-88 ; blocage : CONV-89 à CONV-91 ; échecs : CONV-92 à CONV-95 ; Signée : CONV-97), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur le modèle ou sur la génération touche aussi CONV-44 à CONV-46 (R4).
-
-## Rejouer en PROD
-
-Seuls les cas qui ne font que regarder se rejouent sur de vraies conventions : CONV-80, 84 (une action sans convention), 85, 95, 97, 101, 104 et 105. **Ne jamais cliquer sur « Générer la convention » en PROD** : une re-génération remplace le vrai PDF, sans historique. Tous les autres écrivent, modifient un modèle ou coupent le réseau : TEST ou DEV7 seulement.
 
 ## [À CONFIRMER] de R5
 
@@ -947,7 +1054,7 @@ Même méthode qu'en R4 et R5 (voir « Provoquer une panne réseau » plus haut)
 - **Envoi impossible (CONV-127)** : bloquer le début de l'adresse d'envoi de pièce jointe (elle finit par « attachments » suivi du jeton), **sans copier le jeton** nulle part.
 - **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Un jeton Grist ne doit **jamais** figurer dans une fiche d'anomalie, une capture ou ce document.
 
-## Les 33 cas de R6
+## Les cas de R6 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
 
@@ -969,17 +1076,11 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 - **CONV-113 : fichier vide** (Erreur, Majeur) : « le fichier est vide ».
 - **CONV-114 : plus de 10 Mo** (Erreur, Majeur) : « 10 Mo au maximum ».
 - **CONV-115 : la limite exacte** (Limite, Majeur) : 10 485 761 octets refusé, 10 485 760 accepté.
-- **CONV-116 : mauvaise extension** (Erreur, Majeur) : « ce n'est pas un PDF ».
 - **CONV-117 : ordre des contrôles** (Erreur, Majeur) : un fichier vide en `.txt` reçoit « vide » ; 12 Mo en `.docx` reçoit « 10 Mo ».
-- **CONV-118 : contenu qui ne commence pas par %PDF-, texte renommé** (Erreur, Majeur).
-- **CONV-119 : image renommée en .pdf** (Erreur, Majeur) : passe le nom et l'extension, pas le contenu réel.
 - **CONV-120 : refus au remplacement, l'ancien fichier reste** (Erreur, Bloquant) : date et fichier inchangés, « Voir » ouvre l'ancien.
 - **CONV-121 : annulation du sélecteur, et même fichier choisi deux fois** (Limite, Mineur).
 
-### Voir la convention signée
 
-- **CONV-122 : ouverture, adresse `blob:`, pas de jeton** (Nominal, Bloquant) : seul cas rejouable en PROD.
-- **CONV-123 : « Voir » reste utilisable pendant un remplacement** (Limite, Majeur) : ouvre l'ancien fichier.
 
 ### Pendant l'envoi
 
@@ -993,55 +1094,15 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 
 ### Droits (vrais comptes, pas « Voir en tant que »)
 
-- **CONV-128 : FT Régional dépose, puis remplace** (Droits, Bloquant, fumée).
-- **CONV-129 : FT Départemental remplace** (Droits, Bloquant).
 - **CONV-130 : droits refusés, message distinct** (Droits, Majeur, DEV7) : « …vos droits ne le permettent pas pour cette action… » (S9-4).
 
-### Persistance
 
-- **CONV-131 : après rechargement, état Signée et boutons corrects** (Persistance, Majeur) : après un premier dépôt.
-- **CONV-132 : après rechargement, nouveau fichier et nouvelle date** (Persistance, Majeur) : après un remplacement.
 
 ### Sécurité
 
 - **CONV-133 : aucun jeton dans la console, le bloc ou une adresse** (Nominal, Bloquant).
 
-### Mobile et accessibilité
 
-- **CONV-134 : clavier, ordre de Tab et focus** (Majeur).
-- **CONV-135 : VoiceOver, attente et réussite** (Majeur).
-- **CONV-136 : VoiceOver, état Signée et fichier refusé** (Majeur).
-- **CONV-137 : zoom 200 %** (Majeur).
-- **CONV-138 : mobile (375 px)** (Mineur).
-
-## Tests de fumée de R6 (3 sur 33)
-
-- CONV-106 : le premier dépôt marche de bout en bout.
-- CONV-107 : le remplacement marche et change bien le fichier.
-- CONV-128 : un vrai compte FT Régional dépose et remplace.
-
-Au total, avec R1, R2, R4 et R5 : 14 tests de fumée sur 138 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98, 106, 107, 128).
-
-## Ordre conseillé pour jouer
-
-1. Préparer les fichiers d'essai (tableau plus haut) et contrôler leur taille.
-2. D'abord les cas qui n'écrivent rien : CONV-113, 114, 116, 117, 118, 119, 120, 122, 136, 137 et 138 (sur T8 et T9).
-3. Ensuite les dépôts et remplacements qui réussissent : CONV-106, 107, 109, 110, 111, 112, 115, 121, 131, 132, 133, 134.
-4. Puis ceux qui demandent un réglage du réseau : CONV-123, 124, 135, puis CONV-125, 126, 127 (retirer le blocage et remettre le débit normal après chacun).
-5. Les vrais comptes : CONV-128 et 129, à tout moment.
-6. Dans DEV7 (pas sur TEST) : CONV-108, puis CONV-130 (remettre les règles d'accès en état).
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-106, 107 et 109 à 124 (fiches C52, C53 et C54), `Non` pour CONV-108 (pièces jointes du document), 125 à 127 (pannes réseau réelles), 128 à 130 (droits), 131 à 133 (rechargement et console) et 134 à 138 (clavier, VoiceOver, zoom, mobile). Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles. Les fichiers de test cités dans la colonne `Remarques` sont `test/convention-deposer.test.js`, `test/convention-voir-signee.test.js`, `test/convention-bloc.test.js`, `test/convention-generer-ecran.test.js` et `test/convention-delais.test.js` (d'après REVIEW_LOG.md), mais **les noms exacts des tests n'ont pas été relus**.
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (réussites : CONV-106 à CONV-108 ; noms : CONV-109 à CONV-112 ; refus : CONV-113 à CONV-121 ; Voir et envoi : CONV-122 à CONV-124 ; échecs : CONV-125 à CONV-127 ; droits : CONV-128 à CONV-130), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur la fonction qui fabrique le nom du fichier (`conventionNomFichierAvec`) touche aussi CONV-44 à CONV-47 (R4). Un changement sur « Voir la convention » touche CONV-68 et 69 (R4).
-
-## Rejouer en PROD
-
-Seul **CONV-122** se rejoue sur une vraie convention signée : il ne fait que regarder. **Ne jamais déposer ni remplacer un fichier en PROD** : le dépôt écrit une vraie pièce jointe, et un remplacement efface la référence vers l'ancien fichier signé (qui reste dans Grist, sans rattachement). Tous les autres cas écrivent, coupent le réseau ou modifient des règles d'accès : TEST ou DEV7 seulement.
 
 ## [À CONFIRMER] de R6
 
@@ -1089,56 +1150,9 @@ Seul **CONV-122** se rejoue sur une vraie convention signée : il ne fait que re
 4. **Fermer sans rien changer** : savoir si Grist reçoit une écriture inutile n'est pas observable à l'écran ([À CONFIRMER] 2).
 5. **Mode sombre** : à traiter à part pour tout le tableau de bord (comme en R5 et R6).
 
-## Cas anciens (CONV-01 à 138) devenus obsolètes ou à reprendre
+## Cas anciens devenus obsolètes ou à adapter
 
-Ces cas ne sont **ni supprimés ni modifiés** dans le fichier `.tsv`. Cette liste dit lesquels ne se jouent plus tels quels.
-
-### A. Obsolètes : ne plus les jouer (40 cas)
-
-| Cas | Pourquoi | Remplacé par |
-| --- | --- | --- |
-| CONV-18 | le message « Renseignez l'adresse du club dans sa fiche. » et le grisé n'existent plus | CONV-142 |
-| CONV-19 | trois blocs, phrase avec astérisque, bouton « Enregistrer les informations » | CONV-139 |
-| CONV-20 | champs « Signataire club » (nom, SIRET, siège) et « Signataire agence » remplacés par l'encart et le nom seul | CONV-143, CONV-146 |
-| CONV-21, CONV-22 | champs « Modèle utilisé » et « Année » | CONV-140 |
-| CONV-25 | ancien message « Ajoutez-en un dans la fiche du club… » et bouton « Enregistrer les informations » | CONV-154, CONV-155 |
-| CONV-26, CONV-27, CONV-28, CONV-29 | testent le champ « Année » (quatre chiffres) | aucun : le champ n'existe plus |
-| CONV-30, CONV-31, CONV-32 | passent par « Enregistrer les informations » et l'année | CONV-156, CONV-169, CONV-170 |
-| CONV-33 | modèle sans année, avec « Enregistrer les informations » | CONV-162 |
-| CONV-34, CONV-35 | « Enregistrer les informations » avec « Voir en tant que » | CONV-171, CONV-172 (vrais comptes) |
-| CONV-38 | la saisie non enregistrée est perdue : c'est l'inverse aujourd'hui | CONV-156, CONV-157 |
-| CONV-39 | clavier avec trois boutons dans le pied | CONV-173 |
-| CONV-40, CONV-41 | VoiceOver sur les champs « Année » et le message de réussite d'« Enregistrer » | CONV-174, CONV-175, CONV-176 |
-| CONV-42, CONV-43 | zoom et mobile avec trois colonnes et « Informations enregistrées. » | CONV-177, CONV-178 |
-| CONV-53 à CONV-60 | les six messages de blocage et « Certains champs sont à corriger. » | CONV-166 |
-| CONV-67 | trois boutons du pied, « Enregistrer les informations » | CONV-160 |
-| CONV-73 | ordre de trois boutons, champ « Modèle utilisé » | CONV-173 |
-| CONV-76 | messages d'erreur de champ (VoiceOver) | CONV-176 |
-| CONV-78, CONV-79 | effacer « Année », trois boutons du pied | CONV-177, CONV-178 |
-| CONV-82 | année enregistrée reprise, puis remplacée par 2027 dans la fenêtre | CONV-168 |
-| CONV-85 | la saisie abandonnée par « Fermer » n'est plus perdue | CONV-156, CONV-157, CONV-158 |
-| CONV-91, CONV-103 | « Re-générer » grisé par l'adresse du club manquante (action ESSAI-CONV-S12) | CONV-142 |
-| CONV-95 | effacer « Année » bloque la génération | CONV-166 |
-
-### B. À adapter avant de les rejouer (le contrôle principal reste valable)
-
-| Cas | Ce qui est à corriger |
-| --- | --- |
-| CONV-44, CONV-45, CONV-46, CONV-47 | les étapes lisent « Année » et « Modèle utilisé » ; l'année du PDF et du nom de fichier vient maintenant de la Campagne : **compléter la Campagne** des actions ESSAI-CONV-R1, R2 et R4 (sinon l'année est omise) ; CONV-46 : le focus est sur « Signataire » |
-| CONV-48 | « SIRET » se lit maintenant dans l'encart « Club » (« SIRET : non renseigné », voir CONV-144) ; les pointillés du PDF restent à vérifier |
-| CONV-70 | la fenêtre préremplie n'a plus d'année |
-| CONV-80, CONV-81, CONV-104, CONV-105 | trois boutons du pied (il y en a deux) ; CONV-80 liste le champ « Année » |
-| CONV-92, CONV-94, CONV-96 | l'étape « remplacer l'année par … » n'existe plus : changer le Représentant à la place ; CONV-96 : l'année du PDF vient de la Campagne |
-
-### C. À relire (probablement valables, des mots peuvent avoir changé)
-
-CONV-07 (la partie « aucun bouton » est dépassée depuis R2 ; la partie « aucun message d'adresse » reste vraie) ; CONV-23 et CONV-24 (noms de blocs « Signataire club ») ; CONV-36 et CONV-37 (« Fermer » enregistre maintenant en silence) ; CONV-49 à CONV-52 et CONV-61 à CONV-66 (logos et échecs : l'année vient de la Campagne) ; CONV-71, CONV-72, CONV-74, CONV-75, CONV-77 (droits et VoiceOver de la génération : vérifier qu'ils ne citent ni « Année » ni trois boutons) ; CONV-83, CONV-84, CONV-86, CONV-87, CONV-93, CONV-98, CONV-99 (re-génération : CONV-87 repose sur `Avec_annee` d'un modèle, à relire par Hanta).
-
-### D. Toujours valables
-
-CONV-01 à CONV-06, CONV-08 à CONV-17 (CONV-16 : agence manquante ; CONV-17 : club manquant, ces deux blocages restent les seuls), CONV-88, CONV-89, CONV-90, CONV-97, CONV-100 à CONV-102, et **CONV-106 à CONV-138 (R6)** : le dépôt du fichier signé n'ouvre pas la fenêtre.
-
-**Attention, R6** : n'ouvrez JAMAIS la fenêtre « Convention » d'une action ESSAI-CONV-T pendant R8. « Fermer » écrit maintenant dans Conventions, et la colonne `Annee` est relue depuis la Campagne à chaque enregistrement (vidée si la Campagne est vide, d'après `conventionLireAnnee`). Une action T ouverte puis fermée perdrait son `Annee` = 2026, ce qui fausserait les noms de fichier attendus par CONV-109, CONV-110 et CONV-112, et rendrait fausse la règle « T8 et T9 ne sont jamais modifiées ».
+Traité le 2026-11-04 : les cas obsolètes ont été supprimés, ceux à adapter ont été réécrits dans le fichier `.tsv`, et les cas redondants ont été regroupés. Voir la section « Nettoyage du carnet » tout en haut de ce fichier.
 
 ## Données d'essai de R8 à créer dans TEST avant de jouer
 
@@ -1241,7 +1255,7 @@ Même méthode qu'en R4, R5 et R6, dans les outils du navigateur (F12), onglet *
 - **Allonger la génération (CONV-160)** : débit « Slow 3G » ou « Fast 3G », case « Désactiver le cache » cochée, page rechargée avant.
 - **Dans tous les cas : remettre le réseau normal à la fin.** Aucun jeton Grist dans une fiche d'anomalie, une capture ou ce document.
 
-## Les 43 cas de R8
+## Les cas de R8 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`. **Aucun cas ne se rejoue en PROD** : ouvrir puis fermer la fenêtre écrit.
 
@@ -1295,53 +1309,9 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 - **CONV-169 : après rechargement, la fenêtre et la fiche du club** (Persistance, Majeur).
 - **CONV-170 : un seul contact créé malgré plusieurs fermetures** (Persistance, Majeur).
 
-### Droits (vrais comptes, pas « Voir en tant que »)
 
-- **CONV-171 : FT Régional ajoute un contact et génère** (Droits, Bloquant, fumée).
-- **CONV-172 : FT Départemental ajoute un contact (chemin « Fermer ») et génère** (Droits, Bloquant).
 
-### Accessibilité et affichage
 
-- **CONV-173 : clavier, ordre de Tab, aria-expanded** (Majeur).
-- **CONV-174 : VoiceOver, ouverture et sous-titre** (Majeur).
-- **CONV-175 : VoiceOver, bouton et formulaire** (Majeur).
-- **CONV-176 : VoiceOver, message sous E-mail** (Majeur).
-- **CONV-177 : zoom 200 %** (Majeur).
-- **CONV-178 : mobile (375 px)** (Mineur).
-- **CONV-179 : deux colonnes à 1280 px** (Majeur).
-- **CONV-180 : le seuil de 1100 px** (Majeur) : 1193, 1150, 1100, 1099, 1000 px.
-- **CONV-181 : une colonne sous le seuil** (Majeur).
-
-## Tests de fumée de R8 (5 sur 43)
-
-- CONV-139 : la fenêtre allégée s'ouvre telle que décrite.
-- CONV-150 : un contact ajouté est créé et devient le signataire.
-- CONV-156 : « Fermer » enregistre en silence.
-- CONV-161 : le PDF porte l'année de la Campagne et les pointillés doublés.
-- CONV-171 : un vrai compte FT Régional ajoute un contact et génère.
-
-Au total, avec R1, R2, R4, R5 et R6 : 19 tests de fumée sur 181 cas (CONV-01, 03, 08, 19, 30, 44, 68, 71, 80, 81, 98, 106, 107, 128, 139, 150, 156, 161, 171). Parmi eux, CONV-19 et CONV-30 sont obsolètes (remplacés par CONV-139 et CONV-156) : **17 tests de fumée valables**.
-
-## Ordre conseillé pour jouer
-
-1. Créer les données (clubs, contacts, Campagnes, actions U1 à U32, lignes Conventions de U13, U27, U28).
-2. D'abord ce qui ne fait que regarder : CONV-139 à 149, 154, 173 à 181 (« Fermer » peut quand même écrire une ligne Conventions).
-3. Ensuite les écritures simples : CONV-150 à 153, 155 à 157, 161 à 166, 167, 168, 169, 170.
-4. Puis celles qui demandent un réglage du réseau : CONV-160, puis CONV-158 et 159 (remettre le réseau normal après chacun).
-5. Les vrais comptes : CONV-171 et 172, à tout moment.
-6. VoiceOver : CONV-174 à 176, dans une session à part.
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-139 à 144, 146 à 157 et 160 à 166 ; `Non` pour CONV-145 (hauteur à l'écran), 158 et 159 (pannes réseau réelles), 167 à 181 (rechargement, droits, accessibilité, affichage). C'est **déclaratif** : d'après la fiche C56 (9 fichiers de test mis à jour, dont `test/convention-contact.test.js`, nouveau), mais je n'ai relu ni ces fichiers ni leurs noms. Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni les pannes réseau réelles.
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (ouverture : CONV-139 à 142 ; blocs : CONV-143 à 146 ; ajouter un contact : CONV-147 à 155 ; fermeture : CONV-156 à 160 ; génération : CONV-161 à 168 ; persistance : CONV-169 et 170 ; droits : CONV-171 et 172 ; affichage : CONV-173 à 181), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur `conventionNomFichierAvec` ou sur la lecture de la Campagne touche aussi CONV-44 à 47 (R4) et CONV-109 à 112 (R6). Un changement dans le widget clubs touche CONV-169 (carte Contacts).
-
-## Rejouer en PROD
-
-**Aucun cas de R8 ne se rejoue en PROD.** Même les cas qui ne font que regarder ouvrent la fenêtre, et « Fermer » écrit dans Conventions ; les autres créent des contacts réels.
 
 ## [À CONFIRMER] de R8
 
@@ -1371,7 +1341,7 @@ Rejouer le cas concerné, puis ses voisins (ouverture : CONV-139 à 142 ; blocs 
 - Widget : tableau de bord (actions-dashboard), fiche d'une action, bloc « Convention » (boutons « Voir », « Télécharger ») et pop-up du PDF.
 - Branche : `feature/convention`. Évolution 2 : fiche C57 de REVIEW_LOG.md, décisions E2-1 à E2-11 de `docs/backlog.md`.
 - Référence : `docs/ux/convention.md`, **§14 (elle fait foi)** : 14.1 parcours, 14.2 bloc, 14.3 pop-up, 14.4 textes, 14.6 accessibilité, 14.10 risques. Les textes attendus en sont copiés mot pour mot.
-- Le fichier `cas-de-test-convention.tsv` contient les 41 cas de R9 (CONV-182 à CONV-222), à la suite des 181 de R1, R2, R4, R5, R6 et R8 : 222 lignes de cas, 18 colonnes.
+- Le fichier `cas-de-test-convention.tsv` contient les 41 cas de R9 (CONV-182 à CONV-222), à la suite des 181 de R1, R2, R4, R5, R6 et R8 : 161 lignes de cas après le nettoyage du 2026-11-04, 18 colonnes.
 - Les actions de R9 s'appellent ESSAI-CONV-V1 à ESSAI-CONV-V10. **« V » veut dire « Évolution 2 »** : à ne pas confondre avec A, B, R, S, T et U.
 - **Règle pour tout le monde** : la pop-up couvre toute la fiche. Dans les cas anciens qui disent « cliquer sur Voir… et lire le PDF », il faut maintenant **fermer la pop-up (croix ou Échap) avant l'étape suivante**, sinon les boutons de la fiche sont cachés.
 
@@ -1400,42 +1370,9 @@ Rejouer le cas concerné, puis ses voisins (ouverture : CONV-139 à 142 ; blocs 
 6. **Mode sombre** : à traiter à part pour tout le tableau de bord (comme en R5, R6 et R8).
 7. **Vrai plein écran de l'ordinateur** : hors du périmètre d'E2-11 (note §14.3).
 
-## Cas anciens (CONV-01 à 181) devenus obsolètes ou à adapter
+## Cas anciens devenus obsolètes ou à adapter
 
-Ces cas ne sont **ni supprimés ni modifiés** dans le fichier `.tsv`. La recherche a été faite par lecture du `.tsv` (mots « onglet », « blob », « Voir la convention », « 60 s »), sans rien exécuter : un cas oublié est possible.
-
-**R1 et R2 (CONV-01 à 43) : aucun cas ne teste « Voir » ni « Télécharger ».** **R8 (CONV-139 à 181) : aucun cas obsolète** ; CONV-161 à 168, 171 et 172 disent seulement « Voir la convention et lire le PDF » (voir D). **Aucun cas ne mentionne le délai de 60 secondes** (recherche sans résultat).
-
-### A. Obsolètes : ne plus les jouer (4 cas)
-
-| Cas | Pourquoi | Remplacé par |
-| --- | --- | --- |
-| CONV-68 (R4) | exige un nouvel onglet dont l'adresse commence par « blob: » ; « Si le navigateur bloque l'onglet… » | CONV-182 (ouverture), CONV-208 (adresse), CONV-192 (« Télécharger » du bloc) |
-| CONV-69 (R4) | « aucun onglet vide ne reste ouvert » ; à l'étape 5 « le PDF s'ouvre dans un nouvel onglet » | CONV-207 |
-| CONV-122 (R6) | exige un nouvel onglet « blob: » pour le PDF signé | CONV-184 (ouverture), CONV-208 (adresse) |
-| CONV-123 (R6) | l'étape 5 et l'attendu parlent d'un « onglet blob: » ouvert pendant l'envoi | CONV-217 |
-
-### B. Partiellement obsolètes : une étape ou une phrase est fausse, le reste vaut (13 cas)
-
-| Cas | Ce qui est à corriger | Cas de remplacement pour la partie obsolète |
-| --- | --- | --- |
-| CONV-44 (R4) | étape 7 et attendu : « le PDF s'ouvre dans un nouvel onglet » ; lire dans la pop-up puis la fermer | CONV-182, CONV-188 |
-| CONV-71, CONV-72 (R4) | « Le PDF s'ouvre dans un nouvel onglet » (droits de la génération) | CONV-211, CONV-212 (droits de « Voir ») |
-| CONV-73 (R4) | « Entrée l'active et ouvre le PDF dans un nouvel onglet » ; l'ordre de Tab du bloc a un bouton de plus | CONV-218 |
-| CONV-75 (R4) | annonce « Voir la convention (s'ouvre dans un nouvel onglet), bouton » | CONV-219 |
-| CONV-81, CONV-98, CONV-99 (R5) | « Le PDF s'ouvre dans un nouvel onglet » | CONV-215 (re-génération), CONV-211, CONV-212 |
-| CONV-107 (R6) | étape 2 « fermer l'onglet » : fermer la pop-up | CONV-184, CONV-200 |
-| CONV-128 (R6) | « Le PDF s'ouvre dans un nouvel onglet (scan A) » | CONV-216 |
-| CONV-133 (R6) | étapes 4 et 6 « adresse de l'onglet » et attendu « onglets… « blob: » » ; la partie console et jeton reste valable | CONV-208, CONV-210 |
-| CONV-135, CONV-136 (R6) | VoiceOver : « (s'ouvre dans un nouvel onglet) » ; le bloc a un bouton « Télécharger » de plus | CONV-219, CONV-220 |
-
-### C. À adapter : le bloc a un bouton « Télécharger » juste après « Voir »
-
-Les attendus qui listent les boutons du bloc dans l'ordre (ou comptent « trois boutons ») sont à corriger : CONV-80, 97, 101, 102, 105, 106, 120, 131, 132, 134, 137, 138. Le contrôle principal reste valable. CONV-102 : l'annonce attendue est maintenant « Voir la convention (s'ouvre dans une fenêtre), bouton ».
-
-### D. À relire : fermer la pop-up avant l'étape suivante
-
-Cas dont une étape dit « cliquer sur Voir… et lire le PDF » : CONV-45 à 52, 70, 82, 83, 85, 88, 89, 91 à 96, 109, 120, 124 à 126, 129, 131, 132, 161 à 168, 171, 172. Le contrôle ne change pas ; ajouter « puis fermer la pop-up » après la lecture.
+Traité le 2026-11-04 : les cas obsolètes ont été supprimés, ceux à adapter ont été réécrits dans le fichier `.tsv`, et les cas redondants ont été regroupés. Voir la section « Nettoyage du carnet » tout en haut de ce fichier.
 
 ## Données d'essai de R9 à créer dans TEST avant de jouer
 
@@ -1506,7 +1443,7 @@ Même méthode qu'en R4, R5 et R6, dans les outils du navigateur (F12), onglet *
 - **Allonger l'envoi (CONV-217)** : débit « Fast 3G » avec `lent-1Mo.pdf` (voir CONV-123).
 - **Dans tous les cas : retirer le blocage et remettre le débit normal à la fin.** Aucun jeton Grist dans une fiche d'anomalie, une capture ou ce document.
 
-## Les 41 cas de R9
+## Les cas de R9 restants après le nettoyage du 2026-11-04
 
 Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le détail (étapes, textes exacts) est dans le fichier `.tsv`.
 
@@ -1538,10 +1475,6 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 
 ### Fermeture
 
-- **CONV-198 : la croix, focus sur « Voir la convention »** (Nominal, Bloquant, fumée).
-- **CONV-199 : Échap, focus sur « Voir la convention »** (Nominal, Majeur).
-- **CONV-200 : la croix, focus sur « Voir la convention signée »** (Nominal, Majeur).
-- **CONV-201 : Échap, focus sur « Voir la convention signée »** (Nominal, Majeur).
 - **CONV-202 : focus dans le PDF, Échap ne ferme pas (constat)** (Limite, Mineur).
 - **CONV-203 : réouverture trois fois** (Limite, Majeur).
 
@@ -1557,60 +1490,13 @@ Légende : criticité Bloquant / Majeur / Mineur. Fumée = test de fumée. Le d�
 - **CONV-209 : barre d'état vide au survol** (Nominal, Majeur).
 - **CONV-210 : console sans jeton, aucun lien dans la pop-up** (Nominal, Bloquant).
 
-### Droits (vrais comptes, pas « Voir en tant que »)
 
-- **CONV-211 : FT Régional, « Voir » et « Télécharger »** (Droits, Bloquant, fumée).
-- **CONV-212 : FT Départemental, « Voir » et « Télécharger »** (Droits, Bloquant).
 
 ### Persistance
 
-- **CONV-213 : rechargement avec la pop-up ouverte** (Persistance, Majeur).
-- **CONV-214 : « Voir » et « Télécharger » n'écrivent rien** (Persistance, Majeur).
-- **CONV-215 : après une re-génération, la pop-up et les fichiers suivent** (Persistance, Majeur).
-- **CONV-216 : après un remplacement du fichier signé, idem** (Persistance, Majeur).
 - **CONV-217 : « Voir » signée pendant un remplacement en cours** (Limite, Majeur).
 
-### Accessibilité et affichage
 
-- **CONV-218 : clavier, ordre de Tab, focus à l'ouverture** (Majeur).
-- **CONV-219 : VoiceOver, état Générée** (Majeur).
-- **CONV-220 : VoiceOver, état Signée** (Majeur).
-- **CONV-221 : zoom 200 %** (Majeur).
-- **CONV-222 : mobile (375 px)** (Mineur).
-
-## Tests de fumée de R9 (5 sur 41)
-
-- CONV-182 : la pop-up s'ouvre en plein cadre, avec le bon titre.
-- CONV-189 : « Télécharger » de la pop-up enregistre le fichier avec son vrai nom.
-- CONV-192 : « Télécharger » du bloc enregistre le fichier sans ouvrir la pop-up.
-- CONV-198 : la croix ferme et rend le focus à « Voir ».
-- CONV-211 : un vrai compte FT Régional utilise « Voir » et « Télécharger ».
-
-Au total, avec R1, R2, R4, R5, R6 et R8 : 24 tests de fumée sur 222 cas. Parmi eux, CONV-19, CONV-30 et CONV-68 sont obsolètes : **21 tests de fumée valables**, dont 6 à adapter (CONV-44, 71, 81, 98, 107, 128, voir B).
-
-## Ordre conseillé pour jouer
-
-1. Créer les données (actions V1 à V10, leurs lignes Conventions, le fichier de 4 pages, `faux-pdf-texte.pdf` dans V7).
-2. D'abord ce qui ne fait que regarder : CONV-182 à 188, 205, 208, 209, 213.
-3. Les téléchargements : CONV-189 à 193, 196, 197 (supprimer les fichiers téléchargés ensuite).
-4. La fermeture : CONV-198 à 203.
-5. Les réglages du réseau : CONV-194, 195, 204, 207, puis 217 (remettre le réseau normal après chacun).
-6. Les cas qui écrivent : CONV-215, 216 (CONV-217 avec le réseau).
-7. Les contrôles d'un propriétaire : CONV-210, 214.
-8. Les vrais comptes : CONV-211 et 212, à tout moment.
-9. VoiceOver : CONV-219 et 220, dans une session à part. Puis clavier, zoom et mobile : CONV-218, 221, 222.
-
-## Cas déjà couverts par un test en code
-
-`Automatisable = Oui` pour CONV-182, 183, 184, 187, 189, 190, 192, 193, 195, 198 à 201, 205 et 207 ; `Non` pour les autres (rendu et taille dans Grist, droits réels, pannes réseau réelles, navigateurs, accessibilité, persistance). C'est **déclaratif** : d'après la fiche C57 (« pop-up plein écran, bouton Télécharger : 22 tests, 25 mis à jour »), mais je n'ai relu ni ces fichiers ni leurs noms. Cela ne remplace pas l'essai à l'écran : le test en code prouve la logique, pas le rendu dans Grist, les droits ni le téléchargement réel par le navigateur.
-
-## Après une correction
-
-Rejouer le cas concerné, puis ses voisins (ouverture : CONV-182 à 188 ; téléchargement : CONV-189 à 195 ; coexistence : CONV-196 et 197 ; fermeture : CONV-198 à 204 ; échecs : CONV-205 à 207 ; sécurité : CONV-208 à 210 ; droits : CONV-211 et 212 ; persistance : CONV-213 à 217 ; accessibilité : CONV-218 à 222), et rappeler à Hanta de relancer toute la suite automatique (npm test). Un changement sur `conventionNomFichier` ou `conventionNomFichierSigne` touche aussi CONV-44 à 47 (R4) et CONV-109 à 112 (R6). Un changement sur le verrou de « Voir » touche CONV-123 et CONV-124 (R6).
-
-## Rejouer en PROD
-
-**Aucun cas de R9 ne se rejoue en PROD par défaut** : la pop-up et les téléchargements montrent de vrais PDF (noms, signatures manuscrites du PDF signé), et plusieurs cas enregistrent des fichiers sur le poste. Si Hanta veut une vérification en PROD, la limiter à CONV-182 et CONV-198 sur une convention déjà générée (le PDF généré porte des noms de personnes), avec son accord : [À CONFIRMER] 14.
 
 ## [À CONFIRMER] de R9
 
