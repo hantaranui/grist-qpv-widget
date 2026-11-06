@@ -277,3 +277,10 @@ Décisions :
 - E3-14 : la recette R8 et R9 de la Convention reste SUSPENDUE le temps de cette évolution (décision déjà notée dans la section "Refonte de la recette Convention").
 - E3-15 : point encore ouvert, non bloquant pour le développement en DEV/TEST : le domaine jsdelivr.net doit être vérifié ou autorisé sur le réseau interne de France Travail avant la mise en PROD (question posée au chef de projet par e-mail, aucun collègue disponible côté France Travail pour tester dans l'immédiat).
 - E3-16 : la fusion dans main se fait APRÈS la stabilisation complète de cette évolution, pas avant.
+- E3-17 (correction d'un bug trouvé par le designer-ux) : le nom de fichier de la convention générée doit lire l'année directement depuis Actions.Campagne, PAS depuis Conventions.Annee (qui reste vide après un dépôt libre sans génération, E3-7). Ceci corrige une incohérence entre la note (§4.1 k) et le code actuel (conventionNomFichier).
+- E3-18 : réponses de Hanta aux questions ouvertes du designer-ux (§15.13) :
+  - (a) surlignage jaune standard, bande d'espaces insécables d'environ 20 caractères (40 pour une adresse), accepté tel quel ;
+  - (b) les zones non remplacées par le widget (« Fait à… », dates de signature) sont AUSSI surlignées, par cohérence avec l'ancien traitement en pointillés (E1-21) ;
+  - (c) ajouter une phrase d'aide courte près du bouton « Déposer » aux états « À générer » et « Sans modèle » : « Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. » ;
+  - (d) mise en page du document Word : reprendre celle du PDF (A4, marges 2,5 cm, justifié, interligne 1,2), SAUF la police : Arial à la place de Roboto (non embarquée par Word) ;
+  - (e) interprétation de « droits insuffisants » confirmée : masqué seulement à l'état correspondant (A7) ; un refus d'écriture réel donne le message déjà prévu (S9-4).
