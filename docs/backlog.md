@@ -240,3 +240,18 @@ Questions réglées : Q-C (logo : vient du Word officiel, colonnes Logo/Logo_par
 - Dépôt public : aucun texte de modèle, aucun secret, aucune donnée réelle, aucun logo réel dans le dépôt (seulement dans Grist).
 - Données personnelles : nom, prénom, fonction du signataire et du représentant, signatures sur les PDF générés et signés. Durée de conservation à traiter dans la démarche RGPD globale.
 - Incident Grist du 24/10/2026 (grist.numerique.gouv.fr) sur un autre document (tableau de bord des actions, pas la convention) : blocage « No Write Access » pour au moins deux utilisatrices Régional, malgré des règles d'accès vérifiées correctes ; piste en cours : session/cache de navigateur à reconnecter, suite à des mises à jour de la plateforme le 23/10. Sans lien avec le chantier Convention.
+
+## Refonte de la recette Convention (décision du 03/11)
+
+Décision de Hanta, après retour négatif du chef de projet et du collègue testeur sur le document de recette (trop long, pas assez centré sur l'essentiel) : la recette Convention sera entièrement reconstruite, en PARCOURS UTILISATEUR courts (ex. "je génère une convention pour tel club, je vérifie le résultat"), plutôt qu'en vérifications exhaustives détail par détail (état par état, droit par droit, angle par angle). Objectif : que le collègue testeur se mette à la place d'un agent qui utilise l'outil, pas qu'il revérifie ce que Hanta a déjà validé pendant le développement.
+
+Le document final distingue trois catégories de lignes, toutes visibles pour la traçabilité :
+1. Ce que le collègue a déjà joué (résultat "testé", observation "Bon") : gardé tel quel, jamais rejoué.
+2. Ce que Hanta a déjà vérifié elle-même pendant le développement (les nombreux essais à l'écran faits avec Claude au fil des évolutions E1 et E2 : pop-up plein écran, bon nom de fichier au téléchargement, bouton Ajouter un contact, seuil à 1100px, etc.) : marqué clairement "Déjà vérifié par Hanta pendant le développement", jamais à refaire par le collègue non plus.
+3. Les quelques parcours utilisateur restants (5 à 10), qui sont les SEULS que le collègue doit réellement jouer : il se met à la place d'un agent qui utilise l'outil pour de vrai (générer une convention, déposer un fichier signé, etc.), pas d'un testeur qui vérifie chaque détail technique.
+
+Autres principes à appliquer à la reconstruction :
+- Supprimer entièrement les cas marqués obsolètes (42 cas) ET les cas marqués "bloqué" par le collègue (CONV-07, 08, 09, 10, 11, 13, pas de vrais bugs, juste des blocages d'environnement).
+- Les besoins signalés par ces cas bloqués, à ne pas perdre, à traiter séparément (hors du document de test) : créer un vrai club de test avant la recette (CONV-07) ; obtenir l'accès "Voir en tant que" pour jouer les cas de droits FT Régional et FT Départemental (CONV-08 à 11) ; disposer d'un Mac pour les vérifications VoiceOver (CONV-13).
+
+À NE PAS FAIRE MAINTENANT : la reconstruction est mise EN ATTENTE jusqu'à la décision du chef de projet sur le passage de la génération en Word (.docx), car cette décision va changer une bonne partie de ce qu'il y a à tester (le bouton "Voir", la génération elle-même). Relancer cette tâche seulement après cette réponse.
