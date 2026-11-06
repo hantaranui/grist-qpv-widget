@@ -1,5 +1,7 @@
 # Convention de partenariat : générer le PDF et déposer la version signée, depuis la fiche d'une action
 
+> **Mis à jour le 2026-11-06 (E3)** : le document généré passe du PDF au Word (.docx), « Voir la convention » disparaît, le dépôt du fichier signé est libre. **Lire le §15 en dernier : il remplace les passages plus anciens qui parlent du PDF généré, de « Voir la convention » et des pointillés.**
+
 **La maquette docs/ux/maquette-convention.html n'est plus à jour : en cas d'écart, cette note l'emporte.**
 
 **Statut : validée le 2026-10-22** (mise à jour de la tâche 4.1, après les réponses du client et de Hanta ; la version précédente avait été validée par le chef avant ces réponses). Dev-interface peut coder le bloc (tâche 4.2).
@@ -1486,3 +1488,205 @@ Les trois premières questions ont été tranchées par Hanta le 2026-10-30 : **
 5. **Navigateurs mobiles** : l'aperçu PDF dans un cadre est souvent absent ; le texte de repli est prévu pour cela (désormais sans lien : sur mobile, le téléchargement est le seul chemin).
 6. **Adresse `blob:` visible au survol : réglé (mis à jour le 2026-10-30 (E2, bouton Télécharger de la pop-up sans survol d'adresse), E2-9)**. Le chef de projet ne veut jamais voir d'adresse `blob:` ou github.io dans la barre du navigateur (E2-7). Un vrai lien permanent `href="blob:…"` l'aurait affichée en bas à gauche au survol ; « Télécharger » de la pop-up est donc un `<button>` qui crée un lien temporaire au clic, sans `href` dans la page. À vérifier à l'œil dans Grist DEV : aucune adresse n'apparaît au survol des deux boutons « Télécharger ». Risque restant : le lien temporaire existe un instant au moment du clic, sans que la souris soit dessus ; non visible.
 7. **Titre long** : un nom de fichier long (club à nom long) dans l'en-tête peut le faire grandir ; voir 14.3 (retour à la ligne autorisé).
+
+## 15. Document généré en Word (.docx) et dépôt libre (ajouté le 2026-11-06 (E3))
+
+Source des décisions : docs/backlog.md, « Évolution 3 (E3) », E3-1 à E3-16 (font foi). Cette section est autonome : elle dit tout ce que dev-backend et dev-interface doivent appliquer, et **remplace** les passages plus anciens listés au 15.1 là où ils se contredisent. Tout le reste du document (jeton, verrou, alertes, accessibilité, fenêtre B, dépôt du fichier signé, §14 pour le fichier signé) reste valable.
+
+Sources lues : docs/backlog.md (E3), ce fichier en entier (§2 à §14), src/actions-dashboard/script.js (`conventionEtat`, `conventionNomFichier`, `conventionNomFichierSigne`, `conventionNomFichierAvec`, `conventionModeleInfos`, `conventionBlocage`). **Pages du site du design system : non relues** (pas d'accès web dans cette session) ; aucun composant nouveau n'est utilisé, uniquement ceux déjà employés dans les §2, §4 et §14. Rien n'est exécuté.
+
+### 15.1 Ce qui change, en un coup d'œil, et les passages remplacés
+
+| Sujet | Avant | Après (E3) | Passages remplacés |
+|---|---|---|---|
+| Document généré | PDF | **Word (.docx)** | §2 (A2), §3, §5, §11 (voir 15.9), §12 |
+| « Voir la convention » (document généré) | bouton + pop-up PDF (§14) | **supprimé** | §2, §14.1 à 14.3 pour le document généré |
+| « Télécharger » (document généré) | existe depuis l'E2 à côté de « Voir » | devient **« Télécharger la convention »**, seul bouton d'accès au document | §14.2 |
+| « Voir la convention signée » | pop-up plein écran | **aucun changement** (E3-4) | rien |
+| Zones à compléter | pointillés | **champs vides surlignés** | §3 « Cases du modèle », §5 |
+| « Déposer la convention signée » | seulement à l'état Générée | **visible en permanence** (sauf état Droits insuffisants) | §2, §4.1 a |
+| Dépôt sans génération | impossible | passe **directement à « Signée »** | §2, §4 |
+
+**Un point où le backlog et la note se recoupent, tranché ici.** L'E2 avait déjà ajouté un bouton « Télécharger » à côté de « Voir la convention » (§14.2). E3-3 supprime « Voir » et ne garde que le téléchargement. Il n'y a donc **qu'un seul bouton** pour le document généré : le « Télécharger » de l'E2, **renommé « Télécharger la convention »**, et non un second bouton. Même `id` (`conventionTelecharger`), même mécanique. Si Hanta voulait deux boutons, elle me le dit (Q-E3-1).
+
+### 15.2 Parcours (agent France Travail, fiche d'une action)
+
+1. Clic sur « Générer la convention », fenêtre B inchangée (§3), clic sur « Générer la convention » dans la fenêtre. La fenêtre se ferme, le bloc passe à « Générée », l'alerte « Convention générée. » s'affiche.
+2. Clic sur « Télécharger la convention » : le fichier **.docx** est enregistré par le navigateur.
+3. **Hors du widget** : l'agent ouvre le fichier dans son application Word, modifie le texte si besoin, remplit les champs surlignés, imprime, fait signer et numérise en **PDF**.
+4. Retour dans la fiche : « Déposer la convention signée » (PDF uniquement, E3-8) : le bloc passe à « Signée ».
+
+Variante sans génération (E3-6 et E3-7) : à tout moment, depuis les états « À générer » et « Sans modèle », l'agent dépose directement un PDF signé (convention faite hors outil). Le bloc passe aussitôt à « Signée ».
+
+**Aucune édition dans le widget** : pas d'éditeur, pas d'aperçu du document Word (un navigateur n'affiche pas un .docx, E3-3).
+
+### 15.3 Bloc Convention : états et boutons (remplace le tableau des états du §2 et la rangée du §14.2)
+
+La rangée est toujours `convention-actions` (classe existante). Style de tous les boutons : `btn btn-secondary`, comme avant ; aucun bouton principal dans la rangée. L'ordre de Tab = l'ordre visuel.
+
+| État | Phrase d'état | Phrase d'aide | Rangée de boutons, de gauche à droite |
+|---|---|---|---|
+| **À générer** | « Aucune convention générée. » | **« Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. »** (mis à jour le 2026-11-06 (E3, réponses de Hanta)) | « Générer la convention » (grisé si génération bloquée, §2) · **« Déposer la convention signée »** (nouveau) |
+| **Générée** | « Convention générée le [date]. » | voir 15.7 (deux variantes selon le format) | **« Télécharger la convention »** · « Re-générer » · « Déposer la convention signée » |
+| **Signée** | « Convention signée, déposée le [date]. » | aucune | « Voir la convention signée » · « Télécharger » (inchangé, §14.2), puis, en dessous, le lien « Remplacer le fichier signé » (inchangé) |
+| **Sans modèle** | « Pas encore de modèle de convention pour ce dispositif. » | **« Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. »** (mis à jour le 2026-11-06 (E3, réponses de Hanta)) | **« Déposer la convention signée »** (nouveau, seul bouton) |
+| **Droits insuffisants** | inchangée (§2, A7) | aucune | **aucun bouton, donc pas de bouton de dépôt** (E3-6) |
+
+Règles de placement du bouton de dépôt aux états « À générer » et « Sans modèle » :
+- **À générer** : ce qui est déjà là, de haut en bas : la phrase d'état, puis, si la génération est bloquée, la région `#conventionBlocage` avec le message (§2), puis la rangée. « Déposer la convention signée » est **le second bouton de la rangée, après « Générer la convention »**. Il **ne porte jamais** `aria-describedby` ni `aria-disabled` à cause du blocage : le message « Convention impossible à générer : … » parle de la génération seule. Un club ou une agence manquant n'empêche donc pas de déposer (le nom du fichier se calcule sans eux, voir 15.6).
+- **Sans modèle** : la phrase d'état est suivie de la rangée, qui ne contient que « Déposer la convention signée ». Pas de région de blocage (il n'y en a pas à cet état).
+- Même gabarit HTML que le §4.1 a (`id="conventionDeposer"`, sans `aria-haspopup`, `btn btn-secondary`, texte `btn-content`), même champ caché `conventionFichier`. **Mis à jour le 2026-11-06 (E3, réponses de Hanta)** : une phrase d'aide est ajoutée à ces deux états, texte exact « Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. » (`<p class="help-block">`, classe déjà employée dans le bloc). Place : sous la rangée de boutons (à « À générer », après la région de blocage éventuelle et la rangée). Elle est reliée au bouton « Déposer la convention signée » par `aria-describedby` vers un `id` propre (par exemple `conventionDeposerAide`) ; le bouton ne porte toujours jamais la référence au message de blocage. Le texte ne mentionne pas que la génération se ferme après un dépôt (décision de Hanta : texte court, tel quel).
+- « Re-générer » reste grisé pendant un envoi (§4.1 d). À l'état « À générer », « Générer la convention » est grisé de la même façon pendant un envoi de fichier signé (même raison : pas de génération pendant qu'un fichier signé est en route). Pas de message, l'attente est dite par « Envoi en cours… ».
+
+**Ce que « droits insuffisants » veut dire pour le bouton de dépôt (interprétation confirmée par Hanta, mis à jour le 2026-11-06 (E3, réponses de Hanta) : masqué seulement à l'état A7, Q-E3-2).** E3-6 dit « masqué si les droits sont insuffisants ». Le widget ne lit jamais le profil de l'utilisateur (§2) : le seul cas où il sait que les droits manquent est **l'état A7 « Droits insuffisants »** (Grist refuse la **lecture** de Conventions ou Modeles_convention). Je pars donc de ceci : bouton masqué à l'état A7 uniquement, comme tous les autres boutons ; dans tous les autres états le bouton est affiché, et si Grist refuse l'**écriture** (profil en lecture seule, par exemple), le dépôt échoue avec le message de droits du §4 (S9-4 : « Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. »). C'est la règle déjà posée au §2 (« le widget ne cache rien selon le profil »). Si Hanta veut en plus cacher le bouton pour un profil précis, il faudrait que le widget lise le profil : **je ne le propose pas** (contraire à CLAUDE.md : « le widget n'essaie pas de deviner les droits »).
+
+### 15.4 « Télécharger la convention » (remplace « Voir la convention » et « Télécharger » du document généré)
+
+**Texte exact : « Télécharger la convention »** (visible). **Texte caché pour les lecteurs d'écran**, placé après le texte visible (le nom accessible commence par le texte visible) : `<span class="sr-only"> (fichier Word)</span>` pour un .docx, `<span class="sr-only"> (fichier PDF)</span>` pour un ancien PDF (15.8). Remplace « le fichier PDF de la convention générée ». Le texte caché « (s'ouvre dans une fenêtre) » et `aria-haspopup="dialog"` **n'existent plus** pour ce bouton : aucune fenêtre ne s'ouvre.
+
+```html
+<button class="btn btn-secondary" type="button" id="conventionTelecharger">
+  <span class="btn-content">Télécharger la convention<span class="sr-only"> (fichier Word)</span></span>
+</button>
+```
+
+Comportement : **exactement celui du bouton « Télécharger » du §14.2**, qui reste la référence :
+- Au clic seulement : jeton d'écriture demandé à Grist (jamais `readOnly: true`, CLAUDE.md), récupération de la pièce jointe avec `credentials 'omit'`, `X-Requested-With`, délai `CONVENTION_TELECHARGEMENT_DELAI_MS` ; rien dans la page avant le clic, aucun jeton ni identifiant de pièce jointe dans une adresse, un attribut ou la console.
+- Pendant la récupération : texte « Téléchargement en cours… » (texte caché retiré), `aria-disabled="true"` (jamais `disabled`), clics ignorés, focus immobile, verrou propre au bouton. Le texte d'origine revient ensuite.
+- Réussite : le navigateur enregistre le fichier avec son nom ; **aucun message du widget**. Le bouton ne construit **aucun aperçu** : pas de pop-up, pas d'iframe, pas de `blob:` laissé affiché (le lien temporaire `<a download>` est créé, déclenché et retiré, puis l'adresse `blob:` libérée peu après, comme au §14.2).
+- Échec : alerte `alert alert-error`, `role="alert"`, dans la zone d'alerte du bloc : « Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord. » (texte inchangé).
+- **Type du Blob : fixé par le widget selon l'extension, jamais repris de la réponse de Grist** (même garde-fou que le §14.3, point 1). Table fermée : `.docx` → `application/vnd.openxmlformats-officedocument.wordprocessingml.document` ; `.pdf` → `application/pdf`. Extension absente ou autre : traiter comme un échec (alerte ci-dessus), ne rien deviner (Q-E3-7).
+- **Nom du fichier enregistré (`download`)** : `Convention-[dispositif]-[club]-[année]` + extension, mêmes règles de nettoyage qu'au §3 (« Nom du fichier PDF »). **Mis à jour le 2026-11-06 (E3, réponses de Hanta ; correction E3-17)** : **[année] est lue dans `Actions.Campagne` de l'action, au moment du téléchargement, et jamais dans `Conventions.Annee`** (la fonction `conventionNomFichier` lit aujourd'hui `Annee` : à corriger par dev-backend). Campagne vide : l'année et son tiret sont omis (D-E1-8). **Extension déduite du nom du fichier déjà présent dans la pièce jointe** (E3-9, 15.8) : `.docx` pour une génération faite après l'E3, `.pdf` pour un ancien fichier. La fonction `conventionNomFichier` ajoute aujourd'hui `.pdf` en dur : elle doit recevoir l'extension en paramètre. Jamais de nom de personne. Le nom est écrit dans `download` avec `escapeAttr`.
+
+**À la fin d'une génération réussie, le focus va sur « Télécharger la convention »** (premier bouton de l'état « Générée »), à la place de « Voir la convention » (§3, « Après une réussite », §6).
+
+**Ce qui disparaît pour le document généré** (dev-interface et dev-backend, sans laisser de code mort) : le bouton `conventionVoir` et ses textes (« Voir la convention », « (s'ouvre dans une fenêtre) », « Ouverture en cours… » pour ce bouton), son verrou `conventionOuvertureEnCours`, l'ouverture de la pop-up pour le document généré, l'`id` `conventionPdfTelecharger` et le titre « Aperçu de la convention générée ». La pop-up (§14.3) **reste, pour le seul fichier signé**. Les tests qui cherchent « Voir la convention » ou la pop-up du document généré sont à réécrire par le testeur.
+
+### 15.5 Champs à compléter : surlignage à la place des pointillés (E3-5)
+
+**Remplace** la règle 2 de « Cases du modèle » (§3) : une case connue mais vide (club sans SIRET, signataire non choisi, fonction vide, représentant vide, adresse vide, campagne vide pour un modèle avec année) **n'est plus remplacée par des pointillés** mais par **un champ réellement vide avec un repère visuel : un surlignage**, que l'agent remplit directement dans Word. La génération n'est toujours pas bloquée. Les cases inconnues restent bloquantes (inchangé).
+
+- **Mis à jour le 2026-11-06 (E3, réponses de Hanta)** : **surlignage jaune standard, bande d'espaces insécables d'environ 20 caractères (40 pour une adresse), acceptés tels quels par Hanta (Q-E3-3)** ; plus une proposition. Historique du raisonnement : **surlignage proposé : le surlignage jaune standard de Word** (« Highlight » jaune) : aucune couleur de surlignage n'est définie ailleurs dans le projet (recherche faite dans docs/, README.md et script.js : aucune occurrence de surlignage ou de highlight). Choix d'une valeur standard de Word et non d'une couleur hexadécimale du projet : elle s'imprime et s'affiche bien, les agents la connaissent (outil « Couleur de surbrillance du texte »), et elle ne vient pas du design system (qui ne concerne que l'écran du widget, pas le contenu d'un document Word).
+- **Largeur du champ (point que le backlog ne tranche pas, proposition).** Un surlignage sur un texte de longueur zéro est **invisible** : l'agent ne verrait rien à remplir. Je propose donc que le « champ vide » soit **une courte suite d'espaces insécables surlignée** (environ 20 caractères pour un nom, un SIRET ou une fonction ; environ 40 pour une adresse), qui donne une bande jaune visible où cliquer et taper. Valeurs à valider (Q-E3-3) ; dev-backend n'invente pas d'autre largeur.
+- **Texte simple seulement** : la bande est un `TextRun` ordinaire, comme toute valeur du document (E3-13), jamais du XML assemblé à la main.
+- **Limite à connaître de l'agent.** En tapant dans la bande, le texte saisi **reste surligné**. L'agent doit retirer le surlignage avant d'imprimer ou d'envoyer pour ne pas imprimer du jaune. La phrase d'aide (15.7) le dit.
+- **Pas d'information portée seulement par la couleur** : la phrase d'aide du bloc (15.7) nomme le repère (« champs surlignés en jaune »). Dans le document lui-même, la couleur est la seule marque ; c'est accepté pour un document d'impression que l'agent relit avant signature, et à confirmer (Q-E3-3). Aucune légende n'est ajoutée au document : E3 n'en parle pas.
+- **Zones non remplacées par le widget : décidé, surlignées aussi (mis à jour le 2026-11-06 (E3, réponses de Hanta), Q-E3-4).** Le modèle contient des zones à remplir à la main que le widget ne remplace pas (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature : règle 4 de « Cases du modèle »). Hanta confirme : **elles sont aussi surlignées**, avec le même jaune et la même bande d'espaces insécables, par cohérence avec l'ancien traitement en pointillés (E1-21). L'agent trouve ainsi un seul repère dans le document. Largeur : 20 caractères par défaut, 40 pour une zone d'adresse ; pour « Fait à » et les dates de signature, dev-backend reprend la largeur de 20 caractères sauf si le modèle donne un espace plus grand (à signaler dans son rapport, pas à inventer). La phrase d'aide du bloc (15.7) dit « champs surlignés en jaune » sans distinguer les deux sortes.
+
+### 15.6 Dépôt sans génération préalable (E3-6, E3-7, E3-8)
+
+- **Fichier** : toujours **un PDF seulement**, jamais un .docx (E3-8). Contrôles inchangés, dans l'ordre du §4 : vide, 10 Mo, extension, type, « %PDF- ». `accept="application/pdf,.pdf"` inchangé. Un .docx déposé reçoit « Le fichier n'a pas été enregistré : ce n'est pas un PDF. » (texte inchangé).
+- **État obtenu** : aussitôt « Signée », avec la phrase exacte **« Convention signée, déposée le [date]. »** (même format de date que partout, `formatDate`). **Aucune mention du modèle, de l'année ni de « générée »** : ces deux informations restent vides dans Conventions et ne sont jamais écrites par ce dépôt (ne pas écrire `Modele: 0`, comme le fait la génération). Alerte de succès inchangée : « Convention signée enregistrée. »
+- **Boutons obtenus** : ceux de l'état Signée (15.3). **Plus de génération ensuite**, comme pour toute convention signée (règle du §2, A3 : « Signée » l'emporte sur « Générée »). Conséquence à connaître de l'agent : déposer un fichier à l'état « À générer » ferme la porte à la génération pour cette action ; le texte du bouton n'avertit pas de cela (voir Q-E3-6).
+- **Focus après réussite** : sur « Voir la convention signée » (règle du §4.1 e, le bouton « Déposer » a disparu).
+- **Ligne Conventions à créer (E3-6), pour dev-backend** : si aucune ligne n'existe pour l'action, la créer par `applyUserActions` avec **`Action` au minimum** (jamais `DR`, jamais `DD`, jamais `Modele` ni `Annee`), puis écrire `PDF_signe` + `Date_depot` en un seul `PATCH` REST comme aujourd'hui (§4.1 g). **Ordre recommandé : (1) contrôles ; (2) envoi du fichier ; (3) création de la ligne si absente ; (4) PATCH unique.** Rien de visible ne change tant que l'étape 4 n'a pas réussi (l'état reste « À générer » / « Sans modèle »). Si l'étape 3 réussit et l'étape 4 échoue, il reste une ligne Conventions vide, sans conséquence visible (`conventionEtat` la lit comme « pas de fichier ») : le nouvel essai **réutilise cette ligne** (la plus ancienne, règle existante) au lieu d'en créer une seconde. Le verrou du §4.1 d couvre toute la séquence. **À vérifier avant de livrer** : que les règles d'accès autorisent cette création à un non-propriétaire (profils FT Régional et FT Départemental, « Voir en tant que » dans DEV7) ; un refus d'écriture donne le message de droits S9-4. Ne pas supposer que la règle posée pour Contacts s'applique à Conventions.
+- **Nom du fichier enregistré** (§4.1 k) : `Convention-signee-[dispositif]-[club]-[année].pdf`. Cas nouveaux liés au dépôt libre :
+  - **Dispositifs sans modèle** (Aller vers, Parcours complet d'insertion par le sport) : la liste des noms courts (§3) n'en contient pas ; le code retombe sur le nom complet nettoyé (`conventionNomFichierAvec`, par exemple `Convention-signee-Aller-vers-Club-X.pdf`). C'est cohérent avec la règle « jamais de nom inventé » ; **à confirmer** (Q-E3-5).
+  - **Année (corrigé le 2026-11-06 (E3, réponses de Hanta ; bug E3-17))** : l'année se lit **dans `Actions.Campagne` de l'action, au moment du dépôt, et jamais dans `Conventions.Annee`**, comme le §4.1 k l'a toujours décidé. Le code actuel (`conventionNomFichierSigne`) lit `Conventions.Annee`, qui reste vide après un dépôt libre : le nom perdrait son année alors que l'action a une campagne. **Correction à faire par dev-backend** (le même défaut touche `conventionNomFichier`, 15.4). Campagne vide : l'année et son tiret sont omis (D-E1-8), sans plantage. Ainsi le nom d'un fichier signé est le même, qu'il y ait eu génération ou non.
+  - Dispositif ou club vide : le code produit `Convention-signee-club.pdf` (club vide) ou omet le dispositif ; pas de blocage.
+
+### 15.7 Textes de la fenêtre et du bloc (remplacent ceux du §5 là où ils se contredisent)
+
+**Phrase d'aide du bloc, état Générée** (propositions, à valider par Hanta, Q-E3-6). Le texte doit dire ce que l'agent fait vraiment avec un Word, qui n'est plus « imprimer puis compléter à la main » :
+- **Document Word** : « Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF. »
+- **Ancien document PDF** (15.8) : « Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé. » (texte actuel, inchangé : un PDF n'a pas de champs surlignés).
+- `<p>` ordinaire, sous la phrase d'état, comme aujourd'hui. Ne pas allonger : ces deux phrases tiennent en trois lignes.
+
+**Texte d'aide général de la fenêtre B** (E3-5, 8e demande ; remplace « Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature. », §3, §5, `CONVENTION_INTRODUCTION`) :
+
+> « Un champ laissé vide sera surligné dans le document Word, à compléter avant la signature. »
+
+Même emplacement (`<p>` ordinaire, en tête du corps), même absence d'exception, aucune mention d'obligation. Même texte à la re-génération. Proposition à valider (Q-E3-6).
+
+**Message de re-génération** (E3-10 : comportement inchangé, seul le mot change). Remplace « Le nouveau PDF remplacera la convention générée le [date]. » (§12.3, §12.8) par :
+
+> « Le nouveau document remplacera la convention générée le [date]. »
+
+Même place, même `<p>` ordinaire, sans région `role="status"`, même date (`Date_generation`). Le sens est exact quel que soit l'ancien format : une convention générée en PDF avant l'E3 est remplacée par un Word (le message dit « document » pour cette raison). Le message d'échec « L'ancienne convention reste disponible. » (D-S8-3) ne change pas.
+
+**Autres textes touchés**
+
+| Où | Avant | Après |
+|---|---|---|
+| Bouton du bloc, état Générée | « Voir la convention » + « Télécharger » | « Télécharger la convention » |
+| Texte caché de ce bouton | « le fichier PDF de la convention générée » | « (fichier Word) » ou « (fichier PDF) » |
+| Bouton visible à « À générer » et « Sans modèle » | absent | « Déposer la convention signée » |
+| Nom du fichier généré | `Convention-….pdf` | `Convention-….docx` (ancien : `.pdf`) |
+| Échecs de génération du §3 mentionnant « PDF » ou « pdfmake » | texte actuel | **à relire par dev-interface** : tout message qui nomme le PDF pour le document généré dit « document » ou « convention » à la place ; les causes (bibliothèque non chargée, case inconnue…) ne changent pas. Textes exacts à confirmer par Hanta (Q-E3-6). |
+| Logo absent (D-MEP-3) | « La convention a été générée sans le logo… Vérifiez le modèle avant de l'imprimer. » | inchangé tant que E3 ne dit pas que les logos sont repris dans le Word (voir 15.9) |
+
+### 15.8 Anciennes conventions en PDF et nouvelles en Word : les distinguer (E3-9)
+
+Les conventions générées avant l'E3 restent des PDF dans `PDF_genere` (nom de colonne conservé, E3-11). « Télécharger la convention » doit marcher pour les deux ; l'extension se déduit **du nom du fichier de la pièce jointe déjà présent**, sans jamais écrire l'identifiant de la pièce jointe dans la page.
+
+**Comment l'agent voit s'il s'agit d'un Word ou d'un PDF (proposition, à valider, Q-E3-8).** Trois repères, sans composant nouveau, qui n'ajoutent aucune classe :
+1. **Une ligne de texte sous la phrase d'état**, `<p class="help-block">` (classe déjà employée dans le bloc) : « Format : document Word (.docx). » ou « Format : document PDF (.pdf). » C'est le repère visible principal : le texte porte l'information, pas la couleur ni une icône (aucune icône vérifiée).
+2. Le **texte caché** du bouton (15.4) : « (fichier Word) » / « (fichier PDF) ».
+3. **Le nom du fichier enregistré**, qui porte `.docx` ou `.pdf`.
+
+Cette ligne est affichée **à l'état « Générée » seulement** (pas à « Signée » : le fichier signé est toujours un PDF, E3-8). Elle est dérivée de l'extension du nom de la pièce jointe : extension `.docx` → Word ; `.pdf` → PDF ; autre → ne rien afficher et traiter le téléchargement comme un échec (Q-E3-7). La phrase d'aide de 15.7 suit le même format (deux variantes). Pas d'extension affichée dans un champ de saisie ni de tableau : le bloc n'a pas de liste de fichiers.
+
+**Re-génération d'une ancienne convention PDF** : le nouveau Word remplace le PDF (sans historique, comme avant, §12.4). L'ancien PDF reste dans Grist, non rattaché (règle D-S8-5, inchangée). Le message « Le nouveau document remplacera… » (15.7) couvre ce cas. Aucun avertissement supplémentaire : le chef de projet a décidé que le comportement est inchangé (E3-10).
+
+### 15.9 Ce qui fait suite à l'E3 et que la note ne tranche pas (ne pas deviner)
+
+- **§11 « Mise en page du PDF » : décision de Hanta (mis à jour le 2026-11-06 (E3, réponses de Hanta), Q-E3-9).** Le Word **reprend la mise en page du PDF** : A4, marges de 2,5 cm, texte justifié, interligne 1,2, et le reste du §11 (logos, numérotation, coupures, colonnes de signature) dans la mesure où Word le permet. **Seule exception : la police est Arial, à la place de Roboto** (Arial est présente sur tous les postes Word ; la police du PDF était embarquée, ce qui n'est pas le cas ici). Le §11 reste la référence pour tout le reste ; là où il parle de Roboto, lire Arial pour le Word. Ce qu'une règle du §11 ne peut pas se traduire en Word (par exemple une coupure de page propre à pdfmake) est signalé par dev-backend dans son rapport, sans invention.
+- **Métadonnées du document Word** (E3-12) : auteur, titre, dates fixés à des valeurs neutres (par exemple « Partenariat simplifié »), **jamais** le nom du club, de l'agence ou du signataire. Un agent qui ouvre « Propriétés » dans Word ne doit trouver aucune donnée de personne. Vaut pour le contenu et pour les propriétés du fichier.
+- **Caractères spéciaux** (E3-13) : test obligatoire avec `& < > " '` dans chaque champ (nom du club, signataire, fonction, adresses…), à demander au testeur ; toute valeur est du texte simple.
+- **Mode sombre, mobile, zoom** (bloc) : aucune nouvelle classe ; les boutons restent à leur taille normale et passent à la ligne (§2, Mobile). La ligne « Format : … » est du texte ordinaire, sans couleur.
+- **Pas de pop-up pour le Word** : sur téléphone, le téléchargement d'un .docx dépend de l'application installée ; non testable ici (Q-E3-7).
+
+### 15.10 Vérification : les autres textes supposent-ils que Modele et Annee sont toujours remplis ?
+
+Contrôle fait dans le code (`conventionEtat`, `conventionModeleInfos`, `conventionNomFichierAvec`) et dans cette note. Résultat, point par point :
+
+| Endroit | Suppose Modele / Annee remplis ? | Après un dépôt libre (Modele et Annee vides) |
+|---|---|---|
+| Phrase d'état « Signée » (« Convention signée, déposée le [date]. ») | **Non** : elle n'utilise que `Date_depot` | correcte telle quelle |
+| Sous-titre de la fenêtre B « [Dispositif] · Campagne [Campagne] » | **Non** : il vient du dispositif et de la campagne **de l'action**, pas de Conventions ; il est déjà prévu **sans « Campagne » si vide** (§3, D-E1-10) | non concerné : la fenêtre B n'est jamais ouverte à l'état « Signée » |
+| `conventionEtat` (le modèle « utilisé ») | **Pas strictement** : `conventionLigne(Modeles_convention, convention.Modele) \|\| actif` ; si `Modele` est vide ou 0, retombe sur le modèle actif du dispositif, qui peut être **`null`** (dispositif sans modèle) | **à vérifier par dev-backend** : à l'état « Signée » et « Sans modèle », aucun code ne doit lire une propriété de `modele` sans contrôle de nullité (`modele.Titre`, `modele.Avec_annee`). `conventionModeleInfos` le gère déjà (`!modele`). Test à ajouter : dépôt sur un dispositif sans modèle. |
+| Nom du fichier signé (`conventionNomFichierSigne`) | **Corrigé le 2026-11-06 (E3, réponses de Hanta ; E3-17)** : le code actuel lit `Conventions.Annee` ; il doit lire `Actions.Campagne` ; vide : l'année est omise (déjà géré) | pas de plantage ; avec la correction, **nom avec l'année de la campagne** (voir 15.6) |
+| Nom du fichier généré (`conventionNomFichier` via le bouton de téléchargement) | **Corrigé le 2026-11-06 (E3, réponses de Hanta ; E3-17)** : le code actuel lit `Conventions.Annee` ; il doit lire `Actions.Campagne` (15.4) | non concerné par le dépôt libre (le bouton n'existe qu'après une génération), mais même correction pour que les deux noms restent cohérents |
+| Fenêtre B préremplie à la re-génération (§12.3) | Lit `Modele` et `Annee` enregistrés | non concerné : « Re-générer » n'existe qu'à l'état « Générée » |
+| Pop-up du fichier signé (§14) | Titre = nom du fichier signé | correct, avec le nom sans année |
+
+**Conclusion** : aucun texte visible ne suppose `Modele` ou `Annee` remplis ; le sous-titre « Campagne » est déjà omis quand la campagne est vide. Les deux seuls points à traiter : la **nullité du modèle** dans l'état « Signée » (à vérifier dans le code) et le **nom des fichiers (généré et signé), dont l'année vient de `Actions.Campagne` et non de `Conventions.Annee`** (E3-17, corrigé le 2026-11-06 (E3, réponses de Hanta)).
+
+### 15.11 Accessibilité de cette évolution
+
+- Le bouton de dépôt de l'état « À générer » est précédé, dans l'ordre de Tab, de « Générer la convention » (même s'il est grisé : il reste atteignable, `aria-disabled`). Le lecteur d'écran lit, pour le bouton grisé, le message de blocage ; pour le bouton de dépôt, rien de plus que son nom.
+- « Télécharger la convention » est un `<button>` annoncé « bouton » ; son nom accessible indique le format (« Télécharger la convention (fichier Word) »). Le nom visible commence par les mots visibles (critère « étiquette dans le nom »).
+- La ligne « Format : … » est du texte lu dans l'ordre normal, après la phrase d'état.
+- Aucune information portée seulement par la couleur dans le widget. Dans le document Word, le surlignage jaune est seul à marquer le champ (15.5, Q-E3-3).
+- Contrastes, focus visible, mode sombre : tout vient des classes du design system déjà utilisées ; aucune couleur n'est ajoutée au widget.
+
+### 15.12 Composants du design system utilisés
+
+Aucun composant nouveau. Boutons `btn`, `btn-secondary`, `btn-link`, `btn-content` ; `sr-only` ; `help-block` ; alertes `alert alert-error` et `alert alert-success` ; rangée `convention-actions` et champ caché `convention-file` (classes du widget, déjà en place). Structures HTML : celles des §2, §4.1 a et §14.2, recopiées ci-dessus (15.4) ; pages du site non relues (pas d'accès web). **Manque signalé, non fabriqué** : pas de composant « lien de téléchargement » ni d'icône vérifiée (inchangé, §14.8).
+
+### 15.13 Questions pour Hanta (réponses reçues et appliquées le 2026-11-06 (E3, réponses de Hanta))
+
+**Réponses de Hanta** : (a) surlignage accepté tel quel (Q-E3-3) ; (b) zones non remplacées aussi surlignées (Q-E3-4) ; (c) phrase d'aide « Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. » aux états « À générer » et « Sans modèle » (Q-E3-6, 15.3) ; (d) mise en page du Word = celle du PDF, police Arial (Q-E3-9, 15.9) ; (e) interprétation de « Droits insuffisants » confirmée (Q-E3-2, 15.3). Correction E3-17 : année lue dans `Actions.Campagne` (Q-E3-5 b, 15.4, 15.6, 15.10). Les autres questions (Q-E3-1, Q-E3-7, Q-E3-8, ainsi que les trois autres textes de Q-E3-6 : phrases d'aide de l'état Générée, introduction de la fenêtre B, messages d'échec) n'ont pas reçu de réponse dans ce message : elles restent ouvertes dans la table ci-dessous. Un renvoi « Q-E3-x » dans cette section signale la question concernée.
+
+| N° | Question | Ma recommandation |
+|---|---|---|
+| Q-E3-1 | Un seul bouton « Télécharger la convention » (le « Télécharger » de l'E2 renommé) et plus de « Voir » : c'est bien ce que dit E3-3 ? | Oui (15.1). |
+| Q-E3-2 | « Droits insuffisants » pour le bouton de dépôt : masqué seulement à l'état A7 (lecture refusée) ; sinon affiché, avec le message de droits si Grist refuse l'écriture ? | Oui : le widget ne lit pas le profil (15.3). |
+| Q-E3-3 | Surlignage jaune standard de Word, bande d'espaces insécables (≈ 20 caractères, ≈ 40 pour une adresse), et aucune légende dans le document ? | Oui, valeurs à ajuster après un premier document (15.5). Aucune valeur n'est définie ailleurs dans le projet. |
+| Q-E3-4 | Surligner aussi les zones que le widget ne remplace pas (nombre d'opérations, dates, « Fait à »…) pour avoir un seul repère ? | Oui (15.5). |
+| Q-E3-5 | Nom du fichier signé après un dépôt libre : (a) nom complet du dispositif pour Aller vers et Parcours complet ; (b) lire `Actions.Campagne` au dépôt (comme décidé au §4.1 k) plutôt que `Conventions.Annee` vide ? | (a) oui ; (b) oui, une petite correction de code. **Réponse : (b) confirmé et rendu obligatoire par E3-17** ; (a) sans réponse explicite, reste ouvert. |
+| Q-E3-6 | Textes de 15.7 : les deux phrases d'aide de l'état Générée, la phrase d'introduction de la fenêtre B, les messages d'échec de génération qui parlent de PDF ; et une phrase d'aide à « À générer » et « Sans modèle » (par exemple « Vous pouvez aussi déposer directement une convention signée. Elle ne pourra plus être générée ensuite. ») ? | Valider les trois premiers ; **ajouter** la phrase d'aide à « À générer ». **Réponse de Hanta** : la phrase d'aide à « À générer » et « Sans modèle » est « Vous pouvez déposer une convention déjà signée, préparée en dehors de l'outil. » (15.3). Les trois autres textes restent à valider. |
+| Q-E3-7 | Fichier de la pièce jointe sans extension `.docx` ou `.pdf` : afficher l'alerte d'échec du téléchargement ? Et le .docx sur téléphone : accepté sans test ? | Oui aux deux. |
+| Q-E3-8 | Ligne « Format : document Word (.docx). » / « Format : document PDF (.pdf). » sous la phrase d'état : la valider, ou préférer un autre repère ? | La valider. |
+| Q-E3-9 | Quelle partie de la mise en page du §11 (logos, police, marges, numérotation, signatures) est reprise dans le Word ? La note n'a rien à lui dire tant que ce n'est pas décidé. | **Tranché le 2026-11-06 (E3, réponses de Hanta)** : mise en page du PDF reprise, police Arial (15.9). |
+
+### 15.14 Risques à vérifier pendant le code et la recette
+
+1. **Création de la ligne Conventions par un non-propriétaire** (E3-6) : à tester avec « Voir en tant que » FT Régional et FT Départemental dans DEV7 ; un refus de Grist ne doit jamais laisser le bloc dans un état faux. Ne jamais écrire `DR` ni `DD`.
+2. **Ligne vide laissée** si la création réussit et le PATCH échoue : sans conséquence visible, mais à réutiliser au nouvel essai (pas de doublon) ; à tester.
+3. **Téléchargement d'un .docx depuis le cadre de Grist** : CLAUDE.md dit que le téléchargement fonctionne depuis le cadre ; à vérifier pour un lien temporaire `<a download>` vers un Blob .docx (comme le risque 1 du §14.10), dans Chrome, Firefox et Safari.
+4. **Nullité du modèle** à l'état « Signée » sans génération (15.10).
+5. **Ancien fichier PDF et nouveau Word** : une action peut avoir une convention PDF ou Word selon sa date de génération ; tester les deux.
+6. **Surlignage conservé après saisie** (15.5) : l'agent peut imprimer du jaune ; le risque est expliqué dans la phrase d'aide, pas évité.
+7. **Domaine jsdelivr.net** non vérifié sur le réseau de France Travail (E3-15) : sans lui, « Générer » échoue avec le message « bibliothèque non chargée » (§3) ; ne bloque pas le développement en DEV. Rappel : ne pas fusionner dans main avant la stabilisation (E3-16) ; la recette R8 et R9 reste suspendue (E3-14).
+8. **Tests existants** qui cherchent « Voir la convention » ou la pop-up du document généré, un nom de fichier en `.pdf` pour le document généré, l'introduction « pointillés » ou « Le nouveau PDF remplacera… » : à réécrire par le testeur (hors de cette note).
