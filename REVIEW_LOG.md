@@ -1248,3 +1248,11 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, 14
 Build refait : oui
 Commit : 11d6a3a (tests finaux), 2c35460 (code final), d36e741 et 5da8d34 (version intermédiaire avec surlignage), 54ec7d5, 9c956f8 (backlog)
 Reste à faire : vérifier manuellement dans Grist si les 3 modèles officiels contiennent encore des zones à traiter comme "Fait à…" (nombre d'opérations, date de fin, contact RGPD) ; vérifier que 56 points tiennent sur une ligne dans les champs étroits de signature (signalé par dev-backend et designer-ux) ; vérifier la création de ligne Conventions par un non-propriétaire avec "Voir en tant que" (FT Régional, FT Départemental) ; vérifier le domaine jsdelivr.net sur le réseau France Travail avant la mise en PROD ; recette R10 à écrire (en parcours utilisateur courts, cf. décision du 03/11) ; retirer le code mort pdfmake une fois la transition confirmée stable.
+
+Ajustements finaux (07/11, après premier essai utilisateur) :
+- E3-26/E3-29 : la phrase d'aide à l'état "Générée" était trop longue et contradictoire (invitait à la fois à modifier dans Word et à compléter à la main après impression). Simplifiée pour les deux formats (Word et ancien PDF) : il ne reste que "Convention générée le [date].", sur le même modèle que l'état "Signée".
+- E3-27 : bug visuel corrigé, un espace vide permanent restait en haut du bloc Convention (marge négative inefficace dans une grille CSS). Corrigé avec display:none sur les deux conteneurs vides via :empty.
+- E3-28 : étiquette affichée de Conventions.PDF_genere changée en "Docx/PDF généré" dans Grist (DEV7 et TEST), nom technique inchangé pour ne casser aucun autre widget du Partenariat simplifié. Description ajoutée sur la colonne pour expliquer ce choix.
+Tests : 915 tests, 0 échec après ces trois ajustements.
+Vérifié à l'écran par Hanta dans DEV7 : plus d'espace vide, phrase courte, ligne Format toujours présente.
+Commit : 94d181a (tests), 3fe46ea (code), d8e87a8 (note UX).
