@@ -32,8 +32,8 @@ const TEXTES = {
   droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord.",
   // E3 (§15.7) : sans format connu (rien n'a encore ete genere ni telecharge dans cette page), le bloc
   // montre la phrase du Word, comme pour toute convention generee depuis l'evolution 3.
-  aide: "Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.",
-  aideWord: "Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.",
+  aide: "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
+  aideWord: "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
   // Ancienne convention PDF (§15.8) : le texte d'avant l'evolution 3, inchange.
   aidePdf: "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
   formatWord: "Format : document Word (.docx).",
@@ -128,8 +128,8 @@ test("état Générée : seule la phrase d'aide porte la classe convention-aide"
 
 // Echoue si, une fois le format du document genere connu (apres une generation ou un « Telecharger la
 // convention », E3-20 C), le bloc n'affiche pas, dans cet ordre : la phrase d'etat, la ligne « Format :
-// document Word (.docx). » (ou « … PDF (.pdf). »), puis la phrase d'aide DE CE FORMAT (Word : champs
-// surlignes ; ancien PDF : pointilles), ou si les classes ne sont pas "", help-block, convention-aide.
+// document Word (.docx). » (ou « … PDF (.pdf). »), puis la phrase d'aide DE CE FORMAT (Word : zones en
+// pointilles, E3-25 ; ancien PDF : pointilles aussi), ou si les classes ne sont pas "", help-block, convention-aide.
 test("état Générée, format connu : phrase d'état, ligne « Format : … », puis la phrase d'aide du bon format (Word ou ancien PDF)", () => {
   const cas = [
     ["docx", TEXTES.formatWord, TEXTES.aideWord],

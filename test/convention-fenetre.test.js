@@ -853,15 +853,15 @@ test("seuil de deux colonnes à 1100 px (D-E1-20) : la grille de la fenêtre pas
 // ---------------------------------------------------------------------------
 // ---- 9.0 Phrase d'introduction ----
 
-// Echoue si la phrase n'est pas exactement celle de la note (E3, §15.7 : « Un champ laissé vide sera
-// surligné dans le document Word, à compléter avant la signature. »), si elle n'est plus un paragraphe
-// ordinaire du corps, si l'ancienne phrase des pointillés revient, ou si l'ancienne phrase « Les champs
-// marqués d'un * sont obligatoires… » revient.
-test("la phrase d'introduction dit qu'un champ laissé vide sera surligné dans le document Word (sans exception)", () => {
+// Echoue si la phrase n'est pas exactement celle de la note (E3-25, §15.5 : « Un champ laissé vide sera complété
+// à la main, sous forme de pointillés, au moment de la signature. »), si elle n'est plus un paragraphe ordinaire du
+// corps, si la phrase de l'E3 sur le surlignage revient, ou si l'ancienne phrase « Les champs marqués d'un *
+// sont obligatoires… » revient.
+test("la phrase d'introduction dit qu'un champ laissé vide sera complété à la main, sous forme de pointillés (sans exception)", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
-  assert.ok(html.includes('<p class="convention-intro">Un champ laissé vide sera surligné dans le document Word, à compléter avant la signature.</p>'),
-    "la phrase doit reprendre le texte exact de la note UX (§15.7)");
-  assert.ok(!html.includes("pointillés") && !html.includes("complété à la main"), "plus d'allusion aux pointillés ni à un complément à la main");
+  assert.ok(html.includes('<p class="convention-intro">Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.</p>'),
+    "la phrase doit reprendre le texte exact de la note UX (§15.5)");
+  assert.ok(!/surlign|jaune|avant la signature/.test(html), "plus aucune allusion au surlignage");
   assert.equal(compte(html, /convention-intro/g), 1, "une seule phrase d'introduction");
   assert.ok(!html.includes("sont obligatoires"), "plus de phrase sur les champs obligatoires");
   assert.ok(!/sauf/i.test(html), "aucune exception dans la fenêtre");

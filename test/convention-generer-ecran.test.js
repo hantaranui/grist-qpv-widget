@@ -808,7 +808,7 @@ test("réussite : fenêtre fermée, bloc « Générée » (format Word) avec « 
   assert.deepEqual(phrases(m.htmlContenu()), [
     "Convention générée le 14/03/2026.",
     "Format : document Word (.docx).",
-    "Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.",
+    "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
   ]);
   const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
   assert.equal(boutons.length, 3, "trois boutons dans le bloc");

@@ -18,6 +18,12 @@ const {loadWidget} = require("./helpers/widget");
 const {installerDocx, texte: texteDuDocument, runs: runsDuDocument, section: sectionDuDocument} = require("./helpers/docx");
 
 const NBSP = "\u00a0";
+const POINTILLES = ".".repeat(56);
+// Nombre de suites de 56 points dans le texte du document Word (E3-25 : un champ vide = 56 points ordinaires).
+const nbPointilles = (doc) => texteDuDocument(doc).split(POINTILLES).length - 1;
+// Échoue-si-retour : aucun morceau de texte surligné, souligné ou coloré, et plus aucune bande d'espaces insécables.
+const sansCouleurNiBande = (doc) => runsDuDocument(doc).every((run) => !run.highlight && !run.underline && !run.color && !run.shading)
+  && !texteDuDocument(doc).includes(NBSP);
 const TYPE_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const JETON = "jeton-fictif-0a1b2c3d";
@@ -396,9 +402,11 @@ test("génération : ordre des étapes en réussite (enregistrement, jeton, docx
 
 // Echoue si un champ vide bloque encore la generation (E1, D-E1-17 : plus aucun champ obligatoire,
 // plus de code champs-a-corriger) : aucun signataire, representant et fonction vides doivent passer.
-// E3-5 : les trois cases vides deviennent trois BANDES SURLIGNEES de 20 espaces insecables (le champ
-// que l'agent remplit dans Word) ; il ne reste ni pointilles de 56 points, ni case [..] non remplacee.
-test("E1/E3 : champs vides (aucun signataire, représentant et fonction vides) → la génération réussit, trois bandes surlignées de 20 espaces insécables", async () => {
+// E3-25 : les trois cases vides deviennent trois suites de 56 points ordinaires, sans couleur ; il ne reste ni
+// surlignage, ni bande d'espaces insecables, ni case [..] non remplacee.
+// Échoue si la génération est bloquée, s'il n'y a pas exactement trois suites de 56 points, si un surlignage, un
+// soulignement, une couleur ou une bande d'espaces insécables revient, ou si une case [..] reste dans le texte.
+test("E1/E3 : champs vides (aucun signataire, représentant et fonction vides) → la génération réussit, trois suites de 56 points sans couleur", async () => {
   const ctx = await preparer();
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Signé par [Signataire du club], [Représentant de l’agence], [Fonction du représentant] fin.";
 
@@ -406,13 +414,9 @@ test("E1/E3 : champs vides (aucun signataire, représentant et fonction vides) �
 
   assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit");
   assert.equal(ctx.compteurs.fabrications, 1, "un fichier Word est fabriqué");
-  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
-  assert.equal(bandes.length, 3, "trois champs vides, trois bandes surlignées");
-  for (const bande of bandes) {
-    assert.equal(bande.highlight, "yellow", "surlignage jaune standard");
-    assert.equal(bande.text, NBSP.repeat(20), "20 espaces insécables");
-  }
-  assert.ok(!/\.{5,}/.test(texteDuDocument(ctx.docs[0])), "aucune suite de points : les pointillés de l'ancien PDF ont disparu");
+  assert.equal(nbPointilles(ctx.docs[0]), 3, "trois champs vides, trois suites de 56 points");
+  assert.equal(texteDuDocument(ctx.docs[0]), `Signé par ${POINTILLES}, ${POINTILLES}, ${POINTILLES} fin.`);
+  assert.ok(sansCouleurNiBande(ctx.docs[0]), "ni surlignage, ni soulignement, ni couleur, ni bande d'espaces insécables");
   assert.ok(!texteDuDocument(ctx.docs[0]).includes("["), "aucune case [..] n'est restée dans le texte");
   assert.equal(ctx.appels.length, 1, "les informations vides sont enregistrées telles quelles");
   assert.equal(ctx.appels[0][0][3].Signataire_club, 0);
@@ -432,9 +436,9 @@ test("année : le nom du fichier et la case [Année] viennent de la campagne de 
   assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2027, "Annee enregistrée");
 });
 
-// Echoue si une campagne vide laisse une annee inventee dans le nom du fichier, ou ne donne pas une
-// bande surlignee pour la case [Année] (D-E1-8 : l'annee est omise du nom de fichier ; E3-5 : champ vide surligne).
-test("année : campagne vide → pas d'année dans le nom du fichier, case [Année] en bande surlignée", async () => {
+// Echoue si une campagne vide laisse une annee inventee dans le nom du fichier, ou ne donne pas 56 points sans
+// couleur pour la case [Année] (D-E1-8 : l'annee est omise du nom de fichier ; E3-25 : champ vide = pointilles).
+test("année : campagne vide → pas d'année dans le nom du fichier, case [Année] en 56 points sans couleur", async () => {
   const ctx = await preparer();
   ctx.campagnes.valeur = "";
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
@@ -442,9 +446,8 @@ test("année : campagne vide → pas d'année dans le nom du fichier, case [Ann�
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.equal(resultat.nomFichier, "Convention-Match-metiers-Club-Exemple.docx", "aucune année dans le nom");
-  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
-  assert.deepEqual(bandes.map((run) => run.text), [NBSP.repeat(20)], "une bande surlignée à la place de l'année");
-  assert.ok(!/\.{5,}/.test(texteDuDocument(ctx.docs[0])), "pas de pointillés");
+  assert.equal(texteDuDocument(ctx.docs[0]), `Année ${POINTILLES}.`, "56 points à la place de l'année");
+  assert.ok(sansCouleurNiBande(ctx.docs[0]), "ni surlignage, ni couleur, ni bande");
 });
 
 // Echoue si une lecture impossible de la campagne (reseau coupe) fait perdre l'annee deja
@@ -527,6 +530,7 @@ test("E3-13 : & < > \" ' dans le club, l'agence, le signataire et le représenta
 // Echoue si, apres une generation reussie, le bloc ne connait pas le format du document (E3-20 C : « Format : document
 // Word (.docx). », texte cache « (fichier Word) », phrase d'aide du Word), y compris quand la generation REMPLACE un
 // ancien PDF (E3-9/E3-10) : le nouveau document est un Word, l'ancien PDF reste non rattache dans Grist.
+// Échoue si la phrase d'aide n'est pas exactement celle du E3-25 (pointillés, plus de surlignage) ou si la phrase de l'ancien PDF revient.
 test("après une génération (première ou re-génération d'un ancien PDF), le bloc affiche « Format : document Word (.docx). » et « (fichier Word) »", async () => {
   for (const [nom, preparerCas] of [["première génération", () => preparer()], ["re-génération d'un ancien PDF", () => preparerRegeneration()]]) {
     const ctx = await preparerCas();
@@ -540,8 +544,9 @@ test("après une génération (première ou re-génération d'un ancien PDF), le
     assert.equal(ctx.w.conventionEtat(1, ctx.w.state).etat, "Générée", nom);
     assert.ok(bloc.includes('<p class="help-block">Format : document Word (.docx).</p>'), `${nom} : ligne « Format »`);
     assert.ok(bloc.includes('<span class="sr-only"> (fichier Word)</span>'), `${nom} : texte caché du bouton`);
-    assert.ok(bloc.includes("Téléchargez la convention, modifiez-la si besoin dans Word"), `${nom} : phrase d'aide du Word`);
-    assert.ok(!bloc.includes("Format : document PDF") && !bloc.includes("zones en pointillés"), `${nom} : rien de l'ancien PDF`);
+    assert.ok(bloc.includes("Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF."), `${nom} : phrase d'aide du Word (E3-25)`);
+    assert.ok(!bloc.includes("surlign") && !bloc.includes("jaune"), `${nom} : plus aucune mention de surlignage`);
+    assert.ok(!bloc.includes("Format : document PDF") && !bloc.includes("(fichier PDF)") && !bloc.includes("Imprimez la convention, complétez"), `${nom} : rien de l'ancien PDF`);
   }
 });
 
@@ -596,9 +601,9 @@ test("nouveau contact refusé par Grist : enregistrement-echoue, rien d'autre n'
 });
 
 // Echoue si une adresse de club absente bloque la generation elle-meme (le blocage est a l'ouverture
-// de la fenetre, jamais dans conventionGenerer) ou ne donne pas une bande surlignee de 40 espaces insecables
-// (largeur d'une adresse) pour [Siège du club].
-test("adresse du club absente : la génération réussit et [Siège du club] devient une bande surlignée de 40 espaces insécables", async () => {
+// de la fenetre, jamais dans conventionGenerer) ou ne donne pas 56 points sans couleur pour [Siège du club]
+// (E3-25 : une adresse n'a plus de largeur propre), ou si une bande de 40 espaces surlignee revient.
+test("adresse du club absente : la génération réussit et [Siège du club] devient 56 points sans couleur", async () => {
   const ctx = await preparer();
   Object.assign(ctx.w.state.raw.Structures[0], {Adresse: "", Code_postal: "", Ville: ""});
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Siège : [Siège du club] fin.";
@@ -606,9 +611,9 @@ test("adresse du club absente : la génération réussit et [Siège du club] dev
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.ok(resultat.nomFichier.endsWith(".docx"));
-  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
-  assert.deepEqual(bandes.map((run) => run.text), [NBSP.repeat(40)], "une bande de 40 caractères (largeur d'une adresse) à la place de l'adresse");
-  assert.ok(texteDuDocument(ctx.docs[0]).includes(`Siège : ${NBSP.repeat(40)} fin.`), "la bande est entre « Siège : » et « fin. »");
+  assert.equal(nbPointilles(ctx.docs[0]), 1, "56 points à la place de l'adresse, pas davantage");
+  assert.ok(texteDuDocument(ctx.docs[0]).includes(`Siège : ${POINTILLES} fin.`), "les points sont entre « Siège : » et « fin. »");
+  assert.ok(sansCouleurNiBande(ctx.docs[0]), "ni surlignage, ni couleur, ni bande de 40 espaces");
 });
 
 // Echoue si un refus de Grist a l'enregistrement ne rend pas enregistrement-echoue, si

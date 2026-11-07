@@ -5,13 +5,11 @@
 // DEMANDE à la bibliothèque (une fausse bibliothèque, test/helpers/docx.js, garde les objets reçus) : ils ne
 // vérifient pas ce que Word affichera pour de vrai (couleur exacte, coupures de page, rendu des tableaux) : c'est
 // la recette de Hanta, qui ouvre le fichier dans Word.
-// Deux catégories de zones vides (E3-21, E3-22) :
-//  - les VRAIS champs de données Grist vides (siège, adresse de l'agence, SIRET, signataire...) : surlignage jaune
-//    sur une bande d'espaces insécables (20 caractères, 40 pour une adresse) ;
-//  - les zones écrites à la main après impression (« Fait à… », « À…, le… ») : un simple espace SOULIGNÉ, sans
-//    surlignage. Les trois autres zones manuscrites (nombre d'opérations, date de fin, contact protection des
-//    données) vivent dans le TEXTE des modèles Grist, pas dans le code : le widget n'y touche pas (E3-20 B : pas
-//    d'heuristique sur les points tapés à la main) ; test « points laissés tels quels » ci-dessous.
+// Un seul traitement pour tous les champs vides (E3-25, §15.5) : 56 points ordinaires (comme le PDF), sans couleur,
+// sans surlignage, sans soulignement, qu'il s'agisse d'une donnée Grist connue mais vide (siège, adresse de l'agence,
+// SIRET, signataire...) ou d'une zone écrite à la main (« Fait à… », « À…, le… »). Les trois autres zones manuscrites
+// (nombre d'opérations, date de fin, contact protection des données) vivent dans le TEXTE des modèles Grist, pas dans
+// le code : le widget n'y touche pas (E3-20 B : pas d'heuristique sur les points tapés à la main).
 // Valeurs fictives uniquement.
 
 const test = require("node:test");
@@ -61,51 +59,55 @@ async function document(modele, valeurs = CASES, logos = {}) {
 const runsContenant = (doc, fragment) => runs(doc).filter((run) => (run.text || "").includes(fragment));
 const surlignes = (doc) => runs(doc).filter((run) => run.highlight);
 const soulignes = (doc) => runs(doc).filter((run) => run.underline);
+const POINTILLES = ".".repeat(56);
+// Les morceaux de texte voisins qui ont la même mise en forme sont fusionnés par le widget : les points peuvent donc
+// partager un morceau avec le texte d'à côté. On cherche les morceaux qui CONTIENNENT 56 points, et on compte les suites.
+const pointilles = (doc) => runs(doc).filter((run) => (run.text || "").includes(POINTILLES));
+const nbPointilles = (doc) => texte(doc).split(POINTILLES).length - 1;
+// Un morceau de texte « sans aucune couleur » : ni surlignage, ni soulignement, ni couleur de texte, ni fond.
+const sansCouleur = (run) => !run.highlight && !run.underline && !run.color && !run.shading;
 
 // ---------------------------------------------------------------------------
-// 1. Champs de données : surlignage jaune sur une bande d'espaces insécables (E3-5, E3-18 a, E3-21 catégorie 1)
+// 1. Champs de données : pointillés, sans couleur (E3-25)
 // ---------------------------------------------------------------------------
 
 // Échoue si une case connue ET remplie est surlignée, soulignée ou changée (la valeur doit être posée telle quelle).
-test("case remplie : la valeur est posée telle quelle, sans surlignage ni soulignement", async () => {
+test("case remplie : la valeur est posée telle quelle, sans pointillés, sans surlignage ni soulignement", async () => {
   const doc = await document("Entre [Nom du club] (SIRET [SIRET du club]).");
   assert.equal(texte(doc), "Entre Club Exemple (SIRET 12345678901234).");
+  assert.equal(nbPointilles(doc), 0, "aucun pointillé");
   assert.deepEqual(surlignes(doc), [], "aucun surlignage");
   assert.deepEqual(soulignes(doc), [], "aucun soulignement");
 });
 
-// Échoue si une case connue mais vide ne devient pas une bande de 20 espaces insécables surlignée en jaune standard
-// de Word (un surlignage sur du texte de longueur zéro serait invisible), ou si des pointillés (ancien PDF) reviennent.
-test("case connue mais vide : bande de 20 espaces insécables, surlignage jaune, ni pointillés ni crochets", async () => {
-  const doc = await document("SIRET : [SIRET du club] fin.", cases(["SIRET du club"]));
-  const bandes = surlignes(doc);
-  assert.equal(bandes.length, 1);
-  assert.equal(bandes[0].highlight, "yellow", "surlignage jaune standard");
-  assert.equal(bandes[0].text, NBSP.repeat(20));
-  assert.equal(texte(doc), `SIRET : ${NBSP.repeat(20)} fin.`);
-  assert.ok(!texte(doc).includes("...") && !texte(doc).includes("["));
-  assert.deepEqual(soulignes(doc), [], "un champ de données n'est pas souligné");
-});
-
-// Échoue si la largeur de la bande n'est pas de 40 caractères pour une adresse (siège du club, adresse de l'agence, avec
-// apostrophe droite ou courbe) et de 20 pour toutes les autres cases connues.
-test("largeur de la bande : 40 pour une adresse (siège du club, adresse de l'agence), 20 pour tout le reste", async () => {
+// FUSION (2 tests -> 1) : « case vide » et « largeur de la bande » ne font plus qu'un, puisqu'il n'y a plus de bande
+// de 20 ou 40 caractères : toutes les cases, adresses comprises, donnent la même suite de 56 points.
+// Échoue si une case connue mais vide (quelle qu'elle soit, adresse de l'agence avec apostrophe droite ou courbe
+// comprise) ne devient pas exactement 56 points ordinaires, si un surlignage, un soulignement, une couleur ou des
+// espaces insécables (l'ancienne bande) reviennent, ou si les crochets restent.
+test("case connue mais vide : 56 points ordinaires, sans couleur ni soulignement, pour toutes les cases (adresses comprises)", async () => {
+  assert.equal(POINTILLES.length, 56);
   for (const nom of Object.keys(CASES)) {
-    const attendu = nom === "Siège du club" || nom === "Adresse de l’agence" ? 40 : 20;
-    const doc = await document(`[${nom}]`, cases([nom]));
-    assert.deepEqual(surlignes(doc).map((run) => run.text.length), [attendu], nom);
+    const doc = await document(`A [${nom}] B`, cases([nom]));
+    assert.equal(texte(doc), `A ${POINTILLES} B`, nom);
+    assert.equal(nbPointilles(doc), 1, nom);
+    assert.ok(pointilles(doc).every(sansCouleur), `${nom} : ni surlignage, ni soulignement, ni couleur`);
+    assert.deepEqual(surlignes(doc), [], nom);
+    assert.deepEqual(soulignes(doc), [], nom);
+    assert.ok(!texte(doc).includes(NBSP) && !texte(doc).includes("["), `${nom} : ni bande d'espaces insécables, ni crochets`);
   }
   const droite = await document("[Adresse de l'agence]", cases(["Adresse de l’agence"]));
-  assert.deepEqual(surlignes(droite).map((run) => run.text.length), [40], "apostrophe droite tapée au clavier");
+  assert.equal(texte(droite), POINTILLES, "apostrophe droite tapée au clavier");
 });
 
 // Échoue si une case vide dans un passage en gras ou en italique perd la mise en forme de son entourage (ce que
-// l'agent tape dans la bande doit garder le gras du texte).
-test("case vide dans un passage en gras ou en italique : la bande garde le gras ou l'italique", async () => {
+// l'agent écrit sur les points doit garder le gras du texte), ou si elle prend une couleur.
+test("case vide dans un passage en gras ou en italique : les pointillés gardent le gras ou l'italique, sans couleur", async () => {
   const gras = await document("**[Nom du club]**", cases(["Nom du club"]));
-  assert.deepEqual(surlignes(gras).map((run) => [run.bold, run.italics]), [[true, undefined]]);
+  assert.equal(nbPointilles(gras), 1);
+  assert.deepEqual(pointilles(gras).map((run) => [run.bold, run.italics, sansCouleur(run)]), [[true, undefined, true]]);
   const italique = await document("*[Nom du club]*", cases(["Nom du club"]));
-  assert.deepEqual(surlignes(italique).map((run) => [run.bold, run.italics]), [[undefined, true]]);
+  assert.deepEqual(pointilles(italique).map((run) => [run.bold, run.italics, sansCouleur(run)]), [[undefined, true, true]]);
 });
 
 // Échoue si une case inconnue (qui n'est pas dans la liste officielle) est surlignée, remplacée ou perd ses crochets :
@@ -125,38 +127,45 @@ test("crochet échappé et lien : \\[ reste un crochet, [texte](adresse) reste e
 });
 
 // ---------------------------------------------------------------------------
-// 2. Zones écrites à la main : espace souligné, SANS surlignage (E3-21, E3-22 catégorie 2)
+// 2. Zones écrites à la main : les mêmes pointillés (E3-25), plus aucun traitement à part
 // ---------------------------------------------------------------------------
 
-// Échoue si les zones « Fait à… , le… » du bloc de signature (France Travail à gauche) sont surlignées, ne sont pas de
-// simples espaces insécables soulignés, ou si leur largeur n'est pas de 20 caractères (la largeur du modèle faute de mieux).
-test("« Fait à …, le … » : deux espaces insécables soulignés (20 caractères), jamais surlignés", async () => {
+// FUSION (3 tests -> 2) : « Fait à… », « À…, le… » et « bloc de signature vide » avaient chacun sa règle (soulignement
+// ou surlignage) ; il n'y a plus qu'une règle, vérifiée ici sur les deux variantes du bloc de signature.
+// Échoue si « Fait à…, le… » (France Travail à gauche) n'est pas écrit « Fait à <56 points>, le <56 points> » en
+// texte ordinaire, ou si un soulignement, un surlignage ou une bande d'espaces insécables revient.
+test("« Fait à …, le … » : deux fois 56 points ordinaires, ni soulignés ni surlignés", async () => {
   const doc = await document("{signatures:ft-gauche}");
-  assert.ok(texte(doc).includes(`Fait à ${NBSP.repeat(20)}, le ${NBSP.repeat(20)}`), texte(doc));
-  const zones = soulignes(doc);
-  assert.deepEqual(zones.map((run) => run.text), [NBSP.repeat(20), NBSP.repeat(20)], "deux zones soulignées");
-  for (const zone of zones) assert.deepEqual(JSON.parse(JSON.stringify(zone.underline)), {type: "single"});
-  assert.deepEqual(surlignes(doc), [], "aucun surlignage sur les zones manuscrites");
+  assert.ok(texte(doc).includes(`Fait à ${POINTILLES}, le ${POINTILLES}`), texte(doc));
+  assert.equal(nbPointilles(doc), 2, "deux zones en pointillés");
+  assert.ok(pointilles(doc).every(sansCouleur));
+  assert.deepEqual(soulignes(doc), [], "aucun soulignement");
+  assert.deepEqual(surlignes(doc), [], "aucun surlignage");
+  assert.ok(!texte(doc).includes(NBSP), "plus d'espaces insécables");
 });
 
-// Échoue si, avec la variante « lieu-date » (une ligne « À …, le … » par colonne), les zones sont surlignées ou plus
-// soulignées, ou s'il n'y en a pas une par signataire (deux lignes, soit quatre zones).
-test("« À …, le … » de chaque colonne de signature : quatre espaces soulignés, jamais surlignés", async () => {
+// Échoue si, avec la variante « lieu-date », il n'y a pas une ligne « À <56 points>, le <56 points> » par colonne
+// (deux lignes, soit quatre zones en pointillés), ou si un soulignement ou un surlignage revient.
+test("« À …, le … » de chaque colonne de signature : quatre zones en pointillés, sans soulignement ni surlignage", async () => {
   const doc = await document("{signatures:lieu-date}");
-  assert.equal(paragraphes(doc).filter((p) => p.startsWith(`À ${NBSP.repeat(20)}, le `)).length, 2, "une ligne « À …, le … » par colonne");
-  assert.equal(soulignes(doc).length, 4);
+  assert.equal(paragraphes(doc).filter((p) => p.startsWith(`À ${POINTILLES}, le ${POINTILLES}`)).length, 2, "une ligne « À …, le … » par colonne");
+  assert.equal(nbPointilles(doc), 4);
+  assert.deepEqual(soulignes(doc), []);
   assert.deepEqual(surlignes(doc), []);
 });
 
-// Échoue si les cases du bloc de signature (signataire, fonction, représentant, fonction du représentant) vides ne
-// deviennent pas des bandes SURLIGNÉES (ce sont des champs de données que l'agent tape dans Word), ou si l'intitulé de
+// Échoue si un nom ou une fonction vide du bloc de signature (signataire, fonction, représentant, fonction du
+// représentant) ne devient pas une suite de 56 points sans couleur, si un surlignage revient, ou si l'intitulé de
 // chaque colonne disparaît.
-test("bloc de signature : un nom ou une fonction vide donne une bande surlignée de 20 caractères, les intitulés restent", async () => {
+test("bloc de signature : un nom ou une fonction vide donne 56 points sans couleur, les intitulés restent", async () => {
   const doc = await document("{signatures}", cases(["Signataire du club", "Fonction du signataire", "Représentant de l’agence", "Fonction du représentant"]));
-  assert.deepEqual(surlignes(doc).map((run) => run.text), [NBSP.repeat(20), NBSP.repeat(20), NBSP.repeat(20), NBSP.repeat(20)]);
+  assert.equal(nbPointilles(doc), 4, "quatre champs vides, quatre suites de 56 points");
+  assert.ok(pointilles(doc).every(sansCouleur));
+  assert.deepEqual(surlignes(doc), []);
   assert.ok(texte(doc).includes("Pour l'organisation sportive") && texte(doc).includes("Pour France Travail"));
   const rempli = await document("{signatures}");
   assert.ok(texte(rempli).includes("Camille Exemple") && texte(rempli).includes("Dana Exemple"));
+  assert.equal(nbPointilles(rempli), 0, "rien à compléter quand tout est rempli");
   assert.deepEqual(surlignes(rempli), []);
 });
 
