@@ -2,12 +2,14 @@
 
 // Dépôt du fichier signé, tâche 9.1a (commandes et sélecteur de fichier ; le contrôle du fichier,
 // l'envoi et l'écriture dans Grist sont la tâche 9.1b, voir plus bas les doublures) :
-//   - le HTML : « Déposer la convention signée » seulement à l'état Générée, dernier de la
-//     rangée ; « Remplacer le fichier signé » seulement à l'état Signée, seul sur sa ligne ;
+//   - le HTML : « Déposer la convention signée » visible en PERMANENCE depuis l'Évolution 3 (E3-6) aux
+//     états À générer (second bouton, après « Générer la convention »), Générée (dernier de la rangée)
+//     et Sans modèle (seul bouton), absent à l'état Droits insuffisants ; « Remplacer le fichier signé »
+//     seulement à l'état Signée, seul sur sa ligne ;
 //   - le champ fichier caché de index.html (accept, hors du bloc, masqué par la feuille) ;
 //   - le comportement : le clic ouvre le sélecteur sans rien faire d'autre ; l'annulation du
 //     sélecteur est sans effet ; au choix d'un fichier, verrou de la commande utilisée et de
-//     « Re-générer » (jamais de « Voir ») est IMMÉDIAT, alertes précédentes effacées ; le texte
+//     « Re-générer » (jamais de « Télécharger la convention ») est IMMÉDIAT, alertes précédentes effacées ; le texte
 //     « Envoi en cours… » et la région d'attente n'apparaissent qu'APRÈS les contrôles du fichier
 //     (vide, taille, extension, type, contenu), juste avant l'envoi réel ; un fichier refusé
 //     affiche son message sans jamais les montrer ; le verrou est levé à la fin.
@@ -131,7 +133,7 @@ async function preparer(jeu) {
     conventionDeposer: TEXTE_DEPOSER,
     conventionRemplacer: TEXTE_REMPLACER,
     conventionRegenerer: "Re-générer",
-    conventionVoir: "Voir la convention",
+    conventionTelecharger: "Télécharger la convention",
   };
   for (const [id, texte] of Object.entries(textes)) doc.getElementById(id).querySelector(".btn-content").textContent = texte;
   // « Re-générer » au repos : actif, il annonce une fenêtre.
@@ -166,7 +168,7 @@ async function preparer(jeu) {
     return {
       deposerGrise: grise("conventionDeposer"), deposerTexte: libelle("conventionDeposer"),
       remplacerGrise: grise("conventionRemplacer"), remplacerTexte: libelle("conventionRemplacer"),
-      regenererGrise: grise("conventionRegenerer"), voirGrise: grise("conventionVoir"),
+      regenererGrise: grise("conventionRegenerer"), telechargerGrise: grise("conventionTelecharger"),
       attente: element("conventionDepotAttente").innerHTML,
       alerte: element("conventionAlerte").innerHTML,
       contenu: element("conventionBlocContenu").innerHTML,
@@ -206,42 +208,50 @@ const FICHIER = fichierFactice();
 // 1. Le HTML du bloc : « Déposer » (Générée) et « Remplacer » (Signée)
 // ---------------------------------------------------------------------------
 
-// Echoue si « Déposer la convention signée » apparait ailleurs qu'a l'etat Generee (A generer,
-// Signee, Sans modele, Droits insuffisants), manque a l'etat Generee, y est en double, ou change
-// de libelle, de type, de classes (btn btn-secondary, sans btn-sm ni btn-primary) ou
-// d'identifiant ; s'il prend aria-haspopup (il n'ouvre aucune fenetre : il ouvre le selecteur du
-// navigateur), aria-disabled ou disabled avant le clic ; ou s'il prend un texte cache.
-test("« Déposer la convention signée » n'existe qu'à l'état Générée, avec son libellé exact et sans attribut d'accessibilité au repos", () => {
+// Echoue si « Déposer la convention signée » n'est pas visible aux etats A generer, Generee et Sans modele (E3-6),
+// y est en double, ou change de libelle, de type, de classes (btn btn-secondary, sans btn-sm ni btn-primary) ou
+// d'identifiant ; s'il apparait a l'etat Signee (c'est « Remplacer » qui y est) ou a l'etat Droits insuffisants (le
+// seul ou le widget sait que les droits manquent, Q-E3-2) ; s'il prend aria-haspopup (il n'ouvre aucune fenetre :
+// il ouvre le selecteur du navigateur), aria-disabled, aria-describedby ou disabled avant le clic, ou un texte cache.
+test("« Déposer la convention signée » est visible aux états À générer, Générée et Sans modèle, absent aux états Signée et Droits insuffisants, avec son libellé exact et sans attribut d'accessibilité au repos", () => {
   const w = loadWidget();
-  const autres = {
-    "À générer": donnees([]),
+  const sansModele = {...donnees([]), raw: {...donnees([]).raw, Modeles_convention: []}};
+  const absents = {
     "Signée": SIGNEE(),
-    "Sans modèle": {...donnees([]), raw: {...donnees([]).raw, Modeles_convention: []}},
     "Droits insuffisants": {...donnees([]), tablesRefusees: ["Conventions"]},
   };
-  for (const [nom, jeu] of Object.entries(autres)) {
+  for (const [nom, jeu] of Object.entries(absents)) {
     assert.ok(!bloc(w, jeu).includes("conventionDeposer"), `${nom} : pas de « Déposer »`);
     assert.ok(!bloc(w, jeu).includes(TEXTE_DEPOSER), `${nom} : pas du libellé « Déposer »`);
   }
-  const html = bloc(w, GENEREE());
-  assert.equal(html.split('id="conventionDeposer"').length - 1, 1, "un seul « Déposer » à l'état Générée");
-  assert.ok(html.includes('<button class="btn btn-secondary" type="button" id="conventionDeposer"><span class="btn-content">Déposer la convention signée</span></button>'),
-    "bouton secondaire, type button, libellé exact dans btn-content, sans texte caché ni attribut d'accessibilité");
-  assert.ok(!html.includes("btn-sm") && !html.includes("btn-primary"), "ni btn-sm ni bouton principal");
+  const presents = {"À générer": donnees([]), "Générée": GENEREE(), "Sans modèle": sansModele};
+  for (const [nom, jeu] of Object.entries(presents)) {
+    const html = bloc(w, jeu);
+    assert.equal(html.split('id="conventionDeposer"').length - 1, 1, `${nom} : un seul « Déposer »`);
+    assert.ok(html.includes('<button class="btn btn-secondary" type="button" id="conventionDeposer"><span class="btn-content">Déposer la convention signée</span></button>'),
+      `${nom} : bouton secondaire, type button, libellé exact dans btn-content, sans texte caché ni attribut d'accessibilité`);
+    assert.ok(!html.includes("btn-primary") && !/btn-sm/.test(html), `${nom} : ni btn-sm ni bouton principal`);
+  }
 });
 
-// Echoue si « Déposer » n'est pas le quatrieme et dernier element de la rangee (apres « Voir »,
-// « Télécharger » et « Re-générer », evolution 2), juste apres « Re-générer » (sans rien entre les deux),
-// ou s'il sort de la rangee convention-actions.
-test("« Déposer la convention signée » est le dernier bouton de la rangée, juste après « Re-générer »", () => {
+// Echoue si « Déposer » n'est pas le dernier element de la rangee a l'etat Generee (apres « Télécharger la
+// convention » et « Re-générer », E3-3), juste apres « Re-générer » (sans rien entre les deux), ou s'il sort de
+// la rangee convention-actions ; s'il n'est pas le second bouton, apres « Générer la convention », a l'etat A generer ;
+// ou s'il n'est pas seul dans sa rangee a l'etat Sans modele.
+test("« Déposer la convention signée » : dernier bouton de la rangée à l'état Générée, second à l'état À générer, seul à l'état Sans modèle", () => {
   const w = loadWidget();
   const html = bloc(w, GENEREE());
   const ligne = rangee(html);
   assert.ok(ligne, "la rangée convention-actions existe");
   const ids = [...ligne.matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(ids, ["conventionVoir", "conventionTelecharger", "conventionRegenerer", "conventionDeposer"], "ordre : Voir, Télécharger, Re-générer, Déposer");
+  assert.deepEqual(ids, ["conventionTelecharger", "conventionRegenerer", "conventionDeposer"], "ordre : Télécharger la convention, Re-générer, Déposer");
   assert.ok(ligne.endsWith('id="conventionDeposer"><span class="btn-content">Déposer la convention signée</span></button>'), "« Déposer » termine la rangée, rien après lui");
   assert.match(ligne, /<\/button><button class="btn btn-secondary" type="button" id="conventionDeposer"/, "juste après « Re-générer », sans rien entre les deux boutons");
+
+  const aGenerer = rangee(bloc(w, donnees([])));
+  assert.deepEqual([...aGenerer.matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]), ["conventionGenerer", "conventionDeposer"], "À générer : Générer puis Déposer");
+  const sans = rangee(bloc(w, {...donnees([]), raw: {...donnees([]).raw, Modeles_convention: []}}));
+  assert.deepEqual([...sans.matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]), ["conventionDeposer"], "Sans modèle : Déposer seul");
 });
 
 // Echoue si le lien « Remplacer le fichier signé » apparait ailleurs qu'a l'etat Signee, manque
@@ -417,10 +427,10 @@ test("après une annulation, on peut rouvrir le sélecteur puis choisir un fichi
 // appelee exactement une fois avec (actionId, fichier choisi) ; « Déposer » n'est pas grise par
 // aria-disabled="true" (ou prend disabled, ce qui lui ferait perdre le focus) AVANT toute
 // operation asynchrone (donc avant de savoir si le fichier est valide) ; « Re-générer » n'est
-// pas grise (aria-disabled, sans disabled, et sans aria-haspopup) ; « Voir la convention » est
+// pas grise (aria-disabled, sans disabled, et sans aria-haspopup) ; « Télécharger la convention » est
 // grise ou change de texte ; le focus bouge ; ou si « Envoi en cours… » apparait des ce moment
 // (avant les controles) ou n'apparait pas apres que le fichier valide les a passes (a l'envoi reel).
-test("choix d'un fichier après « Déposer » : verrou immédiat de « Déposer » et « Re-générer », « Envoi en cours… » seulement après les contrôles, « Voir » reste utilisable", async () => {
+test("choix d'un fichier après « Déposer » : verrou immédiat de « Déposer » et « Re-générer », « Envoi en cours… » seulement après les contrôles, « Télécharger la convention » reste utilisable", async () => {
   const m = await preparer(GENEREE());
   m.cliquer("conventionDeposer");
   const termine = m.choisir(FICHIER);
@@ -449,8 +459,8 @@ test("choix d'un fichier après « Déposer » : verrou immédiat de « Déposer
   assert.equal(m.element("conventionDeposer").getAttribute("aria-disabled"), "true", "« Déposer » reste verrouillé");
   assert.equal(m.element("conventionRegenerer").getAttribute("aria-disabled"), "true", "« Re-générer » reste verrouillé");
   assert.equal(m.libelle("conventionRegenerer"), "Re-générer", "« Re-générer » garde son texte");
-  assert.equal(m.element("conventionVoir").getAttribute("aria-disabled"), null, "« Voir la convention » reste utilisable");
-  assert.equal(m.libelle("conventionVoir"), "Voir la convention", "« Voir la convention » garde son texte");
+  assert.equal(m.element("conventionTelecharger").getAttribute("aria-disabled"), null, "« Télécharger la convention » reste utilisable");
+  assert.equal(m.libelle("conventionTelecharger"), "Télécharger la convention", "« Télécharger la convention » garde son texte");
   assert.deepEqual(m.focus, [], "le focus ne bouge pas");
 
   m.envoi.resoudre();
@@ -460,7 +470,7 @@ test("choix d'un fichier après « Déposer » : verrou immédiat de « Déposer
 // Echoue si, au choix d'un fichier par « Remplacer », c'est « Déposer » qui est verrouille a la
 // place (c'est la commande utilisee qui prend le verrou et le texte), si « Remplacer » n'est pas
 // grise des le choix, s'il affiche « Envoi en cours… » avant les controles ou ne l'affiche pas a
-// l'envoi reel, ou si « Voir » est touche.
+// l'envoi reel, ou si « Télécharger la convention » est touche.
 test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer » est verrouillé tout de suite, « Envoi en cours… » seulement après les contrôles, pas « Déposer »", async () => {
   const m = await preparer(SIGNEE());
   m.cliquer("conventionRemplacer");
@@ -481,7 +491,7 @@ test("choix d'un fichier après « Remplacer le fichier signé » : « Remplacer
   assert.equal(m.element("conventionRemplacer").getAttribute("aria-disabled"), "true", "« Remplacer » reste verrouillé");
   assert.equal(m.element("conventionDeposer").getAttribute("aria-disabled"), null, "« Déposer » n'est pas la commande utilisée : pas verrouillé");
   assert.equal(m.libelle("conventionDeposer"), TEXTE_DEPOSER, "« Déposer » garde son texte");
-  assert.equal(m.element("conventionVoir").getAttribute("aria-disabled"), null, "« Voir la convention » reste utilisable");
+  assert.equal(m.element("conventionTelecharger").getAttribute("aria-disabled"), null, "« Télécharger la convention » reste utilisable");
 
   m.envoi.resoudre();
   await termine;
@@ -643,7 +653,7 @@ test("à la fin de l'envoi, « Re-générer » reste grisé si la génération e
 // Echoue si le bloc refait pendant l'envoi (HTML reconstruit) perd le verrou : « Déposer » doit
 // alors etre ecrit grise, avec « Envoi en cours… » une fois les controles passes (mais avec son
 // texte d'origine tant qu'ils ne le sont pas), et « Re-générer » grise sans aria-haspopup.
-test("bloc refait pendant l'envoi : « Déposer » et « Re-générer » sont écrits verrouillés, « Voir » reste actif", async () => {
+test("bloc refait pendant l'envoi : « Déposer » et « Re-générer » sont écrits verrouillés, « Télécharger la convention » reste actif", async () => {
   const m = await preparer(GENEREE());
   m.cliquer("conventionDeposer");
   const termine = m.choisir(FICHIER);
@@ -657,8 +667,8 @@ test("bloc refait pendant l'envoi : « Déposer » et « Re-générer » sont é
   assert.match(html, /<button class="btn btn-secondary" type="button" id="conventionDeposer" aria-disabled="true"><span class="btn-content">Envoi en cours…<\/span><\/button>/, "« Déposer » reconstruit : grisé, « Envoi en cours… »");
   const regenerer = /<button\b[^>]*\sid="conventionRegenerer"[^>]*>/.exec(html)[0];
   assert.ok(regenerer.includes('aria-disabled="true"') && !regenerer.includes("aria-haspopup") && !/\sdisabled\b/.test(regenerer), "« Re-générer » reconstruit : aria-disabled, sans aria-haspopup, sans disabled");
-  const voir = /<button\b[^>]*\sid="conventionVoir"[^>]*>/.exec(html)[0];
-  assert.ok(!/aria-disabled|\sdisabled\b/.test(voir), "« Voir » reconstruit : actif");
+  const telecharger = /<button\b[^>]*\sid="conventionTelecharger"[^>]*>/.exec(html)[0];
+  assert.ok(!/aria-disabled|\sdisabled\b/.test(telecharger), "« Télécharger la convention » reconstruit : actif");
 
   m.envoi.resoudre();
   await termine;

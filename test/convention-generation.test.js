@@ -1,18 +1,24 @@
 "use strict";
 
-// Rattachement du PDF genere a la convention (tache 7.3) : apres l'envoi du fichier,
-// PDF_genere et Date_generation s'ecrivent par l'API REST, en UNE requete PATCH, avec le
-// meme jeton que l'envoi. grist.docApi.applyUserActions echoue pour un non-proprietaire
-// (bug vu dans DEV7 avec « Voir en tant que » FT Regional) : il ne doit plus toucher a
-// ces deux colonnes. Ces tests ECHOUENT tant que cette correction n'est pas faite.
-// Le bac a sable de test/helpers/widget.js n'a ni FormData, ni Blob, ni clearTimeout, et
-// son getAccessToken refuse : les doublures sont posees ici, sur w.window (le vrai global
-// du bac a sable ; w n'en est qu'une copie). pdfmake n'est jamais charge pour de vrai.
+// Generation de la convention et rattachement du document genere (tache 7.3, mise a jour pour
+// l'Evolution 3 : le document genere est un fichier WORD (.docx), plus un PDF). Apres l'envoi du
+// fichier, PDF_genere (le nom de la colonne est conserve, E3-11) et Date_generation s'ecrivent par
+// l'API REST, en UNE requete PATCH, avec le meme jeton que l'envoi. grist.docApi.applyUserActions
+// echoue pour un non-proprietaire (bug vu dans DEV7 avec « Voir en tant que » FT Regional) : il ne
+// doit jamais toucher a ces deux colonnes.
+// Le bac a sable de test/helpers/widget.js n'a ni FormData, ni Blob, ni clearTimeout, et son
+// getAccessToken refuse : les doublures sont posees ici, sur w.window (le vrai global du bac a
+// sable ; w n'en est qu'une copie). La bibliotheque docx n'est jamais chargee pour de vrai : une
+// fausse bibliotheque (test/helpers/docx.js) garde ce que le widget lui demande de fabriquer.
 // Valeurs fictives uniquement : le jeton et l'adresse ci-dessous n'existent pas.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget");
+const {installerDocx, texte: texteDuDocument, runs: runsDuDocument, section: sectionDuDocument} = require("./helpers/docx");
+
+const NBSP = "\u00a0";
+const TYPE_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const JETON = "jeton-fictif-0a1b2c3d";
 const BASE_URL = "https://grist.exemple.test/api/docs/document-fictif";
@@ -41,6 +47,9 @@ const LIGNE_CONVENTION = {
 function tables() {
   return {
     Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, Campagne: ID_CAMPAGNE}],
+    Dispositifs: [{id: 3, Dispositif: "Match des métiers"}],
+    // L'annee du NOM du fichier se lit ici, dans Actions.Campagne -> Campagnes (E3-17), jamais dans Conventions.Annee.
+    Campagnes: [{id: ID_CAMPAGNE, Campagne: "2031"}],
     Structures: [{...CLUB}],
     Agences: [{...AGENCE}],
     Modeles_convention: [{...MODELE}],
@@ -86,18 +95,21 @@ async function preparer(options = {}) {
   const jetons = [];
   const global = w.window;
 
-  global.FormData = class { constructor() { this.parties = []; } append(nom, valeur, fichier) { this.parties.push([nom, valeur, fichier]); } };
-  global.Blob = class { constructor(parties) { this.size = parties ? parties.length : 0; } };
   global.clearTimeout = clearTimeout;
-  // compteurs : combien de fois pdfmake est charge et combien de PDF sont fabriques (les
-  // tests des codes d'erreur verifient que les etapes suivantes n'ont pas eu lieu).
-  const compteurs = {pdfmake: 0, pdf: 0};
-  const docs = [];
-  global.chargerPdfmake = () => { compteurs.pdfmake += 1; return Promise.resolve(); };
-  global.pdfMake = {createPdf: (document) => { compteurs.pdf += 1; docs.push(document); return {getBlob: () => Promise.resolve({size: 1234})}; }};
-  // La campagne de l'action (reference vers Campagnes) donne l'annee : « 2031 », modifiable par un test.
-  // `illisible` imite un reseau coupe pendant la lecture de la table Campagnes.
-  const campagnes = {valeur: "2031", illisible: false};
+  // Fausse bibliotheque docx. compteurs : combien de fois elle est chargee (chargements) et combien de
+  // fichiers Word sont fabriques (fabrications) ; les tests des codes d'erreur verifient que les
+  // etapes suivantes n'ont pas eu lieu. docs : chaque Document donne a la bibliotheque.
+  const docx = installerDocx(global);
+  const compteurs = docx.compteurs;
+  const docs = docx.documents;
+  // La campagne de l'action (reference vers Campagnes) donne l'annee : « 2031 », modifiable par un test
+  // (elle change dans les tables en memoire ET dans ce que fetchTable rend). `illisible` imite un reseau
+  // coupe pendant la lecture de la table Campagnes.
+  const campagnes = {
+    illisible: false,
+    get valeur() { return w.state.raw.Campagnes[0].Campagne; },
+    set valeur(v) { w.state.raw.Campagnes[0].Campagne = v; },
+  };
   w.grist.docApi.fetchTable = (nom) => {
     if (nom !== "Campagnes") return Promise.resolve({id: []});
     return campagnes.illisible ? Promise.reject(new Error("réseau coupé")) : Promise.resolve({id: [ID_CAMPAGNE], Campagne: [campagnes.valeur]});
@@ -114,7 +126,7 @@ async function preparer(options = {}) {
     if (String(url).includes("/attachments")) return Promise.resolve(reponse(true, 200, [ID_PIECE_JOINTE]));
     return options.patch ? options.patch() : Promise.resolve(reponse(true, 200, {}));
   };
-  return {w, fetchs, appels, jetons, journal, compteurs, docs, campagnes};
+  return {w, fetchs, appels, jetons, journal, compteurs, docs, campagnes, docx};
 }
 
 const estPatch = (requete) => requete.options && requete.options.method === "PATCH";
@@ -145,7 +157,7 @@ test("rattachement : une seule requête PATCH, avec les deux colonnes ensemble d
   const resultat = await w.conventionGenerer(1, VALEURS);
   const apres = Math.floor(Date.now() / 1000);
 
-  assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
+  assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit et le fichier est un Word");
   const patchs = fetchs.filter(estPatch);
   assert.equal(patchs.length, 1, "une seule requête PATCH");
   assert.ok(patchs[0].url.startsWith(`${BASE_URL}/tables/Conventions/records?`), "vers /tables/Conventions/records");
@@ -356,19 +368,22 @@ function verifierEchec(ctx, erreur, code, avant, {etat = "À générer", convent
   assert.equal(journal.length, 0, "rien dans la console");
 }
 
-// Echoue si l'ordre des etapes change (decision D-S7-4, mise a jour par la tache 7.7b) :
-// enregistrement, puis le jeton (demande AVANT pdfmake, car il sert aux logos), puis pdfmake,
-// fabrication du PDF, envoi, rattachement. Le modele d'essai n'a pas de logo : aucun telechargement.
-test("génération : ordre des étapes en réussite (enregistrement, jeton, pdfmake, PDF, envoi, rattachement)", async () => {
+// Echoue si l'ordre des etapes change (decision D-S7-4, mise a jour par la tache 7.7b puis l'E3) :
+// enregistrement, puis le jeton (demande AVANT la bibliotheque, car il sert aux logos), puis le
+// chargement de la bibliotheque docx, la fabrication du fichier Word, l'envoi, le rattachement.
+// Le modele d'essai n'a pas de logo : aucun telechargement. Echoue aussi si pdfmake est encore
+// charge par la generation (le widget ne fabrique plus de PDF).
+test("génération : ordre des étapes en réussite (enregistrement, jeton, docx, document, envoi, rattachement) et pdfmake jamais chargé", async () => {
   const ctx = await preparer();
   const {w} = ctx;
   const g = w.window;
   const trace = [];
   const enregistrer = w.grist.docApi.applyUserActions;
   w.grist.docApi.applyUserActions = (actions) => { trace.push("enregistrement"); return enregistrer(actions); };
+  g.chargerDocx = () => { trace.push("docx"); return Promise.resolve(); };
+  const fabriquer = g.docx.Packer.toBlob;
+  g.docx.Packer.toBlob = (document) => { trace.push("document"); return fabriquer(document); };
   g.chargerPdfmake = () => { trace.push("pdfmake"); return Promise.resolve(); };
-  const creer = g.pdfMake.createPdf;
-  g.pdfMake.createPdf = (document) => { trace.push("pdf"); return creer(document); };
   const jeton = w.grist.docApi.getAccessToken;
   w.grist.docApi.getAccessToken = (options) => { trace.push("jeton"); return jeton(options); };
   const requete = g.fetch;
@@ -376,27 +391,34 @@ test("génération : ordre des étapes en réussite (enregistrement, jeton, pdfm
 
   await w.conventionGenerer(1, VALEURS);
 
-  assert.deepEqual(trace, ["enregistrement", "jeton", "pdfmake", "pdf", "envoi", "rattachement"]);
+  assert.deepEqual(trace, ["enregistrement", "jeton", "docx", "document", "envoi", "rattachement"]);
 });
 
 // Echoue si un champ vide bloque encore la generation (E1, D-E1-17 : plus aucun champ obligatoire,
-// plus de code champs-a-corriger) : aucun signataire, representant et fonction vides doivent
-// passer, et les cases correspondantes du modele deviennent 56 points (a completer a la main).
-test("E1 : champs vides (aucun signataire, représentant et fonction vides) → la génération réussit, les cases deviennent 56 points", async () => {
+// plus de code champs-a-corriger) : aucun signataire, representant et fonction vides doivent passer.
+// E3-5 : les trois cases vides deviennent trois BANDES SURLIGNEES de 20 espaces insecables (le champ
+// que l'agent remplit dans Word) ; il ne reste ni pointilles de 56 points, ni case [..] non remplacee.
+test("E1/E3 : champs vides (aucun signataire, représentant et fonction vides) → la génération réussit, trois bandes surlignées de 20 espaces insécables", async () => {
   const ctx = await preparer();
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Signé par [Signataire du club], [Représentant de l’agence], [Fonction du représentant] fin.";
 
   const resultat = await ctx.w.conventionGenerer(1, {signataire: 0, nouveauContact: null, representant: "", fonctionRepresentant: ""});
 
-  assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
-  assert.equal(ctx.compteurs.pdf, 1, "un PDF est fabriqué");
-  assert.ok(JSON.stringify(ctx.docs[0]).includes(".".repeat(56)), "des pointillés dans le PDF");
-  assert.ok(!JSON.stringify(ctx.docs[0]).includes(".".repeat(57)), "exactement 56 points");
+  assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit");
+  assert.equal(ctx.compteurs.fabrications, 1, "un fichier Word est fabriqué");
+  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
+  assert.equal(bandes.length, 3, "trois champs vides, trois bandes surlignées");
+  for (const bande of bandes) {
+    assert.equal(bande.highlight, "yellow", "surlignage jaune standard");
+    assert.equal(bande.text, NBSP.repeat(20), "20 espaces insécables");
+  }
+  assert.ok(!/\.{5,}/.test(texteDuDocument(ctx.docs[0])), "aucune suite de points : les pointillés de l'ancien PDF ont disparu");
+  assert.ok(!texteDuDocument(ctx.docs[0]).includes("["), "aucune case [..] n'est restée dans le texte");
   assert.equal(ctx.appels.length, 1, "les informations vides sont enregistrées telles quelles");
   assert.equal(ctx.appels[0][0][3].Signataire_club, 0);
 });
 
-// Echoue si l'annee du PDF et du nom de fichier ne vient plus de la campagne de l'action
+// Echoue si l'annee du document et du nom de fichier ne vient plus de la campagne de l'action
 // (Actions.Campagne -> Campagnes.Campagne), ou si une annee glissee dans `valeurs` l'emporte.
 test("année : le nom du fichier et la case [Année] viennent de la campagne de l'action", async () => {
   const ctx = await preparer();
@@ -405,59 +427,161 @@ test("année : le nom du fichier et la case [Année] viennent de la campagne de 
 
   const resultat = await ctx.w.conventionGenerer(1, {...VALEURS, annee: "1999"});
 
-  assert.ok(resultat.nomFichier.endsWith("-2027.pdf"), `nom du fichier avec 2027 : ${resultat.nomFichier}`);
-  assert.ok(JSON.stringify(ctx.docs[0]).includes("Année 2027."), "la case [Année] vaut 2027");
+  assert.equal(resultat.nomFichier, "Convention-Match-metiers-Club-Exemple-2027.docx", "nom complet, extension .docx, année de la campagne");
+  assert.ok(texteDuDocument(ctx.docs[0]).includes("Année 2027."), "la case [Année] vaut 2027");
   assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2027, "Annee enregistrée");
 });
 
-// Echoue si une campagne vide laisse une annee inventee dans le nom du fichier, ou ne donne pas
-// des pointillés pour la case [Année] (D-E1-8 : l'annee est omise du nom de fichier).
-test("année : campagne vide → pas d'année dans le nom du fichier, case [Année] en pointillés", async () => {
+// Echoue si une campagne vide laisse une annee inventee dans le nom du fichier, ou ne donne pas une
+// bande surlignee pour la case [Année] (D-E1-8 : l'annee est omise du nom de fichier ; E3-5 : champ vide surligne).
+test("année : campagne vide → pas d'année dans le nom du fichier, case [Année] en bande surlignée", async () => {
   const ctx = await preparer();
   ctx.campagnes.valeur = "";
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
 
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
-  assert.ok(!/-\d{4}\.pdf$/.test(resultat.nomFichier), `aucune année dans ${resultat.nomFichier}`);
-  assert.ok(JSON.stringify(ctx.docs[0]).includes(`Année ${".".repeat(56)}.`), "pointillés à la place de l’année");
+  assert.equal(resultat.nomFichier, "Convention-Match-metiers-Club-Exemple.docx", "aucune année dans le nom");
+  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
+  assert.deepEqual(bandes.map((run) => run.text), [NBSP.repeat(20)], "une bande surlignée à la place de l'année");
+  assert.ok(!/\.{5,}/.test(texteDuDocument(ctx.docs[0])), "pas de pointillés");
 });
 
 // Echoue si une lecture impossible de la campagne (reseau coupe) fait perdre l'annee deja
-// enregistree : le PDF et le nom du fichier doivent garder Annee de la ligne (2031), pas des pointillés.
-test("année : lecture de la campagne impossible → l'année déjà enregistrée sert au PDF et au nom du fichier", async () => {
+// enregistree dans la case [Année] du document, ou si le NOM du fichier lisait encore Conventions.Annee
+// (E3-17) : ici Annee vaut 2031 mais la campagne, lue en memoire, vaut 2040. La case [Année] garde 2031
+// (jamais d'ecrasement), le nom suit Actions.Campagne.
+test("année : lecture de la campagne impossible → la case [Année] garde l'année enregistrée, le nom du fichier lit Actions.Campagne (E3-17)", async () => {
   const ctx = await preparer();
   ctx.campagnes.illisible = true;
+  ctx.campagnes.valeur = "2040";
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Année [Année].";
 
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
-  assert.ok(resultat.nomFichier.endsWith("-2031.pdf"), resultat.nomFichier);
-  assert.ok(JSON.stringify(ctx.docs[0]).includes("Année 2031."));
+  assert.ok(texteDuDocument(ctx.docs[0]).includes("Année 2031."), "la case [Année] garde l'année déjà enregistrée");
+  assert.equal(resultat.nomFichier, "Convention-Match-metiers-Club-Exemple-2040.docx", "le nom lit la campagne de l'action, pas Conventions.Annee");
   assert.equal(ctx.w.state.raw.Conventions[0].Annee, 2031, "Annee non écrasée");
 });
 
-// Echoue si un nouveau contact saisi dans la fenetre n'est pas cree AVANT la fabrication du PDF, ou si
-// le PDF ne porte pas son nom et sa fonction ([Signataire du club], [Fonction du signataire]) : le
+// E3-17 : echoue si le nom du fichier genere reprend Conventions.Annee (bug corrige). Annee de la
+// convention vaut 1999 ; la campagne de l'action vaut 2031 : seule 2031 peut etre dans le nom.
+test("E3-17 : le nom du fichier généré n'utilise jamais Conventions.Annee, même quand elle est remplie autrement", async () => {
+  const ctx = await preparer();
+  ctx.campagnes.illisible = true; // l'enregistrement ne peut pas corriger Annee : elle reste 1999
+  ctx.w.state.raw.Conventions[0].Annee = 1999;
+
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.equal(ctx.w.state.raw.Conventions[0].Annee, 1999, "(contrôle) Conventions.Annee vaut bien 1999");
+  assert.ok(!resultat.nomFichier.includes("1999"), `1999 ne doit pas être dans ${resultat.nomFichier}`);
+  assert.ok(resultat.nomFichier.endsWith("-2031.docx"), resultat.nomFichier);
+});
+
+// Echoue si le fichier envoye n'est pas un Word : type du Blob fixe par le widget (jamais celui de la
+// bibliotheque), nom du champ « upload » et nom du fichier en .docx.
+test("fichier envoyé : un Blob de type Word, champ « upload », nom en .docx (extension fixée par le widget)", async () => {
+  const ctx = await preparer();
+
+  const resultat = await ctx.w.conventionGenerer(1, VALEURS);
+
+  assert.equal(ctx.docx.blobs.length, 1, "un seul Blob fabriqué");
+  assert.equal(ctx.docx.blobs[0].type, TYPE_DOCX, "type Word fixé par le widget");
+  assert.equal(ctx.docx.formulaires.length, 1, "un seul envoi");
+  const [champ, fichier, nom] = ctx.docx.formulaires[0].parties[0];
+  assert.equal(champ, "upload");
+  assert.equal(fichier, ctx.docx.blobs[0], "le fichier envoyé est le Blob Word");
+  assert.equal(nom, resultat.nomFichier, "le nom envoyé à Grist est le nom du résultat");
+  assert.ok(nom.endsWith(".docx") && !nom.endsWith(".pdf"), nom);
+});
+
+// E3-13 : echoue si l'un des champs que le widget lit dans Grist ou dans la fenetre (nom du club, adresse, signataire et sa
+// fonction, agence, representant et sa fonction) arrive dans le Word autrement que tel quel quand il contient & < > " ' :
+// un caractere echappe a la main par le widget (&amp;...) ou une valeur qui disparait. Le test passe par la VRAIE
+// generation (lecture des tables, remplissage des cases, fabrication du Word), pas par une valeur posee a la main.
+test("E3-13 : & < > \" ' dans le club, l'agence, le signataire et le représentant arrivent tels quels dans le Word généré", async () => {
+  const S = "A&B <C> \"D\" 'E'";
+  const ctx = await preparer();
+  const raw = ctx.w.state.raw;
+  Object.assign(raw.Structures[0], {Nom: `Club ${S}`, Adresse: `1 rue ${S}`, Ville: `Ville ${S}`});
+  Object.assign(raw.Agences[0], {Libelle_agence: `Agence ${S}`, Adresse: `2 avenue ${S}`, Ville: `Ville2 ${S}`});
+  Object.assign(raw.Contacts[0], {Prenom: `Camille ${S}`, Nom: `Exemple ${S}`, Fonction: `Pdte ${S}`});
+  raw.Modeles_convention[0].Contenu = "A [Nom du club]\n\nB [Siège du club]\n\nC [Signataire du club]\n\nD [Fonction du signataire]\n\nE [Nom de l’agence]\n\nF [Adresse de l’agence]\n\nG [Représentant de l’agence]\n\nH [Fonction du représentant]";
+
+  await ctx.w.conventionGenerer(1, {...VALEURS, representant: `Dana ${S}`, fonctionRepresentant: `Dir. ${S}`});
+
+  const paragraphesDuDocument = texteDuDocument(ctx.docs[0]).split("\n");
+  assert.deepEqual(paragraphesDuDocument, [
+    `A Club ${S}`,
+    `B 1 rue ${S}, 75001 Ville ${S}`,
+    `C Camille ${S} Exemple ${S}`,
+    `D Pdte ${S}`,
+    `E Agence ${S}`,
+    `F 2 avenue ${S}, 75002 Ville2 ${S}`,
+    `G Dana ${S}`,
+    `H Dir. ${S}`,
+  ]);
+  assert.ok(!/&(amp|lt|gt|quot|#39|#x27);/.test(texteDuDocument(ctx.docs[0])), "aucun caractère échappé à la main par le widget");
+});
+
+// Echoue si, apres une generation reussie, le bloc ne connait pas le format du document (E3-20 C : « Format : document
+// Word (.docx). », texte cache « (fichier Word) », phrase d'aide du Word), y compris quand la generation REMPLACE un
+// ancien PDF (E3-9/E3-10) : le nouveau document est un Word, l'ancien PDF reste non rattache dans Grist.
+test("après une génération (première ou re-génération d'un ancien PDF), le bloc affiche « Format : document Word (.docx). » et « (fichier Word) »", async () => {
+  for (const [nom, preparerCas] of [["première génération", () => preparer()], ["re-génération d'un ancien PDF", () => preparerRegeneration()]]) {
+    const ctx = await preparerCas();
+    if (nom === "première génération") {
+      assert.ok(!ctx.w.conventionBlocContenuHtml(1, ctx.w.state).includes("Format :"), "(contrôle) pas de ligne « Format » avant");
+    }
+
+    await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
+
+    const bloc = ctx.w.conventionBlocContenuHtml(1, ctx.w.state);
+    assert.equal(ctx.w.conventionEtat(1, ctx.w.state).etat, "Générée", nom);
+    assert.ok(bloc.includes('<p class="help-block">Format : document Word (.docx).</p>'), `${nom} : ligne « Format »`);
+    assert.ok(bloc.includes('<span class="sr-only"> (fichier Word)</span>'), `${nom} : texte caché du bouton`);
+    assert.ok(bloc.includes("Téléchargez la convention, modifiez-la si besoin dans Word"), `${nom} : phrase d'aide du Word`);
+    assert.ok(!bloc.includes("Format : document PDF") && !bloc.includes("zones en pointillés"), `${nom} : rien de l'ancien PDF`);
+  }
+});
+
+// Echoue si le document donne a la bibliotheque n'a pas les proprietes neutres de l'E3-12 (auteur, dernier
+// auteur fixes), ou si le nom du club, de l'agence, d'une personne, un SIRET ou une adresse y figure.
+test("E3-12 : les propriétés du fichier Word sont neutres, sans nom de club, d'agence ni de personne", async () => {
+  const ctx = await preparer();
+
+  await ctx.w.conventionGenerer(1, VALEURS);
+
+  const options = ctx.docs[0].options;
+  assert.equal(options.creator, "Partenariat simplifié");
+  assert.equal(options.lastModifiedBy, "Partenariat simplifié");
+  const proprietes = JSON.stringify([options.creator, options.lastModifiedBy, options.title, options.description, options.subject, options.keywords]);
+  for (const interdit of ["Club Exemple", "Agence Exemple", "Dana", "Camille", "Exemple-sur-Mer", "12345678901234"]) {
+    assert.ok(!proprietes.includes(interdit), `« ${interdit} » ne doit pas être dans les propriétés du fichier`);
+  }
+});
+
+// Echoue si un nouveau contact saisi dans la fenetre n'est pas cree AVANT la fabrication du document, ou si
+// le document ne porte pas son nom et sa fonction ([Signataire du club], [Fonction du signataire]) : le
 // signataire d'une saisie libre doit etre traite comme un contact de la liste (note UX §3).
-test("nouveau contact : créé avant le PDF, qui porte son nom et sa fonction ; Conventions le référence", async () => {
+test("nouveau contact : créé avant le fichier Word, qui porte son nom et sa fonction ; Conventions le référence", async () => {
   const ctx = await preparer();
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Signé par [Signataire du club], [Fonction du signataire] fin.";
   const valeurs = {signataire: 0, nouveauContact: {nom: "Martin", prenom: "Jo", email: "jo.martin@exemple.fr", fonction: "Trésorier"}, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
 
   const resultat = await ctx.w.conventionGenerer(1, valeurs);
 
-  assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
+  assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit");
   assert.equal(ctx.appels[0][0][1], "Contacts", "le contact est créé en premier");
   assert.equal(ctx.appels[0][0][0], "AddRecord");
   assert.equal(ctx.appels[1][0][1], "Conventions", "puis Conventions");
   assert.equal(ctx.appels[1][0][3].Signataire_club, 55, "Conventions référence le contact créé (identifiant rendu par Grist)");
-  assert.ok(JSON.stringify(ctx.docs[0]).includes("Signé par Jo Martin, Trésorier fin."), "le PDF porte le nom et la fonction du nouveau contact");
+  assert.ok(texteDuDocument(ctx.docs[0]).includes("Signé par Jo Martin, Trésorier fin."), "le document porte le nom et la fonction du nouveau contact");
   assert.equal(valeurs.nouveauContact, null, "la saisie libre est consommée : pas de second contact");
 });
 
 // Echoue si la creation du contact echoue et que la generation continue : elle doit s'arreter avec
-// enregistrement-echoue, sans ecrire Conventions, sans charger pdfmake ni demander de jeton.
+// enregistrement-echoue, sans ecrire Conventions, sans charger la bibliotheque ni demander de jeton.
 test("nouveau contact refusé par Grist : enregistrement-echoue, rien d'autre n'est écrit ni fabriqué", async () => {
   const ctx = await preparer();
   ctx.w.grist.docApi.applyUserActions = (actions) => { ctx.appels.push(actions); return Promise.reject(new Error(`refus ${NOM_DE_PERSONNE}`)); };
@@ -467,21 +591,24 @@ test("nouveau contact refusé par Grist : enregistrement-echoue, rien d'autre n'
 
   verifierEchec(ctx, erreur, "enregistrement-echoue", avant);
   assert.equal(ctx.appels.length, 1, "une seule tentative : la création du contact");
-  assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
+  assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
   assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
 });
 
 // Echoue si une adresse de club absente bloque la generation elle-meme (le blocage est a l'ouverture
-// de la fenetre, jamais dans conventionGenerer) ou ne donne pas 56 points pour [Siège du club].
-test("adresse du club absente : la génération réussit et [Siège du club] devient 56 points", async () => {
+// de la fenetre, jamais dans conventionGenerer) ou ne donne pas une bande surlignee de 40 espaces insecables
+// (largeur d'une adresse) pour [Siège du club].
+test("adresse du club absente : la génération réussit et [Siège du club] devient une bande surlignée de 40 espaces insécables", async () => {
   const ctx = await preparer();
   Object.assign(ctx.w.state.raw.Structures[0], {Adresse: "", Code_postal: "", Ville: ""});
   ctx.w.state.raw.Modeles_convention[0].Contenu = "Siège : [Siège du club] fin.";
 
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
-  assert.ok(resultat.nomFichier.endsWith(".pdf"));
-  assert.ok(JSON.stringify(ctx.docs[0]).includes(`Siège : ${".".repeat(56)} fin.`), "56 points à la place de l'adresse");
+  assert.ok(resultat.nomFichier.endsWith(".docx"));
+  const bandes = runsDuDocument(ctx.docs[0]).filter((run) => run.highlight);
+  assert.deepEqual(bandes.map((run) => run.text), [NBSP.repeat(40)], "une bande de 40 caractères (largeur d'une adresse) à la place de l'adresse");
+  assert.ok(texteDuDocument(ctx.docs[0]).includes(`Siège : ${NBSP.repeat(40)} fin.`), "la bande est entre « Siège : » et « fin. »");
 });
 
 // Echoue si un refus de Grist a l'enregistrement ne rend pas enregistrement-echoue, si
@@ -498,7 +625,7 @@ test("échec enregistrement-echoue : Grist refuse l'enregistrement, la suite n'a
 
   verifierEchec(ctx, erreur, "enregistrement-echoue", avant);
   assert.equal(ctx.appels.length, 1, "une seule tentative d'enregistrement");
-  assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
+  assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
   assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
@@ -515,7 +642,7 @@ test("échec modele-indisponible : modèle actif au texte vide", async () => {
 
   verifierEchec(ctx, erreur, "modele-indisponible", avant);
   assert.equal(ctx.appels.length, 1, "les informations ont été enregistrées avant");
-  assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
+  assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
   assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
@@ -534,7 +661,7 @@ for (const [nom, preparerModele] of [
     const erreur = await attraper(ctx.w.conventionGenerer(1, VALEURS));
 
     verifierEchec(ctx, erreur, "modele-indisponible", null, {etat: "Sans modèle", conventionsInchangees: false});
-    assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
+    assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
     assert.equal(ctx.jetons.length, 0, "aucun jeton demandé");
     assert.equal(ctx.fetchs.length, 0, "aucune requête");
   });
@@ -553,61 +680,61 @@ test("échec cases-inconnues : .cases donne les noms inconnus, sans doublon", as
   verifierEchec(ctx, erreur, "cases-inconnues", avant);
   assert.deepEqual(ordinaire(erreur.cases), ["Case inconnue", "Autre case"]);
   assert.equal(ctx.appels.length, 1, "les informations ont été enregistrées avant");
-  assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
+  assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
 
-// Echoue si un chargement de pdfmake qui echoue ne rend pas pdfmake-non-charge, si un PDF est
-// fabrique, si le jeton (demande avant pdfmake depuis la 7.7b) n'a pas ete demande exactement une
+// Echoue si un chargement de la bibliotheque qui echoue ne rend pas docx-non-charge, si un fichier Word est
+// fabrique, si le jeton (demande avant la bibliotheque depuis la 7.7b) n'a pas ete demande exactement une
 // fois en ecriture, ou si une requete est envoyee apres l'echec.
-test("échec pdfmake-non-charge : le chargement est refusé", async () => {
+test("échec docx-non-charge : le chargement est refusé", async () => {
   const ctx = await preparer();
-  ctx.w.window.chargerPdfmake = () => Promise.reject(Object.assign(new Error("pdfmake non chargé (doublure)"), {code: "pdfmake-non-charge"}));
+  ctx.w.window.chargerDocx = () => Promise.reject(Object.assign(new Error("docx non chargé (doublure)"), {code: "docx-non-charge"}));
   const avant = ordinaire(ctx.w.state.raw.Conventions);
 
   const erreur = await attraper(ctx.w.conventionGenerer(1, VALEURS));
 
-  verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
+  verifierEchec(ctx, erreur, "docx-non-charge", avant);
   assert.equal(ctx.appels.length, 1, "les informations ont été enregistrées avant");
-  assert.equal(ctx.compteurs.pdf, 0, "aucun PDF fabriqué");
-  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
+  assert.equal(ctx.compteurs.fabrications, 0, "aucun fichier Word fabriqué");
+  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant la bibliothèque");
   assert.deepEqual(ordinaire(ctx.jetons[0]), {readOnly: false});
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
 
-// Echoue si un chargement qui ne repond pas ne donne pas pdfmake-non-charge au bout de
-// 20 secondes (minuterie simulee : le test n'attend pas), si la minuterie de pdfmake n'a pas ce
-// delai, si elle n'est pas la seule encore active, ou si celles de l'enregistrement (20 s, posee
-// en premier) et du jeton (15 s, posee ensuite) n'ont pas ete arretees quand leur reponse est
-// arrivee. Le jeton est deja demande (une fois, en ecriture)
-// quand pdfmake est attendu.
-test("échec pdfmake-non-charge : pas de réponse au bout de 20 secondes (minuterie simulée)", async () => {
+// Echoue si un chargement qui ne repond pas ne donne pas docx-non-charge au bout de 20 secondes
+// (minuterie simulee : le test n'attend pas), si la minuterie de la bibliotheque n'a pas ce delai, si
+// elle n'est pas la seule encore active, ou si celles de la campagne (15 s), de l'enregistrement (20 s) et
+// du jeton (15 s) n'ont pas ete arretees quand leur reponse est arrivee. Le jeton est deja demande (une
+// fois, en ecriture) quand la bibliotheque est attendue. Le vrai chargeur (conventionChargerDocx) est
+// utilise ici : seul le script distant est simule (il ne repond jamais).
+test("échec docx-non-charge : pas de réponse au bout de 20 secondes (minuterie simulée)", async () => {
   const ctx = await preparer();
   const g = ctx.w.window;
   const minuteries = [];
   const arretees = new Set();
   g.setTimeout = (fonction, delai) => { minuteries.push({fonction, delai}); return minuteries.length; };
   g.clearTimeout = (id) => { arretees.add(id); };
-  g.chargerPdfmake = () => new Promise(() => {});
+  g.chargerDocx = () => new Promise(() => {});
   const avant = ordinaire(ctx.w.state.raw.Conventions);
 
   const promesse = ctx.w.conventionGenerer(1, VALEURS);
   await attendre();
-  assert.equal(minuteries.length, 4, "quatre minuteries posées : la lecture de la campagne (15 s), l'enregistrement (20 s), le jeton (15 s), puis pdfmake (20 s)");
+  assert.equal(minuteries.length, 4, "quatre minuteries posées : la lecture de la campagne (15 s), l'enregistrement (20 s), le jeton (15 s), puis la bibliothèque (20 s)");
   assert.equal(minuteries[0].delai, 15000, "la première est celle de la campagne (l'année)");
   assert.ok(arretees.has(1), "la minuterie de la campagne est arrêtée : elle a répondu");
   assert.equal(minuteries[1].delai, 20000, "la deuxième est celle de l'enregistrement");
   assert.ok(arretees.has(2), "la minuterie de l'enregistrement est arrêtée : il a répondu");
   assert.equal(minuteries[2].delai, 15000, "la troisième est celle du jeton");
   assert.ok(arretees.has(3), "la minuterie du jeton est arrêtée : le jeton est arrivé");
-  assert.equal(minuteries[3].delai, 20000, "la quatrième est celle de pdfmake");
-  assert.ok(!arretees.has(4), "la minuterie de pdfmake est la seule encore active");
+  assert.equal(minuteries[3].delai, 20000, "la quatrième est celle de la bibliothèque docx");
+  assert.ok(!arretees.has(4), "la minuterie de la bibliothèque est la seule encore active");
   minuteries[3].fonction();
   const erreur = await attraper(promesse);
 
-  verifierEchec(ctx, erreur, "pdfmake-non-charge", avant);
-  assert.equal(ctx.compteurs.pdf, 0, "aucun PDF fabriqué");
-  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
+  verifierEchec(ctx, erreur, "docx-non-charge", avant);
+  assert.equal(ctx.compteurs.fabrications, 0, "aucun fichier Word fabriqué");
+  assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant la bibliothèque");
   assert.deepEqual(ordinaire(ctx.jetons[0]), {readOnly: false});
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
 });
@@ -654,27 +781,27 @@ for (const [nom, preparerEnvoi] of ENVOIS_IMPOSSIBLES) {
   });
 }
 
-// Echoue si un echec pendant la fabrication du PDF (getBlob rejette, fichier vide ou absent,
-// createPdf qui plante) ne rend pas echec-inattendu, si le texte de l'erreur (nom de personne,
-// jeton) est repris, si le jeton n'a pas ete demande exactement une fois (avant pdfmake, depuis
-// la 7.7b), ou si un fichier est envoye apres l'echec. Sans logo, createPdf n'est essaye qu'une fois.
+// Echoue si un echec pendant la fabrication du fichier Word (Packer.toBlob rejette, fichier vide ou absent,
+// la bibliotheque qui plante en construisant le Document) ne rend pas echec-inattendu, si le texte de
+// l'erreur (nom de personne, jeton) est repris, si le jeton n'a pas ete demande exactement une fois (avant
+// la bibliotheque), ou si un fichier est envoye apres l'echec. Sans logo, la fabrication n'est essayee qu'une fois.
 const FABRICATIONS_RATEES = [
-  ["getBlob rejette", (g) => { g.pdfMake.createPdf = () => ({getBlob: () => Promise.reject(new Error(`échec pour ${NOM_DE_PERSONNE} ${JETON}`))}); }],
-  ["fichier vide", (g) => { g.pdfMake.createPdf = () => ({getBlob: () => Promise.resolve({size: 0})}); }],
-  ["aucun fichier", (g) => { g.pdfMake.createPdf = () => ({getBlob: () => Promise.resolve(null)}); }],
-  ["createPdf plante", (g) => { g.pdfMake.createPdf = () => { throw new Error(`plantage pour ${NOM_DE_PERSONNE} ${JETON}`); }; }],
+  ["Packer.toBlob rejette", (g) => { g.docx.Packer.toBlob = () => Promise.reject(new Error(`échec pour ${NOM_DE_PERSONNE} ${JETON}`)); }],
+  ["fichier vide", (g) => { g.docx.Packer.toBlob = () => Promise.resolve({size: 0}); }],
+  ["aucun fichier", (g) => { g.docx.Packer.toBlob = () => Promise.resolve(null); }],
+  ["le Document plante", (g) => { g.docx.Document = class { constructor() { throw new Error(`plantage pour ${NOM_DE_PERSONNE} ${JETON}`); } }; }],
 ];
-for (const [nom, preparerPdf] of FABRICATIONS_RATEES) {
-  test(`échec echec-inattendu : fabrication du PDF (${nom})`, async () => {
+for (const [nom, preparerFabrication] of FABRICATIONS_RATEES) {
+  test(`échec echec-inattendu : fabrication du fichier Word (${nom})`, async () => {
     const ctx = await preparer();
-    preparerPdf(ctx.w.window);
+    preparerFabrication(ctx.w.window);
     const avant = ordinaire(ctx.w.state.raw.Conventions);
 
     const erreur = await attraper(ctx.w.conventionGenerer(1, VALEURS));
 
     verifierEchec(ctx, erreur, "echec-inattendu", avant);
-    assert.equal(ctx.compteurs.pdfmake, 1, "pdfmake chargé avant");
-    assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant pdfmake");
+    assert.equal(ctx.compteurs.chargements, 1, "la bibliothèque docx a été chargée avant");
+    assert.equal(ctx.jetons.length, 1, "le jeton a été demandé une fois, avant la bibliothèque");
     assert.equal(ctx.fetchs.length, 0, "aucun fichier envoyé");
   });
 }
@@ -825,7 +952,7 @@ test("re-génération : PDF_signe et Date_depot ne sont ni écrits ni modifiés"
 const ECHECS_REGENERATION = [
   ["modèle inactif", "modele-indisponible", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Actif = false; }],
   ["cases inconnues", "cases-inconnues", (ctx) => { ctx.w.state.raw.Modeles_convention.find((m) => m.id === 10).Contenu = "Texte avec [Case inconnue]."; }],
-  ["pdfmake non chargé", "pdfmake-non-charge", (ctx) => { ctx.w.window.chargerPdfmake = () => Promise.reject(Object.assign(new Error("doublure"), {code: "pdfmake-non-charge"})); }],
+  ["bibliothèque docx non chargée", "docx-non-charge", (ctx) => { ctx.w.window.chargerDocx = () => Promise.reject(Object.assign(new Error("doublure"), {code: "docx-non-charge"})); }],
   ["envoi refusé", "envoi-refuse", (ctx) => remplacerFetch(ctx, () => Promise.resolve(reponse(false, 403, {})))],
 ];
 for (const [nom, code, preparerEchec] of ECHECS_REGENERATION) {
@@ -877,7 +1004,7 @@ for (const [nom, patch] of PATCH_INCERTAINS) {
 
     const resultat = await ctx.w.conventionGenerer(1, NOUVELLES_VALEURS);
 
-    assert.ok(resultat.nomFichier.endsWith(".pdf"), "pas d'erreur : la génération réussit");
+    assert.ok(resultat.nomFichier.endsWith(".docx"), "pas d'erreur : la génération réussit");
     assert.deepEqual(lectures, ["Conventions"], "une seule relecture, de la table Conventions");
     assert.equal(ctx.fetchs.filter(estPatch).length, 1, "un seul PATCH");
     const ligne = ligneConvention(ctx.w);

@@ -1,9 +1,10 @@
 "use strict";
 
 // Delais maximum des appels reseau de la generation (conventionAvecDelai, script.js) : le jeton
-// (15 s), chaque logo (15 s), l'envoi du PDF (20 s), le PATCH de rattachement (20 s) et la
+// (15 s), chaque logo (15 s), l'envoi du fichier Word (20 s), le PATCH de rattachement (20 s) et la
 // relecture de secours (15 s). Objectif : la fenetre ne reste jamais bloquee si le reseau coupe.
-// Le delai de pdfmake (20 s) est teste dans convention-generation.test.js.
+// Le delai de chargement de la bibliotheque docx (20 s) est teste dans convention-generation.test.js
+// et convention-docx-chargement.test.js. Mis a jour pour l'Evolution 3 (fichier Word, plus de PDF).
 // Les minuteries sont simulees (setTimeout et clearTimeout posees sur w.window, le vrai global du
 // bac a sable) : le test n'attend jamais 15 ou 20 secondes, il declenche la minuterie a la main.
 // Une minuterie « active » n'est ni arretee (clearTimeout) ni declenchee.
@@ -14,6 +15,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget");
+const {installerDocx, enteteDeLaPremierePage} = require("./helpers/docx");
 
 const JETON = "jeton-fictif-0a1b2c3d";
 const BASE_URL = "https://grist.exemple.test/api/docs/document-fictif";
@@ -68,8 +70,8 @@ const reponseLogo = () => Promise.resolve({ok: true, status: 200, arrayBuffer: (
 // options.fetch(url, opts, ctx) : remplace la reponse de fetch pour tout ce qui n'est pas un
 //   telechargement de logo ; renvoie undefined pour garder la reponse normale.
 // options.jeton : remplace getAccessToken.
-// Notes : minuteries (toutes celles posees par le widget), fetchs, jetons, compteurs (pdfmake, pdf),
-// docs (documents donnes a createPdf), journal (console).
+// Notes : minuteries (toutes celles posees par le widget), fetchs, jetons, compteurs (chargements de la
+// bibliotheque docx, fabrications de fichiers Word), docs (Documents donnes a la bibliotheque), journal (console).
 async function preparer(options = {}) {
   const journal = [];
   const console = {};
@@ -94,18 +96,15 @@ async function preparer(options = {}) {
   const global = w.window;
   const fetchs = [];
   const jetons = [];
-  const docs = [];
-  const compteurs = {pdfmake: 0, pdf: 0};
 
   // Minuteries simulees : chacune garde son delai, sa fonction, et si elle est arretee ou declenchee.
   const minuteries = [];
   global.setTimeout = (fonction, delai) => { minuteries.push({fonction, delai, arretee: false, declenchee: false}); return minuteries.length; };
   global.clearTimeout = (id) => { if (minuteries[id - 1]) minuteries[id - 1].arretee = true; };
 
-  global.FormData = class { constructor() { this.parties = []; } append(nom, valeur, fichier) { this.parties.push([nom, valeur, fichier]); } };
-  global.Blob = class { constructor(parties) { this.size = parties ? parties.length : 0; } };
-  global.chargerPdfmake = () => { compteurs.pdfmake += 1; return Promise.resolve(); };
-  global.pdfMake = {createPdf: (document) => { compteurs.pdf += 1; docs.push(document); return {getBlob: () => Promise.resolve({size: 1234})}; }};
+  const docx = installerDocx(global);
+  const compteurs = docx.compteurs;
+  const docs = docx.documents;
 
   w.grist.docApi.getAccessToken = options.jeton || ((opts) => { jetons.push(opts); return Promise.resolve({token: JETON, baseUrl: BASE_URL}); });
   w.grist.docApi.applyUserActions = (actions) => {
@@ -220,7 +219,7 @@ test("conventionAvecDelai : au bout du délai, rejet avec l'erreur prévue ; la 
 // ---------------------------------------------------------------------------
 
 // Echoue si un jeton qui n'arrive pas ne donne pas envoi-impossible au bout de 15 s, si une
-// requete part malgre tout (logos, envoi), ou si pdfmake est charge apres l'echec.
+// requete part malgre tout (logos, envoi), ou si la bibliotheque docx est chargee apres l'echec.
 test("jeton : sans réponse au bout de 15 s → envoi-impossible, rien n'est envoyé", async () => {
   const ctx = await preparer({jeton: jamais});
 
@@ -232,13 +231,13 @@ test("jeton : sans réponse au bout de 15 s → envoi-impossible, rien n'est env
   assert.ok(erreur, "la génération est rejetée");
   assert.equal(erreur.code, "envoi-impossible");
   assert.equal(ctx.fetchs.length, 0, "aucune requête");
-  assert.equal(ctx.compteurs.pdfmake, 0, "pdfmake non chargé");
-  assert.equal(ctx.compteurs.pdf, 0, "aucun PDF fabriqué");
+  assert.equal(ctx.compteurs.chargements, 0, "la bibliothèque docx n'est pas chargée");
+  assert.equal(ctx.compteurs.fabrications, 0, "aucun fichier Word fabriqué");
   assert.equal(ctx.actives().length, 0, "plus aucune minuterie active");
 });
 
 // Echoue si un logo qui ne se telecharge pas arrete la generation, si les deux logos n'ont pas
-// chacun leur minuterie de 15 s, si la generation ne continue pas sans logo (PDF sans en-tete,
+// chacun leur minuterie de 15 s, si la generation ne continue pas sans logo (fichier Word sans en-tete,
 // logosManquants = Logo et Logo_partenaire), ou si le reste de la generation est change.
 test("logos : sans réponse au bout de 15 s → logos absents, la génération réussit sans eux", async () => {
   const ctx = await preparer({logos: true, logoReponse: jamais});
@@ -251,16 +250,16 @@ test("logos : sans réponse au bout de 15 s → logos absents, la génération r
   const fin = await resultat;
 
   assert.deepEqual(Array.from(fin.logosManquants), ["Logo", "Logo_partenaire"]);
-  assert.ok(fin.nomFichier.endsWith(".pdf"));
-  assert.equal(ctx.compteurs.pdf, 1, "un seul PDF");
-  assert.ok(!ctx.docs[0].header, "le PDF est fabriqué sans en-tête de logo");
+  assert.ok(fin.nomFichier.endsWith(".docx"));
+  assert.equal(ctx.compteurs.fabrications, 1, "un seul fichier Word");
+  assert.equal(enteteDeLaPremierePage(ctx.docs[0]), null, "le fichier Word est fabriqué sans en-tête de logo");
   assert.equal(ctx.fetchs.filter(estEnvoi).length, 1, "le fichier est bien envoyé");
   assert.equal(ctx.fetchs.filter(estPatch).length, 1, "le rattachement est bien fait");
 });
 
 // Echoue si une requete d'envoi qui ne repond pas ne donne pas envoi-impossible au bout de 20 s,
 // ou si un rattachement est tente apres l'echec.
-test("envoi du PDF : sans réponse au bout de 20 s → envoi-impossible, pas de rattachement", async () => {
+test("envoi du fichier Word : sans réponse au bout de 20 s → envoi-impossible, pas de rattachement", async () => {
   const ctx = await preparer({fetch: (url) => (String(url).includes("/attachments?") ? jamais() : undefined)});
 
   const resultat = attraper(ctx.w.conventionGenerer(1, VALEURS));
@@ -276,7 +275,7 @@ test("envoi du PDF : sans réponse au bout de 20 s → envoi-impossible, pas de 
 
 // Echoue si le delai de l'envoi ne couvre que fetch : une reponse arrivee mais dont le corps ne
 // se lit jamais doit aussi donner envoi-impossible au bout de 20 s.
-test("envoi du PDF : réponse arrivée mais corps jamais lu → envoi-impossible au bout de 20 s", async () => {
+test("envoi du fichier Word : réponse arrivée mais corps jamais lu → envoi-impossible au bout de 20 s", async () => {
   const ctx = await preparer({
     fetch: (url) => (String(url).includes("/attachments?") ? Promise.resolve({ok: true, status: 200, json: jamais}) : undefined),
   });
@@ -303,7 +302,7 @@ test("rattachement : PATCH sans réponse au bout de 20 s, fichier retrouvé à l
   await ctx.declencher(20000);
   const fin = await resultat;
 
-  assert.ok(fin.nomFichier.endsWith(".pdf"), "la génération réussit");
+  assert.ok(fin.nomFichier.endsWith(".docx"), "la génération réussit");
   assert.deepEqual(lectures, ["Conventions"], "une seule relecture, de la table Conventions");
   assert.equal(ctx.fetchs.filter(estPatch).length, 1, "pas de nouvel essai");
 });
@@ -345,14 +344,14 @@ test("relecture de secours : sans réponse au bout de 15 s → rattachement-echo
 });
 
 // Echoue si, pour une generation qui reussit sans lenteur, les minuteries ne sont pas posees dans
-// l'ordre enregistrement (20 s), jeton (15 s), pdfmake (20 s), envoi (20 s), rattachement (20 s),
+// l'ordre enregistrement (20 s), jeton (15 s), bibliotheque docx (20 s), envoi (20 s), rattachement (20 s),
 // ou si l'une reste active.
 test("génération réussie : une minuterie par appel, dans l'ordre, toutes arrêtées à la fin", async () => {
   const ctx = await preparer();
 
   const fin = await ctx.w.conventionGenerer(1, VALEURS);
 
-  assert.ok(fin.nomFichier.endsWith(".pdf"));
+  assert.ok(fin.nomFichier.endsWith(".docx"));
   assert.deepEqual(ctx.minuteries.map((m) => m.delai), [20000, 15000, 20000, 20000, 20000]);
   assert.equal(ctx.actives().length, 0, "aucune minuterie ne reste active");
   assert.equal(ctx.minuteries.filter((m) => m.declenchee).length, 0, "aucune n'a été déclenchée");
@@ -379,7 +378,7 @@ async function preparerEcran(options) {
   doc.querySelectorAll = (selecteur) => (String(selecteur) === "#conventionDialog fieldset" ? fieldsets : []);
 
   const focus = [];
-  for (const id of [...BOUTONS_DU_PIED, "conventionVoir"]) doc.getElementById(id).focus = () => { focus.push(id); };
+  for (const id of [...BOUTONS_DU_PIED, "conventionTelecharger"]) doc.getElementById(id).focus = () => { focus.push(id); };
 
   ctx.fieldsets = fieldsets;
   ctx.focus = focus;
@@ -422,7 +421,7 @@ const ECRANS = [
     message: MESSAGE_ENVOI_IMPOSSIBLE,
   },
   {
-    nom: "envoi du PDF sans réponse",
+    nom: "envoi du fichier Word sans réponse",
     options: {fetch: (url) => (String(url).includes("/attachments?") ? jamais() : undefined)},
     delais: [20000],
     message: MESSAGE_ENVOI_IMPOSSIBLE,
@@ -467,7 +466,7 @@ for (const cas of ECRANS) {
 
 // Echoue si un logo qui n'arrive pas laisse la fenetre verrouillee apres la reussite, si le message
 // « Convention generee. » avec la mention du logo absent n'est pas affiche, ou si le focus
-// ne va pas sur « Voir la convention ».
+// ne va pas sur « Télécharger la convention » (E3 : plus de « Voir la convention » pour le document généré).
 test("écran : logos sans réponse → génération réussie sans logo, fenêtre déverrouillée, message et focus", async () => {
   const ctx = await preparerEcran({logos: true, logoReponse: jamais});
 
@@ -483,7 +482,7 @@ test("écran : logos sans réponse → génération réussie sans logo, fenêtre
   assert.ok(html.includes("alert-success"), "alerte de réussite");
   assert.ok(html.includes("Convention générée."), "« Convention générée. »");
   assert.ok(html.includes("sans le logo France Travail"), "le logo absent est signalé");
-  assert.equal(ctx.focus[ctx.focus.length - 1], "conventionVoir", "le focus va sur « Voir la convention »");
+  assert.equal(ctx.focus[ctx.focus.length - 1], "conventionTelecharger", "le focus va sur « Télécharger la convention »");
   assert.equal(ctx.element("conventionMessage").classList.contains("alert-error"), false, "pas d'alerte d'erreur");
 });
 

@@ -853,13 +853,15 @@ test("seuil de deux colonnes à 1100 px (D-E1-20) : la grille de la fenêtre pas
 // ---------------------------------------------------------------------------
 // ---- 9.0 Phrase d'introduction ----
 
-// Echoue si la phrase n'est pas exactement celle de la note (mise a jour du 2026-10-29, « sans
-// exception ni sauf »), si elle n'est plus un paragraphe ordinaire du corps, ou si l'ancienne
-// phrase « Les champs marqués d'un * sont obligatoires… » revient.
-test("la phrase d'introduction dit qu'un champ laissé vide sera complété à la main en pointillés (sans exception)", () => {
+// Echoue si la phrase n'est pas exactement celle de la note (E3, §15.7 : « Un champ laissé vide sera
+// surligné dans le document Word, à compléter avant la signature. »), si elle n'est plus un paragraphe
+// ordinaire du corps, si l'ancienne phrase des pointillés revient, ou si l'ancienne phrase « Les champs
+// marqués d'un * sont obligatoires… » revient.
+test("la phrase d'introduction dit qu'un champ laissé vide sera surligné dans le document Word (sans exception)", () => {
   const {html} = ouvrirFenetre(donneesFenetre());
-  assert.ok(html.includes('<p class="convention-intro">Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.</p>'),
-    "la phrase doit reprendre le texte exact de la note UX");
+  assert.ok(html.includes('<p class="convention-intro">Un champ laissé vide sera surligné dans le document Word, à compléter avant la signature.</p>'),
+    "la phrase doit reprendre le texte exact de la note UX (§15.7)");
+  assert.ok(!html.includes("pointillés") && !html.includes("complété à la main"), "plus d'allusion aux pointillés ni à un complément à la main");
   assert.equal(compte(html, /convention-intro/g), 1, "une seule phrase d'introduction");
   assert.ok(!html.includes("sont obligatoires"), "plus de phrase sur les champs obligatoires");
   assert.ok(!/sauf/i.test(html), "aucune exception dans la fenêtre");
@@ -1239,13 +1241,13 @@ test("règle des deux sources : choisir un contact dans la liste vide la saisie 
 });
 
 // ---------------------------------------------------------------------------
-// 10. Tache 8.1 : phrase « Le nouveau PDF remplacera… » a la re-generation
+// 10. Tache 8.1 : phrase « Le nouveau document remplacera… » a la re-generation (E3 : « PDF » devient « document »)
 // ---------------------------------------------------------------------------
 // La phrase se lit dans le HTML de la fenetre (conventionModalHtml) : fonction pure, sans
 // faux navigateur. Elle est presente seulement quand la ligne Conventions porte deja un
 // PDF genere (D-S8-2, note UX §12.3).
 
-const REMPLACEMENT = /<p>(Le nouveau PDF remplacera[^<]*)<\/p>/;
+const REMPLACEMENT = /<p>(Le nouveau document remplacera[^<]*)<\/p>/;
 const fenetreHtml = (conventions) => {
   const w = loadWidget();
   return w.conventionModalHtml(1, donneesFenetre({conventions}));
@@ -1254,14 +1256,14 @@ const fenetreHtml = (conventions) => {
 // Echoue si la phrase manque a la re-generation, n'est pas un <p> ordinaire (sans classe
 // d'alerte ni role), est apres l'alerte d'erreur ou apres la phrase sur les champs obligatoires
 // (elle doit etre tout en haut du corps), apparait plus d'une fois, ou n'a pas le texte exact.
-test("re-génération : « Le nouveau PDF remplacera la convention générée le … » est un paragraphe ordinaire, tout en haut du corps de la fenêtre", () => {
+test("re-génération : « Le nouveau document remplacera la convention générée le … » est un paragraphe ordinaire, tout en haut du corps de la fenêtre", () => {
   const html = fenetreHtml([convention({PDF_genere: PDF, Date_generation: secondes(2026, 3, 14)})]);
   const trouve = REMPLACEMENT.exec(html);
   assert.ok(trouve, "la phrase est présente");
-  assert.equal(trouve[1], "Le nouveau PDF remplacera la convention générée le 14/03/2026.");
-  assert.equal(compte(html, /Le nouveau PDF remplacera/g), 1, "une seule fois");
+  assert.equal(trouve[1], "Le nouveau document remplacera la convention générée le 14/03/2026.");
+  assert.equal(compte(html, /Le nouveau document remplacera/g), 1, "une seule fois");
   const corps = html.indexOf('<div class="modal-body">');
-  const phrase = html.indexOf("Le nouveau PDF remplacera");
+  const phrase = html.indexOf("Le nouveau document remplacera");
   const alerte = html.indexOf('id="conventionMessage"');
   const intro = html.indexOf('class="convention-intro"');
   assert.ok(corps !== -1 && corps < phrase && phrase < alerte && phrase < intro, "tout en haut du corps, avant l'alerte et avant la phrase d'introduction");
@@ -1275,19 +1277,19 @@ test("re-génération : la date de la phrase est au format jour/mois/année avec
   const cas = [[secondes(2026, 3, 5), "05/03/2026"], [secondes(2026, 11, 27), "27/11/2026"], [secondes(2027, 1, 31), "31/01/2027"]];
   for (const [valeur, attendu] of cas) {
     const trouve = REMPLACEMENT.exec(fenetreHtml([convention({PDF_genere: PDF, Date_generation: valeur, Date_depot: secondes(2030, 9, 9)})]));
-    assert.equal(trouve[1], `Le nouveau PDF remplacera la convention générée le ${attendu}.`, attendu);
+    assert.equal(trouve[1], `Le nouveau document remplacera la convention générée le ${attendu}.`, attendu);
   }
 });
 
 // Echoue si une date vide (null, 0, texte vide ou absente) laisse « le . », « le undefined » ou
 // « le 01/01/1970 » dans la phrase, ou fait disparaitre la phrase (le PDF existe quand meme).
-test("re-génération sans date (Date_generation vide) : « Le nouveau PDF remplacera la convention générée. », sans date", () => {
+test("re-génération sans date (Date_generation vide) : « Le nouveau document remplacera la convention générée. », sans date", () => {
   for (const vide of [null, 0, "", undefined]) {
     const champs = {PDF_genere: PDF};
     if (vide !== undefined) champs.Date_generation = vide;
     const trouve = REMPLACEMENT.exec(fenetreHtml([convention(champs)]));
     assert.ok(trouve, `date vide (${String(vide)}) : la phrase est présente`);
-    assert.equal(trouve[1], "Le nouveau PDF remplacera la convention générée.", `date vide : ${String(vide)}`);
+    assert.equal(trouve[1], "Le nouveau document remplacera la convention générée.", `date vide : ${String(vide)}`);
   }
 });
 
@@ -1295,7 +1297,7 @@ test("re-génération sans date (Date_generation vide) : « Le nouveau PDF rempl
 // Conventions, ligne sans PDF_genere (informations seulement enregistrees), PDF_genere vide
 // (liste vide ou « ["L"] » seul), meme avec une Date_generation. conventionEstRegeneration doit
 // dire faux dans ces cas, vrai quand un PDF est rattache.
-test("première génération (aucun PDF généré) : pas de phrase « Le nouveau PDF remplacera… »", () => {
+test("première génération (aucun PDF généré) : pas de phrase « Le nouveau document remplacera… »", () => {
   const w = loadWidget();
   const cas = {
     "aucune ligne Conventions": [],

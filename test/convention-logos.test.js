@@ -1,16 +1,22 @@
 "use strict";
 
-// Tâche 7.7b : les logos de la convention (docs/ux/convention.md, §11.1 et §11.2).
-// Logo (à gauche) et Logo_partenaire (à droite) sont des colonnes de pièces jointes du modèle,
-// lues au moment de la génération. Un logo vide, absent, en échec ou illisible ne bloque jamais.
+// Tâche 7.7b, mise à jour pour l'Évolution 3 : les logos de la convention (docs/ux/convention.md, §11.2
+// et §15.9). Logo (à gauche) et Logo_partenaire (à droite) sont des colonnes de pièces jointes du modèle,
+// lues au moment de la génération et posées dans l'EN-TÊTE DE LA PAGE 1 du fichier Word. Un logo vide,
+// absent, en échec ou illisible ne bloque jamais.
 // Le bac à sable de test/helpers/widget.js n'a ni FormData, ni Blob, ni btoa, ni clearTimeout, et
-// son getAccessToken refuse : les doublures sont posées ici, sur w.window. pdfmake n'est jamais
-// chargé pour de vrai. Valeurs fictives uniquement : le jeton et l'adresse n'existent pas.
-// Les valeurs attendues (cm → pt, 28,35 pt par cm) sont écrites en clair, comme dans le §11.
+// son getAccessToken refuse : les doublures sont posées ici, sur w.window. La bibliothèque docx n'est
+// jamais chargée pour de vrai : une fausse bibliothèque (test/helpers/docx.js) garde le Document demandé.
+// Valeurs fictives uniquement : le jeton et l'adresse n'existent pas.
+// Les sections 1 à 5 testent encore les fonctions du PDF (conventionImageLogo, conventionDocumentPdf),
+// qui restent dans script.js tant que le code pdfmake n'est pas retiré ; les sections « Word » testent
+// celles du fichier Word (conventionImageLogoDocx, conventionDocumentDocx). Valeurs en pixels pour le
+// Word (6 cm sur 2 cm à 96 pixels par pouce = 227 sur 76), en points pour le PDF (28,35 pt par cm).
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget");
+const {installerDocx, creerFauxDocx, images: imagesDuDocument, enteteDeLaPremierePage, section: sectionDuDocument, instances} = require("./helpers/docx");
 
 const JETON = "jeton-fictif-0a1b2c3d";
 const BASE_URL = "https://grist.exemple.test/api/docs/document-fictif";
@@ -26,6 +32,9 @@ const DISTANCE_HAUT = CM(1.25);
 const MARGE = CM(2.5);
 const HAUTEUR_LIGNE_1PT = 1.17;
 const CINQ_MO = 5 * 1024 * 1024;
+// Boîte de 6 cm sur 2 cm du Word, en pixels (96 pixels par pouce) : 6 / 2,54 × 96 = 226,77 → 227 ; 2 / 2,54 × 96 = 75,59 → 76.
+const BOITE_LARGEUR_PX = 227;
+const BOITE_HAUTEUR_PX = 76;
 
 const CLUB = {id: 7, Nom: "Club Exemple", SIRET: "12345678901234", Adresse: "1 rue Exemple", Code_postal: "75001", Ville: "Exemple-sur-Mer"};
 const AGENCE = {id: 5, Libelle_agence: "Agence Exemple", Adresse: "2 avenue Exemple", Complement_adresse: "", Code_postal: "75002", Ville: "Exemple-Ville"};
@@ -83,8 +92,8 @@ function reponseFichier(contenu) {
 
 // options.logo / options.partenaire : valeur de la colonne dans le modele (par defaut ['L', id]).
 // options.fichiers : { [idPieceJointe]: octets | statut | Error | {illisible: true} }, par defaut un PNG lisible.
-// options.pdfRefuseLesImages : createPdf echoue des que le document a un en-tete (logos).
-// Notes : fetchs (chaque requete), docs (chaque document donne a createPdf), journal (console),
+// options.docxRefuseLesImages : la bibliotheque echoue des que le document a un en-tete (logos).
+// Notes : fetchs (chaque requete), docs (chaque Document donne a la bibliotheque docx), journal (console),
 // jetons (options de chaque getAccessToken), trace (ordre des etapes).
 async function preparer(options = {}) {
   const journal = [];
@@ -115,22 +124,17 @@ async function preparer(options = {}) {
   const trace = [];
   const global = w.window;
 
-  global.FormData = class { constructor() { this.parties = []; } append(nom, valeur, fichier) { this.parties.push([nom, valeur, fichier]); } };
-  global.Blob = class { constructor(parties) { this.size = parties ? parties.length : 0; } };
   global.clearTimeout = clearTimeout;
   global.btoa = btoa;
-  global.chargerPdfmake = () => { trace.push("pdfmake"); return Promise.resolve(); };
-  global.pdfMake = {
-    createPdf: (document) => {
+  installerDocx(global, {
+    trace: (etape) => trace.push(etape),
+    fabriquer: (document) => {
       docs.push(document);
-      trace.push("pdf");
-      return {
-        getBlob: () => (options.pdfRefuseLesImages && document.header
-          ? Promise.reject(new Error("image refusée par pdfmake (doublure)"))
-          : Promise.resolve({size: 1234})),
-      };
+      return options.docxRefuseLesImages && enteteDeLaPremierePage(document)
+        ? Promise.reject(new Error("image refusée par la bibliothèque docx (doublure)"))
+        : Promise.resolve({size: 1234});
     },
-  };
+  });
   w.grist.docApi.applyUserActions = (actions) => {
     trace.push("enregistrement");
     const [type, , id] = actions[0];
@@ -174,7 +178,7 @@ function visible(erreur) {
   return `${erreur.message}\n${erreur.stack}\n${JSON.stringify(proprietes)}`;
 }
 
-// Un logo tout prêt pour pdfmake, pour tester la mise en page sans passer par une génération.
+// Un logo tout prêt pour pdfmake (code PDF encore présent), pour tester la mise en page sans passer par une génération.
 const logoPret = (largeur, hauteur, image = "data:image/png;base64,AAAA") => ({image, width: largeur, height: hauteur});
 
 // Un widget léger, pour les tests de fonctions pures.
@@ -250,7 +254,7 @@ test("format : un PNG est accepté même si le nom et le type annoncés disent G
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.deepEqual(ordinaire(resultat.logosManquants), [], "le logo est pris");
-  assert.ok(ctx.docs[0].header, "le document a une ligne de logos");
+  assert.ok(enteteDeLaPremierePage(ctx.docs[0]), "le document a un en-tête de logos");
 });
 
 // Échoue si un GIF est accepté parce que le serveur l'annonce « image/png » et que le nom finit par .png.
@@ -267,7 +271,7 @@ test("format : un GIF est refusé même si le nom et le type annoncés disent PN
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.deepEqual(ordinaire(resultat.logosManquants), ["Logo"]);
-  assert.equal(Object.hasOwn(ctx.docs[0], "header"), false, "aucun logo dans le document");
+  assert.equal(enteteDeLaPremierePage(ctx.docs[0]), null, "aucun logo dans le document");
 });
 
 // ---------------------------------------------------------------------------
@@ -309,8 +313,8 @@ for (const [nom, fichier] of [
     const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
     assert.deepEqual(ordinaire(resultat.logosManquants), ["Logo"]);
-    assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
-    assert.equal(Object.hasOwn(ctx.docs[0], "header"), false, "aucun logo dans le document");
+    assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit");
+    assert.equal(enteteDeLaPremierePage(ctx.docs[0]), null, "aucun logo dans le document");
   });
 }
 
@@ -325,7 +329,7 @@ test("dimensions : PNG dont les octets 12 à 15 ne sont pas IHDR → illisible, 
   const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.deepEqual(ordinaire(resultat.logosManquants), ["Logo"]);
-  assert.equal(Object.hasOwn(ctx.docs[0], "header"), false, "aucun logo dans le document");
+  assert.equal(enteteDeLaPremierePage(ctx.docs[0]), null, "aucun logo dans le document");
 });
 
 // Échoue si la limite est appliquée trop tôt : un PNG de 4000 × 4000 px pile doit encore passer.
@@ -392,23 +396,37 @@ test("lecture : seul le premier fichier de chaque colonne est téléchargé", as
   assert.deepEqual(ids, [String(ID_LOGO), String(ID_PARTENAIRE)]);
 });
 
-// Échoue si les images lues ne sont pas celles du document donné à pdfmake (Logo à gauche,
-// Logo_partenaire à droite, en data URL PNG, dans la boîte de 6 × 2 cm).
-test("lecture : les deux logos lus arrivent dans l'en-tête du document donné à pdfmake", async () => {
+// Les logos posés dans l'en-tête du document Word, de gauche à droite : [{nom, alignement, type, largeur, hauteur}].
+// Un paragraphe vide (logo absent) est ignoré. `nom` est le texte alternatif donné à l'image.
+function logosDeLEntete(document) {
+  const entete = enteteDeLaPremierePage(document);
+  if (!entete) return [];
+  return instances(entete, "Paragraph")
+    .map((paragraphe) => ({paragraphe, image: (paragraphe.options.children || []).find((enfant) => enfant.__classe === "ImageRun")}))
+    .filter(({image}) => image)
+    .map(({paragraphe, image}) => ({
+      nom: image.options.altText.title, alignement: paragraphe.options.alignment, type: image.options.type,
+      largeur: image.options.transformation.width, hauteur: image.options.transformation.height,
+    }));
+}
+
+// Échoue si les images lues ne sont pas celles du Word (Logo à gauche, Logo_partenaire à droite, avec leur
+// format PNG ou JPEG et leur texte alternatif, dans la boîte de 6 × 2 cm), ou si les octets de l'image ne sont
+// pas ceux du fichier téléchargé.
+test("lecture : les deux logos lus arrivent dans l'en-tête du document Word (Logo à gauche, Logo_partenaire à droite)", async () => {
   const ctx = await preparer({fichiers: {[ID_LOGO]: png(1000, 500), [ID_PARTENAIRE]: jpeg(400, 300)}});
   await ctx.w.conventionGenerer(1, VALEURS);
 
-  assert.equal(ctx.docs.length, 1, "un seul PDF fabriqué");
-  const ligne = ordinaire(ctx.docs[0].header(1));
-  const images = ligne.columns.filter((colonne) => colonne.image);
-  assert.equal(images.length, 2);
-  assert.ok(images[0].image.startsWith("data:image/png;base64,"));
-  assert.equal(images[0].alignment, "left");
-  assert.ok(images[1].image.startsWith("data:image/jpeg;base64,"));
-  assert.equal(images[1].alignment, "right");
-  images.forEach((i) => {
-    assert.ok(i.width <= BOITE_LARGEUR + 1e-9 && i.height <= BOITE_HAUTEUR + 1e-9, "dans la boîte de 6 × 2 cm");
-  });
+  assert.equal(ctx.docs.length, 1, "un seul fichier Word fabriqué");
+  const logos = logosDeLEntete(ctx.docs[0]);
+  assert.deepEqual(logos.map((l) => [l.nom, l.alignement, l.type]), [
+    ["Logo", "AlignmentType.LEFT", "png"],
+    ["Logo du partenaire", "AlignmentType.RIGHT", "jpg"],
+  ]);
+  logos.forEach((l) => assert.ok(l.largeur <= BOITE_LARGEUR_PX && l.hauteur <= BOITE_HAUTEUR_PX, "dans la boîte de 6 × 2 cm"));
+  const donnees = imagesDuDocument(ctx.docs[0]).map((i) => Buffer.from(i.data));
+  assert.deepStrictEqual(donnees[0], Buffer.from(png(1000, 500)), "les octets du Logo sont ceux du fichier téléchargé");
+  assert.deepStrictEqual(donnees[1], Buffer.from(jpeg(400, 300)), "les octets du partenaire sont ceux du fichier téléchargé");
 });
 
 // ---------------------------------------------------------------------------
@@ -564,38 +582,37 @@ for (const [nom, options, manquants, presents] of CAS_MANQUANTS) {
     const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
     assert.deepEqual(ordinaire(resultat.logosManquants), manquants);
-    assert.ok(resultat.nomFichier.endsWith(".pdf"), "la génération réussit");
-    assert.equal(ctx.fetchs.filter(estEnvoi).length, 1, "le PDF est envoyé");
-    assert.equal(ctx.fetchs.filter(estPatch).length, 1, "le PDF est rattaché");
+    assert.ok(resultat.nomFichier.endsWith(".docx"), "la génération réussit");
+    assert.equal(ctx.fetchs.filter(estEnvoi).length, 1, "le fichier Word est envoyé");
+    assert.equal(ctx.fetchs.filter(estPatch).length, 1, "le fichier Word est rattaché");
     const ligne = ctx.w.state.raw.Conventions.find((l) => l.id === ID_CONVENTION);
     assert.deepEqual(ordinaire(ligne.PDF_genere), ["L", ID_PIECE_JOINTE], "la convention est mise à jour en mémoire");
 
-    assert.equal(ctx.docs.length, 1, "un seul PDF fabriqué");
-    const colonnes = ctx.docs[0].header ? ordinaire(ctx.docs[0].header(1)).columns : [];
-    const images = colonnes.filter((c) => c.image).map((c) => (c.alignment === "left" ? "Logo" : "Logo_partenaire"));
+    assert.equal(ctx.docs.length, 1, "un seul fichier Word fabriqué");
+    const images = logosDeLEntete(ctx.docs[0]).map((l) => (l.nom === "Logo" ? "Logo" : "Logo_partenaire"));
     assert.deepEqual(images, presents, "le document ne contient que les logos lisibles");
     assert.equal(ctx.journal.length, 0, "rien dans la console");
   });
 }
 
-// Échoue si un refus de pdfmake pour une image bloque la génération au lieu de refaire le PDF
-// sans logo, ou si logosManquants ne nomme pas les logos retirés.
-const REFUS_PDFMAKE = [
+// Échoue si un refus de la bibliothèque docx pour une image bloque la génération au lieu de refaire le
+// fichier Word sans logo, ou si logosManquants ne nomme pas les logos retirés.
+const REFUS_DOCX = [
   ["Logo seul", {partenaire: null}, ["Logo"]],
   ["Logo et partenaire", {}, ["Logo", "Logo_partenaire"]],
   ["partenaire seul (Logo vide)", {logo: null}, ["Logo", "Logo_partenaire"]],
 ];
-for (const [nom, options, manquants] of REFUS_PDFMAKE) {
-  test(`logosManquants : pdfmake refuse l'image (${nom}) → PDF refait sans logo, ${JSON.stringify(manquants)}`, async () => {
-    const ctx = await preparer({...options, pdfRefuseLesImages: true});
+for (const [nom, options, manquants] of REFUS_DOCX) {
+  test(`logosManquants : la bibliothèque docx refuse l'image (${nom}) → fichier Word refait sans logo, ${JSON.stringify(manquants)}`, async () => {
+    const ctx = await preparer({...options, docxRefuseLesImages: true});
 
     const resultat = await ctx.w.conventionGenerer(1, VALEURS);
 
     assert.deepEqual(ordinaire(resultat.logosManquants), manquants);
-    assert.equal(ctx.docs.length, 2, "le PDF est fabriqué deux fois");
-    assert.ok(ctx.docs[0].header, "d'abord avec les logos");
-    assert.equal(Object.hasOwn(ctx.docs[1], "header"), false, "puis sans logo");
-    assert.equal(ctx.fetchs.filter(estEnvoi).length, 1, "le PDF sans logo est envoyé");
+    assert.equal(ctx.docs.length, 2, "le fichier Word est fabriqué deux fois");
+    assert.ok(enteteDeLaPremierePage(ctx.docs[0]), "d'abord avec les logos");
+    assert.equal(enteteDeLaPremierePage(ctx.docs[1]), null, "puis sans logo");
+    assert.equal(ctx.fetchs.filter(estEnvoi).length, 1, "le fichier Word sans logo est envoyé");
     assert.equal(ctx.fetchs.filter(estPatch).length, 1, "et rattaché");
     assert.equal(ctx.journal.length, 0, "rien dans la console");
   });
@@ -606,14 +623,14 @@ for (const [nom, options, manquants] of REFUS_PDFMAKE) {
 // ---------------------------------------------------------------------------
 
 // Échoue si le jeton est demandé plus d'une fois, en lecture seule, après les logos ou après
-// pdfmake, ou si les logos, l'envoi et le rattachement n'utilisent pas le même jeton.
-test("jeton : un seul, en écriture, demandé avant les logos et avant pdfmake, le même partout", async () => {
+// le chargement de la bibliothèque docx, ou si les logos, l'envoi et le rattachement n'utilisent pas le même jeton.
+test("jeton : un seul, en écriture, demandé avant les logos et avant la bibliothèque docx, le même partout", async () => {
   const ctx = await preparer();
   await ctx.w.conventionGenerer(1, VALEURS);
 
   assert.equal(ctx.jetons.length, 1, "getAccessToken n'est appelé qu'une fois");
   assert.deepEqual(ordinaire(ctx.jetons[0]), {readOnly: false});
-  assert.deepEqual(ctx.trace, ["enregistrement", "jeton", "logo", "logo", "pdfmake", "pdf", "envoi", "rattachement"]);
+  assert.deepEqual(ctx.trace, ["enregistrement", "jeton", "logo", "logo", "docx", "document", "envoi", "rattachement"]);
   assert.equal(ctx.fetchs.length, 4, "deux logos, l'envoi, le rattachement");
   ctx.fetchs.forEach((requete) => assert.equal(jetonDe(requete), JETON, "même jeton dans chaque requête"));
 });
@@ -627,9 +644,9 @@ test("jeton : sans aucun logo, un seul jeton quand même (pour l'envoi) et aucun
   assert.equal(ctx.fetchs.filter(estTelechargement).length, 0);
 });
 
-// Échoue si, quand le jeton est refusé, un logo est tout de même téléchargé, pdfmake chargé, ou
+// Échoue si, quand le jeton est refusé, un logo est tout de même téléchargé, la bibliothèque docx chargée, ou
 // si l'erreur ou la console montre le jeton.
-test("jeton : refusé → envoi-impossible, aucun logo téléchargé, pdfmake non chargé, rien de secret montré", async () => {
+test("jeton : refusé → envoi-impossible, aucun logo téléchargé, bibliothèque docx non chargée, rien de secret montré", async () => {
   const ctx = await preparer({jetonRefuse: true});
 
   const erreur = await attraper(ctx.w.conventionGenerer(1, VALEURS));
@@ -637,7 +654,7 @@ test("jeton : refusé → envoi-impossible, aucun logo téléchargé, pdfmake no
   assert.ok(erreur, "la génération est rejetée");
   assert.equal(erreur.code, "envoi-impossible");
   assert.equal(ctx.fetchs.length, 0, "aucune requête, donc aucun logo");
-  assert.ok(!ctx.trace.includes("pdfmake"), "pdfmake non chargé");
+  assert.ok(!ctx.trace.includes("docx"), "la bibliothèque docx n'est pas chargée");
   assert.ok(!visible(erreur).includes(JETON), "pas de jeton dans l'erreur");
   assert.ok(!JSON.stringify(ctx.journal).includes(JETON), "pas de jeton dans la console");
 });
@@ -659,7 +676,7 @@ test("jeton : l'erreur réseau d'un logo, qui cite l'adresse avec le jeton, ne r
 
 // Échoue si un échec de l'envoi, après le téléchargement des logos, montre le jeton dans
 // l'erreur ou la console, ou si la liste des logos fuit dans l'erreur.
-test("jeton : l'envoi du PDF échoue après les logos → erreur sans jeton, ni dans l'erreur ni dans la console", async () => {
+test("jeton : l'envoi du fichier Word échoue après les logos → erreur sans jeton, ni dans l'erreur ni dans la console", async () => {
   const ctx = await preparer();
   const fetchInitial = ctx.w.window.fetch;
   ctx.w.window.fetch = (url, opts) => (estEnvoi({options: opts})
@@ -674,4 +691,127 @@ test("jeton : l'envoi du PDF échoue après les logos → erreur sans jeton, ni 
   assert.ok(!JSON.stringify(ctx.journal).includes(JETON), "pas de jeton dans la console");
   assert.equal(ctx.journal.length, 0, "rien dans la console");
   assert.equal(ctx.fetchs.filter(estPatch).length, 0, "pas de rattachement");
+});
+
+// ===========================================================================
+// WORD (Évolution 3) : les logos du fichier .docx
+// ===========================================================================
+// conventionImageLogoDocx (octets → image pour la bibliothèque docx) et conventionDocumentDocx (en-tête
+// de la page 1). Mêmes règles de lecture que pour le PDF (format d'après les octets, 5 Mo, 4000 px) ;
+// seules les unités et les noms changent : pixels (1 px = 1/96 pouce), type « png » ou « jpg ».
+
+const imageDocx = (octets) => {
+  const resultat = widgetPur().conventionImageLogoDocx(octets);
+  return resultat === null ? null : ordinaire({type: resultat.type, width: resultat.width, height: resultat.height, octets: Buffer.from(resultat.data).toString("base64")});
+};
+
+// Échoue si un PNG n'est plus accepté pour le Word, si son type n'est plus « png », si les octets de
+// l'image ne sont plus exactement ceux du fichier, ou si sa taille d'origine (plus petite que la boîte) change.
+test("Word, format : un PNG est accepté (type png, octets identiques au fichier, taille d'origine)", () => {
+  const fichier = png(100, 40);
+  const resultat = imageDocx(fichier);
+  assert.ok(resultat, "le PNG est accepté");
+  assert.equal(resultat.type, "png");
+  assert.equal(resultat.octets, Buffer.from(fichier).toString("base64"));
+  assert.deepEqual([resultat.width, resultat.height], [100, 40]);
+});
+
+// Échoue si un JPEG n'est plus accepté pour le Word, ou si son type n'est plus « jpg » (la bibliothèque
+// refuse « jpeg »), ou si sa taille n'est plus lue dans le cadre SOF.
+test("Word, format : un JPEG est accepté (type jpg, taille lue dans le fichier)", () => {
+  const resultat = imageDocx(jpeg(100, 50));
+  assert.ok(resultat, "le JPEG est accepté");
+  assert.equal(resultat.type, "jpg");
+  assert.deepEqual([resultat.width, resultat.height], [100, 50]);
+});
+
+// Échoue si, pour le Word, un autre format (GIF, PDF, WebP, texte), un fichier vide ou un fichier abîmé
+// est accepté au lieu d'être refusé.
+for (const [nom, fabriquer] of REFUSES) {
+  test(`Word, format : ${nom} refusé d'après les octets`, () => {
+    assert.equal(imageDocx(fabriquer()), null);
+  });
+}
+
+// Échoue si un fichier de plus de 5 Mo est accepté pour le Word, ou si la limite est appliquée trop tôt (5 Mo pile passe).
+test("Word, poids : plus de 5 Mo refusé, 5 Mo pile accepté", () => {
+  assert.equal(imageDocx(pngDePoids(CINQ_MO + 1)), null, "5 Mo + 1 octet : refusé");
+  assert.ok(imageDocx(pngDePoids(CINQ_MO)), "5 Mo pile : accepté");
+});
+
+// Échoue si un PNG de plus de 4000 px est accepté pour le Word, si la limite est appliquée trop tôt, ou si un
+// en-tête PNG sans « IHDR » est lu quand même.
+test("Word, dimensions : 4001 px refusé (largeur ou hauteur), 4000 px pile accepté, en-tête sans IHDR refusé", () => {
+  assert.equal(imageDocx(png(4001, 500)), null, "largeur 4001 px");
+  assert.equal(imageDocx(png(500, 4001)), null, "hauteur 4001 px");
+  assert.ok(imageDocx(png(4000, 4000)), "4000 × 4000 px pile : accepté");
+  const sansIhdr = png(100, 40);
+  sansIhdr.set([0x49, 0x44, 0x41, 0x54], 12);
+  assert.equal(imageDocx(sansIhdr), null, "IDAT à la place de IHDR");
+});
+
+// Échoue si un logo dépasse la boîte de 6 × 2 cm du Word (227 × 76 pixels), s'il est déformé, ou agrandi.
+const TAILLES_DOCX = [
+  ["PNG plus large que la boîte (1000 × 500) : la hauteur limite", png(1000, 500), 152, 76],
+  ["PNG très large (2000 × 100) : la largeur limite", png(2000, 100), 227, 11],
+  ["PNG très haut (100 × 1000) : la hauteur limite", png(100, 1000), 8, 76],
+  ["PNG plus petit que la boîte (50 × 20) : jamais agrandi", png(50, 20), 50, 20],
+  ["JPEG (3000 × 1000) : les deux limites presque en même temps", jpeg(3000, 1000), 227, 76],
+];
+for (const [nom, fichier, largeurAttendue, hauteurAttendue] of TAILLES_DOCX) {
+  test(`Word, taille : ${nom}`, () => {
+    const resultat = imageDocx(fichier);
+    assert.ok(resultat, "le logo est accepté");
+    assert.ok(resultat.width <= BOITE_LARGEUR_PX && resultat.height <= BOITE_HAUTEUR_PX, `${resultat.width} × ${resultat.height} dépasse la boîte`);
+    assert.deepEqual([resultat.width, resultat.height], [largeurAttendue, hauteurAttendue]);
+  });
+}
+
+// Disposition de l'en-tête (fonction pure conventionDocumentDocx, avec la fausse bibliothèque).
+const logoWord = (largeur, hauteur) => ({type: "png", data: Uint8Array.from([1, 2, 3]), width: largeur, height: hauteur});
+const documentWord = (logos) => {
+  const w = widgetPur();
+  return w.conventionDocumentDocx("# Titre\n\nTexte.", {}, {lib: creerFauxDocx(), logos});
+};
+
+// Échoue si Logo n'est plus à gauche et Logo_partenaire à droite, ou s'ils ne sont plus dans deux colonnes
+// côte à côte (un tableau d'une seule ligne et de deux cellules, sans bordure visible).
+test("Word, disposition : Logo à gauche, Logo_partenaire à droite, dans un tableau de deux cellules sur une seule ligne", () => {
+  const document = documentWord({logo: logoWord(100, 40), partenaire: logoWord(120, 30)});
+  assert.deepEqual(logosDeLEntete(document).map((l) => [l.nom, l.alignement]), [["Logo", "AlignmentType.LEFT"], ["Logo du partenaire", "AlignmentType.RIGHT"]]);
+  const tableaux = instances(enteteDeLaPremierePage(document), "Table");
+  assert.equal(tableaux.length, 1, "un seul tableau de logos");
+  assert.equal(tableaux[0].options.rows.length, 1, "une seule ligne");
+  assert.equal(tableaux[0].options.rows[0].options.children.length, 2, "deux cellules");
+  assert.equal(tableaux[0].options.borders.top.style, "BorderStyle.NONE", "sans bordure");
+});
+
+// Échoue si Logo seul change de côté, ou si une image fantôme apparaît à droite.
+test("Word, disposition : Logo seul reste à gauche, Logo_partenaire seul reste à droite", () => {
+  const seul = logosDeLEntete(documentWord({logo: logoWord(100, 40), partenaire: null}));
+  assert.deepEqual(seul.map((l) => [l.nom, l.alignement]), [["Logo", "AlignmentType.LEFT"]]);
+  const partenaire = logosDeLEntete(documentWord({logo: null, partenaire: logoWord(120, 30)}));
+  assert.deepEqual(partenaire.map((l) => [l.nom, l.alignement]), [["Logo du partenaire", "AlignmentType.RIGHT"]]);
+});
+
+// Échoue si, sans aucun logo, le document garde un en-tête de logos (tableau, image, espace) : le titre doit
+// être en haut de la zone de texte.
+test("Word, disposition : aucun logo = aucun en-tête de page 1", () => {
+  for (const logos of [undefined, {}, {logo: null, partenaire: null}]) {
+    const document = documentWord(logos);
+    assert.equal(sectionDuDocument(document).headers, undefined, `pas d'en-tête avec ${JSON.stringify(logos)}`);
+    assert.equal(imagesDuDocument(document).length, 0);
+  }
+});
+
+// Échoue si les logos sont aussi sur les pages suivantes (l'en-tête « default » doit rester sans image),
+// si la première page n'est plus distinguée des autres (titlePage), ou si le haut des logos n'est plus à
+// 1,25 cm du haut de la page (709 twips).
+test("Word, disposition : les logos sont sur la première page seulement, à 1,25 cm du haut de la page", () => {
+  const document = documentWord({logo: logoWord(100, 40), partenaire: logoWord(120, 30)});
+  const section = sectionDuDocument(document);
+  assert.equal(section.properties.titlePage, true, "première page distinguée des autres");
+  assert.ok(section.headers.first, "en-tête de la première page");
+  assert.equal(instances(section.headers.default, "ImageRun").length, 0, "aucun logo dans l'en-tête des autres pages");
+  assert.equal(section.properties.page.margin.header, 709, "1,25 cm = 709 twips");
 });

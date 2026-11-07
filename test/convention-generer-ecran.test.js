@@ -22,6 +22,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget");
+const {fixerFormat} = require("./helpers/docx");
 
 // Midi UTC : la date reste la même dans tous les fuseaux horaires.
 const secondes = (annee, mois, jour) => Date.UTC(annee, mois - 1, jour, 12, 0, 0) / 1000;
@@ -52,7 +53,8 @@ const SAISIE = {signataire: "31", representant: "Dana Exemple", fonction: "Direc
 
 // Messages d'échec de la note UX (§3 « Échecs »), un par code d'erreur de conventionGenerer.
 const ECHECS = {
-  "pdfmake-non-charge": "La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. Vos informations sont conservées.",
+  // E3 : le mot « PDF » devient « document » (note UX §15.7). L'ancien code pdfmake-non-charge n'est plus produit par la génération.
+  "docx-non-charge": "La convention n'a pas pu être générée : l'outil qui fabrique le document n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. Vos informations sont conservées.",
   "modele-indisponible": "La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. Vos informations sont conservées.",
   "envoi-refuse": "La convention n'a pas pu être enregistrée : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. Vos informations sont conservées.",
   "envoi-impossible": "La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. Vos informations sont conservées.",
@@ -102,7 +104,7 @@ const attendre = () => new Promise((resolve) => setImmediate(resolve));
 // Doublures de conventionGenerer
 // ---------------------------------------------------------------------------
 
-const reussit = () => () => Promise.resolve({nomFichier: "Convention-fictive.pdf"});
+const reussit = () => () => Promise.resolve({nomFichier: "Convention-fictive.docx"});
 
 // Un échec porte un `code` (et, selon le code, `problemes` ou `cases`), comme conventionErreur.
 const echoue = (code, complements) => () => Promise.reject(Object.assign(new Error("échec fictif"), {code}, complements));
@@ -153,7 +155,7 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
   const apres = [];
   const rendus = {fiche: 0};
   const ecritures = {alerte: 0, contenu: 0};
-  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionVoir", "conventionRegenerer"];
+  const PERMANENTS = ["conventionModal", "conventionAlerte", "conventionBlocContenu", "conventionReussite", "conventionTelecharger", "conventionRegenerer"];
   let actif = null;
   let contenu = "";
   let fieldsets = [];
@@ -231,10 +233,10 @@ async function preparer({contacts = CONTACTS, conventions = [], action = {}, ouv
 
   const zoneContenu = fabriquer("conventionBlocContenu", balise(blocHtml, "conventionBlocContenu"));
   let htmlContenu = w.conventionBlocContenuHtml(1, w.state);
-  // Les boutons « Voir la convention » et « Re-générer » (etat « Générée ») deviennent des elements
+  // Les boutons « Télécharger la convention » et « Re-générer » (etat « Générée ») deviennent des elements
   // de la page, qui peuvent recevoir le focus ; ils disparaissent quand le contenu n'en a plus.
   const enregistrerBoutonsDuBloc = (valeur) => {
-    for (const id of ["conventionVoir", "conventionRegenerer"]) {
+    for (const id of ["conventionTelecharger", "conventionRegenerer"]) {
       if (valeur.includes(`id="${id}"`)) registre.set(id, fabriquer(id, balise(valeur, id)));
       else registre.delete(id);
     }
@@ -451,7 +453,7 @@ test("club avec contacts : « Générer la convention » est actif et un clic la
 // Pour un club sans contact (table vide, ou seulement le contact d'un autre club). Echoue si le
 // bouton est grise (aria-disabled, disabled) ou relie au message par aria-describedby (ancienne
 // regle, supprimee par l'E1), si le message n'est plus celui de la note, ou si un clic ne lance pas
-// la generation : un club sans contact peut generer, le signataire reste vide (pointilles dans le PDF).
+// la generation : un club sans contact peut generer, le signataire reste vide (bande surlignee dans le Word).
 test("club sans contact : « Générer la convention » n'est plus grisé, le message est sous la liste, et un clic lance la génération", async () => {
   const variantes = {"table Contacts vide": [], "seulement le contact d'un autre club": [CONTACTS[2]]};
   for (const [nom, contacts] of Object.entries(variantes)) {
@@ -496,7 +498,7 @@ test("au clic, avant la fin de la génération : deux boutons grisés, blocs non
   assert.equal(m.generation.appels.length, 1, "un deuxième clic ne relance rien");
   verifierVerrouille(m, "après un deuxième clic");
 
-  attente.resoudre({nomFichier: "Convention-fictive.pdf"});
+  attente.resoudre({nomFichier: "Convention-fictive.docx"});
   await attendre();
 });
 
@@ -773,22 +775,27 @@ test("échec « cases-inconnues » sans nom lisible (liste vide, absente, noms v
 
 // Comme la vraie generation, la doublure ajoute le PDF et la date a la convention en memoire :
 // c'est ce que le bloc relit pour passer a l'etat « Générée ».
+// Evolution 3 : le document genere est un Word, et la vraie generation retient son format (« docx »)
+// pour que le bloc affiche « Format : document Word (.docx). » et le texte cache « (fichier Word) ».
 function reussiteAvecPdf(m) {
   return () => {
     m.w.state.raw.Conventions.push({id: 20, Action: 1, PDF_genere: ["L", 41], Date_generation: secondes(2026, 3, 14)});
-    return Promise.resolve({nomFichier: "Convention-fictive.pdf"});
+    fixerFormat(m.w, 20, "docx");
+    return Promise.resolve({nomFichier: "Convention-fictive.docx"});
   };
 }
 
 // Echoue si, apres une reussite, la fenetre reste ouverte (state.conventionOpen, modal-open),
-// si le bloc n'affiche pas l'etat « Générée » (phrase avec la date, puis phrase d'aide, puis les
-// boutons « Voir la convention » (avec son texte cache), « Re-générer » et « Déposer la convention
-// signée » (depuis la 9.1a), dans cet ordre ; depuis l'evolution 2, « Télécharger » est insere juste apres
-// « Voir la convention », soit quatre boutons ; et plus le bouton « Générer la convention »), si le message « Convention générée. » n'est pas dans une
-// alerte alert-success placee dans la zone role="status" du bloc, ou si le focus n'est pas sur
-// « Voir la convention » (decision D-S7-6, et note UX §12.1 : « Re-générer » existe mais ne recoit
-// pas le focus) : le message de reussite, lui, ne recoit plus le focus.
-test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la convention », « Télécharger », « Re-générer » puis « Déposer la convention signée », message « Convention générée. », focus sur « Voir la convention »", async () => {
+// si le bloc n'affiche pas l'etat « Générée » avec le format Word (phrase avec la date, ligne « Format :
+// document Word (.docx). », phrase d'aide du Word), puis exactement trois boutons dans cet ordre :
+// « Télécharger la convention » (texte cache « (fichier Word) », E3-3), « Re-générer » et « Déposer la
+// convention signée » ; plus de « Voir la convention » (E3-3) ni de « Télécharger » court ; plus le bouton
+// « Générer la convention » ; si le message « Convention générée. » n'est pas dans une alerte
+// alert-success placee dans la zone role="status" du bloc, ou si le focus n'est pas sur
+// « Télécharger la convention » (premier bouton de l'etat Generee, note UX §15.4 : il remplace
+// « Voir la convention » ; « Re-générer » ne recoit pas le focus) : le message de reussite, lui, ne
+// recoit plus le focus.
+test("réussite : fenêtre fermée, bloc « Générée » (format Word) avec « Télécharger la convention », « Re-générer » puis « Déposer la convention signée », message « Convention générée. », focus sur « Télécharger la convention »", async () => {
   const m = await preparer();
   m.generation.comportement = reussiteAvecPdf(m);
   m.remplir();
@@ -800,25 +807,25 @@ test("réussite : fenêtre fermée, bloc « Générée » avec « Voir la conven
 
   assert.deepEqual(phrases(m.htmlContenu()), [
     "Convention générée le 14/03/2026.",
-    "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
+    "Format : document Word (.docx).",
+    "Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.",
   ]);
   const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
-  assert.equal(boutons.length, 4, "quatre boutons dans le bloc");
-  assert.match(boutons[0], /\sid="conventionVoir"/, "le premier est « Voir la convention »");
-  assert.match(boutons[1], /\sid="conventionTelecharger"/, "le deuxième est « Télécharger »");
-  assert.match(boutons[2], /\sid="conventionRegenerer"/, "le troisième est « Re-générer »");
-  assert.match(boutons[3], /\sid="conventionDeposer"/, "le quatrième est « Déposer la convention signée »");
-  assert.equal(texteDe(m.htmlContenu(), "button", "conventionTelecharger"), "Télécharger le fichier PDF de la convention générée", "texte, puis texte caché de « Télécharger »");
+  assert.equal(boutons.length, 3, "trois boutons dans le bloc");
+  assert.match(boutons[0], /\sid="conventionTelecharger"/, "le premier est « Télécharger la convention »");
+  assert.match(boutons[1], /\sid="conventionRegenerer"/, "le deuxième est « Re-générer »");
+  assert.match(boutons[2], /\sid="conventionDeposer"/, "le troisième est « Déposer la convention signée »");
+  assert.equal(texteDe(m.htmlContenu(), "button", "conventionTelecharger"), "Télécharger la convention (fichier Word)", "texte, puis texte caché de « Télécharger la convention »");
+  assert.match(decoder(m.htmlContenu()), /<span class="btn-content">Télécharger la convention<span class="sr-only"> \(fichier Word\)<\/span><\/span>/, "le texte caché est dans un sr-only");
   assert.equal(texteDe(m.htmlContenu(), "button", "conventionDeposer"), "Déposer la convention signée", "libellé de « Déposer »");
   assert.equal(texteDe(m.htmlContenu(), "button", "conventionRegenerer"), "Re-générer", "libellé de « Re-générer »");
-  assert.equal(texteDe(m.htmlContenu(), "button", "conventionVoir"), "Voir la convention (s'ouvre dans une fenêtre)", "texte, puis texte caché");
-  assert.match(decoder(m.htmlContenu()), /<span class="btn-content">Voir la convention<span class="sr-only"> \(s'ouvre dans une fenêtre\)<\/span><\/span>/, "le texte caché est dans un sr-only");
+  assert.ok(!m.htmlContenu().includes("conventionVoir"), "plus de bouton « Voir la convention » pour le document généré");
   assert.ok(!m.htmlContenu().includes("conventionGenerer"), "le bouton « Générer la convention » du bloc a disparu");
 
   assert.equal(m.zoneMessage.getAttribute("role"), "status", "la zone de message est la région role=status du bloc");
   assert.match(m.htmlZone(), /<div class="alert alert-success"/, "alerte de succès");
   assert.equal(lire(m.htmlZone()), MESSAGE_REUSSITE);
-  assert.equal(m.actif(), m.element("conventionVoir"), "le focus est sur « Voir la convention »");
+  assert.equal(m.actif(), m.element("conventionTelecharger"), "le focus est sur « Télécharger la convention »");
   assert.notEqual(m.actif(), m.element("conventionRegenerer"), "le focus n'est pas sur « Re-générer »");
   assert.notEqual(m.actif(), m.element("conventionReussite"), "le focus n'est plus sur le message de réussite");
 });
@@ -861,7 +868,7 @@ const regeneration = () => preparer({conventions: [CONVENTION_EXISTANTE], ouvert
 
 // Echoue si le clic sur « Re-générer » n'ouvre pas la fenetre (state.conventionOpen, modal-open),
 // si elle n'est pas prerempli avec le signataire (et sa fonction), le representant et sa fonction
-// ENREGISTRES, si la phrase « Le nouveau PDF remplacera… » manque dans la fenetre ouverte, si un
+// ENREGISTRES, si la phrase « Le nouveau document remplacera… » (E3, §15.7) manque dans la fenetre ouverte, si un
 // champ « Année » reapparait, si le pied cesse de dire « Générer la convention » (D-S8-1), ou
 // si le focus ne va pas sur le premier champ modifiable (« Signataire »).
 test("« Re-générer » : un clic ouvre la fenêtre préremplie (signataire, représentant), avec la phrase de remplacement", async () => {
@@ -869,7 +876,7 @@ test("« Re-générer » : un clic ouvre la fenêtre préremplie (signataire, re
   assert.notEqual(m.hote.innerHTML, "", "la fenêtre est ouverte");
   assert.equal(m.w.state.conventionOpen, true, "state.conventionOpen");
   assert.equal(m.corpsAClasse("modal-open"), true, "modal-open posé");
-  assert.ok(m.hote.innerHTML.includes("<p>Le nouveau PDF remplacera la convention générée le 14/03/2026.</p>"), "la phrase de remplacement est dans la fenêtre");
+  assert.ok(m.hote.innerHTML.includes("<p>Le nouveau document remplacera la convention générée le 14/03/2026.</p>"), "la phrase de remplacement est dans la fenêtre");
   assert.equal(m.hote.innerHTML.includes("conventionAnnee"), false, "plus de champ Année");
   assert.equal(m.element("clubSignataire").value, "31", "le signataire enregistré");
   assert.equal(m.element("clubFonction").value, "Présidente", "la fonction du signataire s'affiche");
@@ -893,7 +900,7 @@ test("« Re-générer » grisé (agence manquante) : un clic n'ouvre pas la fen�
 });
 
 // Echoue si « Fermer » ou Echap (sans avoir lance de generation) ne ferme pas la fenetre, ne rend
-// pas le focus a « Re-générer » (le bouton qui l'a ouverte), le rend a « Voir la convention », ou
+// pas le focus a « Re-générer » (le bouton qui l'a ouverte), le rend a « Télécharger la convention », ou
 // touche a la convention enregistree (l'ancien PDF reste, rien n'est genere).
 test("« Re-générer » : « Fermer » ou Échap sans génération enregistre en silence, ferme la fenêtre, et le focus revient sur « Re-générer »", async () => {
   const fermetures = {
@@ -909,7 +916,7 @@ test("« Re-générer » : « Fermer » ou Échap sans génération enregistre e
     assert.equal(m.w.state.conventionOpen, false, `${nom} : state.conventionOpen`);
     assert.equal(m.corpsAClasse("modal-open"), false, `${nom} : modal-open retiré`);
     assert.equal(m.actif(), m.element("conventionRegenerer"), `${nom} : le focus est revenu sur « Re-générer »`);
-    assert.notEqual(m.actif(), m.element("conventionVoir"), `${nom} : pas sur « Voir la convention »`);
+    assert.notEqual(m.actif(), m.element("conventionTelecharger"), `${nom} : pas sur « Télécharger la convention »`);
     assert.equal(m.generation.appels.length, 0, `${nom} : aucune génération`);
     assert.deepEqual(m.w.state.raw.Conventions[0].PDF_genere, ["L", 41], `${nom} : l'ancien PDF reste rattaché`);
     assert.equal(m.w.state.raw.Conventions[0].Date_generation, GENEREE_LE, `${nom} : l'ancienne date reste`);

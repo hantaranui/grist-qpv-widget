@@ -1,15 +1,19 @@
 "use strict";
 
-// Bouton « Voir la convention » de l'état « Générée » et pop-up plein écran qu'il ouvre
-// (tâche 7.4, tests de la 7.5 ; évolution 2 : note UX docs/ux/convention.md, §14, qui fait foi).
-// Le bouton et son texte caché, aucun jeton dans la page avant le clic, adresse de téléchargement et
-// options, pop-up ouverte seulement quand le PDF est récupéré (plus de nouvel onglet, plus de
-// window.open, plus de délai de 60 secondes), « Ouverture en cours… » et clics ignorés, échecs (message
-// exact, rien ne s'ouvre, focus sur le bouton, ni jeton ni texte technique dans la page ou la console),
-// nouvel essai, jeton demandé en ÉCRITURE. Puis la pop-up : plein écran, nom du fichier comme seul
-// titre, « Télécharger » (un bouton, lien temporaire), croix « Fermer », Échap, texte de repli sans
-// lien, libération du blob et vidage du src à la fermeture, et la coexistence des deux boutons
-// « Télécharger » (celui du bloc et celui de la pop-up).
+// Pop-up plein écran d'aperçu du PDF (évolution 2 : note UX docs/ux/convention.md, §14, qui fait foi),
+// MISE A JOUR POUR L'ÉVOLUTION 3 : « Voir la convention signée » (document généré) a été retiré (un navigateur
+// n'affiche pas un .docx, E3-3) ; la pop-up ne sert plus qu'au PDF SIGNÉ, ouverte par « Voir la
+// convention signée » (E3-4 : aucun changement pour ce bouton). Ce fichier garde donc tout ce qui est
+// COMMUN à la pop-up, rejoué avec le bouton « Voir la convention signée » : le bouton et son texte caché,
+// aucun jeton dans la page avant le clic, adresse de téléchargement et options, pop-up ouverte seulement
+// quand le PDF est récupéré (plus de nouvel onglet, plus de window.open, plus de délai de 60 secondes),
+// « Ouverture en cours… » et clics ignorés, échecs (message exact, rien ne s'ouvre, focus sur le bouton,
+// ni jeton ni texte technique dans la page ou la console), nouvel essai, jeton demandé en ÉCRITURE. Puis
+// la pop-up : plein écran, nom du fichier comme seul titre, « Télécharger » (un bouton, lien temporaire),
+// croix « Fermer », Échap, texte de repli sans lien, libération du blob et vidage du src à la fermeture.
+// Les tests du bouton « Télécharger » du bloc et de sa coexistence avec celui de la pop-up sont, pour le
+// fichier signé, dans test/convention-voir-signee.test.js ; ceux de « Télécharger la convention »
+// (document généré, Word ou ancien PDF) sont dans test/convention-telecharger.test.js.
 // Les textes de référence sont ceux de la note UX. Ils sont recopiés ici en dur : si le code change
 // un mot, le test doit échouer. Le navigateur et Grist sont des doublures : lien <a>, adresses blob:,
 // minuterie, fetch et getAccessToken (voir test/helpers/convention-popup.js). Aucun vrai jeton, aucune
@@ -20,25 +24,27 @@ const assert = require("node:assert/strict");
 const {loadWidget} = require("./helpers/widget");
 const {installerPopup, decoder} = require("./helpers/convention-popup");
 
-const TEXTE_VOIR = "Voir la convention";
+const TEXTE_VOIR = "Voir la convention signée";
 const TEXTE_CACHE = " (s'ouvre dans une fenêtre)";
 const TEXTE_ATTENTE = "Ouverture en cours…";
 const MESSAGE_ECHEC = "Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord.";
 const LIBELLE_REPOS = `${TEXTE_VOIR}<span class="sr-only">${TEXTE_CACHE}</span>`;
 
 const TEXTE_TELECHARGER = "Télécharger";
-const CACHE_TELECHARGER = " le fichier PDF de la convention générée";
+const CACHE_TELECHARGER = " le fichier PDF de la convention signée";
 const TEXTE_TELECHARGEMENT = "Téléchargement en cours…";
 const MESSAGE_ECHEC_TELECHARGER = "Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord.";
 const TEXTE_REPLI = "Le PDF ne s'affiche pas ? Utilisez « Télécharger ».";
-// Nom exact du fichier : Convention-[dispositif]-[club]-[année].pdf (note UX §14.4).
-const NOM_FICHIER = "Convention-Dispositif-Exemple-Club-Exemple-2026.pdf";
+// Nom exact du fichier signé : Convention-signee-[dispositif]-[club]-[année].pdf (note UX §14.4 ; année lue
+// dans Actions.Campagne, E3-17).
+const NOM_FICHIER = "Convention-signee-Dispositif-Exemple-Club-Exemple-2026.pdf";
 
 // Le jeton fictif contient des caractères que l'adresse doit encoder (+, /, =).
 const JETON = "jeton-fictif+abc/123=";
 const JETON_ENCODE = encodeURIComponent(JETON);
 const BASE_URL = "https://exemple.test/api/docs/doc-fictif";
-const PIECE_JOINTE = 41;
+const PIECE_GENEREE = 41;
+const PIECE_JOINTE = 52; // le PDF signé : c'est lui, jamais le document généré, que la pop-up récupère
 const ADRESSE_BLOB = "blob:https://exemple.test/00000000-fictif";
 const REPONSE_SECRETE = "Cannot access attachment (texte de réponse fictif)";
 
@@ -49,8 +55,8 @@ const attendre = () => new Promise((resolve) => setImmediate(resolve));
 // ---------------------------------------------------------------------------
 // Faux navigateur et fausse API Grist
 // ---------------------------------------------------------------------------
-// preparer() charge le widget, pose une action à l'état « Générée » (PDF_genere = pièce jointe
-// 41), branche les boutons comme renderEdit le fait (bindConvention) et note tout ce qui sort :
+// preparer() charge le widget, pose une action à l'état « Signée » (PDF_genere = pièce jointe 41,
+// PDF_signe = pièce jointe 52), branche les boutons comme renderEdit le fait (bindConvention) et note tout ce qui sort :
 //   trace      : l'ordre des appels sensibles ("jeton", "fetch") ;
 //   jetons     : les options de chaque appel de getAccessToken ;
 //   fetchs     : chaque requête {url, options} ;
@@ -107,13 +113,14 @@ async function preparer(options = {}) {
   await attendre();
   await attendre();
   w.state.raw = {
-    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
+    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, Campagne: 4}],
+    Campagnes: [{id: 4, Campagne: "2026"}],
     Structures: [{id: 7, Nom: "Club Exemple"}],
     Dispositifs: [{id: 3, Dispositif: "Dispositif Exemple"}],
     Agences: [{id: 5, Libelle_agence: "Agence Exemple"}],
     Modeles_convention: [{id: 10, Dispositif: 3, Actif: true, Titre: "Modèle Exemple"}],
     Contacts: [],
-    Conventions: [{id: 20, Action: 1, Annee: 2026, PDF_genere: ["L", PIECE_JOINTE], Date_generation: secondes(2026, 3, 14)}],
+    Conventions: [{id: 20, Action: 1, PDF_genere: ["L", PIECE_GENEREE], PDF_signe: ["L", PIECE_JOINTE], Date_generation: secondes(2026, 3, 14), Date_depot: secondes(2026, 11, 27)}],
   };
   w.state.tablesRefusees = [];
   journal.length = 0;
@@ -166,8 +173,8 @@ async function preparer(options = {}) {
   };
   const popup = installerPopup(w);
 
-  const bouton = doc.getElementById("conventionVoir");
-  const telecharger = doc.getElementById("conventionTelecharger");
+  const bouton = doc.getElementById("conventionVoirSignee");
+  const telecharger = doc.getElementById("conventionTelechargerSignee");
   const ecouteurs = {};
   const ecouteursTelecharger = {};
   bouton.addEventListener = (type, fonction) => { ecouteurs[type] = fonction; };
@@ -217,8 +224,8 @@ function verifierEchec(m, nom, liberation = false) {
   assert.equal(m.popup.ouverte(), false, `${nom} : aucune pop-up ouverte`);
   assert.equal(m.popup.etat(), false, `${nom} : state.conventionPdfOpen est faux`);
   assert.equal(m.popup.ouvertures.length, 0, `${nom} : aucun onglet ouvert`);
-  assert.equal(m.focus.actif, "conventionVoir", `${nom} : le focus est resté sur le bouton`);
-  assert.deepEqual(m.focus.appels.filter((id) => id !== "conventionVoir"), [], `${nom} : le focus n'est allé nulle part ailleurs (jamais sur l'alerte)`);
+  assert.equal(m.focus.actif, "conventionVoirSignee", `${nom} : le focus est resté sur le bouton`);
+  assert.deepEqual(m.focus.appels.filter((id) => id !== "conventionVoirSignee"), [], `${nom} : le focus n'est allé nulle part ailleurs (jamais sur l'alerte)`);
   assert.equal(m.bouton.getAttribute("aria-disabled"), null, `${nom} : le bouton n'est plus grisé`);
   assert.equal(m.libelle().mode, "html", `${nom} : le libellé est revenu`);
   assert.equal(m.libelle().valeur, LIBELLE_REPOS, `${nom} : texte d'origine, avec son texte caché`);
@@ -239,17 +246,17 @@ function verifierEchec(m, nom, liberation = false) {
 // 1. Le bouton
 // ---------------------------------------------------------------------------
 
-// Echoue si le bouton « Voir la convention » de l'etat Generee change de balise, d'id, de type
-// ou de classes, perd son texte « Voir la convention » ou son texte cache « (s'ouvre dans une
+// Echoue si le bouton « Voir la convention signée » de l'etat Generee change de balise, d'id, de type
+// ou de classes, perd son texte « Voir la convention signée » ou son texte cache « (s'ouvre dans une
 // fenetre) » (dans un sr-only, a l'interieur de btn-content), perd aria-haspopup="dialog" (une
 // fenetre s'ouvre, plus un onglet), ou porte aria-disabled, disabled, role, href ou target avant le
 // clic (ce serait un lien, pas un bouton), ou si le texte « nouvel onglet » reste dans le bloc.
-test("le bouton « Voir la convention » : un vrai bouton, son texte, son texte caché « (s'ouvre dans une fenêtre) » et aria-haspopup=\"dialog\"", async () => {
+test("le bouton « Voir la convention signée » : un vrai bouton, son texte, son texte caché « (s'ouvre dans une fenêtre) » et aria-haspopup=\"dialog\"", async () => {
   const m = await preparer();
   const bloc = m.blocRefait();
-  const balise = /<button\b[^>]*\sid="conventionVoir"[^>]*>/.exec(bloc);
-  assert.ok(balise, "le bouton est dans le bloc à l'état Générée");
-  assert.equal(balise[0], '<button class="btn btn-secondary" type="button" id="conventionVoir" aria-haspopup="dialog">', "bouton secondaire, type button, annonce une fenêtre, rien d'autre");
+  const balise = /<button\b[^>]*\sid="conventionVoirSignee"[^>]*>/.exec(bloc);
+  assert.ok(balise, "le bouton est dans le bloc à l'état Signée");
+  assert.equal(balise[0], '<button class="btn btn-secondary" type="button" id="conventionVoirSignee" aria-haspopup="dialog">', "bouton secondaire, type button, annonce une fenêtre, rien d'autre");
   assert.ok(!/\s(aria-disabled|aria-label|aria-describedby|disabled|role|href|target)\b/.test(balise[0]), "ni aria-disabled, ni disabled, ni role, ni href, ni target avant le clic");
   assert.ok(bloc.includes(`<span class="btn-content">${LIBELLE_REPOS}</span></button>`), "texte, puis texte caché dans un sr-only");
   assert.ok(!bloc.includes("nouvel onglet"), "plus aucun texte « nouvel onglet » dans le bloc");
@@ -266,7 +273,7 @@ test("le bouton « Voir la convention » : un vrai bouton, son texte, son texte 
 // construction du bloc ou au branchement des boutons).
 test("aucun jeton dans la page avant le clic, et rien n'est demandé, téléchargé ni ouvert avant le clic", async () => {
   const m = await preparer();
-  const pages = [m.w.conventionBlocContenuHtml(1, m.w.state), m.w.conventionBlocHtml(1, m.w.state), m.w.conventionVoirHtml()];
+  const pages = [m.w.conventionBlocContenuHtml(1, m.w.state), m.w.conventionBlocHtml(1, m.w.state), m.w.conventionVoirSigneeHtml()];
   for (const page of pages) {
     for (const interdit of [JETON, JETON_ENCODE, "jeton", "token", "auth=", "/attachments/", "blob:", "href", "http"]) {
       assert.ok(!page.includes(interdit), `« ${interdit} » ne doit pas être dans la page avant le clic`);
@@ -374,7 +381,7 @@ test("« Ouverture en cours… » pendant le téléchargement : bouton grisé (a
   assert.deepEqual(m.libelle(), {mode: "texte", valeur: TEXTE_ATTENTE}, "texte « Ouverture en cours… », sans texte caché");
   assert.equal(m.bouton.getAttribute("aria-disabled"), "true", "bouton grisé par aria-disabled");
   assert.equal(m.bouton.getAttribute("disabled"), null, "jamais l'attribut disabled");
-  assert.equal(m.focus.actif, "conventionVoir", "le focus reste sur le bouton");
+  assert.equal(m.focus.actif, "conventionVoirSignee", "le focus reste sur le bouton");
 
   await m.cliquer();
   await m.cliquer();
@@ -536,7 +543,7 @@ test("le nom exact du fichier est le seul titre : plus de « Convention génér�
 // Echoue si l'en-tete n'a pas, dans cet ordre, le titre, « Télécharger » (un <button type="button">,
 // jamais un <a>, sans href ni download dans la page) puis la croix (un <button>, icone icon-close cachee
 // aux lecteurs d'ecran, aria-label="Fermer"), si le texte cache de « Télécharger » n'est pas « le
-// fichier PDF de la convention générée », ou s'il reste un lien dans la pop-up.
+// fichier PDF de la convention signée », ou s'il reste un lien dans la pop-up.
 test("en-tête : le titre, puis « Télécharger » (un bouton sans href ni download) et la croix « Fermer » (icon-close, aria-label)", async () => {
   const m = await preparer();
   await m.cliquer();
@@ -566,7 +573,7 @@ test("en-tête : le titre, puis « Télécharger » (un bouton sans href ni down
 // ---------------------------------------------------------------------------
 
 // Echoue si le PDF n'est pas dans une <iframe> (id conventionPdfCadre, classe convention-pdf-cadre) au
-// title « Aperçu de la convention générée », avec referrerpolicy="no-referrer", ou si elle porte un
+// title « Aperçu de la convention signée », avec referrerpolicy="no-referrer", ou si elle porte un
 // attribut sandbox (la visionneuse PDF de Chrome refuse un cadre en bac a sable), allow, ou src dans le
 // texte de la page (le src est pose par JavaScript, garde-fous de l'audit de securite du 30/10).
 test("le PDF est dans une iframe avec title et referrerpolicy=\"no-referrer\", sans sandbox, sans allow, sans src dans le texte", async () => {
@@ -576,7 +583,7 @@ test("le PDF est dans une iframe avec title et referrerpolicy=\"no-referrer\", s
   assert.ok(balise, "une iframe");
   assert.match(balise[0], /\sid="conventionPdfCadre"/, "id conventionPdfCadre");
   assert.match(balise[0], /\sclass="convention-pdf-cadre"/, "classe convention-pdf-cadre");
-  assert.match(balise[0], /\stitle="Aperçu de la convention générée"/, "title lu par les lecteurs d'écran");
+  assert.match(balise[0], /\stitle="Aperçu de la convention signée"/, "title lu par les lecteurs d'écran");
   assert.match(balise[0], /\sreferrerpolicy="no-referrer"/, "referrerpolicy=\"no-referrer\"");
   assert.ok(!/\s(sandbox|allow|src|srcdoc)\b/.test(balise[0]), "ni sandbox, ni allow, ni src, ni srcdoc dans le texte");
   assert.equal(m.popup.html().split("<iframe").length - 1, 1, "une seule iframe");
@@ -664,8 +671,8 @@ test("« Télécharger » de la pop-up n'a pas de verrou : plusieurs clics, plus
 
 // Echoue si la croix ne referme pas la pop-up (HTML vide, state faux), ne libere pas l'adresse blob: (une
 // seule fois, la bonne), ne vide pas le src du cadre a ce moment-la (et pas avant), laisse body.modal-open,
-// ou ne rend pas le focus au bouton « Voir la convention ».
-test("la croix ferme la pop-up : blob libéré, src du cadre vidé, focus rendu à « Voir la convention »", async () => {
+// ou ne rend pas le focus au bouton « Voir la convention signée ».
+test("la croix ferme la pop-up : blob libéré, src du cadre vidé, focus rendu à « Voir la convention signée »", async () => {
   const m = await preparer();
   await m.cliquer();
   assert.equal(m.popup.cadre.src, ADRESSE_BLOB, "(contrôle) avant la fermeture, le cadre montre le PDF");
@@ -678,7 +685,7 @@ test("la croix ferme la pop-up : blob libéré, src du cadre vidé, focus rendu 
   assert.equal(m.popup.cadre.src, "", "le src du cadre est vidé");
   assert.deepEqual(m.liberees, [ADRESSE_BLOB], "l'adresse blob: est libérée, une seule fois");
   assert.equal(m.popup.corpsAClasse("modal-open"), false, "body.modal-open retiré");
-  assert.equal(m.focus.actif, "conventionVoir", "le focus revient sur le bouton « Voir la convention »");
+  assert.equal(m.focus.actif, "conventionVoirSignee", "le focus revient sur le bouton « Voir la convention signée »");
   assert.equal(m.popup.aEcouteur("conventionPdfModal:keydown"), false, "l'écoute de Échap est retirée");
 });
 
@@ -698,13 +705,13 @@ test("Échap ferme la pop-up comme la croix ; une autre touche ne la ferme pas",
   assert.equal(m.popup.ouverte(), false, "la pop-up est fermée");
   assert.equal(m.popup.cadre.src, "", "src vidé");
   assert.deepEqual(m.liberees, [ADRESSE_BLOB], "adresse libérée");
-  assert.equal(m.focus.actif, "conventionVoir", "focus rendu à « Voir la convention »");
+  assert.equal(m.focus.actif, "conventionVoirSignee", "focus rendu à « Voir la convention signée »");
   assert.equal(m.popup.corpsAClasse("modal-open"), false, "body.modal-open retiré");
 });
 
 // Echoue si la fermeture laisse le bouton « Voir » grise ou avec un autre texte, ou si on ne peut pas rouvrir
 // l'aperçu ensuite (nouvelle adresse, nouveau cadre), ou si l'ancienne adresse est de nouveau utilisee.
-test("après la fermeture, « Voir la convention » rouvre l'aperçu avec une nouvelle adresse blob:", async () => {
+test("après la fermeture, « Voir la convention signée » rouvre l'aperçu avec une nouvelle adresse blob:", async () => {
   const m = await preparer();
   await m.cliquer();
   m.popup.cliquerFermer();
@@ -728,149 +735,4 @@ test("une seule adresse en mémoire à la fois : rouvrir sans fermer libère la 
   assert.deepEqual(m.liberees, [ADRESSE_BLOB], "la première adresse est libérée");
   m.popup.cliquerFermer();
   assert.deepEqual(m.liberees, [ADRESSE_BLOB, `${ADRESSE_BLOB}-2`], "à la fermeture, la seconde l'est aussi");
-});
-
-// ===========================================================================
-// « TÉLÉCHARGER » DU BLOC (note UX §14.2) ET COEXISTENCE AVEC CELUI DE LA POP-UP
-// ===========================================================================
-// Aucun test de ce bouton n'existait avant cette mise à jour (voir le rapport) : les deux tests suivants
-// couvrent ce que dit la note (attente, verrou, lien temporaire, alerte d'échec), parce que les tests de
-// coexistence en dépendent.
-
-// Echoue si le bouton « Télécharger » du bloc n'est pas, a l'etat Generee, un <button> secondaire juste apres
-// « Voir la convention », sans href ni download, avec son texte cache ; s'il apparait en double ; ou si le
-// bloc n'a plus aucun lien <a>.
-test("bloc : « Télécharger » est un bouton secondaire juste après « Voir la convention », sans href ni download", async () => {
-  const m = await preparer();
-  const bloc = m.blocRefait();
-  assert.equal(bloc.split('id="conventionTelecharger"').length - 1, 1, "un seul « Télécharger » dans le bloc");
-  assert.ok(bloc.includes(`</button><button class="btn btn-secondary" type="button" id="conventionTelecharger"><span class="btn-content">${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_TELECHARGER}</span></span></button>`), "bouton secondaire, juste après « Voir », avec son texte caché");
-  assert.ok(bloc.indexOf('id="conventionVoir"') < bloc.indexOf('id="conventionTelecharger"') && bloc.indexOf('id="conventionTelecharger"') < bloc.indexOf('id="conventionRegenerer"'), "ordre : Voir, Télécharger, Re-générer");
-  assert.ok(!/<a\b/.test(bloc) && !/\s(href|download)\b/.test(bloc), "ni lien, ni href, ni download dans le bloc");
-});
-
-// Echoue si, au clic sur « Télécharger » du bloc, le texte ne devient pas « Téléchargement en cours… » (sans
-// texte cache) avec aria-disabled="true" (jamais disabled), si un second clic relance un telechargement, si
-// le lien temporaire n'a pas le nom exact et l'adresse du blob, si la pop-up s'ouvre, si le focus bouge, ou si
-// le texte, l'etat, le lien et l'adresse ne sont pas retablis (lien retire, adresse liberee apres la minuterie).
-test("bloc : « Télécharger » → « Téléchargement en cours… » grisé, lien temporaire au bon nom, sans ouvrir la pop-up ; tout est rétabli", async () => {
-  const attente = enAttente();
-  const m = await preparer({fetch: () => attente.promesse});
-  const fin = m.cliquerTelechargerBloc();
-  await attendre();
-
-  assert.deepEqual(m.libelleTelecharger(), {mode: "texte", valeur: TEXTE_TELECHARGEMENT}, "texte d'attente, sans texte caché");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), "true", "grisé par aria-disabled");
-  assert.equal(m.telecharger.getAttribute("disabled"), null, "jamais l'attribut disabled");
-  await m.cliquerTelechargerBloc();
-  assert.equal(m.fetchs.length, 1, "le second clic est ignoré");
-  assert.equal(m.libelle().valeur, LIBELLE_REPOS, "« Voir » n'est pas touché (verrou propre à « Télécharger »)");
-
-  attente.resoudre(reponsePdf());
-  await fin;
-  assert.equal(m.popup.liens.length, 1, "un lien temporaire");
-  const lien = m.popup.liens[0];
-  assert.deepEqual(lien.instantane, {href: ADRESSE_BLOB, download: NOM_FICHIER, dansLaPage: true, retire: false}, "au clic : adresse du blob, nom exact, dans la page");
-  assert.equal(m.popup.ouverte(), false, "« Télécharger » du bloc n'ouvre pas la pop-up");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), null, "dégrisé à la fin");
-  assert.equal(m.libelleTelecharger().valeur, `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_TELECHARGER}</span>`, "texte et texte caché revenus");
-  assert.equal(m.zoneAlerte.innerHTML, "", "aucune alerte en cas de réussite");
-  assert.deepEqual(m.focus.appels.filter((id) => id !== "conventionTelecharger"), [], "le focus ne bouge pas");
-
-  assert.deepEqual(m.liberees, [], "(contrôle) adresse pas encore libérée");
-  const liberation = m.minuteries[m.minuteries.length - 1];
-  assert.ok(liberation.delai > 0 && liberation.delai < 60000, "libération au bout de quelques secondes");
-  liberation.fonction();
-  assert.equal(lien.retire, true, "le lien est retiré de la page");
-  assert.deepEqual(m.liberees, [ADRESSE_BLOB], "l'adresse est libérée");
-});
-
-// Echoue si l'echec du telechargement du bloc n'affiche pas le message exact du telechargement (et non celui de
-// « Voir ») dans une alerte role="alert", cree un lien, ouvre la pop-up, laisse le bouton grise, ou montre le
-// jeton ou un texte technique.
-test("bloc : échec de « Télécharger » → message exact du téléchargement, ni lien ni pop-up, bouton rétabli, rien de technique", async () => {
-  const m = await preparer({fetch: () => Promise.resolve(reponseRefusee(403))});
-  await m.cliquerTelechargerBloc();
-  const html = m.zoneAlerte.innerHTML;
-  assert.match(html, /<div class="alert alert-error" role="alert">/, "alerte d'erreur avec role=\"alert\"");
-  assert.equal(decoder(html.replace(/<[^>]+>/g, "")), MESSAGE_ECHEC_TELECHARGER, "message exact de « Télécharger »");
-  assert.deepEqual(m.popup.clics, [], "aucun lien déclenché");
-  assert.equal(m.popup.ouverte(), false, "aucune pop-up");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), null, "bouton dégrisé");
-  assert.equal(m.libelleTelecharger().valeur, `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_TELECHARGER}</span>`, "texte d'origine");
-  const vu = JSON.stringify([html, m.journal]);
-  for (const interdit of [JETON, JETON_ENCODE, "auth=", "blob:", REPONSE_SECRETE, "403"]) assert.ok(!vu.includes(interdit), `ni jeton ni texte technique (« ${interdit} »)`);
-});
-
-// Echoue si les deux boutons « Télécharger » ne coexistent pas : meme id, un seul des deux present, meme style
-// (le bloc est secondaire, celui de la pop-up principal), texte caché different de celui de la note, ou si
-// l'un des deux disparait quand l'autre est la.
-test("coexistence : « Télécharger » du bloc et « Télécharger » de la pop-up existent ensemble, avec des identifiants distincts", async () => {
-  const m = await preparer();
-  await m.cliquer();
-  const bloc = m.blocRefait();
-  const popup = m.popup.html();
-  assert.equal(bloc.split('id="conventionTelecharger"').length - 1, 1, "le bloc garde son « Télécharger »");
-  assert.equal(popup.split('id="conventionPdfTelecharger"').length - 1, 1, "la pop-up a le sien");
-  assert.ok(!popup.includes('id="conventionTelecharger"') && !bloc.includes('id="conventionPdfTelecharger"'), "chacun a son identifiant, pas de doublon d'id");
-  assert.match(bloc, /id="conventionTelecharger"[^>]*><span class="btn-content">Télécharger</, "le mot visible du bloc est « Télécharger »");
-  assert.match(popup, /id="conventionPdfTelecharger"[^>]*><span class="btn-content">Télécharger</, "le mot visible de la pop-up est « Télécharger »");
-  assert.match(bloc, /class="btn btn-secondary" type="button" id="conventionTelecharger"/, "le bouton du bloc est secondaire");
-  assert.match(popup, /class="btn btn-primary" id="conventionPdfTelecharger"/, "le bouton de la pop-up est principal");
-  assert.ok(bloc.includes(CACHE_TELECHARGER) && popup.includes(CACHE_TELECHARGER), "même texte caché des deux côtés");
-  assert.equal(m.popup.aEcouteur("conventionPdfTelecharger:click"), true, "le bouton de la pop-up est branché");
-});
-
-// Echoue si l'un des deux boutons « Télécharger » en verrouille, grise, change le texte ou alerte l'autre, si le
-// clic du bloc ferme la pop-up ou libere son blob, ou si le clic de la pop-up relance une recuperation.
-test("coexistence : pendant que le bloc télécharge, le bouton de la pop-up reste libre ; et inversement", async () => {
-  const reglages = {};
-  const m = await preparer(reglages);
-  await m.cliquer();                       // pop-up ouverte, fetch n° 1
-  const attente = enAttente();
-  reglages.fetch = () => attente.promesse;  // le prochain téléchargement (celui du bloc) attend
-  const liensAvant = m.popup.liens.length;
-  const fetchsAvant = m.fetchs.length;
-
-  const blocEnCours = m.cliquerTelechargerBloc();
-  await attendre();
-  assert.equal(m.libelleTelecharger().valeur, TEXTE_TELECHARGEMENT, "le bloc est en attente");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), "true", "le bloc est grisé");
-
-  await m.popup.cliquerTelecharger();
-  assert.equal(m.popup.liens.length, liensAvant + 1, "la pop-up crée son lien tout de suite, sans attendre le bloc");
-  const lienPopup = m.popup.liens[liensAvant];
-  assert.deepEqual([lienPopup.instantane.href, lienPopup.instantane.download], [ADRESSE_BLOB, NOM_FICHIER], "avec l'adresse et le nom de la pop-up");
-  assert.ok(!m.popup.html().includes("aria-disabled") && !m.popup.html().includes("Téléchargement en cours"), "le bouton de la pop-up n'est pas verrouillé par le bloc");
-  assert.equal(m.libelleTelecharger().valeur, TEXTE_TELECHARGEMENT, "le bloc est toujours en attente (le clic de la pop-up ne l'a pas libéré)");
-  assert.equal(m.fetchs.length, fetchsAvant + 1, "seul le bloc a récupéré le PDF");
-
-  attente.resoudre(reponsePdf());
-  await blocEnCours;
-  assert.equal(m.popup.liens.length, liensAvant + 2, "le bloc a créé son propre lien");
-  const lienBloc = m.popup.liens[liensAvant + 1];
-  assert.deepEqual([lienBloc.instantane.href, lienBloc.instantane.download], [`${ADRESSE_BLOB}-2`, NOM_FICHIER], "avec sa propre adresse, le même nom");
-  assert.equal(m.popup.ouverte(), true, "la pop-up est toujours ouverte");
-  assert.equal(m.popup.cadre.src, ADRESSE_BLOB, "son cadre montre toujours son PDF");
-  assert.deepEqual(m.liberees, [], "aucune adresse libérée : ni celle de la pop-up, ni celle du bloc (avant sa minuterie)");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), null, "le bloc est dégrisé");
-  assert.equal(m.zoneAlerte.innerHTML, "", "aucune alerte nulle part");
-
-  // Et inversement : la pop-up reste utilisable après le bloc, sans rien changer au bloc.
-  await m.popup.cliquerTelecharger();
-  assert.equal(m.popup.liens.length, liensAvant + 3, "la pop-up peut encore télécharger");
-  assert.equal(m.libelleTelecharger().valeur, `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_TELECHARGER}</span>`, "le bloc garde son texte d'origine");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), null, "le bloc reste dégrisé");
-});
-
-// Echoue si fermer la pop-up libere l'adresse du bloc ou touche a son bouton, ou si le bloc est encore verrouille.
-test("coexistence : fermer la pop-up ne touche pas au bouton « Télécharger » du bloc", async () => {
-  const m = await preparer();
-  await m.cliquerTelechargerBloc();                 // lien du bloc : adresse n° 1, libération par minuterie
-  await m.cliquer();                                // pop-up : adresse n° 2
-  assert.equal(m.popup.cadre.src, `${ADRESSE_BLOB}-2`, "la pop-up a sa propre adresse");
-  m.popup.cliquerFermer();
-  assert.deepEqual(m.liberees, [`${ADRESSE_BLOB}-2`], "seule l'adresse de la pop-up est libérée à la fermeture");
-  assert.equal(m.telecharger.getAttribute("aria-disabled"), null, "le bouton du bloc n'est pas touché");
-  assert.equal(m.libelleTelecharger().valeur, `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_TELECHARGER}</span>`, "son texte non plus");
 });

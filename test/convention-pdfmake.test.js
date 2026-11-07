@@ -1,8 +1,14 @@
 "use strict";
 
-// Tache 7.3, fin : chargement de pdfmake et nom du fichier PDF.
-//  - chargerPdfmake et conventionChargerPdfmake (delai de 20 secondes) ;
-//  - conventionNomNettoye et conventionNomFichier (decision D-S7-3) ;
+// Tache 7.3, fin : chargement de pdfmake et nom du fichier. MIS A JOUR POUR L'EVOLUTION 3 :
+//  - chargerPdfmake et conventionChargerPdfmake (delai de 20 secondes) : CODE MORT. La generation ne fabrique
+//    plus de PDF (elle fabrique un Word, voir convention-docx-chargement.test.js) ; script.js garde
+//    pdfmake « jusqu'a une etape suivante » (commentaire du developpeur). Ces tests ne servent qu'a garder ce
+//    code coherent tant qu'il existe, et un test verifie que la generation ne l'appelle plus. Quand le code
+//    pdfmake sera retire de script.js, retirer aussi les tests « chargerPdfmake » et « conventionChargerPdfmake » ;
+//  - conventionNomNettoye et conventionNomFichier (decision D-S7-3) : le nom prend maintenant une EXTENSION
+//    en parametre (« docx » ou « pdf », deduite du nom reel du fichier, E3-9) et lit l'annee dans
+//    Actions.Campagne, jamais dans Conventions.Annee (E3-17) ; conventionNomFichierSigne (toujours .pdf) aussi ;
 //  - E1 : le controle de champs « conventionProblemesGenerer » a disparu (plus aucun champ obligatoire).
 // Les codes d'erreur de conventionGenerer sont dans convention-generation.test.js (ils
 // reutilisent son jeu d'essai). Ce fichier est separe : le chargement a besoin d'un faux
@@ -216,10 +222,11 @@ test("chargerPdfmake : pdfmake chargé mais sans pdfMake.createPdf → rejet pdf
   assert.equal(scripts.length, 1, "Roboto n'a pas été ajouté");
 });
 
-// Echoue si la page (index.html) contient une balise pdfmake, si chargerPdfmake est appelee
-// ailleurs que dans conventionChargerPdfmake, ou si conventionChargerPdfmake est appelee
-// ailleurs que dans conventionGenerer (donc au clic sur « Generer », jamais a l'ouverture).
-test("chargerPdfmake : rien n'est chargé à l'ouverture de la page ni de la fenêtre, seulement dans conventionGenerer", () => {
+// Echoue si la page (index.html) contient une balise pdfmake, si chargerPdfmake est appelee ailleurs que dans
+// conventionChargerPdfmake, ou si conventionChargerPdfmake est appelee quelque part : depuis l'Evolution 3, la
+// generation ne charge plus pdfmake (elle charge docx, au clic seulement) ; ni l'ouverture de la page ni de la
+// fenetre ne doivent le charger non plus.
+test("chargerPdfmake : rien n'est chargé à l'ouverture de la page ni de la fenêtre, et plus aucun appel depuis conventionGenerer (E3)", () => {
   const dossier = path.join(__dirname, "..", "src", "actions-dashboard");
   const page = fs.readFileSync(path.join(dossier, "index.html"), "utf8");
   assert.ok(!/pdfmake/i.test(page), "aucune balise pdfmake dans la page");
@@ -237,8 +244,8 @@ test("chargerPdfmake : rien n'est chargé à l'ouverture de la page ni de la fen
   assert.ok(/\bchargerPdfmake\(/.test(corps("function conventionChargerPdfmake(")), "dans conventionChargerPdfmake");
 
   const appelsConvention = [...source.matchAll(/(?<!function )\bconventionChargerPdfmake\(/g)];
-  assert.equal(appelsConvention.length, 1, "conventionChargerPdfmake n'est appelée qu'à un endroit");
-  assert.ok(/\bconventionChargerPdfmake\(/.test(corps("async function conventionGenerer(")), "dans conventionGenerer");
+  assert.equal(appelsConvention.length, 0, "conventionChargerPdfmake n'est plus appelée nulle part (la génération passe par docx)");
+  assert.ok(!/pdfmake|pdfMake/i.test(corps("async function conventionGenerer(")), "conventionGenerer ne parle plus de pdfmake");
 });
 
 // ---------------------------------------------------------------------------
@@ -359,11 +366,13 @@ test("conventionNomNettoye : texte vide, absent ou sans lettre latine → chaîn
   }
 });
 
-// Donnees d'essai du nom : une action (club 7, dispositif 3) et son modele actif.
-function donneesNom({dispositif = "Match des métiers", club = "Club Exemple", avecAnnee = true, clubDeLAction = 7} = {}) {
+// Donnees d'essai du nom : une action (club 7, dispositif 3, campagne 4) et son modele actif. Depuis l'E3-17, l'annee
+// vient de Actions.Campagne -> Campagnes.Campagne (campagne : le texte de l'annee ; null = action sans campagne).
+function donneesNom({dispositif = "Match des métiers", club = "Club Exemple", avecAnnee = true, clubDeLAction = 7, campagne = "2031"} = {}) {
   return {
     raw: {
-      Actions: [{id: 1, Club: clubDeLAction, Dispositif: 3}],
+      Actions: [{id: 1, Club: clubDeLAction, Dispositif: 3, Campagne: campagne === null ? 0 : 4}],
+      Campagnes: campagne === null ? [] : [{id: 4, Campagne: campagne}],
       Dispositifs: [{id: 3, Dispositif: dispositif}],
       Structures: [{id: 7, Nom: club}],
       Modeles_convention: [{id: 10, Dispositif: 3, Actif: true, Avec_annee: avecAnnee}],
@@ -372,14 +381,18 @@ function donneesNom({dispositif = "Match des métiers", club = "Club Exemple", a
   };
 }
 
-const VALEURS_NOM = {annee: "2031", signataire: 31, representant: "Dana Exemple", fonctionRepresentant: "Directrice adjointe"};
-
-// Echoue si le nom n'a pas la forme Convention-[dispositif]-[club]-[annee].pdf, ou si les
-// espaces autour de l'annee saisie se retrouvent dans le nom.
-test("conventionNomFichier : forme Convention-[dispositif]-[club]-[année].pdf", async () => {
+// Echoue si le nom n'a pas la forme Convention-[dispositif]-[club]-[annee].[extension] avec l'extension donnee,
+// si l'extension est devinee quand elle manque ou est inconnue (jamais de « .pdf » ou « .docx » par defaut : le
+// bouton de telechargement traite ce cas comme un echec, Q-E3-7), ou si une annee de campagne entouree d'espaces
+// laisse ces espaces dans le nom.
+test("conventionNomFichier : forme Convention-[dispositif]-[club]-[année].[extension], extension jamais devinée", async () => {
   const w = await widgetDeNoms();
-  assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donneesNom()), "Convention-Match-metiers-Club-Exemple-2031.pdf");
-  assert.equal(w.conventionNomFichier(1, {...VALEURS_NOM, annee: " 2031 "}, donneesNom()), "Convention-Match-metiers-Club-Exemple-2031.pdf");
+  assert.equal(w.conventionNomFichier(1, donneesNom(), "docx"), "Convention-Match-metiers-Club-Exemple-2031.docx");
+  assert.equal(w.conventionNomFichier(1, donneesNom(), "pdf"), "Convention-Match-metiers-Club-Exemple-2031.pdf");
+  assert.equal(w.conventionNomFichier(1, donneesNom({campagne: " 2031 "}), "docx"), "Convention-Match-metiers-Club-Exemple-2031.docx");
+  for (const extension of [undefined, "", "odt", "exe", ".docx"]) {
+    assert.equal(w.conventionNomFichier(1, donneesNom(), extension), "Convention-Match-metiers-Club-Exemple-2031", `extension ${JSON.stringify(extension)} : aucune extension inventée`);
+  }
 });
 
 // Echoue si l'un des trois dispositifs n'a pas sa forme courte (Stade-emploi, Match-metiers,
@@ -396,82 +409,110 @@ test("conventionNomFichier : noms courts Stade-emploi, Match-metiers et Remobili
     ["Parcours de remobilisation vers l’emploi", "Remobilisation"],
   ];
   for (const [dispositif, court] of cas) {
-    assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donneesNom({dispositif})), `Convention-${court}-Club-Exemple-2031.pdf`, dispositif);
+    assert.equal(w.conventionNomFichier(1, donneesNom({dispositif}), "docx"), `Convention-${court}-Club-Exemple-2031.docx`, dispositif);
   }
 });
 
-// Echoue si un dispositif inconnu est raccourci, perd son nom, ou garde accents et
-// caracteres speciaux dans le nom du fichier.
-test("conventionNomFichier : un dispositif inconnu garde son nom complet nettoyé", async () => {
+// Echoue si un dispositif sans nom court est raccourci, perd son nom, ou garde accents et caracteres speciaux dans
+// le nom du fichier. Q-E3-5 a (E3) : « Aller vers » et « Parcours complet d'insertion par le sport », qui n'ont pas
+// de modele, gardent leur nom COMPLET, jamais une forme abregee, pour le Word comme pour le PDF signe.
+test("conventionNomFichier : un dispositif sans nom court garde son nom complet nettoyé (Aller vers, Parcours complet…)", async () => {
   const w = await widgetDeNoms();
   assert.equal(
-    w.conventionNomFichier(1, VALEURS_NOM, donneesNom({dispositif: "Dispositif d'Été n°2"})),
-    "Convention-Dispositif-d-Ete-n-2-Club-Exemple-2031.pdf"
+    w.conventionNomFichier(1, donneesNom({dispositif: "Dispositif d'Été n°2"}), "docx"),
+    "Convention-Dispositif-d-Ete-n-2-Club-Exemple-2031.docx"
   );
+  assert.equal(w.conventionNomFichier(1, donneesNom({dispositif: "Aller vers"}), "docx"), "Convention-Aller-vers-Club-Exemple-2031.docx");
+  assert.equal(
+    w.conventionNomFichier(1, donneesNom({dispositif: "Parcours complet d'insertion par le sport"}), "docx"),
+    "Convention-Parcours-complet-d-insertion-par-le-sport-Club-Exemple-2031.docx"
+  );
+  assert.equal(w.conventionNomFichierSigne(1, donneesNom({dispositif: "Aller vers"})), "Convention-signee-Aller-vers-Club-Exemple-2031.pdf");
 });
 
-// Echoue si un modele sans annee (Avec_annee faux) garde l'annee saisie dans le nom, ou
-// laisse un tiret final (Convention-...-club-.pdf).
-test("conventionNomFichier : un modèle sans année donne Convention-[dispositif]-[club].pdf, sans tiret en trop", async () => {
+// Echoue si un modele sans annee (Avec_annee faux) garde l'annee de la campagne dans le nom, ou
+// laisse un tiret final (Convention-...-club-.docx).
+test("conventionNomFichier : un modèle sans année donne Convention-[dispositif]-[club].docx, sans tiret en trop", async () => {
   const w = await widgetDeNoms();
   const donnees = donneesNom({dispositif: "Parcours de remobilisation vers l'emploi", avecAnnee: false});
-  assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donnees), "Convention-Remobilisation-Club-Exemple.pdf");
-  assert.equal(w.conventionNomFichier(1, {...VALEURS_NOM, annee: null}, donnees), "Convention-Remobilisation-Club-Exemple.pdf");
+  assert.equal(w.conventionNomFichier(1, donnees, "docx"), "Convention-Remobilisation-Club-Exemple.docx");
+  assert.equal(w.conventionNomFichierSigne(1, donnees), "Convention-signee-Remobilisation-Club-Exemple.pdf");
 });
 
-// Echoue si une annee saisie qui n'a pas exactement quatre chiffres (« abc », « 12 », « 20.5 »,
-// « 20311 ») est recopiee dans le nom du PDF genere, au lieu d'etre omise comme pour un modele sans annee.
-test("conventionNomFichier : une année invalide est omise du nom, jamais recopiée", async () => {
+// Echoue si une campagne qui n'a pas exactement quatre chiffres (« abc », « 12 », « 20.5 », « 20311 »), ou
+// vide, ou absente, est recopiee dans le nom au lieu d'etre omise comme pour un modele sans annee.
+test("conventionNomFichier : une campagne invalide, vide ou absente est omise du nom, jamais recopiée", async () => {
   const w = await widgetDeNoms();
-  const sansAnnee = w.conventionNomFichier(1, VALEURS_NOM, donneesNom({avecAnnee: false}));
-  assert.equal(sansAnnee, "Convention-Match-metiers-Club-Exemple.pdf");
-  for (const annee of ["abc", "12", "20.5", "20311", "20 31"]) {
-    assert.equal(w.conventionNomFichier(1, {...VALEURS_NOM, annee}, donneesNom()), sansAnnee, `année « ${annee} »`);
+  const sansAnnee = w.conventionNomFichier(1, donneesNom({avecAnnee: false}), "docx");
+  assert.equal(sansAnnee, "Convention-Match-metiers-Club-Exemple.docx");
+  for (const campagne of ["abc", "12", "20.5", "20311", "20 31", "", "   ", null]) {
+    assert.equal(w.conventionNomFichier(1, donneesNom({campagne}), "docx"), sansAnnee, `campagne ${JSON.stringify(campagne)}`);
   }
 });
 
-// Echoue si le nom du fichier signe recopie une valeur invalide de la colonne Conventions.Annee
-// (« abc », « 12 », « 20.5 »), ou perd une annee valide a quatre chiffres.
-test("conventionNomFichierSigne : une année invalide dans Annee est omise, une année valide est gardée", async () => {
+// E3-17. Echoue si l'annee vient encore de Conventions.Annee (colonne vide apres un depot libre, ou differente de
+// la campagne) au lieu d'Actions.Campagne, pour le nom du Word comme pour celui du PDF signe.
+test("E3-17 : l'année du nom vient d'Actions.Campagne, jamais de Conventions.Annee (Word et PDF signé)", async () => {
   const w = await widgetDeNoms();
-  const donnees = annee => {
-    const d = donneesNom();
-    d.raw.Conventions = [{id: 20, Action: 1, Modele: 10, PDF_genere: ["L", 1], PDF_signe: ["L", 2], Annee: annee}];
-    return d;
-  };
-  assert.equal(w.conventionNomFichierSigne(1, donnees(2031)), "Convention-signee-Match-metiers-Club-Exemple-2031.pdf");
-  for (const annee of ["abc", "12", "20.5"]) {
-    assert.equal(w.conventionNomFichierSigne(1, donnees(annee)), "Convention-signee-Match-metiers-Club-Exemple.pdf", `année « ${annee} »`);
+  for (const annee of [undefined, null, 0, 1999, "abc"]) {
+    const donnees = donneesNom({campagne: "2031"});
+    donnees.raw.Conventions = [{id: 20, Action: 1, Modele: 10, PDF_genere: ["L", 1], PDF_signe: ["L", 2], ...(annee === undefined ? {} : {Annee: annee})}];
+    assert.equal(w.conventionNomFichier(1, donnees, "docx"), "Convention-Match-metiers-Club-Exemple-2031.docx", `Annee = ${JSON.stringify(annee)}`);
+    assert.equal(w.conventionNomFichierSigne(1, donnees), "Convention-signee-Match-metiers-Club-Exemple-2031.pdf", `Annee = ${JSON.stringify(annee)}`);
+  }
+});
+
+// Echoue si l'ancien format d'Actions.Campagne (du texte directement, dans un ancien document) n'est plus lu, ou
+// si la reference vers une ligne de Campagnes qui n'existe pas plante au lieu d'omettre l'annee.
+test("Actions.Campagne : texte direct (ancien document) lu tel quel, référence introuvable → année omise", async () => {
+  const w = await widgetDeNoms();
+  const texteDirect = donneesNom();
+  texteDirect.raw.Actions[0].Campagne = "2029";
+  assert.equal(w.conventionNomFichier(1, texteDirect, "docx"), "Convention-Match-metiers-Club-Exemple-2029.docx");
+  const introuvable = donneesNom();
+  introuvable.raw.Actions[0].Campagne = 99;
+  assert.equal(w.conventionNomFichier(1, introuvable, "docx"), "Convention-Match-metiers-Club-Exemple.docx");
+});
+
+// Echoue si le nom du fichier signe n'est pas toujours un .pdf avec la forme Convention-signee-…, ou s'il recopie
+// une valeur invalide de la campagne (« abc », « 12 », « 20.5 »), ou perd une annee valide a quatre chiffres.
+test("conventionNomFichierSigne : toujours .pdf, une campagne invalide est omise, une valide est gardée", async () => {
+  const w = await widgetDeNoms();
+  assert.equal(w.conventionNomFichierSigne(1, donneesNom()), "Convention-signee-Match-metiers-Club-Exemple-2031.pdf");
+  for (const campagne of ["abc", "12", "20.5"]) {
+    assert.equal(w.conventionNomFichierSigne(1, donneesNom({campagne})), "Convention-signee-Match-metiers-Club-Exemple.pdf", `campagne « ${campagne} »`);
   }
 });
 
 // Echoue si le nom du club depasse 40 caracteres, ou si la coupe laisse un tiret a la fin.
 test("conventionNomFichier : le nom du club est limité à 40 caractères, sans tiret final", async () => {
   const w = await widgetDeNoms();
-  const long = w.conventionNomFichier(1, VALEURS_NOM, donneesNom({club: "Association Sportive Omnisports de la Ville de Exemple-sur-Mer Nord"}));
-  assert.equal(long, "Convention-Match-metiers-Association-Sportive-Omnisports-de-la-Vi-2031.pdf");
+  const long = w.conventionNomFichier(1, donneesNom({club: "Association Sportive Omnisports de la Ville de Exemple-sur-Mer Nord"}), "docx");
+  assert.equal(long, "Convention-Match-metiers-Association-Sportive-Omnisports-de-la-Vi-2031.docx");
 
-  const coupeSurUnTiret = w.conventionNomFichier(1, VALEURS_NOM, donneesNom({club: `A${"a".repeat(38)} Bbb`}));
-  assert.equal(coupeSurUnTiret, `Convention-Match-metiers-A${"a".repeat(38)}-2031.pdf`, "39 caractères, le tiret de la coupe est retiré");
+  const coupeSurUnTiret = w.conventionNomFichier(1, donneesNom({club: `A${"a".repeat(38)} Bbb`}), "docx");
+  assert.equal(coupeSurUnTiret, `Convention-Match-metiers-A${"a".repeat(38)}-2031.docx`, "39 caractères, le tiret de la coupe est retiré");
 });
 
 // Echoue si un club sans nom (vide, fait de caracteres speciaux, ou action sans club) ne
 // donne pas « club » dans le nom du fichier.
 test("conventionNomFichier : un nom de club vide donne « club »", async () => {
   const w = await widgetDeNoms();
-  assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donneesNom({club: ""})), "Convention-Match-metiers-club-2031.pdf");
-  assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donneesNom({club: "???"})), "Convention-Match-metiers-club-2031.pdf");
-  assert.equal(w.conventionNomFichier(1, VALEURS_NOM, donneesNom({clubDeLAction: 0})), "Convention-Match-metiers-club-2031.pdf");
+  assert.equal(w.conventionNomFichier(1, donneesNom({club: ""}), "docx"), "Convention-Match-metiers-club-2031.docx");
+  assert.equal(w.conventionNomFichier(1, donneesNom({club: "???"}), "docx"), "Convention-Match-metiers-club-2031.docx");
+  assert.equal(w.conventionNomFichier(1, donneesNom({clubDeLAction: 0}), "docx"), "Convention-Match-metiers-club-2031.docx");
 });
 
-// Echoue si un nom de personne saisi dans la fenetre (representant, fonction) entre dans
-// le nom du fichier.
-test("conventionNomFichier : jamais de nom de personne", async () => {
+// Echoue si un nom de personne (signataire, representant, leur fonction) entre dans le nom du fichier, ou si un
+// caractere hors lettres, chiffres, tirets et extension y passe.
+test("conventionNomFichier : jamais de nom de personne, seulement lettres, chiffres, tirets et l'extension", async () => {
   const w = await widgetDeNoms();
-  const nom = w.conventionNomFichier(1, VALEURS_NOM, donneesNom());
-  assert.ok(!nom.includes("Dana"), "pas le représentant");
-  assert.ok(!nom.includes("Directrice"), "pas sa fonction");
-  assert.ok(/^[A-Za-z0-9-]+\.pdf$/.test(nom), "seulement lettres, chiffres, tirets et .pdf");
+  const donnees = donneesNom();
+  donnees.raw.Contacts = [{id: 31, Club: 7, Prenom: "Dana", Nom: "Exemple", Fonction: "Directrice adjointe"}];
+  donnees.raw.Conventions = [{id: 20, Action: 1, Signataire_club: 31, Representant_agence: "Dana Exemple", Fonction_representant: "Directrice"}];
+  const nom = w.conventionNomFichier(1, donnees, "docx");
+  assert.ok(!nom.includes("Dana") && !nom.includes("Directrice"), "ni le représentant ni sa fonction");
+  assert.ok(/^[A-Za-z0-9-]+\.docx$/.test(nom), "seulement lettres, chiffres, tirets et .docx");
 });
 
 // ---------------------------------------------------------------------------

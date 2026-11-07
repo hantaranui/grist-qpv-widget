@@ -82,14 +82,17 @@ function fichierFactice() {
   };
 }
 
+// E3-17 : l'année du nom du fichier signé vient d'Actions.Campagne (Campagnes.Campagne = « 2026 »), jamais de
+// Conventions.Annee : la convention d'essai n'a donc plus de colonne Annee (comme après un dépôt sans génération).
 const CONVENTION_SIGNEE = () => ({
-  id: 20, Action: 1, Annee: 2026, PDF_genere: ["L", PIECE_GENEREE], PDF_signe: ["L", PIECE_SIGNEE],
+  id: 20, Action: 1, PDF_genere: ["L", PIECE_GENEREE], PDF_signe: ["L", PIECE_SIGNEE],
   Date_generation: secondes(2026, 3, 14), Date_depot: secondes(2026, 11, 27),
 });
 
 function donnees(conventions) {
   return {
-    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3}],
+    Actions: [{id: 1, Agence: 5, Club: 7, Dispositif: 3, Campagne: 4}],
+    Campagnes: [{id: 4, Campagne: "2026"}],
     Structures: [{id: 7, Nom: "Club Exemple"}],
     Dispositifs: [{id: 3, Dispositif: "Dispositif Exemple"}],
     Agences: [{id: 5, Libelle_agence: "Agence Exemple"}],
