@@ -2783,18 +2783,15 @@ const CONVENTION_TEXTES = {
 };
 
 // Format du document genere (E3-8, E3-9) : la ligne « Format : ... », le texte cache du bouton
-// « Telecharger la convention » et la phrase d'aide de l'etat « Generee » en dependent.
-// Un ancien PDF garde sa phrase d'aide d'avant l'evolution 3.
+// « Telecharger la convention » en dependent. Plus de phrase d'aide a l'etat « Generee » (E3-26, E3-29).
 const CONVENTION_FORMATS = {
   docx: {
     ligne: 'Format : document Word (.docx).',
-    cache: ' (fichier Word)',
-    aide: 'Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.'
+    cache: ' (fichier Word)'
   },
   pdf: {
     ligne: 'Format : document PDF (.pdf).',
-    cache: ' (fichier PDF)',
-    aide: 'Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.'
+    cache: ' (fichier PDF)'
   }
 };
 
@@ -2824,8 +2821,7 @@ function conventionPhrases(actionId, donnees) {
       const phrases = [{texte: quand ? `Convention générée le ${quand}.` : 'Convention générée.'}];
       // Ligne « Format : ... » sous la phrase d'etat, seulement si le format est connu (E3-8).
       if (format) phrases.push({texte: CONVENTION_FORMATS[format].ligne, format: true});
-      // Format inconnu : la phrase du Word, comme pour toute convention generee depuis l'evolution 3.
-      phrases.push({texte: CONVENTION_FORMATS[format || 'docx'].aide, aide: true});
+      // E3-26 et E3-29 : plus de phrase d'aide a l'etat « Generee », pour les deux formats.
       return phrases;
     }
     default: {

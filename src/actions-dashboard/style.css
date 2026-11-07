@@ -855,10 +855,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .convention-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 /* Bloc « Convention » : le contenu (phrases et boutons) est refait seul apres une generation,
    dans un conteneur qui ne change pas la grille de .edit-fields. La zone de message
-   (role="status") reste dans la page ; vide, elle ne prend pas de place. */
+   (role="status") reste dans la page ; vide, elle est masquee (display: none), car une marge
+   negative ne reduit pas une ligne de grille et laissait un espace vide en haut du bloc (E3-27). */
 .convention-contenu { display: contents; }
-.convention-alerte:empty { margin-bottom: -16px; }
-/* Dépôt du fichier signé : la zone d'attente (role="status") reste dans la page, vide, sans
-   prendre de place ; le champ fichier est caché (comme .logo-input du widget clubs). */
-.convention-depot-attente:empty { margin-bottom: -16px; }
+/* Dépôt du fichier signé : la zone d'attente (role="status") reste dans la page, vide et masquee ;
+   le champ fichier est caché (comme .logo-input du widget clubs). Le role="status" est pose sur
+   l'element des l'affichage du bloc, pas au moment du message. */
+.convention-alerte:empty,
+.convention-depot-attente:empty { display: none; }
 .convention-file { display: none; }
