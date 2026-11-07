@@ -1188,7 +1188,7 @@ Ce que j'ai fait corriger en cours de route : bug Annee: null (grave, avant tout
 Tests : plusieurs cycles sur la journée, de 733 (avant E1) à 765 puis 761 tests, 0 échec au final (npm test). Vérifié à l'écran par Hanta dans DEV7 : bouton Ajouter un contact, pointillés sur champ vide, bascule à deux colonnes sous 1100 px, encart Club sans poignée.
 Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html, 9 fichiers de test (dont convention-contact.test.js, nouveau),
 
-## Tâche C57 — Évolution 2 : pop-up plein écran pour Voir, téléchargement avec le bon nom
+## Tâche C57 — Évolution 2 : pop-up plein écran pour Voir, téléchargem#ent avec le bon nom
 
 Date : 2026-10-30
 Agents : relecteur (deux diagnostics), designer-ux (plusieurs passes), auditeur-securite (examen de l'iframe), dev-interface (code), testeur (mise à jour complète)
@@ -1210,6 +1210,7 @@ Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, act
 Build refait : oui
 Commit : bedf338 (code) et fe1b558 (tests)
 Reste à faire : vérifier le rendu réel dans Chrome, Firefox et Safari (iframe PDF, téléchargement, absence de bande visible) ; mesurer la hauteur réelle du cadre PDF (calc(100vh - 150px) est une estimation) ; R9, la recette de cette évolution, à écrire.
+
 ## Tâche 26 — Tableau de bord : conservation des filtres entre deux pages (dev-backend, testeur)
 
 Date : 03/11/2026
@@ -1224,3 +1225,26 @@ Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, te
 Build refait : oui
 Commit : ee547d9 (code) et 9fd8fd3 (tests) sur feature/conserver-filtres
 Reste à faire : recette à écrire et jouer (carnet du tableau de bord) ; vérifier dans Grist DEV/TEST que sessionStorage n'est pas restreint par le navigateur quand le widget est chargé en iframe tiers (risque signalé par le testeur, non vérifié formellement)
+
+## Tâche 27 — Évolution 3 : génération en Word (.docx) et dépôt libre permanent
+
+Date : 2026-11-06
+Agents : chef-de-projet (cadrage), dev-backend (étude de faisabilité, code, corrections), auditeur-securite (audit de la bibliothèque), designer-ux (plusieurs passes), testeur (mise à jour complète)
+Prompt : demande du chef de projet, génération en Word plutôt qu'en PDF, pour permettre aux agents de modifier le texte avant signature (habitude de tous les agents) ; plus, demande distincte, dépôt libre du fichier signé en permanence
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- "Générer la convention" et "Re-générer" produisent un fichier .docx (bibliothèque docx 9.15.2, dolanmiu, chargée depuis jsDelivr avec SRI, même modèle de sécurité que pdfmake). Le PDF est remplacé pour le document généré.
+- "Voir la convention" (aperçu intégré) est retiré pour le document généré (un navigateur n'affiche pas nativement un .docx) : il ne reste que "Télécharger la convention". "Voir la convention signée" (PDF scanné) reste inchangé, garde sa pop-up plein écran.
+- Deux catégories de zones vides dans le Word : les vrais champs de données (surlignage jaune, bande d'espaces insécables) et les zones écrites à la main après impression, "Fait à…", "À…, le…", etc. (simple soulignement, sans surlignage, pour éviter qu'un agent oublie de retirer un jaune qu'il ne remplit jamais).
+- Bouton "Déposer la convention signée" devient permanent : visible aussi aux états "À générer" et "Sans modèle", pas seulement "Générée". Le dépôt crée la ligne Conventions si besoin (Action seulement, jamais DR/DD/Modele/Annee).
+- Bug trouvé et corrigé avant tout code : le nom de fichier doit lire l'année depuis Actions.Campagne, jamais depuis Conventions.Annee (qui reste vide après un dépôt libre).
+- Bug de chargement trouvé et corrigé après un premier essai en DEV7 : le fichier dist/index.umd.cjs a un type MIME refusé par les navigateurs ; remplacé par dist/index.iife.js (le bundle navigateur officiellement documenté par docx).
+- Métadonnées du document (auteur, titre) fixées à des valeurs neutres, jamais de donnée personnelle. Les dates réelles de création/modification ne sont pas fixées : confirmé sans risque RGPD.
+- Le fichier SIGNÉ reste exclusivement un PDF (scan), aucun changement sur son contrôle.
+Ce que j'ai fait corriger en cours de route : étude de faisabilité comparant 3 bibliothèques (docx retenue, gratuite et active) ; audit de sécurité favorable sous conditions (dépendances réelles confirmées : fflate, nanoid ^6.0.1, largement au-delà des correctifs connus) ; bug du mauvais fichier de chargement (MIME refusé), diagnostiqué à partir de la console du navigateur après plusieurs essais ; distinction surlignage/soulignement ajoutée après coup, à la demande de Hanta, pour éviter un risque de confusion pour les agents ; phrase d'aide du dépôt libre retirée (jugée inutile par Hanta).
+Tests : 815 tests avant l'évolution, 916 passés au final (101 ajoutés/réécrits), 0 échec (npm test). Le testeur a cassé le code 34 fois dans une copie jetable pour vérifier que ses tests détectent bien chaque régression (34/34). Vérifié à l'écran par Hanta dans DEV7 : document Word généré et ouvert (titre, logos, bandes jaunes, soulignement sans jaune sur "Fait à…", police Arial, marges, signatures, tous corrects).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, 10 fichiers de test existants, 4 nouveaux fichiers de test, test/helpers/docx.js (nouveau), docs/ux/convention.md, docs/backlog.md
+Build refait : oui
+Commit : d36e741 (code), 5da8d34 (tests), 54ec7d5 (backlog)
+Reste à faire : vérifier manuellement dans Grist si les 3 modèles officiels contiennent encore des zones à traiter comme "Fait à…" (nombre d'opérations, date de fin, contact RGPD) ; vérifier la création de ligne Conventions par un non-propriétaire avec "Voir en tant que" (FT Régional, FT Départemental) ; vérifier le domaine jsdelivr.net sur le réseau France Travail avant la mise en PROD ; recette R10 à écrire (en parcours utilisateur courts, cf. décision du 03/11) ; retirer le code mort pdfmake une fois la transition confirmée stable.
