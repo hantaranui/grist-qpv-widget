@@ -2078,11 +2078,7 @@ const CONVENTION_MISE_EN_PAGE_DOCX = {
     espaceEntreColonnes: 480,
     espaceSousIntitules: conventionCmEnTwips(3),
     espaceAvantLieuDate: 360
-  },
-  // Champs a completer : surlignage jaune standard de Word sur une bande d'espaces insecables
-  // (sans elle, un surlignage de longueur zero serait invisible). 20 caracteres, 40 pour une adresse.
-  bande: 20,
-  bandeAdresse: 40
+  }
 };
 
 // Retire les caracteres de controle qu'un fichier Word (XML) n'accepte pas : sans cela, une valeur
@@ -2091,37 +2087,26 @@ function conventionTexteSur(texte) {
   return String(texte ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '');
 }
 
-// Nombre de caracteres de la bande surlignee d'une case : 40 pour une adresse, 20 sinon.
-// L'apostrophe droite et l'apostrophe courbe sont la meme lettre (comme dans conventionValeurDeCase).
-function conventionLargeurBande(nom) {
-  const courbe = texte => String(texte).replace(/'/g, '’');
-  const adresse = [CONVENTION_CASES.clubSiege, CONVENTION_CASES.agenceAdresse].some(autre => courbe(autre) === courbe(nom));
-  return adresse ? CONVENTION_MISE_EN_PAGE_DOCX.bandeAdresse : CONVENTION_MISE_EN_PAGE_DOCX.bande;
-}
-
-// Morceau de texte « a completer » : une bande d'espaces insecables, a surligner en jaune.
-// `style` (facultatif) : gras / italique du texte qui l'entoure, pour que ce que l'agent tape le garde.
-function conventionBandeDocx(largeur, style) {
-  return {...(style || {}), text: ' '.repeat(largeur), surligne: true};
-}
-
-// Zone « ecrite a la main » apres impression (E3-21, E3-22) : jamais remplie par le widget, donc
-// PAS de surlignage jaune. Un simple espace souligne, comme une ligne a remplir sur un formulaire
-// papier : des espaces insecables soulignes (sans eux, un soulignement de longueur zero serait invisible).
-function conventionZoneManuscriteDocx(largeur) {
-  return {text: ' '.repeat(largeur), underline: true};
+// Champ vide (E3-25, note UX 15.5) : UN SEUL traitement pour tous les champs vides, qu'il s'agisse
+// d'une donnee Grist connue mais vide ou d'une zone ecrite a la main. 56 points, comme dans le PDF
+// (CONVENTION_POINTILLES), dans un morceau de texte ordinaire : aucune couleur, aucun surlignage,
+// aucun soulignement. `style` (facultatif) : gras / italique du texte qui l'entoure.
+function conventionPointillesDocx(style) {
+  const run = {text: CONVENTION_POINTILLES};
+  if (style && style.bold) run.bold = true;
+  if (style && style.italics) run.italics = true;
+  return run;
 }
 
 // « Fait à ......, le ...... » (ou « À ..., le ... ») : le lieu et la date sont ecrits a la main,
-// donc deux espaces soulignes (20 caracteres, faute de largeur donnee par le modele), sans surlignage.
+// donc deux suites de points, comme tout champ vide.
 function conventionLieuDateDocx(debut) {
-  const largeur = CONVENTION_MISE_EN_PAGE_DOCX.bande;
-  return [{text: debut}, conventionZoneManuscriteDocx(largeur), {text: ', le '}, conventionZoneManuscriteDocx(largeur)];
+  return [{text: debut}, conventionPointillesDocx(), {text: ', le '}, conventionPointillesDocx()];
 }
 
 // Decoupe une ligne du modele en morceaux de texte, chacun avec sa mise en forme. Meme syntaxe que
 // conventionRuns (gras, italique, souligne, exposant, notes, liens), avec deux differences :
-//  - une case connue mais VIDE donne une bande surlignee (au lieu des pointilles) ;
+//  - une case connue mais VIDE donne des pointilles (conventionPointillesDocx), comme dans le PDF ;
 //  - un appel de note [^1] donne un vrai appel de note de bas de page ({note: numero}), a sa
 //    premiere apparition seulement ; un appel repete, ou sans texte de note, reste un exposant.
 // `valeurs` : cases connues ({ "Nom": "valeur" } ; "" = connue mais vide). `contexte` : { numeros,
@@ -2138,7 +2123,7 @@ function conventionRunsDocx(ligne, valeurs, contexte) {
     if (actif.underline) run.underline = true;
     if (actif.sup || supplement) run.sup = true;
     const dernier = runs[runs.length - 1];
-    const fusionnable = dernier && !dernier.surligne && !dernier.note
+    const fusionnable = dernier && !dernier.note
       && JSON.stringify({...dernier, text: ''}) === JSON.stringify({...run, text: ''});
     if (fusionnable) dernier.text += texte;
     else runs.push(run);
@@ -2181,8 +2166,8 @@ function conventionRunsDocx(ligne, valeurs, contexte) {
       vider();
       const valeur = conventionValeurDeCase(valeurs, m[1]);
       if (valeur === '') {
-        // Case connue mais vide : une bande surlignee que l'agent remplit dans Word.
-        runs.push(conventionBandeDocx(conventionLargeurBande(m[1]), {bold: actif.bold || undefined, italics: actif.italics || undefined}));
+        // Case connue mais vide : des pointilles que l'agent complete dans Word ou a la main.
+        runs.push(conventionPointillesDocx(actif));
       } else {
         ajouter(valeur);
       }
@@ -2193,8 +2178,7 @@ function conventionRunsDocx(ligne, valeurs, contexte) {
     }
   }
   vider();
-  // Les reglages « non definis » (undefined) d'une bande ne sont pas gardes.
-  return runs.map(run => JSON.parse(JSON.stringify(run)));
+  return runs;
 }
 
 // Regroupe les lignes du modele en blocs : titre, paragraphe, liste, retrait, saut de page ou
@@ -2290,7 +2274,6 @@ function conventionRunsVersDocx(lib, runs, options) {
     if (run.italics) reglages.italics = true;
     if (run.underline) reglages.underline = {type: 'single'};
     if (run.sup) reglages.superScript = true;
-    if (run.surligne) reglages.highlight = 'yellow';
     if (taille) reglages.size = taille;
     return new lib.TextRun(reglages);
   });
@@ -2311,8 +2294,8 @@ function conventionParagrapheVideDocx(lib, reglages) {
 // Bloc de signature : un tableau a deux colonnes de meme largeur, sans bordure, en une seule ligne
 // qui ne se coupe pas entre deux pages. Club a gauche et agence a droite ; avec ftAGauche : une
 // ligne « Fait a ..., le ... » au-dessus (gardee avec le tableau), France Travail a gauche, club a
-// droite, intitules en gras, 3 cm d'espace pour la signature. Une case connue mais vide donne une
-// bande surlignee ; une case inconnue reste ecrite [Nom], comme dans le reste du texte.
+// droite, intitules en gras, 3 cm d'espace pour la signature. Une case connue mais vide donne des
+// pointilles ; une case inconnue reste ecrite [Nom], comme dans le reste du texte.
 function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
   const L = CONVENTION_MISE_EN_PAGE_DOCX;
   const S = L.signatures;
@@ -2322,7 +2305,7 @@ function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
   const valeurOuCase = nom => {
     const valeur = conventionValeurDeCase(valeurs, nom);
     if (valeur === undefined) return [{text: `[${nom}]`}];
-    return valeur === '' ? [conventionBandeDocx(conventionLargeurBande(nom))] : [{text: valeur}];
+    return valeur === '' ? [conventionPointillesDocx()] : [{text: valeur}];
   };
   const paragraphe = (runs, options, dernier) => new lib.Paragraph({
     children: conventionRunsVersDocx(lib, runs, options),
@@ -2806,7 +2789,7 @@ const CONVENTION_FORMATS = {
   docx: {
     ligne: 'Format : document Word (.docx).',
     cache: ' (fichier Word)',
-    aide: 'Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.'
+    aide: 'Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.'
   },
   pdf: {
     ligne: 'Format : document PDF (.pdf).',
@@ -2992,8 +2975,8 @@ const CONVENTION_FONCTION_AGENCE = "Directeur d'agence";
 const CONVENTION_FONCTION_VIDE = 'Fonction non renseignée';
 const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.";
 // Evolution 1 : plus aucun champ obligatoire dans la fenetre, donc plus de controle des champs
-// (ni a la fermeture, ni a « Generer »). Un champ vide est surligne dans le document Word (evolution 3).
-const CONVENTION_INTRODUCTION = "Un champ laissé vide sera surligné dans le document Word, à compléter avant la signature.";
+// (ni a la fermeture, ni a « Generer »). Un champ vide devient des pointilles (E3-25).
+const CONVENTION_INTRODUCTION = "Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.";
 // Valeur de l'option de la liste « Signataire » qui represente le contact saisi dans le formulaire « Ajouter un contact ».
 const CONVENTION_VALEUR_NOUVEAU_CONTACT = 'nouveau';
 
@@ -3863,8 +3846,8 @@ function conventionAvecDelai(promesse, delaiMs, creerErreur) {
 
 // Valeur de chaque case connue, pour conventionVersContenuPdf. Fonction pure.
 // Une adresse sur plusieurs lignes devient une seule ligne : elle se lit dans une phrase.
-// options.vides (evolution 3) : une case connue mais vide reste '' (le document Word la surligne)
-// au lieu de devenir des pointilles. Avec '' elle serait comptee comme manquante par
+// options.vides (evolution 3) : une case connue mais vide reste ''
+// au lieu de devenir des pointilles (le document Word la transforme lui-meme en pointilles). Avec '' elle serait comptee comme manquante par
 // conventionCasesManquantes : la generation repere donc les cases inconnues avec la version
 // a pointilles, et fabrique le document avec la version `vides`.
 function conventionValeursCases(actionId, valeurs, donnees, options) {
@@ -4165,7 +4148,7 @@ async function conventionGenerer(actionId, valeurs) {
     const anneeEnregistree = convention.Annee ? String(convention.Annee) : String(valeurs.annee ?? '');
     const valeursDocument = {...valeurs, annee: anneeEnregistree};
     // Les cases inconnues se reperent avec la version a pointilles (aucune case connue n'y est vide) ;
-    // le document, lui, recoit la version ou une case connue mais vide reste '' et sera surlignee.
+    // le document, lui, recoit la version ou une case connue mais vide reste '' et sera mise en pointilles par le document.
     const inconnues = conventionCasesManquantes(contenu, conventionValeursCases(actionId, valeursDocument, state));
     if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
     const cases = conventionValeursCases(actionId, valeursDocument, state, {vides: true});
