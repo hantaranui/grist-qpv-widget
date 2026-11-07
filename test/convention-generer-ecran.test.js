@@ -787,7 +787,7 @@ function reussiteAvecPdf(m) {
 
 // Echoue si, apres une reussite, la fenetre reste ouverte (state.conventionOpen, modal-open),
 // si le bloc n'affiche pas l'etat « Générée » avec le format Word (phrase avec la date, ligne « Format :
-// document Word (.docx). », phrase d'aide du Word), puis exactement trois boutons dans cet ordre :
+// document Word (.docx). », rien d'autre : plus de phrase d'aide, E3-26/E3-29), puis exactement trois boutons dans cet ordre :
 // « Télécharger la convention » (texte cache « (fichier Word) », E3-3), « Re-générer » et « Déposer la
 // convention signée » ; plus de « Voir la convention » (E3-3) ni de « Télécharger » court ; plus le bouton
 // « Générer la convention » ; si le message « Convention générée. » n'est pas dans une alerte
@@ -808,8 +808,8 @@ test("réussite : fenêtre fermée, bloc « Générée » (format Word) avec « 
   assert.deepEqual(phrases(m.htmlContenu()), [
     "Convention générée le 14/03/2026.",
     "Format : document Word (.docx).",
-    "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
   ]);
+  assert.ok(!decoder(m.htmlContenu()).includes("Téléchargez la convention") && !m.htmlContenu().includes("convention-aide"), "plus de phrase d'aide (Word) ni de classe convention-aide");
   const boutons = m.htmlContenu().match(/<button\b[^>]*>/g) || [];
   assert.equal(boutons.length, 3, "trois boutons dans le bloc");
   assert.match(boutons[0], /\sid="conventionTelecharger"/, "le premier est « Télécharger la convention »");

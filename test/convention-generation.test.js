@@ -528,9 +528,9 @@ test("E3-13 : & < > \" ' dans le club, l'agence, le signataire et le représenta
 });
 
 // Echoue si, apres une generation reussie, le bloc ne connait pas le format du document (E3-20 C : « Format : document
-// Word (.docx). », texte cache « (fichier Word) », phrase d'aide du Word), y compris quand la generation REMPLACE un
+// Word (.docx). », texte cache « (fichier Word) », et plus aucune phrase d'aide : E3-26/E3-29), y compris quand la generation REMPLACE un
 // ancien PDF (E3-9/E3-10) : le nouveau document est un Word, l'ancien PDF reste non rattache dans Grist.
-// Échoue si la phrase d'aide n'est pas exactement celle du E3-25 (pointillés, plus de surlignage) ou si la phrase de l'ancien PDF revient.
+// Échoue si une phrase d'aide (Word ou ancien PDF) ou la classe convention-aide revient dans le bloc.
 test("après une génération (première ou re-génération d'un ancien PDF), le bloc affiche « Format : document Word (.docx). » et « (fichier Word) »", async () => {
   for (const [nom, preparerCas] of [["première génération", () => preparer()], ["re-génération d'un ancien PDF", () => preparerRegeneration()]]) {
     const ctx = await preparerCas();
@@ -544,7 +544,7 @@ test("après une génération (première ou re-génération d'un ancien PDF), le
     assert.equal(ctx.w.conventionEtat(1, ctx.w.state).etat, "Générée", nom);
     assert.ok(bloc.includes('<p class="help-block">Format : document Word (.docx).</p>'), `${nom} : ligne « Format »`);
     assert.ok(bloc.includes('<span class="sr-only"> (fichier Word)</span>'), `${nom} : texte caché du bouton`);
-    assert.ok(bloc.includes("Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF."), `${nom} : phrase d'aide du Word (E3-25)`);
+    assert.ok(!bloc.includes("Téléchargez la convention") && !bloc.includes("convention-aide"), `${nom} : plus de phrase d'aide du Word (E3-26/E3-29)`);
     assert.ok(!bloc.includes("surlign") && !bloc.includes("jaune"), `${nom} : plus aucune mention de surlignage`);
     assert.ok(!bloc.includes("Format : document PDF") && !bloc.includes("(fichier PDF)") && !bloc.includes("Imprimez la convention, complétez"), `${nom} : rien de l'ancien PDF`);
   }

@@ -3,7 +3,7 @@
 // Bloc « Convention » de la fiche d'action (taches 4.2 et 5.1a, mis a jour pour l'Evolution 3 :
 // docs/ux/convention.md, §15.3 a §15.8) : textes des cinq etats, date en francais, boutons (dont
 // « Telecharger la convention » a la place de « Voir la convention » et « Deposer la convention
-// signee » visible en permanence sauf a l'etat Droits insuffisants), ligne « Format : … » et phrase d'aide
+// signee » visible en permanence sauf a l'etat Droits insuffisants), ligne « Format : … » (plus de phrase d'aide à l'état Générée, E3-26/E3-29)
 // selon le format du document genere, message de blocage (aux etats A generer et Generee), noms de classes.
 // Le detail du bouton, du message et de la fenetre est dans test/convention-fenetre.test.js ; le
 // telechargement dans test/convention-telecharger.test.js ; le depot dans test/convention-deposer.test.js.
@@ -20,6 +20,7 @@ const {fixerFormat} = require("./helpers/docx");
 
 const CSS = fs.readFileSync(
   path.join(__dirname, "..", "src", "actions-dashboard", "style.css"), "utf8");
+const CSS_SANS_COMMENTAIRES = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 
 // Midi UTC : la date affichee reste la meme dans tous les fuseaux horaires.
 const secondes = (annee, mois, jour) => Date.UTC(annee, mois - 1, jour, 12, 0, 0) / 1000;
@@ -30,14 +31,20 @@ const TEXTES = {
   aGenerer: "Aucune convention générée.",
   sansModele: "Pas encore de modèle de convention pour ce dispositif.",
   droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord.",
-  // E3 (§15.7) : sans format connu (rien n'a encore ete genere ni telecharge dans cette page), le bloc
-  // montre la phrase du Word, comme pour toute convention generee depuis l'evolution 3.
-  aide: "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
-  aideWord: "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
-  // Ancienne convention PDF (§15.8) : le texte d'avant l'evolution 3, inchange.
-  aidePdf: "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
   formatWord: "Format : document Word (.docx).",
   formatPdf: "Format : document PDF (.pdf).",
+};
+
+// E3-26 et E3-29 : plus aucune phrase d'aide a l'etat Generee (Word comme ancien PDF). Ces trois phrases, recopiees en dur,
+// ne doivent plus apparaitre nulle part dans le bloc : si l'une revient, les tests ci-dessous echouent.
+const PHRASES_AIDE_RETIREES = [
+  "Téléchargez la convention, modifiez-la si besoin dans Word, imprimez-la, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé au format PDF.",
+  "Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.",
+];
+const sansPhraseAide = (html, contexte) => {
+  const lu = decoder(html);
+  for (const phrase of PHRASES_AIDE_RETIREES) assert.ok(!lu.includes(phrase), `${contexte} : la phrase d'aide « ${phrase.slice(0, 25)}… » est retirée`);
+  assert.ok(!lu.includes("convention-aide"), `${contexte} : plus de classe convention-aide`);
 };
 
 const PDF = ["L", 41];
@@ -105,45 +112,35 @@ test("état À générer : « Aucune convention générée. », seule", () => {
   assert.deepEqual(textes(blocPour(w, donnees())), [TEXTES.aGenerer]);
 });
 
-// Echoue si la phrase de l'etat Generee change, si la date est mal placee ou si
-// la phrase d'aide disparait ou passe avant la date.
-test("état Générée : la phrase avec la date, puis la phrase d'aide, dans cet ordre", () => {
+// Echoue si la phrase de l'etat Generee change ou si la date est mal placee ; si une phrase d'aide revient apres elle
+// (E3-26/E3-29 : plus d'aide a l'etat Generee) ; ou si la phrase d'etat prend une classe (convention-aide, help-block).
+test("état Générée : la seule phrase est celle avec la date, sans phrase d'aide ni classe", () => {
   const w = loadWidget();
   const jeu = donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]});
-  assert.deepEqual(textes(blocPour(w, jeu)), [
-    "Convention générée le 14/03/2026.",
-    TEXTES.aide,
-  ]);
-});
-
-// Echoue si la phrase d'aide perd sa classe convention-aide (elle ne se distinguerait
-// plus de la phrase d'etat) ou si la phrase d'etat la prend.
-test("état Générée : seule la phrase d'aide porte la classe convention-aide", () => {
-  const w = loadWidget();
-  const jeu = donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]});
-  const [etat, aide] = phrases(blocPour(w, jeu));
-  assert.equal(etat.classe, "");
-  assert.equal(aide.classe, "convention-aide");
+  const bloc = blocPour(w, jeu);
+  assert.deepEqual(phrases(bloc), [{texte: "Convention générée le 14/03/2026.", classe: ""}]);
+  sansPhraseAide(bloc, "format inconnu");
 });
 
 // Echoue si, une fois le format du document genere connu (apres une generation ou un « Telecharger la
-// convention », E3-20 C), le bloc n'affiche pas, dans cet ordre : la phrase d'etat, la ligne « Format :
-// document Word (.docx). » (ou « … PDF (.pdf). »), puis la phrase d'aide DE CE FORMAT (Word : zones en
-// pointilles, E3-25 ; ancien PDF : pointilles aussi), ou si les classes ne sont pas "", help-block, convention-aide.
-test("état Générée, format connu : phrase d'état, ligne « Format : … », puis la phrase d'aide du bon format (Word ou ancien PDF)", () => {
+// convention », E3-20 C), le bloc n'affiche pas exactement, dans cet ordre : la phrase d'etat (sans classe), puis la
+// ligne « Format : document Word (.docx). » (ou « … PDF (.pdf). », classe help-block) ; ou si une phrase d'aide
+// (Word ou ancien PDF) revient apres la ligne « Format » (E3-26/E3-29).
+test("état Générée, format connu : phrase d'état puis ligne « Format : … », rien d'autre (Word ou ancien PDF)", () => {
   const cas = [
-    ["docx", TEXTES.formatWord, TEXTES.aideWord],
-    ["pdf", TEXTES.formatPdf, TEXTES.aidePdf],
+    ["docx", TEXTES.formatWord],
+    ["pdf", TEXTES.formatPdf],
   ];
-  for (const [format, ligneFormat, aide] of cas) {
+  for (const [format, ligneFormat] of cas) {
     const w = loadWidget();
     fixerFormat(w, 20, format);
     const jeu = donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]});
-    assert.deepEqual(phrases(blocPour(w, jeu)), [
+    const bloc = blocPour(w, jeu);
+    assert.deepEqual(phrases(bloc), [
       {texte: "Convention générée le 14/03/2026.", classe: ""},
       {texte: ligneFormat, classe: "help-block"},
-      {texte: aide, classe: "convention-aide"},
     ], `format ${format}`);
+    sansPhraseAide(bloc, `format ${format}`);
   }
 });
 
@@ -252,14 +249,14 @@ test("état Signée : la date vient de Date_depot, pas de Date_generation", () =
 // ---------------------------------------------------------------------------
 
 // Echoue si la date vide (null, 0, texte vide ou absente) laisse « le . » ou
-// « le undefined » / « le 01/01/1970 » dans la phrase.
-test("état Générée sans date : « Convention générée. » puis la phrase d'aide", () => {
+// « le undefined » / « le 01/01/1970 » dans la phrase, ou si une phrase d'aide s'ajoute apres « Convention générée. ».
+test("état Générée sans date : « Convention générée. », seule", () => {
   const w = loadWidget();
   for (const vide of [null, 0, "", undefined]) {
     const champs = {PDF_genere: PDF};
     if (vide !== undefined) champs.Date_generation = vide;
     const jeu = donnees({conventions: [convention(champs)]});
-    assert.deepEqual(textes(blocPour(w, jeu)), ["Convention générée.", TEXTES.aide], `date vide : ${String(vide)}`);
+    assert.deepEqual(textes(blocPour(w, jeu)), ["Convention générée."], `date vide : ${String(vide)}`);
   }
 });
 
@@ -279,7 +276,7 @@ test("état Signée sans date : « Convention signée. »", () => {
 // ---------------------------------------------------------------------------
 
 // Echoue si l'ordre des etats s'inverse (Generee testee avant Signee) : on
-// verrait alors « Convention générée le … » et la phrase d'aide.
+// verrait alors « Convention générée le … ».
 test("une action avec un PDF généré et un PDF signé est à l'état Signée", () => {
   const w = loadWidget();
   const jeu = donnees({conventions: [convention({
@@ -287,7 +284,8 @@ test("une action avec un PDF généré et un PDF signé est à l'état Signée",
   })]});
   const bloc = blocPour(w, jeu);
   assert.deepEqual(textes(bloc), ["Convention signée, déposée le 27/11/2026."]);
-  assert.ok(!bloc.includes(TEXTES.aide) && !bloc.includes("générée le"), "rien de l'état Générée");
+  sansPhraseAide(bloc, "Signée");
+  assert.ok(!bloc.includes("générée le"), "rien de l'état Générée");
 });
 
 // ---------------------------------------------------------------------------
@@ -537,7 +535,7 @@ test("le message de blocage n'apparaît qu'aux états À générer et Générée
   const w = loadWidget();
   const ETATS_AVEC_BOUTON = {
     "À générer": {variante: {}, phrases: [TEXTES.aGenerer]},
-    "Générée": {variante: {conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}, phrases: ["Convention générée le 14/03/2026.", TEXTES.aide]},
+    "Générée": {variante: {conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}, phrases: ["Convention générée le 14/03/2026."]},
   };
   for (const [etat, {variante: etatVariante, phrases: attendues}] of Object.entries(ETATS_AVEC_BOUTON)) {
     for (const [manque, variante] of Object.entries(MANQUES)) {
@@ -576,7 +574,7 @@ test("à l'état Générée le message de blocage n'apparaît que si un élémen
     conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})],
   });
   assert.notEqual(w.conventionBlocage(1, generee), null);
-  assert.deepEqual(textes(blocPour(w, generee)), ["Convention générée le 14/03/2026.", TEXTES.aide]);
+  assert.deepEqual(textes(blocPour(w, generee)), ["Convention générée le 14/03/2026."]);
   assert.ok(decoder(blocPour(w, generee)).includes("Renseignez l'agence de l'action dans sa fiche."), "message de l'agence");
   const complete = blocPour(w, donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
   assert.ok(!/Renseignez|impossible à générer|conventionBlocageTexte/.test(complete), "rien ne manque : aucun message");
@@ -595,7 +593,7 @@ test("à l'état Générée le message de blocage n'apparaît que si un élémen
 // convention-alerte (zone de message) et convention-contenu (partie refaite apres une
 // generation) viennent de la 7.2b : elles sont dans tous les etats.
 // convention-depot-attente (zone d'attente du depot, 9.1a) est elle aussi dans tous les etats.
-const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", "convention-fields", "convention-aide", "convention-alerte", "convention-contenu", "convention-depot-attente"]);
+const CLASSES_AUTORISEES = new Set(["edit-card", "section-head", "edit-fields", "convention-fields", "convention-alerte", "convention-contenu", "convention-depot-attente"]);
 
 // Classes de plus, permises seulement a l'etat A generer (bouton, rangee du bouton,
 // message de blocage et son texte cache) : classes du design system ou du widget.
@@ -653,22 +651,23 @@ test("le bloc reprend la structure des autres blocs de la fiche", () => {
   }
 });
 
-// Echoue si convention-aide est posee hors de la phrase d'aide : seul l'etat
-// Generee a une phrase d'aide.
-test("convention-aide n'apparaît qu'à l'état Générée", () => {
+// Echoue si la classe convention-aide ou une phrase d'aide reapparait dans l'un des etats (E3-26/E3-29 : l'etat Generee,
+// le dernier a en avoir une, n'en a plus), format du document inconnu, Word ou ancien PDF.
+test("convention-aide et les phrases d'aide n'apparaissent plus, dans aucun état", () => {
   const w = loadWidget();
   for (const [nom, fabrique] of Object.entries(ETATS_A_TESTER)) {
-    const present = classesDe(blocPour(w, fabrique())).has("convention-aide");
-    assert.equal(present, nom === "Générée", nom);
+    assert.ok(!classesDe(blocPour(w, fabrique())).has("convention-aide"), nom);
+    sansPhraseAide(blocPour(w, fabrique()), nom);
+  }
+  for (const format of ["docx", "pdf"]) {
+    fixerFormat(w, 20, format);
+    sansPhraseAide(blocPour(w, ETATS_A_TESTER["Générée"]()), `Générée, format ${format}`);
   }
 });
 
-// Echoue si convention-fields ou convention-aide n'est plus declaree dans
-// style.css (le bloc s'afficherait sans mise en forme).
-test("style.css déclare convention-fields et convention-aide", () => {
-  for (const nom of ["convention-fields", "convention-aide"]) {
-    assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
-  }
+// Echoue si convention-fields n'est plus declaree dans style.css (le bloc s'afficherait sans mise en forme).
+test("style.css déclare convention-fields", () => {
+  assert.match(CSS, /\.convention-fields(?![\w-])/, ".convention-fields doit exister dans la feuille");
 });
 
 // Echoue si convention-alerte ou convention-contenu (7.2b) n'est plus declaree dans
@@ -677,6 +676,23 @@ test("style.css déclare convention-fields et convention-aide", () => {
 test("style.css déclare convention-alerte et convention-contenu", () => {
   for (const nom of ["convention-alerte", "convention-contenu"]) {
     assert.match(CSS, new RegExp(`\\.${nom}(?![\\w-])`), `.${nom} doit exister dans la feuille`);
+  }
+});
+
+// Echoue si l'espace vide permanent en haut du bloc revient (E3-27) : les deux conteneurs vides (.convention-alerte et
+// .convention-depot-attente) doivent passer en display: none via :empty (une marge negative ne reduit pas une ligne
+// de grille), et aucune regle de ces deux conteneurs ne doit reprendre une marge negative.
+test("E3-27 : les zones vides .convention-alerte et .convention-depot-attente sont masquées (display: none sur :empty), sans marge négative", () => {
+  const regle = (selecteur) => {
+    const trouvee = [...CSS_SANS_COMMENTAIRES.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((m) => m[1].split(",").map((x) => x.trim()).includes(selecteur));
+    assert.ok(trouvee, `une règle pour ${selecteur}`);
+    return trouvee[2];
+  };
+  for (const selecteur of [".convention-alerte:empty", ".convention-depot-attente:empty"]) {
+    assert.match(regle(selecteur), /(^|[;\s])display:\s*none\s*;?/, `${selecteur} { display: none }`);
+  }
+  for (const m of CSS_SANS_COMMENTAIRES.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (/\.convention-(alerte|depot-attente)\b/.test(m[1])) assert.ok(!/margin[^;]*-\d+px/.test(m[2]), `${m[1].trim()} : pas de marge négative`);
   }
 });
 
@@ -720,7 +736,7 @@ test("conventionBlocContenuHtml : les phrases de l'état, « Générer » et « 
   assert.ok(!aGenerer.includes("conventionTelecharger"), "pas de bouton « Télécharger la convention » à l'état À générer");
   assert.ok(!aGenerer.includes("conventionRegenerer"), "pas de bouton « Re-générer » à l'état À générer");
   const generee = w.conventionBlocContenuHtml(1, donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
-  assert.deepEqual(textes(generee), ["Convention générée le 14/03/2026.", TEXTES.aide]);
+  assert.deepEqual(textes(generee), ["Convention générée le 14/03/2026."]);
   const boutons = generee.match(/<button\b[^>]*>/g) || [];
   assert.equal(boutons.length, 3, "trois boutons à l'état Générée");
   assert.match(boutons[0], /\sid="conventionTelecharger"/, "le premier bouton est « Télécharger la convention »");
@@ -803,7 +819,7 @@ test("génération bloquée à l'état Générée : « Re-générer » est gris�
     assert.ok(bloc.includes(`<div id="conventionBlocage" role="status"><p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${BLOCAGES[element]}</p></div>`),
       `${element} : message exact, avec son texte caché, dans la zone role="status"`);
     const message = bloc.indexOf('id="conventionBlocageTexte"');
-    assert.ok(bloc.indexOf(TEXTES.aide) < message && message < bloc.indexOf('id="conventionTelecharger"'), `${element} : le message est sous les phrases et au-dessus des boutons`);
+    assert.ok(bloc.indexOf("Convention générée le 14/03/2026.") !== -1 && bloc.indexOf("Convention générée le 14/03/2026.") < message && message < bloc.indexOf('id="conventionTelecharger"'), `${element} : le message est sous les phrases et au-dessus des boutons`);
   }
 });
 
@@ -864,5 +880,5 @@ test("le bloc est en bas de la fiche, après Statut et Financement, dans le form
 // l'action ouverte (ex. mauvais identifiant d'action transmis).
 test("la fiche affiche l'état de l'action ouverte", () => {
   const html = fiche(donnees({conventions: [convention({PDF_genere: PDF, Date_generation: GENEREE_LE})]}));
-  assert.deepEqual(textes(extraireBloc(html)), ["Convention générée le 14/03/2026.", TEXTES.aide]);
+  assert.deepEqual(textes(extraireBloc(html)), ["Convention générée le 14/03/2026."]);
 });

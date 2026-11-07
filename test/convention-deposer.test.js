@@ -332,10 +332,13 @@ test("le champ fichier caché #conventionFichier est dans index.html : type file
 
 // Echoue si style.css ne cache plus le champ (le selecteur natif « Choisir un fichier » apparaitrait
 // dans la page) ou ne declare plus la zone d'attente vide sans place (elle ajouterait un vide dans
-// la carte).
-test("style.css cache le champ fichier (display: none) et déclare la zone d'attente vide sans place", () => {
+// la carte : E3-27, display: none sur :empty, plus de marge négative, qui ne réduit pas une ligne de grille).
+test("style.css cache le champ fichier (display: none) et masque la zone d'attente quand elle est vide (display: none sur :empty)", () => {
   assert.match(CSS, /\.convention-file\s*\{\s*display:\s*none;?\s*\}/, ".convention-file { display: none }");
-  assert.match(CSS, /\.convention-depot-attente:empty\s*\{[^}]*margin-bottom:\s*-16px/, ".convention-depot-attente:empty ne prend pas de place");
+  const regle = [...CSS.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^}]*)\}/g)].find((m) => m[1].split(",").map((x) => x.trim()).includes(".convention-depot-attente:empty"));
+  assert.ok(regle, "une règle pour .convention-depot-attente:empty");
+  assert.match(regle[2], /(^|[;\s])display:\s*none\s*;?/, ".convention-depot-attente:empty { display: none }");
+  assert.ok(!/margin[^;]*-\d+px/.test(regle[2]), "plus de marge négative");
 });
 
 // ---------------------------------------------------------------------------

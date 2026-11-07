@@ -298,8 +298,8 @@ test("document Word : lien <a download> temporaire en .docx, Blob de type Word, 
 });
 
 // Échoue si un ancien document PDF (généré avant l'E3) n'est plus téléchargeable (E3-9) : nom en .pdf, Blob de
-// type application/pdf, même mécanique, et si la phrase d'aide, la ligne « Format » et le texte caché du bloc
-// rafraîchi ne passent pas à la variante PDF (E3-8, E3-20 C : le format est connu après le clic).
+// type application/pdf, même mécanique, et si la ligne « Format » et le texte caché du bloc
+// rafraîchi ne passent pas à la variante PDF, ou si une phrase d'aide (ancien PDF) apparaît (E3-26/E3-29) (E3-8, E3-20 C : le format est connu après le clic).
 test("ancien document PDF : téléchargé en .pdf (Blob application/pdf), et le bloc rafraîchi passe à « Format : document PDF (.pdf). »", async () => {
   const m = await preparer({nomPieceJointe: "Convention-Dispositif-Exemple-Club-Exemple-2025.pdf"});
   assert.ok(!m.blocRefait().includes("Format :"), "(contrôle) avant le clic, le format n'est pas connu : pas de ligne « Format »");
@@ -312,21 +312,22 @@ test("ancien document PDF : téléchargé en .pdf (Blob application/pdf), et le 
   assert.deepEqual(m.libelle(), {mode: "html", valeur: `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_PDF}</span>`}, "le libellé revient avec « (fichier PDF) »");
   const bloc = m.blocRefait();
   assert.ok(bloc.includes('<p class="help-block">Format : document PDF (.pdf).</p>'), "ligne « Format » du PDF");
-  assert.ok(bloc.includes("Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé."), "phrase d'aide de l'ancien PDF");
+  assert.ok(!bloc.includes("Imprimez la convention, complétez") && !bloc.includes("convention-aide"), "plus de phrase d'aide de l'ancien PDF (E3-26/E3-29)");
   assert.ok(!bloc.includes("Format : document Word"), "pas la ligne du Word");
   assert.equal(texteDuBouton(bloc, "conventionTelecharger"), `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_PDF}</span>`);
 });
 
 // Échoue si, après le téléchargement d'un Word, le bloc rafraîchi n'affiche pas « Format : document Word
-// (.docx). » juste sous la phrase d'état, avec la phrase d'aide du Word, et le texte caché « (fichier Word) ».
+// (.docx). » juste sous la phrase d'état, sans phrase d'aide après (E3-26/E3-29), et le texte caché « (fichier Word) ».
 test("document Word : le bloc rafraîchi après le clic affiche « Format : document Word (.docx). » sous la phrase d'état", async () => {
   const m = await preparer();
   await m.cliquer();
   const bloc = m.blocRefait();
   const etat = bloc.indexOf("Convention générée le 14/03/2026.");
   const format = bloc.indexOf('<p class="help-block">Format : document Word (.docx).</p>');
-  const aide = bloc.indexOf('<p class="convention-aide">Téléchargez la convention');
-  assert.ok(etat !== -1 && etat < format && format < aide, "ordre : phrase d'état, ligne « Format », phrase d'aide");
+  assert.ok(etat !== -1 && etat < format, "ordre : phrase d'état, puis ligne « Format »");
+  assert.deepEqual([...bloc.matchAll(/<p\b/g)].length, 2, "deux phrases seulement : l'état et le format");
+  assert.ok(!bloc.includes("Téléchargez la convention") && !bloc.includes("convention-aide"), "aucune phrase d'aide après la ligne « Format »");
   assert.equal(texteDuBouton(bloc, "conventionTelecharger"), `${TEXTE_TELECHARGER}<span class="sr-only">${CACHE_WORD}</span>`);
 });
 
