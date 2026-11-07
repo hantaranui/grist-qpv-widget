@@ -2020,6 +2020,567 @@ function conventionImageLogo(tampon) {
   }
 }
 
+// ---- Convention : document Word (.docx), evolution 3 ----
+// Meme texte de modele que pour le PDF (memes cases, memes reperes), mais le resultat est un
+// fichier Word que l'agent modifie, complete et imprime lui-meme (note UX, section 15).
+// Deux etapes :
+//  1. conventionBlocsDocx lit le texte du modele et renvoie des « blocs » : de simples objets
+//     JavaScript (fonction pure, sans la bibliotheque) ;
+//  2. conventionDocumentDocx transforme ces blocs en objets de la bibliotheque docx.
+// Toute valeur (nom du club, du signataire, adresse...) est posee dans un TextRun, donc comme du
+// TEXTE SIMPLE : la bibliotheque l'echappe elle-meme (& < > " '). On n'assemble JAMAIS de XML a la main.
+// Le code PDF (pdfmake) plus haut reste en place pour l'instant : il sera retire dans une etape suivante.
+
+// 1 cm = 566,93 twips (le twip est l'unite de Word : 1/20 de point).
+const CONVENTION_TWIPS_PAR_CM = 566.93;
+
+function conventionCmEnTwips(cm) {
+  return Math.round(cm * CONVENTION_TWIPS_PAR_CM);
+}
+
+// Types de fichier : fixes par le widget d'apres l'extension, jamais repris de la reponse de Grist.
+const CONVENTION_TYPE_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const CONVENTION_TYPE_PDF = 'application/pdf';
+const CONVENTION_TYPES_FICHIER = {docx: CONVENTION_TYPE_DOCX, pdf: CONVENTION_TYPE_PDF};
+
+// Proprietes du fichier Word (E3-12) : des valeurs neutres et fixes. Jamais le nom du club, de
+// l'agence ou du signataire : un agent qui ouvre « Proprietes » dans Word ne doit y trouver aucune
+// donnee de personne.
+const CONVENTION_DOCX_METADONNEES = {
+  creator: 'Partenariat simplifié',
+  lastModifiedBy: 'Partenariat simplifié',
+  title: 'Convention',
+  description: 'Convention générée par le tableau de bord Partenariat simplifié'
+};
+
+// Mise en page (note UX, sections 11 et 15.9) : A4, marges 2,5 cm, Arial 11 pt, justifie,
+// interligne 1,2. Tailles de police en DEMI-POINTS (22 = 11 pt) ; espaces en twips (1 pt = 20 twips).
+const CONVENTION_MISE_EN_PAGE_DOCX = {
+  police: 'Arial',
+  taille: 22,
+  tailleTitre1: 24,
+  tailleNote: 20,
+  taillePied: 18,
+  interligne: 288,
+  pageLargeur: 11906,
+  pageHauteur: 16838,
+  marge: conventionCmEnTwips(2.5),
+  distanceEnTetePied: conventionCmEnTwips(1.25),
+  largeurTexte: conventionCmEnTwips(16),
+  retrait: conventionCmEnTwips(1.25),
+  retraitPuce: conventionCmEnTwips(0.63),
+  retraitTitre1: conventionCmEnTwips(1),
+  // Logos : boite de 6 cm sur 2 cm, en pixels (1 px = 1/96 pouce, l'unite d'ImageRun), et
+  // 24 pt d'espace entre le bas des logos et le titre.
+  logo: {largeurMax: Math.round(6 / 2.54 * 96), hauteurMax: Math.round(2 / 2.54 * 96), espaceSousLogos: 480},
+  signatures: {
+    lignesVides: 4,
+    espaceEntreColonnes: 480,
+    espaceSousIntitules: conventionCmEnTwips(3),
+    espaceAvantLieuDate: 360
+  },
+  // Champs a completer : surlignage jaune standard de Word sur une bande d'espaces insecables
+  // (sans elle, un surlignage de longueur zero serait invisible). 20 caracteres, 40 pour une adresse.
+  bande: 20,
+  bandeAdresse: 40
+};
+
+// Retire les caracteres de controle qu'un fichier Word (XML) n'accepte pas : sans cela, une valeur
+// qui en contiendrait un rendrait le fichier illisible. Tabulation et retour a la ligne ne sont pas touches.
+function conventionTexteSur(texte) {
+  return String(texte ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '');
+}
+
+// Nombre de caracteres de la bande surlignee d'une case : 40 pour une adresse, 20 sinon.
+// L'apostrophe droite et l'apostrophe courbe sont la meme lettre (comme dans conventionValeurDeCase).
+function conventionLargeurBande(nom) {
+  const courbe = texte => String(texte).replace(/'/g, '’');
+  const adresse = [CONVENTION_CASES.clubSiege, CONVENTION_CASES.agenceAdresse].some(autre => courbe(autre) === courbe(nom));
+  return adresse ? CONVENTION_MISE_EN_PAGE_DOCX.bandeAdresse : CONVENTION_MISE_EN_PAGE_DOCX.bande;
+}
+
+// Morceau de texte « a completer » : une bande d'espaces insecables, a surligner en jaune.
+// `style` (facultatif) : gras / italique du texte qui l'entoure, pour que ce que l'agent tape le garde.
+function conventionBandeDocx(largeur, style) {
+  return {...(style || {}), text: ' '.repeat(largeur), surligne: true};
+}
+
+// Zone « ecrite a la main » apres impression (E3-21, E3-22) : jamais remplie par le widget, donc
+// PAS de surlignage jaune. Un simple espace souligne, comme une ligne a remplir sur un formulaire
+// papier : des espaces insecables soulignes (sans eux, un soulignement de longueur zero serait invisible).
+function conventionZoneManuscriteDocx(largeur) {
+  return {text: ' '.repeat(largeur), underline: true};
+}
+
+// « Fait à ......, le ...... » (ou « À ..., le ... ») : le lieu et la date sont ecrits a la main,
+// donc deux espaces soulignes (20 caracteres, faute de largeur donnee par le modele), sans surlignage.
+function conventionLieuDateDocx(debut) {
+  const largeur = CONVENTION_MISE_EN_PAGE_DOCX.bande;
+  return [{text: debut}, conventionZoneManuscriteDocx(largeur), {text: ', le '}, conventionZoneManuscriteDocx(largeur)];
+}
+
+// Decoupe une ligne du modele en morceaux de texte, chacun avec sa mise en forme. Meme syntaxe que
+// conventionRuns (gras, italique, souligne, exposant, notes, liens), avec deux differences :
+//  - une case connue mais VIDE donne une bande surlignee (au lieu des pointilles) ;
+//  - un appel de note [^1] donne un vrai appel de note de bas de page ({note: numero}), a sa
+//    premiere apparition seulement ; un appel repete, ou sans texte de note, reste un exposant.
+// `valeurs` : cases connues ({ "Nom": "valeur" } ; "" = connue mais vide). `contexte` : { numeros,
+// definies (etiquettes qui ont un texte), appelees (etiquettes deja citees) }.
+function conventionRunsDocx(ligne, valeurs, contexte) {
+  const runs = [];
+  const actif = {bold: false, italics: false, underline: false, sup: false};
+  let tampon = '';
+  const ajouter = (texte, supplement) => {
+    if (!texte) return;
+    const run = {text: texte};
+    if (actif.bold) run.bold = true;
+    if (actif.italics) run.italics = true;
+    if (actif.underline) run.underline = true;
+    if (actif.sup || supplement) run.sup = true;
+    const dernier = runs[runs.length - 1];
+    const fusionnable = dernier && !dernier.surligne && !dernier.note
+      && JSON.stringify({...dernier, text: ''}) === JSON.stringify({...run, text: ''});
+    if (fusionnable) dernier.text += texte;
+    else runs.push(run);
+  };
+  const vider = () => { ajouter(tampon); tampon = ''; };
+  const balises = [['<u>', 'underline', true], ['</u>', 'underline', false], ['<sup>', 'sup', true], ['</sup>', 'sup', false]];
+
+  let i = 0;
+  while (i < ligne.length) {
+    const reste = ligne.slice(i);
+    const balise = balises.find(([nom]) => reste.slice(0, nom.length).toLowerCase() === nom);
+    const marque = reste.startsWith('**') ? ['**', 'bold'] : reste.startsWith('*') ? ['*', 'italics'] : null;
+    let m;
+    if (balise) {
+      vider();
+      actif[balise[1]] = balise[2];
+      i += balise[0].length;
+    } else if (marque && (actif[marque[1]] || ligne.indexOf(marque[0], i + marque[0].length) !== -1)) {
+      vider();
+      actif[marque[1]] = !actif[marque[1]];
+      i += marque[0].length;
+    } else if (reste.startsWith('\\[')) {
+      tampon += '[';
+      i += 2;
+    } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
+      vider();
+      const numero = contexte.numeros && contexte.numeros.has(m[1]) ? contexte.numeros.get(m[1]) : null;
+      if (numero !== null && contexte.definies.has(m[1]) && !contexte.appelees.has(m[1])) {
+        contexte.appelees.add(m[1]);
+        runs.push({note: numero});
+      } else {
+        ajouter(numero !== null ? String(numero) : m[1], true);
+      }
+      i += m[0].length;
+    } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
+      vider();
+      ajouter(`${m[1]} (${m[2]})`);
+      i += m[0].length;
+    } else if ((m = /^\[([^[\]]+)\]/.exec(reste)) && conventionValeurDeCase(valeurs, m[1]) !== undefined) {
+      vider();
+      const valeur = conventionValeurDeCase(valeurs, m[1]);
+      if (valeur === '') {
+        // Case connue mais vide : une bande surlignee que l'agent remplit dans Word.
+        runs.push(conventionBandeDocx(conventionLargeurBande(m[1]), {bold: actif.bold || undefined, italics: actif.italics || undefined}));
+      } else {
+        ajouter(valeur);
+      }
+      i += m[0].length;
+    } else {
+      tampon += ligne[i];
+      i++;
+    }
+  }
+  vider();
+  // Les reglages « non definis » (undefined) d'une bande ne sont pas gardes.
+  return runs.map(run => JSON.parse(JSON.stringify(run)));
+}
+
+// Regroupe les lignes du modele en blocs : titre, paragraphe, liste, retrait, saut de page ou
+// signatures. Meme lecture que conventionBlocs ; le resultat est decrit en objets simples :
+//  { type: 'titre', niveau (1, 2, 3, ou 0 pour une ligne entierement en gras), runs }
+//  { type: 'paragraphe', runs } | { type: 'liste', ordonnee, debut, items: [runs] }
+//  { type: 'retrait', blocs } | { type: 'saut' } | { type: 'signatures', avecLieuDate, ftAGauche }
+function conventionBlocsDocx(lignes, retraitAutorise, valeurs, contexte) {
+  const blocs = [];
+  let paragraphe = [];
+  let liste = null;
+  const fermer = () => {
+    if (paragraphe.length) {
+      const runs = [];
+      paragraphe.forEach((ligne, index) => {
+        if (index) runs.push({saut: true});
+        runs.push(...conventionRunsDocx(ligne, valeurs, contexte));
+      });
+      blocs.push({type: 'paragraphe', runs});
+    }
+    if (liste) blocs.push({type: 'liste', ordonnee: liste.type === 'ol', debut: liste.debut, items: liste.items});
+    paragraphe = [];
+    liste = null;
+  };
+  const titre = (niveau, runs) => {
+    // Le titre est mis en gras en bloc : on ne repete pas le gras dans chaque morceau.
+    blocs.push({type: 'titre', niveau, runs: runs.map(run => { const copie = {...run}; delete copie.bold; return copie; })});
+  };
+  const ajouterItem = (type, debut, contenu) => {
+    if (!liste || liste.type !== type) {
+      fermer();
+      liste = {type, items: [], debut};
+    }
+    liste.items.push(conventionRunsDocx(contenu, valeurs, contexte));
+  };
+
+  for (let i = 0; i < lignes.length; i++) {
+    const ligne = lignes[i];
+    let m;
+    if (!ligne.trim() || /^<!--\s*-->$/.test(ligne.trim())) {
+      fermer();
+    } else if (retraitAutorise && ligne.trim() === '{saut-de-page}') {
+      fermer();
+      blocs.push({type: 'saut'});
+    } else if (retraitAutorise && CONVENTION_REPERES_SIGNATURES.has(ligne.trim())) {
+      fermer();
+      const repere = CONVENTION_REPERES_SIGNATURES.get(ligne.trim());
+      blocs.push({type: 'signatures', avecLieuDate: repere.avecLieuDate, ftAGauche: repere.ftAGauche});
+    } else if (retraitAutorise && ligne.startsWith('>')) {
+      fermer();
+      const interieur = [];
+      while (i < lignes.length && lignes[i].startsWith('>')) {
+        interieur.push(lignes[i].replace(/^> ?/, ''));
+        i++;
+      }
+      i--;
+      blocs.push({type: 'retrait', blocs: conventionBlocsDocx(interieur, false, valeurs, contexte)});
+    } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
+      fermer();
+      titre(m[1].length, conventionRunsDocx(m[2], valeurs, contexte));
+    } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ul', 1, m[1]);
+    } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ol', Number(m[1]), m[2]);
+    } else {
+      // Premier passage « pour voir » avec un contexte jetable : il ne doit pas compter les appels de
+      // notes (la ligne est relue ensuite, pour de bon, par fermer ou par titre).
+      const essai = conventionRunsDocx(ligne, valeurs, {numeros: contexte.numeros, definies: contexte.definies, appelees: new Set()});
+      const toutEnGras = essai.some(run => (run.text ?? '').trim()) && essai.every(run => run.bold || !(run.text ?? '').trim());
+      if (toutEnGras) {
+        fermer();
+        titre(0, conventionRunsDocx(ligne, valeurs, contexte));
+      } else {
+        if (liste) fermer();
+        paragraphe.push(ligne);
+      }
+    }
+  }
+  fermer();
+  return blocs;
+}
+
+// Morceaux decrits (conventionRunsDocx) -> objets de la bibliotheque. `options` : { gras (tout en
+// gras), taille (demi-points) }. Le texte passe par TextRun : jamais de XML ecrit a la main.
+function conventionRunsVersDocx(lib, runs, options) {
+  const gras = !!(options && options.gras);
+  const taille = options && options.taille;
+  return runs.map(run => {
+    if (run.saut) return new lib.TextRun({break: 1});
+    if (run.note) return new lib.FootnoteReferenceRun(run.note);
+    const reglages = {text: conventionTexteSur(run.text)};
+    if (gras || run.bold) reglages.bold = true;
+    if (run.italics) reglages.italics = true;
+    if (run.underline) reglages.underline = {type: 'single'};
+    if (run.sup) reglages.superScript = true;
+    if (run.surligne) reglages.highlight = 'yellow';
+    if (taille) reglages.size = taille;
+    return new lib.TextRun(reglages);
+  });
+}
+
+// Bordures « aucune » d'un tableau sans trait (blocs de signature, en-tete des logos).
+function conventionBorduresAucunes(lib) {
+  const aucune = {style: lib.BorderStyle.NONE, size: 0, color: 'auto'};
+  return {top: aucune, bottom: aucune, left: aucune, right: aucune};
+}
+
+// Petit paragraphe vide (1 pt) : Word veut un paragraphe apres un tableau, et deux tableaux
+// qui se touchent seraient fusionnes. `reglages` : espacement, saut de page...
+function conventionParagrapheVideDocx(lib, reglages) {
+  return new lib.Paragraph({children: [new lib.TextRun({text: ' ', size: 2})], spacing: {before: 0, after: 0, line: 240}, ...(reglages || {})});
+}
+
+// Bloc de signature : un tableau a deux colonnes de meme largeur, sans bordure, en une seule ligne
+// qui ne se coupe pas entre deux pages. Club a gauche et agence a droite ; avec ftAGauche : une
+// ligne « Fait a ..., le ... » au-dessus (gardee avec le tableau), France Travail a gauche, club a
+// droite, intitules en gras, 3 cm d'espace pour la signature. Une case connue mais vide donne une
+// bande surlignee ; une case inconnue reste ecrite [Nom], comme dans le reste du texte.
+function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const S = L.signatures;
+  const A = lib.AlignmentType;
+  const sautAvant = contexte.sautEnAttente;
+  contexte.sautEnAttente = false;
+  const valeurOuCase = nom => {
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    if (valeur === undefined) return [{text: `[${nom}]`}];
+    return valeur === '' ? [conventionBandeDocx(conventionLargeurBande(nom))] : [{text: valeur}];
+  };
+  const paragraphe = (runs, options, dernier) => new lib.Paragraph({
+    children: conventionRunsVersDocx(lib, runs, options),
+    alignment: A.LEFT,
+    spacing: {before: 120, after: 200},
+    keepNext: !dernier
+  });
+  const colonne = (titre, nomPersonne, nomFonction) => {
+    const contenu = [];
+    if (bloc.avecLieuDate) contenu.push(paragraphe(conventionLieuDateDocx('À '), {}));
+    contenu.push(
+      paragraphe([{text: titre}], {gras: bloc.ftAGauche}),
+      paragraphe(valeurOuCase(nomPersonne), {gras: true}),
+      paragraphe(valeurOuCase(nomFonction), {})
+    );
+    // Espace pour la signature manuscrite.
+    contenu.push(bloc.ftAGauche
+      ? conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: S.espaceSousIntitules, line: 240}})
+      : new lib.Paragraph({children: [new lib.TextRun({break: S.lignesVides})], spacing: {before: 120, after: 200}}));
+    return contenu;
+  };
+  const club = colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire');
+  const agence = colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant');
+  const [gauche, droite] = bloc.ftAGauche ? [agence, club] : [club, agence];
+
+  const moitie = Math.floor(L.largeurTexte / 2);
+  const cellule = (enfants, aGauche) => new lib.TableCell({
+    children: enfants,
+    width: {size: moitie, type: lib.WidthType.DXA},
+    borders: conventionBorduresAucunes(lib),
+    margins: {top: 0, bottom: 0, left: aGauche ? 0 : S.espaceEntreColonnes / 2, right: aGauche ? S.espaceEntreColonnes / 2 : 0, marginUnitType: lib.WidthType.DXA}
+  });
+  const tableau = new lib.Table({
+    width: {size: L.largeurTexte, type: lib.WidthType.DXA},
+    columnWidths: [moitie, L.largeurTexte - moitie],
+    layout: lib.TableLayoutType.FIXED,
+    borders: {...conventionBorduresAucunes(lib), insideHorizontal: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}, insideVertical: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}},
+    // cantSplit : la ligne du tableau ne se coupe jamais entre deux pages (elle passe en entier a la suivante).
+    rows: [new lib.TableRow({cantSplit: true, children: [cellule(gauche, true), cellule(droite, false)]})]
+  });
+
+  const sortie = [];
+  if (bloc.ftAGauche) {
+    // keepNext : la ligne « Fait a » reste sur la meme page que le tableau.
+    sortie.push(new lib.Paragraph({
+      children: conventionRunsVersDocx(lib, conventionLieuDateDocx('Fait à '), {}),
+      alignment: A.LEFT,
+      spacing: {before: S.espaceAvantLieuDate, after: 0},
+      keepNext: true,
+      pageBreakBefore: sautAvant || undefined
+    }));
+  } else if (sautAvant) {
+    sortie.push(conventionParagrapheVideDocx(lib, {pageBreakBefore: true}));
+  }
+  sortie.push(tableau, conventionParagrapheVideDocx(lib));
+  return sortie;
+}
+
+// Blocs decrits (conventionBlocsDocx) -> paragraphes et tableaux de la bibliotheque. `contexte`
+// garde ce qui se partage entre blocs : saut de page en attente, listes numerotees a creer.
+// `retrait` (vrai dans une citation) decale tout de 1,25 cm.
+function conventionBlocsVersDocx(lib, blocs, valeurs, contexte, retrait) {
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+  const decalage = retrait ? L.retrait : 0;
+  const sortie = [];
+  const paragraphe = (runs, reglages) => {
+    const options = {...reglages, children: runs};
+    // {saut-de-page} : le paragraphe suivant commence une nouvelle page.
+    if (contexte.sautEnAttente) {
+      options.pageBreakBefore = true;
+      contexte.sautEnAttente = false;
+    }
+    return new lib.Paragraph(options);
+  };
+  // Titres : jamais seuls en bas de page (keepNext les garde avec ce qui suit).
+  const titres = {
+    1: {alignment: A.CENTER, spacing: {before: 0, after: 480}, indent: {left: L.retraitTitre1 + decalage, right: L.retraitTitre1}, taille: L.tailleTitre1},
+    2: {alignment: A.LEFT, spacing: {before: 360, after: 160}, indent: {left: decalage}},
+    3: {alignment: A.LEFT, spacing: {before: 240, after: 160}, indent: {left: L.retrait + decalage}},
+    0: {alignment: A.JUSTIFIED, spacing: {before: 0, after: 160}, indent: {left: decalage}}
+  };
+
+  blocs.forEach(bloc => {
+    if (bloc.type === 'saut') {
+      contexte.sautEnAttente = true;
+    } else if (bloc.type === 'titre') {
+      const {taille, ...reglages} = titres[bloc.niveau];
+      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {gras: true, taille}), {...reglages, keepNext: true, keepLines: true}));
+    } else if (bloc.type === 'paragraphe') {
+      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {}), {alignment: A.JUSTIFIED, spacing: {before: 120, after: 200}, indent: {left: decalage}}));
+    } else if (bloc.type === 'liste') {
+      let reference = 'convention-puces';
+      if (bloc.ordonnee) {
+        // Une liste numerotee = sa propre numerotation, pour qu'elle reparte bien de son premier numero.
+        contexte.listes += 1;
+        reference = `convention-liste-${contexte.listes}`;
+        contexte.numerotations.push({
+          reference,
+          levels: [{level: 0, format: lib.LevelFormat.DECIMAL, text: '%1.', alignment: A.LEFT, start: bloc.debut,
+            style: {paragraph: {indent: {left: L.retrait + L.retraitPuce, hanging: L.retraitPuce}}}}]
+        });
+      }
+      bloc.items.forEach(runs => {
+        sortie.push(paragraphe(conventionRunsVersDocx(lib, runs, {}), {
+          alignment: A.JUSTIFIED,
+          spacing: {before: 0, after: 120},
+          numbering: {reference, level: 0},
+          indent: {left: decalage + L.retrait + L.retraitPuce, hanging: L.retraitPuce}
+        }));
+      });
+    } else if (bloc.type === 'retrait') {
+      sortie.push(...conventionBlocsVersDocx(lib, bloc.blocs, valeurs, contexte, true));
+    } else if (bloc.type === 'signatures') {
+      sortie.push(...conventionSignaturesDocx(lib, bloc, valeurs, contexte));
+    }
+  });
+  return sortie;
+}
+
+// En-tete de la page 1 : les deux logos cote a cote, dans un tableau sans bordure a deux colonnes
+// (Logo a gauche, Logo_partenaire a droite, chacun dans sa boite de 6 x 2 cm). Renvoie null s'il
+// n'y a aucun logo. Le haut de l'en-tete est a 1,25 cm du haut de la page ; un petit paragraphe
+// de 24 pt en dessous garde le titre 24 pt sous les logos (Word descend le texte si l'en-tete est
+// plus haut que la marge). `logos` : { logo, partenaire }, chacun null ou { type, data, width, height }.
+function conventionEnTeteDocx(lib, logos) {
+  const logo = logos && logos.logo;
+  const partenaire = logos && logos.partenaire;
+  if (!logo && !partenaire) return null;
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+  const image = (donnees, nom) => new lib.ImageRun({
+    type: donnees.type,
+    data: donnees.data,
+    transformation: {width: donnees.width, height: donnees.height},
+    altText: {title: nom, description: nom, name: nom}
+  });
+  const paragraphe = (donnees, nom, alignement) => new lib.Paragraph({
+    children: donnees ? [image(donnees, nom)] : [],
+    alignment: alignement,
+    spacing: {before: 0, after: 0, line: 240}
+  });
+  const moitie = Math.floor(L.largeurTexte / 2);
+  const cellule = enfant => new lib.TableCell({
+    children: [enfant],
+    width: {size: moitie, type: lib.WidthType.DXA},
+    borders: conventionBorduresAucunes(lib),
+    margins: {top: 0, bottom: 0, left: 0, right: 0, marginUnitType: lib.WidthType.DXA}
+  });
+  const tableau = new lib.Table({
+    width: {size: L.largeurTexte, type: lib.WidthType.DXA},
+    columnWidths: [moitie, L.largeurTexte - moitie],
+    layout: lib.TableLayoutType.FIXED,
+    borders: {...conventionBorduresAucunes(lib), insideHorizontal: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}, insideVertical: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}},
+    rows: [new lib.TableRow({children: [
+      cellule(paragraphe(logo, 'Logo', A.LEFT)),
+      cellule(paragraphe(partenaire, 'Logo du partenaire', A.RIGHT))
+    ]})]
+  });
+  return new lib.Header({children: [tableau, conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: L.logo.espaceSousLogos, line: 240}})]});
+}
+
+// Description complete du fichier Word (la bibliotheque est passee en parametre : options.lib, par
+// defaut window.docx). options.logos : { logo, partenaire } (voir conventionImageLogoDocx).
+//  - A4, marges 2,5 cm, Arial 11 pt, justifie, interligne 1,2 ;
+//  - logos dans l'en-tete de la page 1 seulement ;
+//  - numero de page seul, en bas a droite, absent de la page 1 ;
+//  - notes de bas de page (seulement celles qui sont citees dans le texte et qui ont un texte) ;
+//  - proprietes neutres (CONVENTION_DOCX_METADONNEES).
+function conventionDocumentDocx(texte, valeurs, options) {
+  const lib = (options && options.lib) || window.docx;
+  const logos = (options && options.logos) || {};
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+
+  const {corps, definitions, numeros} = conventionAnalyseNotes(texte);
+  const contexte = {
+    numeros,
+    definies: new Set(definitions.map(note => note.etiquette)),
+    appelees: new Set(),
+    sautEnAttente: false,
+    listes: 0,
+    numerotations: []
+  };
+  const elements = conventionBlocsVersDocx(lib, conventionBlocsDocx(corps, true, valeurs, contexte), valeurs, contexte, false);
+
+  // Notes de bas de page : l'identifiant d'une note est son numero imprime. Dans le texte d'une note,
+  // un appel de note reste un simple exposant (contexte sans etiquette definie).
+  const notes = {};
+  definitions.forEach(note => {
+    if (!contexte.appelees.has(note.etiquette)) return;
+    const contexteNote = {numeros, definies: new Set(), appelees: new Set()};
+    const runs = [{text: ' '}, ...conventionRunsDocx(note.texte, valeurs, contexteNote)];
+    notes[numeros.get(note.etiquette)] = {
+      children: [new lib.Paragraph({children: conventionRunsVersDocx(lib, runs, {taille: L.tailleNote}), spacing: {before: 0, after: 0}})]
+    };
+  });
+
+  // Numero de page : 9 pt, a droite, a 1,25 cm du bas. Pas de numero sur la page 1 (pied « premiere page » vide).
+  const pied = new lib.Footer({children: [new lib.Paragraph({
+    alignment: A.RIGHT,
+    spacing: {before: 0, after: 0, line: 240},
+    children: [new lib.TextRun({children: [lib.PageNumber.CURRENT], size: L.taillePied})]
+  })]});
+  const section = {
+    properties: {
+      titlePage: true,
+      page: {
+        size: {width: L.pageLargeur, height: L.pageHauteur},
+        margin: {top: L.marge, right: L.marge, bottom: L.marge, left: L.marge, header: L.distanceEnTetePied, footer: L.distanceEnTetePied}
+      }
+    },
+    footers: {default: pied, first: new lib.Footer({children: [new lib.Paragraph({})]})},
+    children: elements
+  };
+  const enTete = conventionEnTeteDocx(lib, logos);
+  if (enTete) section.headers = {first: enTete, default: new lib.Header({children: [new lib.Paragraph({})]})};
+
+  return new lib.Document({
+    ...CONVENTION_DOCX_METADONNEES,
+    styles: {default: {document: {run: {font: L.police, size: L.taille}, paragraph: {alignment: A.JUSTIFIED, spacing: {line: L.interligne}}}}},
+    numbering: {config: [
+      {
+        reference: 'convention-puces',
+        levels: [{level: 0, format: lib.LevelFormat.BULLET, text: '-', alignment: A.LEFT,
+          style: {paragraph: {indent: {left: L.retrait + L.retraitPuce, hanging: L.retraitPuce}}}}]
+      },
+      ...contexte.numerotations
+    ]},
+    footnotes: notes,
+    sections: [section]
+  });
+}
+
+// Transforme les octets d'un logo en image pour la bibliotheque docx : { type ('png' ou 'jpg'),
+// data (octets), width, height (pixels) }, ou null si ce n'est pas un PNG ou un JPEG lisible. La
+// taille tient dans 6 cm sur 2 cm, proportions gardees, sans agrandissement. Memes controles que
+// conventionImageLogo (poids, taille annoncee). Fonction pure.
+function conventionImageLogoDocx(tampon) {
+  try {
+    const octets = tampon instanceof Uint8Array ? tampon : new Uint8Array(tampon);
+    if (!octets.length || octets.length > CONVENTION_LOGO_OCTETS_MAX) return null;
+    const dim = conventionDimensionsImage(octets);
+    if (!dim || !(dim.largeur > 0) || !(dim.hauteur > 0)) return null;
+    if (dim.largeur > CONVENTION_LOGO_PIXELS_MAX || dim.hauteur > CONVENTION_LOGO_PIXELS_MAX) return null;
+    const boite = CONVENTION_MISE_EN_PAGE_DOCX.logo;
+    const echelle = Math.min(1, boite.largeurMax / dim.largeur, boite.hauteurMax / dim.hauteur);
+    return {
+      type: dim.type === 'jpeg' ? 'jpg' : 'png',
+      data: octets,
+      width: Math.max(1, Math.round(dim.largeur * echelle)),
+      height: Math.max(1, Math.round(dim.hauteur * echelle))
+    };
+  } catch (erreur) {
+    return null;
+  }
+}
+
 // ---- Convention : chargement de pdfmake (tache 7.1) ----
 // pdfmake n'est charge qu'au clic sur « Generer » (decision de l'examen de securite,
 // tache 0.3) : jamais a l'ouverture de la page ni de la fenetre. Version figee, depuis
@@ -2096,6 +2657,52 @@ function chargerPdfmake() {
     throw erreur;
   });
   return pdfmakePromesse;
+}
+
+// ---- Convention : chargement de la bibliotheque docx (evolution 3) ----
+// Meme modele que pdfmake : la bibliotheque n'est chargee qu'au clic sur « Generer » (jamais a
+// l'ouverture de la page ni de la fenetre). Version figee (docx 9.15.2), fichier unique de la
+// distribution navigateur (index.iife.js : le .cjs est servi avec un type MIME que le navigateur
+// refuse d'executer), depuis jsDelivr, avec empreinte SRI : si le fichier change, le navigateur le refuse.
+// L'empreinte ci-dessous a ete calculee par Hanta sur index.iife.js (6 novembre 2026).
+// Pour changer de version : refaire la verification et recalculer l'empreinte.
+const CONVENTION_DOCX_SCRIPT = {
+  url: 'https://cdn.jsdelivr.net/npm/docx@9.15.2/dist/index.iife.js',
+  integrity: 'sha384-ud8085E8t6iW4uUom5nN5cpzTZ4OdsNKB/AKWfOsI62tzsoV2X7r7/o4KWESO8rq'
+};
+
+// Code porte par l'erreur de chargerDocx (propriete `code`) : traduit en message plus bas.
+// Rien n'est affiche ici et rien n'est ecrit dans la console.
+const CONVENTION_DOCX_ERREUR = 'docx-non-charge';
+
+let docxPromesse = null;
+
+function docxPret() {
+  return !!(window.docx && window.docx.Document && window.docx.Packer && typeof window.docx.Packer.toBlob === 'function');
+}
+
+// Charge la bibliotheque docx. Promesse resolue quand window.docx peut fabriquer un fichier Word,
+// rejetee sinon par une erreur dont `code` vaut CONVENTION_DOCX_ERREUR. Un seul chargement par page :
+// un deuxieme appel rend la meme promesse. Apres un echec, le prochain appel recommence (le script
+// en echec a ete retire de la page par pdfmakeAjouterScript, qui sert aux deux bibliotheques).
+function chargerDocx() {
+  if (docxPromesse) return docxPromesse;
+  docxPromesse = (async () => {
+    if (docxPret()) return;
+    const script = await pdfmakeAjouterScript(CONVENTION_DOCX_SCRIPT);
+    if (!docxPret()) {
+      // Charge, mais n'a rien fourni : on le retire pour pouvoir recommencer.
+      script.remove();
+      throw new Error('docx absent apres le chargement');
+    }
+  })().catch(cause => {
+    docxPromesse = null;
+    const erreur = new Error('docx n\'a pas pu etre charge');
+    erreur.code = CONVENTION_DOCX_ERREUR;
+    erreur.cause = cause;
+    throw erreur;
+  });
+  return docxPromesse;
 }
 
 // ---- Convention : etat du bloc et blocage de la generation ----
@@ -2189,11 +2796,37 @@ function conventionBlocage(actionId, donnees) {
 const CONVENTION_TEXTES = {
   aGenerer: 'Aucune convention générée.',
   sansModele: 'Pas encore de modèle de convention pour ce dispositif.',
-  droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord.",
-  aide: 'Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.'
+  droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord."
 };
 
-// Phrases d'etat d'une action, dans l'ordre d'affichage : [{texte, aide}, ...].
+// Format du document genere (E3-8, E3-9) : la ligne « Format : ... », le texte cache du bouton
+// « Telecharger la convention » et la phrase d'aide de l'etat « Generee » en dependent.
+// Un ancien PDF garde sa phrase d'aide d'avant l'evolution 3.
+const CONVENTION_FORMATS = {
+  docx: {
+    ligne: 'Format : document Word (.docx).',
+    cache: ' (fichier Word)',
+    aide: 'Téléchargez la convention, modifiez-la si besoin dans Word et remplissez les champs surlignés en jaune. Retirez le surlignage, imprimez-la et faites-la signer, puis déposez le fichier signé au format PDF.'
+  },
+  pdf: {
+    ligne: 'Format : document PDF (.pdf).',
+    cache: ' (fichier PDF)',
+    aide: 'Imprimez la convention, complétez à la main les zones en pointillés et faites-la signer, puis déposez le fichier signé.'
+  }
+};
+
+// Format du document genere de chaque convention connu dans cette page : cle = identifiant de la ligne
+// Conventions, valeur = 'docx' ou 'pdf'. Alimente a la generation et au « Telecharger la convention »
+// (qui lit le nom reel du fichier dans Grist). On ne garde que l'extension, jamais l'identifiant de
+// la piece jointe. Format inconnu : la ligne « Format » et le texte cache ne s'affichent pas.
+const conventionFormats = new Map();
+
+// Format ('docx', 'pdf' ou '') du document genere de la convention `convention` (ligne Conventions).
+function conventionFormatGenere(convention) {
+  return (convention && conventionFormats.get(convention.id)) || '';
+}
+
+// Phrases d'etat d'une action, dans l'ordre d'affichage : [{texte, aide, format}, ...].
 // La date vient de Conventions.Date_generation (etat Generee) ou Date_depot (etat Signee).
 function conventionPhrases(actionId, donnees) {
   const {etat, convention} = conventionEtat(actionId, donnees);
@@ -2204,7 +2837,13 @@ function conventionPhrases(actionId, donnees) {
     case CONVENTION_ETATS.aGenerer: return [{texte: CONVENTION_TEXTES.aGenerer}];
     case CONVENTION_ETATS.generee: {
       const quand = date('Date_generation');
-      return [{texte: quand ? `Convention générée le ${quand}.` : 'Convention générée.'}, {texte: CONVENTION_TEXTES.aide, aide: true}];
+      const format = conventionFormatGenere(convention);
+      const phrases = [{texte: quand ? `Convention générée le ${quand}.` : 'Convention générée.'}];
+      // Ligne « Format : ... » sous la phrase d'etat, seulement si le format est connu (E3-8).
+      if (format) phrases.push({texte: CONVENTION_FORMATS[format].ligne, format: true});
+      // Format inconnu : la phrase du Word, comme pour toute convention generee depuis l'evolution 3.
+      phrases.push({texte: CONVENTION_FORMATS[format || 'docx'].aide, aide: true});
+      return phrases;
     }
     default: {
       const quand = date('Date_depot');
@@ -2230,15 +2869,23 @@ function conventionBlocHtml(actionId, donnees) {
 
 // Phrases d'etat et boutons du bloc (tout sauf la zone de message).
 function conventionBlocContenuHtml(actionId, donnees) {
+  // La ligne « Format : ... » est un help-block (classe deja employee dans le bloc) ; la phrase d'aide
+  // garde sa classe convention-aide.
   const phrases = conventionPhrases(actionId, donnees)
-    .map(({texte, aide}) => `<p${aide ? ' class="convention-aide"' : ''}>${escapeHtml(texte)}</p>`)
+    .map(({texte, aide, format}) => `<p${aide ? ' class="convention-aide"' : format ? ' class="help-block"' : ''}>${escapeHtml(texte)}</p>`)
     .join('');
   const etat = conventionEtat(actionId, donnees).etat;
   const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
     : etat === CONVENTION_ETATS.generee ? conventionGenereeHtml(actionId, donnees)
     : etat === CONVENTION_ETATS.signee ? conventionSigneeHtml()
+    : etat === CONVENTION_ETATS.sansModele ? conventionSansModeleHtml()
     : '';
   return `${phrases}${boutons}`;
+}
+
+// Etat « Sans modele » : seul bouton de la rangee, « Deposer la convention signee » (E3-23 : sans phrase d'aide).
+function conventionSansModeleHtml() {
+  return `<div class="convention-actions">${conventionDeposerHtml()}</div>`;
 }
 
 // Bouton « Générer la convention » et, au-dessus, la zone du message de blocage.
@@ -2252,13 +2899,18 @@ function conventionGenererHtml(actionId, donnees) {
   const message = blocage
     ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
     : '';
-  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"' : ' aria-haspopup="dialog"';
+  // Pendant l'envoi d'un fichier signe, « Generer la convention » est grise sans message ni aria-haspopup (E3-6).
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"'
+    : conventionDepotEnCours ? ' aria-disabled="true"'
+    : ' aria-haspopup="dialog"';
+  // « Deposer la convention signee » est le second bouton de la rangee. Il ne porte jamais le message
+  // de blocage : celui-ci parle de la generation seule.
   return `<div id="conventionBlocage" role="status">${message}</div>
-            <div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionGenerer"${attributs}><span class="btn-content">Générer la convention</span></button></div>`;
+            <div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionGenerer"${attributs}><span class="btn-content">Générer la convention</span></button>${conventionDeposerHtml()}</div>`;
 }
 
-// Boutons de l'etat « Generee » (tache 8.1) : « Voir la convention », puis « Re-generer »
-// juste apres, sur la meme rangee. « Re-generer » suit les memes regles que « Generer la
+// Boutons de l'etat « Generee » : « Telecharger la convention » (E3-3), puis « Re-generer » et
+// « Deposer la convention signee » sur la meme rangee. « Re-generer » suit les memes regles que « Generer la
 // convention » : grise avec le message du premier element manquant (zone role="status"
 // toujours presente, vide quand rien ne manque), sinon il annonce qu'il ouvre une fenetre.
 function conventionGenereeHtml(actionId, donnees) {
@@ -2271,8 +2923,9 @@ function conventionGenereeHtml(actionId, donnees) {
     : conventionDepotEnCours ? ' aria-disabled="true"'
     : ' aria-haspopup="dialog"';
   const regenerer = `<button class="btn btn-secondary" type="button" id="conventionRegenerer"${attributs}><span class="btn-content">Re-générer</span></button>`;
+  const format = conventionFormatGenere(conventionEtat(actionId, donnees).convention);
   return `<div id="conventionBlocage" role="status">${message}</div>
-            ${conventionVoirHtml(regenerer + conventionDeposerHtml())}`;
+            <div class="convention-actions">${conventionTelechargerHtml(false, format)}${regenerer}${conventionDeposerHtml()}</div>`;
 }
 
 // Vrai quand la fenetre s'ouvre pour une re-generation : la ligne Conventions de l'action
@@ -2339,8 +2992,8 @@ const CONVENTION_FONCTION_AGENCE = "Directeur d'agence";
 const CONVENTION_FONCTION_VIDE = 'Fonction non renseignée';
 const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.";
 // Evolution 1 : plus aucun champ obligatoire dans la fenetre, donc plus de controle des champs
-// (ni a la fermeture, ni a « Generer »). Un champ vide donne des pointilles dans le PDF.
-const CONVENTION_INTRODUCTION = "Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.";
+// (ni a la fermeture, ni a « Generer »). Un champ vide est surligne dans le document Word (evolution 3).
+const CONVENTION_INTRODUCTION = "Un champ laissé vide sera surligné dans le document Word, à compléter avant la signature.";
 // Valeur de l'option de la liste « Signataire » qui represente le contact saisi dans le formulaire « Ajouter un contact ».
 const CONVENTION_VALEUR_NOUVEAU_CONTACT = 'nouveau';
 
@@ -2380,13 +3033,7 @@ function conventionSousTitre(actionId, donnees) {
   const action = conventionLigne(raw.Actions, actionId) || {};
   const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
   const nom = String(dispositif.Dispositif || dispositif.Code || '').trim();
-  let campagne = '';
-  if (typeof action.Campagne === 'number') {
-    const ligne = conventionLigne(raw.Campagnes || [], action.Campagne);
-    campagne = ligne ? String(ligne.Campagne ?? '').trim() : '';
-  } else {
-    campagne = String(action.Campagne ?? '').trim();
-  }
+  const campagne = conventionCampagne(actionId, donnees);
   return campagne ? `${nom} · Campagne ${campagne}` : nom;
 }
 
@@ -2455,11 +3102,12 @@ function conventionSaisieLibreHtml() {
 function conventionModalHtml(actionId, donnees) {
   const infos = conventionInfos(actionId, donnees);
   const contacts = conventionContacts(actionId, donnees);
-  // Re-generation seulement : on previent que le nouveau PDF remplace l'ancien (sans historique).
+  // Re-generation seulement : on previent que le nouveau document remplace l'ancien (sans historique).
+  // Le mot « document » est juste quel que soit l'ancien format (PDF avant l'evolution 3, Word apres).
   // Sans date enregistree, la phrase s'ecrit sans date, comme « Convention generee. » du bloc.
   const quand = conventionEstRegeneration(actionId, donnees) ? formatDate((conventionEtat(actionId, donnees).convention || {}).Date_generation) : null;
   const remplacement = quand === null ? ''
-    : `<p>${escapeHtml(quand ? `Le nouveau PDF remplacera la convention générée le ${quand}.` : 'Le nouveau PDF remplacera la convention générée.')}</p>
+    : `<p>${escapeHtml(quand ? `Le nouveau document remplacera la convention générée le ${quand}.` : 'Le nouveau document remplacera la convention générée.')}</p>
           `;
   return `<div class="modal-backdrop fade show"></div>
   <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" aria-describedby="conventionSubtitle" tabindex="-1">
@@ -2537,13 +3185,11 @@ function bindConvention(actionId) {
       openConvention(actionId);
     });
   });
-  // « Voir la convention » n'existe qu'a l'etat « Generee ».
-  const voir = document.getElementById('conventionVoir');
-  if (voir) voir.addEventListener('click', () => conventionVoir(actionId));
-  // « Voir la convention signée » n'existe qu'a l'etat « Signee ».
+  // « Voir la convention signée » n'existe qu'a l'etat « Signee ». Il n'y a plus de « Voir » pour le
+  // document genere (evolution 3) : un navigateur n'affiche pas un fichier Word.
   const voirSignee = document.getElementById('conventionVoirSignee');
   if (voirSignee) voirSignee.addEventListener('click', () => conventionVoirSigneeClic(actionId));
-  // « Telecharger » existe aux etats « Generee » et « Signee » (a cote de chaque « Voir »).
+  // « Telecharger la convention » existe a l'etat « Generee », « Telecharger » a l'etat « Signee ».
   [false, true].forEach(signee => {
     const telecharger = document.getElementById(conventionTelechargerId(signee));
     if (telecharger) telecharger.addEventListener('click', () => conventionTelecharger(actionId, signee));
@@ -3127,6 +3773,7 @@ const CONVENTION_GENERATION_ERREURS = {
   modele: 'modele-indisponible',
   cases: 'cases-inconnues',
   pdfmake: CONVENTION_PDFMAKE_ERREUR,
+  docx: CONVENTION_DOCX_ERREUR,
   envoiRefuse: 'envoi-refuse',
   envoiImpossible: 'envoi-impossible',
   rattachement: 'rattachement-echoue',
@@ -3135,6 +3782,8 @@ const CONVENTION_GENERATION_ERREURS = {
 
 // Delai maximum du chargement de pdfmake (decision de la tache 7.2).
 const CONVENTION_PDFMAKE_DELAI_MS = 20000;
+// Meme delai maximum pour le chargement de la bibliotheque docx.
+const CONVENTION_DOCX_DELAI_MS = 20000;
 
 // Delais maximum des autres appels reseau de la generation. Sans eux, un reseau coupe au mauvais
 // moment laissait la fenetre bloquee sur « Generation en cours… » pour toujours.
@@ -3214,7 +3863,11 @@ function conventionAvecDelai(promesse, delaiMs, creerErreur) {
 
 // Valeur de chaque case connue, pour conventionVersContenuPdf. Fonction pure.
 // Une adresse sur plusieurs lignes devient une seule ligne : elle se lit dans une phrase.
-function conventionValeursCases(actionId, valeurs, donnees) {
+// options.vides (evolution 3) : une case connue mais vide reste '' (le document Word la surligne)
+// au lieu de devenir des pointilles. Avec '' elle serait comptee comme manquante par
+// conventionCasesManquantes : la generation repere donc les cases inconnues avec la version
+// a pointilles, et fabrique le document avec la version `vides`.
+function conventionValeursCases(actionId, valeurs, donnees, options) {
   const infos = conventionInfos(actionId, donnees);
   const signataire = conventionContacts(actionId, donnees).find(contact => contact.id === valeurs.signataire);
   const surUneLigne = texte => String(texte || '').split('\n').join(', ');
@@ -3233,7 +3886,7 @@ function conventionValeursCases(actionId, valeurs, donnees) {
   // Une case connue mais vide (un club sans SIRET, par exemple) devient des pointilles :
   // elle se complete a la main sur le papier et ne bloque pas la generation.
   Object.keys(cases).forEach(nom => {
-    if (cases[nom] === null || cases[nom] === undefined || !String(cases[nom]).trim()) cases[nom] = CONVENTION_POINTILLES;
+    if (cases[nom] === null || cases[nom] === undefined || !String(cases[nom]).trim()) cases[nom] = options && options.vides ? '' : CONVENTION_POINTILLES;
   });
   return cases;
 }
@@ -3253,23 +3906,41 @@ function conventionNomNettoye(texte, longueurMax) {
   return nettoye;
 }
 
-// Nom du fichier : Convention-[dispositif]-[club]-[annee].pdf, sans « -[annee] » quand le
-// modele n'a pas d'annee. Jamais de nom de personne. Fonction pure.
-function conventionNomFichier(actionId, valeurs, donnees) {
-  return conventionNomFichierAvec(['Convention'], actionId, valeurs, donnees);
+// Nom du fichier : Convention-[dispositif]-[club]-[annee].[extension], sans « -[annee] » quand le
+// modele n'a pas d'annee ou que la campagne de l'action est vide. Jamais de nom de personne.
+// `extension` : 'docx' (document genere depuis l'evolution 3) ou 'pdf' (ancien document). Elle est
+// deduite par l'appelant du nom reel du fichier deja present, jamais fixee ici (E3-9).
+// L'annee est lue dans Actions.Campagne de l'action, au moment de l'appel, et JAMAIS dans
+// Conventions.Annee (E3-17). Fonction pure.
+function conventionNomFichier(actionId, donnees, extension) {
+  return conventionNomFichierAvec(['Convention'], actionId, donnees, extension);
 }
 
 // Nom du fichier signe : Convention-signee-[dispositif]-[club]-[annee].pdf (decision du
-// 2026-10-26). Memes regles de nettoyage que le PDF genere, car meme code. L'annee est celle
-// enregistree avec la convention (colonne Annee). Le nom d'origine du fichier n'est jamais repris.
+// 2026-10-26). Memes regles de nettoyage que le document genere, car meme code. Le fichier signe
+// est toujours un PDF. L'annee vient aussi d'Actions.Campagne (E3-17) : le nom est donc le meme
+// qu'il y ait eu generation ou non (un depot libre laisse Conventions.Annee vide).
+// Le nom d'origine du fichier n'est jamais repris.
 function conventionNomFichierSigne(actionId, donnees) {
-  const {convention} = conventionEtat(actionId, donnees);
-  const annee = convention && convention.Annee ? String(convention.Annee) : '';
-  return conventionNomFichierAvec(['Convention', 'signee'], actionId, {annee}, donnees);
+  return conventionNomFichierAvec(['Convention', 'signee'], actionId, donnees, 'pdf');
 }
 
-// Code commun aux deux noms : `debut` donne les mots places avant le dispositif.
-function conventionNomFichierAvec(debut, actionId, valeurs, donnees) {
+// Annee de la campagne de l'action (texte), ou '' : Actions.Campagne est une reference vers
+// Campagnes.Campagne (texte) ; dans un ancien document ce peut etre directement du texte.
+// Fonction pure : lit seulement les tables deja chargees.
+function conventionCampagne(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  if (typeof action.Campagne === 'number') {
+    const ligne = conventionLigne(raw.Campagnes || [], action.Campagne);
+    return ligne ? String(ligne.Campagne ?? '').trim() : '';
+  }
+  return String(action.Campagne ?? '').trim();
+}
+
+// Code commun aux deux noms : `debut` donne les mots places avant le dispositif. Une extension
+// inconnue (ni docx ni pdf) donne un nom sans extension plutot qu'une extension inventee.
+function conventionNomFichierAvec(debut, actionId, donnees, extension) {
   const raw = (donnees && donnees.raw) || {};
   const action = conventionLigne(raw.Actions, actionId) || {};
   const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
@@ -3277,11 +3948,13 @@ function conventionNomFichierAvec(debut, actionId, valeurs, donnees) {
   const court = CONVENTION_NOMS_COURTS[normalizeText(nomDispositif.replace(/[’‘]/g, "'"))];
   const partDispositif = conventionNomNettoye(court || nomDispositif) || conventionNomNettoye(nomDispositif);
   const partClub = conventionNomNettoye(conventionInfos(actionId, donnees).club.nom, CONVENTION_NOM_CLUB_MAX) || 'club';
-  // L'annee n'entre dans le nom que si le modele en demande une ET qu'elle a quatre chiffres
-  // (meme regle que conventionProblemes). Vide, absente ou invalide : omise, jamais inventee.
-  const anneeBrute = conventionModeleInfos(actionId, donnees).avecAnnee ? String(valeurs.annee ?? '').trim() : '';
+  // L'annee n'entre dans le nom que si le modele en demande une ET que la campagne a quatre chiffres.
+  // Vide, absente ou invalide : omise, jamais inventee. Un modele absent (depot libre sur un
+  // dispositif sans modele) en demande une, comme conventionModeleInfos le dit.
+  const anneeBrute = conventionModeleInfos(actionId, donnees).avecAnnee ? conventionCampagne(actionId, donnees) : '';
   const annee = /^[1-9]\d{3}$/.test(anneeBrute) ? anneeBrute : '';
-  return [...debut, partDispositif, partClub, annee].filter(Boolean).join('-') + '.pdf';
+  const suffixe = extension === 'docx' || extension === 'pdf' ? `.${extension}` : '';
+  return [...debut, partDispositif, partClub, annee].filter(Boolean).join('-') + suffixe;
 }
 
 // chargerPdfmake avec un delai maximum : au-dela, meme erreur que pdfmake-non-charge.
@@ -3295,7 +3968,26 @@ function conventionChargerPdfmake() {
   });
 }
 
-// Envoie le PDF comme piece jointe, par la methode du logo de clubs : jeton d'ecriture dans
+// chargerDocx avec un delai maximum : au-dela, erreur docx-non-charge.
+function conventionChargerDocx() {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(conventionErreur(CONVENTION_GENERATION_ERREURS.docx)), CONVENTION_DOCX_DELAI_MS);
+    chargerDocx().then(
+      () => { clearTimeout(minuteur); resolve(); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
+}
+
+// Fabrique le fichier Word (Blob) : conventionDocumentDocx decrit le document, Packer.toBlob l'assemble.
+// Le type est fixe ici (jamais celui que la bibliotheque aurait choisi).
+async function conventionFabriquerDocx(contenu, cases, logos) {
+  const lib = window.docx;
+  const fichier = await lib.Packer.toBlob(conventionDocumentDocx(contenu, cases, {lib, logos}));
+  return new Blob([fichier], {type: CONVENTION_TYPE_DOCX});
+}
+
+// Envoie un fichier (document genere ou PDF signe) comme piece jointe, par la methode du logo de clubs : jeton d'ecriture dans
 // l'adresse, credentials 'omit', en-tete X-Requested-With. Renvoie l'identifiant de la piece
 // jointe. Le jeton vit dans des variables locales et n'est mis dans aucune
 // erreur : les erreurs ne portent qu'un code (une erreur de fetch peut recopier l'adresse).
@@ -3361,10 +4053,11 @@ async function conventionTelechargerPieceJointe(acces, pieceJointe) {
   return reponse.arrayBuffer();
 }
 
-// Logo d'une colonne de pieces jointes du modele : le premier fichier, converti pour pdfmake.
+// Logo d'une colonne de pieces jointes du modele : le premier fichier, converti pour la bibliotheque
+// (`convertir` : conventionImageLogoDocx pour le Word, conventionImageLogo pour pdfmake).
 // null si la cellule est vide, si le telechargement echoue ou si l'image est illisible : la
 // generation continue alors sans ce logo. Rien dans la console.
-async function conventionChargerLogo(acces, valeur) {
+async function conventionChargerLogo(acces, valeur, convertir) {
   const id = conventionPieceJointeId(valeur);
   if (!id) return null;
   try {
@@ -3374,7 +4067,7 @@ async function conventionChargerLogo(acces, valeur) {
       CONVENTION_LOGO_DELAI_MS,
       () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
     );
-    return conventionImageLogo(octets);
+    return (convertir || conventionImageLogo)(octets);
   } catch (erreur) {
     return null;
   }
@@ -3382,10 +4075,10 @@ async function conventionChargerLogo(acces, valeur) {
 
 // Logos du modele. Renvoie { logos: {logo, partenaire}, manquants } : manquants contient
 // 'Logo' des qu'il n'a pas pu etre mis, et 'Logo_partenaire' seulement s'il etait rempli.
-async function conventionChargerLogos(acces, modele) {
+async function conventionChargerLogos(acces, modele, convertir) {
   const [logo, partenaire] = await Promise.all([
-    conventionChargerLogo(acces, modele.Logo),
-    conventionChargerLogo(acces, modele.Logo_partenaire)
+    conventionChargerLogo(acces, modele.Logo, convertir),
+    conventionChargerLogo(acces, modele.Logo_partenaire, convertir)
   ]);
   const manquants = [];
   if (!logo) manquants.push('Logo');
@@ -3445,8 +4138,8 @@ async function conventionPdfRattache(conventionId, pieceJointe) {
 //  1. (plus de controle des champs, evolution 1) ; 2. enregistrement des informations (sans message) ;
 //  3. modele actif ; 4. remplissage des cases ; 4b. UN jeton d'ecriture, puis les logos du
 //  modele (Logo, Logo_partenaire : un logo absent ou illisible n'arrete rien) ;
-//  5. chargement de pdfmake (20 s au plus) ;
-//  6. fabrication du PDF et nom du fichier ; 7. envoi du fichier (meme jeton) ;
+//  5. chargement de la bibliotheque docx (20 s au plus) ;
+//  6. fabrication du document Word et nom du fichier ; 7. envoi du fichier (meme jeton) ;
 //  8. UNE requete PATCH REST pour PDF_genere et Date_generation (meme jeton) ;
 //  9. mise a jour de state.raw.Conventions (le bloc peut passer a « Generee »).
 // Reussite : renvoie {nomFichier, logosManquants} (logosManquants : [] ou 'Logo' et/ou
@@ -3465,32 +4158,35 @@ async function conventionGenerer(actionId, valeurs) {
     const contenu = modele ? String(modele.Contenu ?? '') : '';
     if (!modele || !contenu.trim()) throw conventionErreur(CONVENTION_GENERATION_ERREURS.modele);
 
-    // L'annee du PDF (case [Année] et nom du fichier) est celle qui vient d'etre enregistree
+    // L'annee du document (case [Année]) est celle qui vient d'etre enregistree
     // d'apres la campagne de l'action, plus celle d'un champ de la fenetre (il n'existe plus).
     // Si Annee n'a pas pu etre mise a jour, c'est l'ancienne valeur de la convention qui sert.
+    // (Le NOM du fichier, lui, lit la campagne de l'action : voir conventionNomFichier.)
     const anneeEnregistree = convention.Annee ? String(convention.Annee) : String(valeurs.annee ?? '');
-    const valeursPdf = {...valeurs, annee: anneeEnregistree};
-    const cases = conventionValeursCases(actionId, valeursPdf, state);
-    const inconnues = conventionCasesManquantes(contenu, cases);
+    const valeursDocument = {...valeurs, annee: anneeEnregistree};
+    // Les cases inconnues se reperent avec la version a pointilles (aucune case connue n'y est vide) ;
+    // le document, lui, recoit la version ou une case connue mais vide reste '' et sera surlignee.
+    const inconnues = conventionCasesManquantes(contenu, conventionValeursCases(actionId, valeursDocument, state));
     if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
+    const cases = conventionValeursCases(actionId, valeursDocument, state, {vides: true});
 
     // Le jeton est demande une seule fois, ici, avant les logos.
     const acces = await conventionDemanderAcces();
-    const {logos, manquants} = await conventionChargerLogos(acces, modele);
+    const {logos, manquants} = await conventionChargerLogos(acces, modele, conventionImageLogoDocx);
 
-    await conventionChargerPdfmake();
+    await conventionChargerDocx();
     let blob = null;
     try {
-      blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases, {logos})).getBlob();
+      blob = await conventionFabriquerDocx(contenu, cases, logos);
     } catch (erreur) {
-      // Un logo que pdfmake n'arrive pas a lire ne doit pas bloquer : on refait le PDF sans logo.
+      // Un logo que la bibliotheque n'arrive pas a lire ne doit pas bloquer : on refait le document sans logo.
       if (!logos.logo && !logos.partenaire) throw erreur;
       if (logos.logo && !manquants.includes('Logo')) manquants.push('Logo');
       if (logos.partenaire && !manquants.includes('Logo_partenaire')) manquants.push('Logo_partenaire');
-      blob = await window.pdfMake.createPdf(conventionDocumentPdf(contenu, cases)).getBlob();
+      blob = await conventionFabriquerDocx(contenu, cases, {});
     }
     if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
-    const nomFichier = conventionNomFichier(actionId, valeursPdf, state);
+    const nomFichier = conventionNomFichier(actionId, state, 'docx');
 
     // Le delai couvre toute la fonction (envoi puis lecture de la reponse), pas seulement fetch.
     const pieceJointe = await conventionAvecDelai(
@@ -3516,6 +4212,8 @@ async function conventionGenerer(actionId, valeurs) {
     // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
     const ligne = conventionLigne(state.raw.Conventions, convention.id);
     if (ligne) Object.assign(ligne, champs);
+    // Le document genere est un Word : le bloc peut afficher « Format : document Word (.docx). ».
+    conventionFormats.set(convention.id, 'docx');
     return {nomFichier, logosManquants: manquants};
   } catch (error) {
     if (error && typeof error.code === 'string') throw error;
@@ -3542,6 +4240,8 @@ const CONVENTION_SUITE = 'Vos informations sont conservées.';
 // et cases-inconnues ont leur propre traitement (voir plus bas).
 const CONVENTION_MESSAGES_ECHEC = {
   [CONVENTION_GENERATION_ERREURS.pdfmake]: `La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  // Texte exact de la note UX, section 15.7 (le mot « document » remplace « PDF »).
+  [CONVENTION_GENERATION_ERREURS.docx]: `La convention n'a pas pu être générée : l'outil qui fabrique le document n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
   [CONVENTION_GENERATION_ERREURS.modele]: `La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
   [CONVENTION_GENERATION_ERREURS.envoiRefuse]: `La convention n'a pas pu être enregistrée : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
   [CONVENTION_GENERATION_ERREURS.envoiImpossible]: `La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. ${CONVENTION_SUITE}`,
@@ -3663,7 +4363,7 @@ function conventionMessageLogos(logosManquants) {
 
 // « Convention generee. » en haut du bloc (alert-success). La zone role="status" existe deja,
 // vide, dans la page (conventionBlocHtml) : le texte qu'on y met est annonce.
-// Le focus va sur « Voir la convention » (decision D-S7-6), premier bouton de l'etat
+// Le focus va sur « Telecharger la convention » (E3-3, ancien D-S7-6), premier bouton de l'etat
 // « Generee ». Si le bloc n'a pas ce bouton (cas inattendu), il va sur le titre
 // « Convention » du bloc, rendu focalisable avec tabindex="-1".
 function conventionAnnoncerReussite(logosManquants) {
@@ -3674,7 +4374,7 @@ function conventionAnnoncerReussite(logosManquants) {
   const logo = conventionMessageLogos(logosManquants);
   const infoLogo = logo ? `<p class="alert-content">${escapeHtml(logo)}</p>` : '';
   zone.innerHTML = `<div class="alert alert-success" id="conventionReussite"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p>${infoLogo}</div>`;
-  let cible = document.getElementById('conventionVoir');
+  let cible = document.getElementById('conventionTelecharger');
   if (!cible) {
     cible = document.querySelector('#conventionBloc .section-head span');
     if (cible) cible.setAttribute('tabindex', '-1');
@@ -3683,63 +4383,53 @@ function conventionAnnoncerReussite(logosManquants) {
   requestResize();
 }
 
-// ---- Convention : boutons « Voir la convention » et « Telecharger » (tache 7.4, evolution 2) ----
-// Au clic sur « Voir » : on lit un jeton d'ECRITURE (voir conventionTelechargerPdf), on telecharge la
-// piece jointe PDF_genere par l'API REST, puis on l'affiche dans une pop-up du widget, a une adresse
-// blob: (le PDF est lu depuis la memoire du navigateur). « Telecharger » (bloc) recupere le meme
-// fichier et l'enregistre sous son vrai nom. Le jeton n'est lu qu'au clic, vit dans des variables
-// locales et n'est ni garde, ni ecrit dans la page, la console, un message ou une adresse visible.
-// Rien n'est ecrit dans la console : une erreur de reseau peut recopier l'adresse.
-const CONVENTION_TEXTE_VOIR = 'Voir la convention';
+// ---- Convention : boutons « Telecharger la convention » et « Telecharger » (evolutions 2 et 3) ----
+// Document genere (Word depuis l'evolution 3, PDF avant) : un seul bouton, « Telecharger la
+// convention ». Au clic : on lit un jeton d'ECRITURE (voir conventionTelechargerAcces), on lit le nom
+// reel de la piece jointe PDF_genere (pour en deduire l'extension), on la telecharge par l'API REST,
+// puis on l'enregistre sous son vrai nom. Plus de pop-up ni d'apercu : un navigateur n'affiche pas
+// un fichier Word. Fichier signe : « Voir la convention signee » (pop-up) et « Telecharger » (inchanges).
+// Le jeton n'est lu qu'au clic, vit dans des variables locales et n'est ni garde, ni ecrit dans la
+// page, la console, un message ou une adresse visible. Rien n'est ecrit dans la console : une erreur
+// de reseau peut recopier l'adresse.
 const CONVENTION_TEXTE_VOIR_CACHE = " (s'ouvre dans une fenêtre)";
 const CONVENTION_TEXTE_OUVERTURE = 'Ouverture en cours…';
 const CONVENTION_MESSAGE_VOIR_ECHEC = "Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord.";
-// Bouton « Telecharger » du bloc (a cote de chaque « Voir »). Le texte cache vient apres le mot visible :
-// le nom accessible commence par le texte visible.
+// Boutons de telechargement du bloc. Le texte cache vient apres le texte visible : le nom accessible
+// commence par le texte visible.
 const CONVENTION_TEXTE_TELECHARGER = 'Télécharger';
-const CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE = ' le fichier PDF de la convention générée';
+const CONVENTION_TEXTE_TELECHARGER_CONVENTION = 'Télécharger la convention';
 const CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE = ' le fichier PDF de la convention signée';
 const CONVENTION_TEXTE_TELECHARGEMENT = 'Téléchargement en cours…';
 const CONVENTION_MESSAGE_TELECHARGER_ECHEC = "Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord.";
-// « Telecharger » du bloc : le lien temporaire et l'adresse blob: sont retires apres ce delai, le
-// temps que le navigateur ait commence l'enregistrement. « Voir » ne s'en sert plus : la pop-up
-// libere son adresse a sa fermeture (conventionPdfFermer).
+// Le lien temporaire et l'adresse blob: sont retires apres ce delai, le temps que le navigateur
+// ait commence l'enregistrement. La pop-up du fichier signe libere son adresse a sa fermeture
+// (conventionPdfFermer).
 const CONVENTION_VOIR_LIBERATION_MS = 5000;
 
-// Vrai pendant l'ouverture : les clics sur le bouton sont alors ignores.
-let conventionOuvertureEnCours = false;
-
-// Libelle du bouton : le texte, puis le texte cache pour les lecteurs d'ecran.
-function conventionVoirLibelleHtml() {
-  return `${escapeHtml(CONVENTION_TEXTE_VOIR)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
-}
-
-// `apres` (facultatif) : boutons places sur la meme rangee, apres « Voir la convention » et « Telecharger ».
-function conventionVoirHtml(apres) {
-  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoir" aria-haspopup="dialog"><span class="btn-content">${conventionVoirLibelleHtml()}</span></button>${conventionTelechargerHtml(false)}${apres || ''}</div>`;
-}
-
-// Verrou propre a chaque bouton « Telecharger » (cle : son id). « Voir » et « Telecharger » restent
-// utilisables l'un pendant l'autre.
+// Verrou propre a chaque bouton « Telecharger » (cle : son id).
 const conventionTelechargementEnCours = {conventionTelecharger: false, conventionTelechargerSignee: false};
 
 function conventionTelechargerId(signee) {
   return signee ? 'conventionTelechargerSignee' : 'conventionTelecharger';
 }
 
-// Libelle du bouton : le mot visible, puis le texte cache pour les lecteurs d'ecran.
-function conventionTelechargerLibelleHtml(signee) {
-  const cache = signee ? CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE : CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE;
-  return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(cache)}</span>`;
+// Libelle du bouton : le texte visible, puis le texte cache pour les lecteurs d'ecran.
+// Document genere : « Telecharger la convention » + « (fichier Word) » ou « (fichier PDF) » selon
+// `format` ('docx', 'pdf' ; format inconnu : pas de texte cache). Fichier signe : « Telecharger » (inchange).
+function conventionTelechargerLibelleHtml(signee, format) {
+  if (signee) return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE)}</span>`;
+  const cache = format && CONVENTION_FORMATS[format] ? `<span class="sr-only">${escapeHtml(CONVENTION_FORMATS[format].cache)}</span>` : '';
+  return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER_CONVENTION)}${cache}`;
 }
 
-// Un <button> (et non un lien) : l'adresse blob: n'existe qu'apres la recuperation du PDF avec le jeton,
+// Un <button> (et non un lien) : l'adresse blob: n'existe qu'apres la recuperation du fichier avec le jeton,
 // qu'on ne fait jamais avant le clic. Si le bloc est refait pendant la recuperation, texte et
-// aria-disabled sont reposes d'apres le verrou.
-function conventionTelechargerHtml(signee) {
+// aria-disabled sont reposes d'apres le verrou. Pas d'aria-haspopup : aucune fenetre ne s'ouvre.
+function conventionTelechargerHtml(signee, format) {
   const id = conventionTelechargerId(signee);
   const attente = conventionTelechargementEnCours[id];
-  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(signee)}</span></button>`;
+  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(signee, format)}</span></button>`;
 }
 
 // Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
@@ -3749,14 +4439,20 @@ function conventionPieceJointeId(valeur) {
   return Number.isInteger(id) && id > 0 ? id : 0;
 }
 
-// Telecharge la piece jointe. Echoue (sans detail) si le jeton est refuse, si le fichier est
-// introuvable ou vide, ou si le reseau coupe. Meme methode que l'envoi : credentials 'omit' et
-// en-tete X-Requested-With.
-async function conventionTelechargerPdf(pieceJointe) {
-  // Jeton d'ecriture voulu : un jeton en lecture seule met le proprietaire au niveau lecteur, et les
-  // regles par defaut du document refusent tout aux lecteurs (403). Ne pas le remettre en readOnly: true.
+// Jeton d'acces pour telecharger : demande au clic seulement, jamais garde. Jeton d'ecriture voulu :
+// un jeton en lecture seule met le proprietaire au niveau lecteur, et les regles par defaut du
+// document refusent tout aux lecteurs (403). Ne pas le remettre en readOnly: true.
+async function conventionTelechargerAcces() {
   const acces = await grist.docApi.getAccessToken({readOnly: false});
   if (!acces || !acces.token || !acces.baseUrl) throw new Error('acces');
+  return acces;
+}
+
+// Telecharge la piece jointe avec le jeton `acces`. Echoue (sans detail) si le jeton est refuse, si le
+// fichier est introuvable ou vide, ou si le reseau coupe. Meme methode que l'envoi : credentials 'omit'
+// et en-tete X-Requested-With. `type` : le type du Blob, fixe par l'appelant (table CONVENTION_TYPES_FICHIER),
+// jamais celui que renvoie Grist : le navigateur ne peut pas interpreter le fichier comme une page web.
+async function conventionTelechargerFichier(acces, pieceJointe, type) {
   const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}/download?auth=${encodeURIComponent(acces.token)}`, {
     credentials: 'omit',
     headers: {'X-Requested-With': 'XMLHttpRequest'}
@@ -3764,24 +4460,33 @@ async function conventionTelechargerPdf(pieceJointe) {
   if (!reponse.ok) throw new Error('telechargement');
   const octets = await reponse.arrayBuffer();
   if (!octets.byteLength) throw new Error('fichier vide');
-  // Le type est force ici a application/pdf (jamais celui que renvoie Grist) : le cadre de la pop-up
-  // affiche ainsi le PDF, et le navigateur ne peut pas l'interpreter comme une page web.
-  return new Blob([octets], {type: 'application/pdf'});
+  return new Blob([octets], {type});
 }
 
-// Texte du bouton pendant (ou apres) l'ouverture. aria-disabled, jamais disabled : le focus
-// reste sur le bouton. Le texte cache est retire pendant l'attente et revient ensuite.
-function conventionVoirAttente(attente) {
-  const bouton = document.getElementById('conventionVoir');
-  if (!bouton) return;
-  const libelle = bouton.querySelector('.btn-content') || bouton;
-  if (attente) {
-    bouton.setAttribute('aria-disabled', 'true');
-    libelle.textContent = CONVENTION_TEXTE_OUVERTURE;
-  } else {
-    bouton.removeAttribute('aria-disabled');
-    libelle.innerHTML = conventionVoirLibelleHtml();
-  }
+// Telecharge un PDF (fichier signe). Le type est force a application/pdf : le cadre de la pop-up
+// affiche ainsi le PDF.
+async function conventionTelechargerPdf(pieceJointe) {
+  return conventionTelechargerFichier(await conventionTelechargerAcces(), pieceJointe, CONVENTION_TYPE_PDF);
+}
+
+// Extension ('docx' ou 'pdf') d'un nom de fichier, ou '' pour toute autre extension ou aucune (Q-E3-7 :
+// on ne devine rien, l'appelant traite '' comme un echec).
+function conventionExtensionDeNom(nom) {
+  const m = /\.(docx|pdf)$/i.exec(String(nom ?? '').trim());
+  return m ? m[1].toLowerCase() : '';
+}
+
+// Extension du fichier present dans la piece jointe, lue dans son nom reel (metadonnees de la piece
+// jointe, API REST : GET /attachments/{id}) et non dans une regle fixe : une convention generee avant
+// l'evolution 3 est un PDF, une autre est un Word (E3-9). Le nom lu n'est ni garde ni affiche.
+async function conventionExtensionPieceJointe(acces, pieceJointe) {
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('metadonnees');
+  const meta = await reponse.json();
+  return conventionExtensionDeNom(meta && meta.fileName);
 }
 
 // Une seule alerte a la fois en haut du bloc : la plus recente remplace l'autre.
@@ -3797,38 +4502,39 @@ function conventionAlerteVoirEchec() {
   requestResize();
 }
 
-// PDF de la convention d'une action, en Blob : le fichier genere (PDF_genere) ou, si `signee` est vrai,
-// le fichier signe (PDF_signe). Echoue sans detail s'il n'y a pas de fichier. Aucun jeton dans les erreurs.
-function conventionRecupererPdf(actionId, signee) {
-  if (signee) return conventionTelechargerPdfSigne(actionId);
+// Document genere de la convention d'une action : { blob, nom, extension }. Echoue sans detail s'il
+// n'y a pas de fichier, si le jeton est refuse, ou si le nom de la piece jointe ne finit ni par .docx
+// ni par .pdf (Q-E3-7 : on ne devine pas, le bouton affiche l'alerte d'echec). L'extension vient du
+// nom reel du fichier (E3-9) : le type du Blob et le nom enregistre en dependent. Un seul jeton pour
+// les deux requetes ; aucun jeton dans les erreurs.
+async function conventionRecupererGeneree(actionId) {
   const {convention} = conventionEtat(actionId, state);
   const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
-  if (!pieceJointe) return Promise.reject(new Error('pas de fichier'));
-  return conventionTelechargerPdf(pieceJointe);
+  if (!pieceJointe) throw new Error('pas de fichier');
+  const acces = await conventionTelechargerAcces();
+  const extension = await conventionExtensionPieceJointe(acces, pieceJointe);
+  if (!extension) throw new Error('extension inconnue');
+  const blob = await conventionTelechargerFichier(acces, pieceJointe, CONVENTION_TYPES_FICHIER[extension]);
+  // Le format est maintenant connu : le bloc l'affichera au prochain rafraichissement.
+  conventionFormats.set(convention.id, extension);
+  // Le nom enregistre : l'annee est lue dans Actions.Campagne maintenant (E3-17), jamais dans Conventions.Annee.
+  return {blob, nom: conventionNomFichier(actionId, state, extension), extension};
 }
 
-// Nom exact du fichier, le meme pour le titre de la pop-up et pour « Telecharger » (note UX §14.4).
-// Jamais de nom de personne ; l'annee est celle enregistree avec la convention.
-function conventionNomAffiche(actionId, signee) {
-  if (signee) return conventionNomFichierSigne(actionId, state);
-  const {convention} = conventionEtat(actionId, state);
-  return conventionNomFichier(actionId, {annee: convention && convention.Annee ? String(convention.Annee) : ''}, state);
-}
-
-// Recupere le PDF puis ouvre la pop-up. Echoue (sans detail) si le fichier est introuvable, si le jeton
-// est refuse ou si le delai est depasse : rien ne s'ouvre alors, et l'adresse blob: eventuelle est liberee.
+// Recupere le PDF signe puis ouvre la pop-up. Echoue (sans detail) si le fichier est introuvable, si le
+// jeton est refuse ou si le delai est depasse : rien ne s'ouvre alors, et l'adresse blob: eventuelle est liberee.
 // Delai depasse (reseau coupe) = echec : sans lui, le bouton restait sur « Ouverture en cours… » et les
 // clics suivants etaient ignores pour toujours.
-async function conventionOuvrirApercu(actionId, signee, declencheur) {
-  const nom = conventionNomAffiche(actionId, signee);
+async function conventionOuvrirApercu(actionId, declencheur) {
+  const nom = conventionNomFichierSigne(actionId, state);
   const pdf = await conventionAvecDelai(
-    conventionRecupererPdf(actionId, signee),
+    conventionTelechargerPdfSigne(actionId),
     CONVENTION_TELECHARGEMENT_DELAI_MS,
     () => new Error('delai')
   );
   const adresse = URL.createObjectURL(pdf);
   try {
-    conventionPdfOuvrir({adresse, nom, signee, declencheur});
+    conventionPdfOuvrir({adresse, nom, declencheur});
   } catch (erreur) {
     conventionPdfFermer();
     URL.revokeObjectURL(adresse);
@@ -3836,27 +4542,9 @@ async function conventionOuvrirApercu(actionId, signee, declencheur) {
   }
 }
 
-// Clic sur « Voir la convention » : la pop-up s'ouvre seulement quand le PDF est recupere (pas de
-// fenetre vide qui attend). Le bouton reste sur la page : le focus lui revient a la fermeture.
-async function conventionVoir(actionId) {
-  const bouton = document.getElementById('conventionVoir');
-  if (!bouton || conventionOuvertureEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
-  conventionAlerteVoirEffacer();
-  conventionOuvertureEnCours = true;
-  conventionVoirAttente(true);
-  try {
-    await conventionOuvrirApercu(actionId, false, 'conventionVoir');
-  } catch (erreur) {
-    conventionAlerteVoirEchec();
-  } finally {
-    conventionOuvertureEnCours = false;
-    conventionVoirAttente(false);
-  }
-}
-
 // Texte du bouton « Telecharger » du bloc pendant (ou apres) la recuperation. aria-disabled, jamais
 // disabled : le focus reste sur le bouton.
-function conventionTelechargerAttente(signee, attente) {
+function conventionTelechargerAttente(signee, attente, actionId) {
   const bouton = document.getElementById(conventionTelechargerId(signee));
   if (!bouton) return;
   const libelle = bouton.querySelector('.btn-content') || bouton;
@@ -3865,31 +4553,33 @@ function conventionTelechargerAttente(signee, attente) {
     libelle.textContent = CONVENTION_TEXTE_TELECHARGEMENT;
   } else {
     bouton.removeAttribute('aria-disabled');
-    libelle.innerHTML = conventionTelechargerLibelleHtml(signee);
+    libelle.innerHTML = conventionTelechargerLibelleHtml(signee, conventionFormatGenere(conventionEtat(actionId, state).convention));
   }
 }
 
-// Clic sur « Telecharger » du bloc : recupere le PDF (meme fonction, meme jeton que « Voir »), fabrique
-// l'adresse blob:, cree un lien <a download="[nom].pdf"> temporaire, le declenche par programme, puis
-// retire le lien et libere l'adresse apres CONVENTION_VOIR_LIBERATION_MS. Reussite : aucun message
-// (le navigateur affiche son propre telechargement). Echec : l'alerte du bloc. Le focus ne bouge pas.
+// Clic sur « Telecharger la convention » (document genere) ou « Telecharger » (fichier signe) : recupere
+// le fichier, fabrique l'adresse blob:, cree un lien <a download="[nom]"> temporaire, le declenche par
+// programme, puis retire le lien et libere l'adresse apres CONVENTION_VOIR_LIBERATION_MS. Reussite : aucun
+// message (le navigateur affiche son propre telechargement). Echec : l'alerte du bloc. Le focus ne bouge pas.
 async function conventionTelecharger(actionId, signee) {
   const id = conventionTelechargerId(signee);
   const bouton = document.getElementById(id);
   if (!bouton || conventionTelechargementEnCours[id] || bouton.getAttribute('aria-disabled') === 'true') return;
   conventionAlerteVoirEffacer();
   conventionTelechargementEnCours[id] = true;
-  conventionTelechargerAttente(signee, true);
+  conventionTelechargerAttente(signee, true, actionId);
   let adresse = '';
   let lien = null;
   try {
-    const nom = conventionNomAffiche(actionId, signee);
-    const pdf = await conventionAvecDelai(
-      conventionRecupererPdf(actionId, signee),
+    // Le delai couvre toute la recuperation (jeton, nom reel, fichier).
+    const {blob, nom} = await conventionAvecDelai(
+      signee
+        ? conventionTelechargerPdfSigne(actionId).then(pdf => ({blob: pdf, nom: conventionNomFichierSigne(actionId, state)}))
+        : conventionRecupererGeneree(actionId),
       CONVENTION_TELECHARGEMENT_DELAI_MS,
       () => new Error('delai')
     );
-    adresse = URL.createObjectURL(pdf);
+    adresse = URL.createObjectURL(blob);
     lien = document.createElement('a');
     lien.href = adresse;
     lien.download = nom;
@@ -3908,7 +4598,7 @@ async function conventionTelecharger(actionId, signee) {
     conventionAlerteTelechargerEchec();
   } finally {
     conventionTelechargementEnCours[id] = false;
-    conventionTelechargerAttente(signee, false);
+    conventionTelechargerAttente(signee, false, actionId);
   }
 }
 
@@ -3934,7 +4624,7 @@ async function conventionTelechargerPdfSigne(actionId) {
 // commune. Renvoie true si la pop-up est ouverte, false sinon (l'appelant gere le texte du bouton et le verrou).
 async function conventionVoirSignee(actionId) {
   try {
-    await conventionOuvrirApercu(actionId, true, 'conventionVoirSignee');
+    await conventionOuvrirApercu(actionId, 'conventionVoirSignee');
     return true;
   } catch (erreur) {
     conventionAlerteVoirEchec();
@@ -4027,9 +4717,10 @@ let conventionPdfDeclencheur = '';
 // fenetre recouvre tout le widget. La classe convention-pdf-plein-ecran donne la taille (la feuille du
 // design system n'a pas de classe plein ecran pour modal-dialog). « Telecharger » est un bouton, sans
 // href : aucune adresse ne s'affiche au survol. La croix reprend le gabarit des boutons icone de clubs.
-function conventionPdfModalHtml(nom, signee) {
-  const sorte = signee ? 'signée' : 'générée';
-  const cache = signee ? CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE : CONVENTION_TEXTE_TELECHARGER_CACHE_GENEREE;
+function conventionPdfModalHtml(nom) {
+  // La pop-up ne sert plus que pour le fichier signe (evolution 3).
+  const sorte = 'signée';
+  const cache = CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE;
   return `<div class="modal fade show" id="conventionPdfDialog" role="dialog" aria-modal="true" aria-labelledby="conventionPdfTitle" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable convention-pdf-plein-ecran">
       <div class="modal-content">
@@ -4069,7 +4760,7 @@ function conventionPdfTelecharger() {
 // nom exact du fichier ; `declencheur` : id du bouton qui reprendra le focus. Le focus d'ouverture va
 // sur la fenetre elle-meme, jamais sur « Telecharger » (une touche Entree distraite lancerait un
 // telechargement) ni sur le cadre (les touches n'en sortent plus).
-function conventionPdfOuvrir({adresse, nom, signee, declencheur}) {
+function conventionPdfOuvrir({adresse, nom, declencheur}) {
   // Une seule pop-up a la fois : l'ancienne, s'il en restait une, est fermee et son adresse liberee.
   if (state.conventionPdfOpen) conventionPdfFermer();
   const host = document.getElementById('conventionPdfModal');
@@ -4077,7 +4768,7 @@ function conventionPdfOuvrir({adresse, nom, signee, declencheur}) {
   conventionPdfNom = nom;
   conventionPdfDeclencheur = declencheur;
   state.conventionPdfOpen = true;
-  host.innerHTML = conventionPdfModalHtml(nom, signee);
+  host.innerHTML = conventionPdfModalHtml(nom);
   document.getElementById('conventionPdfCadre').src = adresse;
   document.getElementById('conventionPdfTelecharger').addEventListener('click', conventionPdfTelecharger);
   document.getElementById('conventionPdfFermer').addEventListener('click', conventionPdfFermer);
@@ -4151,15 +4842,17 @@ let conventionDepotAttenteVisible = false;
 
 // Une commande est verrouillée seulement pendant le dépôt, et seulement si c'est elle qui l'a lancé.
 // Le bloc peut être refait pendant l'envoi : texte et aria-disabled sont alors reposés d'après le verrou.
-function conventionDepotCommandeHtml(id, classe, libelle) {
+function conventionDepotCommandeHtml(id, classe, libelle, attributs) {
   const verrouille = conventionDepotEnCours && conventionDepotCommande === id;
   const enAttente = verrouille && conventionDepotAttenteVisible;
-  return `<button class="btn ${classe}" type="button" id="${id}"${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(enAttente ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
+  return `<button class="btn ${classe}" type="button" id="${id}"${attributs || ''}${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(enAttente ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
 }
 
-// État « Générée » : bouton secondaire, dernier de la rangée. Pas d'aria-haspopup : aucune fenêtre.
+// Bouton secondaire « Déposer la convention signée », visible à tous les états sauf « Droits
+// insuffisants » (E3-6). Pas d'aria-haspopup : aucune fenêtre. Plus de phrase d'aide
+// ni d'aria-describedby (E3-23) ; il n'est jamais relié au message de blocage de la génération.
 function conventionDeposerHtml() {
-  return conventionDepotCommandeHtml('conventionDeposer', 'btn-secondary', CONVENTION_TEXTE_DEPOSER);
+  return conventionDepotCommandeHtml('conventionDeposer', 'btn-secondary', CONVENTION_TEXTE_DEPOSER, '');
 }
 
 // État « Signée » : lien (btn-link), seul sur sa ligne dans son propre div.
@@ -4212,17 +4905,19 @@ function conventionDepotVerrouiller(verrou, actionId) {
     if (verrou) commande.setAttribute('aria-disabled', 'true');
     else commande.removeAttribute('aria-disabled');
   }
-  const regenerer = document.getElementById('conventionRegenerer');
-  if (regenerer) {
+  // « Re-générer » (état « Générée ») et « Générer la convention » (état « À générer ») : un seul existe à la fois.
+  ['conventionRegenerer', 'conventionGenerer'].forEach(idGeneration => {
+    const generation = document.getElementById(idGeneration);
+    if (!generation) return;
     if (verrou) {
-      regenerer.setAttribute('aria-disabled', 'true');
-      regenerer.removeAttribute('aria-haspopup');
+      generation.setAttribute('aria-disabled', 'true');
+      generation.removeAttribute('aria-haspopup');
     } else if (!conventionBlocage(actionId, state)) {
-      // Pas de blocage de génération : « Re-générer » redevient normal. Sinon il reste grisé.
-      regenerer.removeAttribute('aria-disabled');
-      regenerer.setAttribute('aria-haspopup', 'dialog');
+      // Pas de blocage de génération : le bouton redevient normal. Sinon il reste grisé.
+      generation.removeAttribute('aria-disabled');
+      generation.setAttribute('aria-haspopup', 'dialog');
     }
-  }
+  });
   requestResize();
 }
 
@@ -4316,11 +5011,36 @@ function conventionDepotAlerte(succes, texte) {
   requestResize();
 }
 
+// Crée la ligne Conventions d'une action qui n'en a pas encore (dépôt libre, E3-6) : UNE opération
+// applyUserActions avec Action seulement. Jamais DR ni DD (formules), jamais Modele ni Annee (ils
+// restent vides : la convention est faite hors de l'outil). Renvoie l'identifiant de la ligne et la
+// garde en mémoire (conventionMemoriser) : si l'écriture du fichier échoue ensuite, le nouvel essai
+// réutilise cette ligne au lieu d'en créer une seconde. Un refus des règles d'accès de Grist est
+// transmis comme un refus de droits (message S9-4) ; le texte de l'erreur n'est jamais affiché.
+async function conventionCreerLigneDepot(actionId) {
+  let resultat;
+  try {
+    resultat = await conventionAvecDelai(
+      grist.docApi.applyUserActions([['AddRecord', 'Conventions', null, {Action: actionId}]]),
+      CONVENTION_ENREGISTREMENT_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement)
+    );
+  } catch (erreur) {
+    const refus = /access rule|blocked by|permission|denied|forbidden|not allowed/i.test(String((erreur && erreur.message) || ''));
+    throw conventionErreur(refus ? CONVENTION_GENERATION_ERREURS.envoiRefuse : CONVENTION_GENERATION_ERREURS.enregistrement);
+  }
+  const id = Number(resultat && resultat.retValues && resultat.retValues[0]);
+  if (!Number.isInteger(id) || id <= 0) throw conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+  await conventionMemoriser(0, id, {Action: actionId});
+  return id;
+}
+
 // Dépose le fichier signé choisi (premier dépôt) ou remplace l'ancien (état « Signée »).
-// Étapes (note §4 et §4.1) : contrôles ; UN jeton d'écriture ; envoi du fichier ; UN seul PATCH
+// Étapes (note §4, §4.1 et §15.6) : contrôles ; UN jeton d'écriture ; envoi du fichier ; création de
+// la ligne Conventions si l'action n'en a pas (dépôt sans génération, E3-6) ; UN seul PATCH
 // qui écrit PDF_signe et Date_depot ensemble ; mise à jour de state.raw.Conventions.
 // L'ancien fichier signé n'est jamais supprimé (S9-8) : seul le pointeur de la cellule change.
-// À tout échec, rien n'est écrit : message dans le bloc, focus sur la commande utilisée.
+// À tout échec, rien de visible n'est écrit : message dans le bloc, focus sur la commande utilisée.
 // Le verrou est posé et levé par conventionFichierChoisi, qui attend la fin de cette fonction.
 async function conventionDeposerFichier(actionId, fichier) {
   const commande = () => document.getElementById(conventionDepotCommande);
@@ -4333,14 +5053,16 @@ async function conventionDeposerFichier(actionId, fichier) {
   const refus = await conventionDepotControler(fichier);
   if (refus) return echouer(refus);
 
+  // État « Droits insuffisants » : le bouton n'existe pas, mais on ne dépose rien si on y arrive quand même.
   const {etat, convention} = conventionEtat(actionId, state);
-  if (!convention) return echouer(CONVENTION_DEPOT_MESSAGES.echec);
+  if (etat === CONVENTION_ETATS.droits) return echouer(CONVENTION_DEPOT_MESSAGES.droits);
   const remplacement = etat === CONVENTION_ETATS.signee;
 
   // Fichier reconnu valide : l'envoi réel commence, l'attente peut s'afficher (levée par le finally de conventionFichierChoisi).
   conventionDepotAttendre(true);
 
   let champs;
+  let conventionId = convention ? convention.id : 0;
   try {
     // Un seul jeton (15 s dans conventionDemanderAcces), réutilisé pour l'envoi et l'écriture.
     const acces = await conventionDemanderAcces();
@@ -4349,17 +5071,19 @@ async function conventionDeposerFichier(actionId, fichier) {
       CONVENTION_ENVOI_DELAI_MS,
       () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
     );
+    // Dépôt sans génération : la ligne Conventions n'existe pas encore, on la crée (après l'envoi du fichier).
+    if (!conventionId) conventionId = await conventionCreerLigneDepot(actionId);
     champs = {PDF_signe: ['L', pieceJointe], Date_depot: Math.floor(Date.now() / 1000)};
     try {
       // Délai dépassé = réponse perdue : même cas que « réseau coupé » (relire avant de conclure).
       await conventionAvecDelai(
-        conventionRattacherPdf(acces, convention.id, champs),
+        conventionRattacherPdf(acces, conventionId, champs),
         CONVENTION_RATTACHEMENT_DELAI_MS,
         () => Object.assign(conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement), {relire: true})
       );
     } catch (erreur) {
       // Réponse perdue : si PDF_signe porte déjà le nouveau fichier, c'est une réussite.
-      const relue = erreur && erreur.relire ? await conventionSigneRattache(convention.id, pieceJointe) : null;
+      const relue = erreur && erreur.relire ? await conventionSigneRattache(conventionId, pieceJointe) : null;
       if (!relue) throw erreur;
       champs = {PDF_signe: ['L', pieceJointe], Date_depot: relue.Date_depot};
     }
@@ -4368,7 +5092,8 @@ async function conventionDeposerFichier(actionId, fichier) {
   }
 
   // Écriture réussie : la mémoire est mise à jour seulement maintenant, puis le bloc est refait.
-  const ligne = conventionLigne(state.raw.Conventions, convention.id);
+  // Sans génération préalable, Modele et Annee restent vides : l'état « Signée » n'en a pas besoin.
+  const ligne = conventionLigne(state.raw.Conventions, conventionId);
   if (ligne) Object.assign(ligne, champs);
   conventionRafraichirBloc(actionId);
   conventionDepotAlerte(true, CONVENTION_DEPOT_MESSAGES.reussite);
