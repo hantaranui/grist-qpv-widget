@@ -35,7 +35,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
+const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], raisonChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
 
 // Conservation des filtres le temps de la session (tant que l'onglet reste
 // ouvert) : quand on quitte la page puis qu'on y revient, Grist recharge le
@@ -145,6 +145,8 @@ async function load() {
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
+    // Raisons de refus (statut « Non retenu ») : lues dans Grist, jamais écrites en dur.
+    state.raisonChoices = await loadColumnChoices('Actions', 'Raison_du_refus');
     state.actions = buildActions(state.raw);
     await restaurerFiltres();
     ouvrirActionDemandee();
@@ -358,6 +360,8 @@ function buildActions(raw) {
       public: formatChoiceList(action.Public),
       publicChoices: choiceValues(action.Public),
       statut: action.Statut || '',
+      // Raison du refus : texte de la liste Grist, utile seulement pour « Non retenu ».
+      raison: action.Raison_du_refus || '',
       date: action.Date || null,
       periodeApprox: action.Periode_approx || '',
       clubId: action.Club || 0,
@@ -847,6 +851,43 @@ function hasCodeMee() {
   return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
 }
 
+// Même principe que Code_MEE : si la colonne n'existe pas encore dans Grist,
+// on n'essaie pas de l'écrire (sinon tout l'enregistrement de la fiche échouerait).
+function hasRaisonColumn() {
+  return (state.raw.Actions || []).some(row => 'Raison_du_refus' in row);
+}
+
+// Vrai si ce statut est « Non retenu » (écriture tolérante : casse, accents).
+function isNonRetenu(status) {
+  return statusFieldConfig(status).kind === 'reason';
+}
+
+// Liste affichée dans la liste déroulante « Raison du refus » de la fiche :
+// les choix de Grist, plus la raison déjà enregistrée sur cette action si elle
+// n'y figure plus (ajoutée ailleurs, import). Elle est gardée telle quelle, en dernier.
+function raisonOptionsFor(action) {
+  return withExistingValues(state.raisonChoices, [action.raison]);
+}
+
+// Validation : « Non retenu » exige une raison, même si l'agent ne modifie
+// qu'un autre champ. Renvoie true si l'enregistrement peut continuer.
+// Structure identique à la fenêtre d'ajout : is-invalid, aria-invalid, aria-describedby.
+function raisonProblem(status, raison) {
+  return isNonRetenu(status) && !String(raison || '').trim();
+}
+
+function markRaisonProblem(invalid) {
+  const select = document.getElementById('editRaisonRefus');
+  if (!select) return;
+  select.classList.toggle('is-invalid', invalid);
+  if (invalid) {
+    select.setAttribute('aria-invalid', 'true');
+    select.setAttribute('aria-describedby', 'editRaisonRefusError');
+  } else {
+    select.removeAttribute('aria-invalid');
+  }
+}
+
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
@@ -931,6 +972,17 @@ async function saveEdit(event, action) {
   const statusConfig = statusFieldConfig(status);
   const periodInput = document.querySelector('.status-period:not(.is-hidden) .edit-status-period');
   const periodValue = periodInput ? readPeriodValue(periodInput).trim() : '';
+  // « Non retenu » sans raison : rien n'est envoyé à Grist.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  const raison = raisonSelect ? raisonSelect.value.trim() : '';
+  const raisonManquante = raisonProblem(status, raison);
+  markRaisonProblem(raisonManquante);
+  if (raisonManquante) {
+    messageTexte.textContent = "La raison du refus est obligatoire pour le statut « Non retenu ».";
+    message.classList.remove('is-hidden');
+    if (raisonSelect) raisonSelect.focus();
+    return;
+  }
   const actionUpdate = {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
@@ -948,6 +1000,8 @@ async function saveEdit(event, action) {
     Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
   if (hasCodeMee()) actionUpdate.Code_MEE = document.getElementById('editCodeMee').value.trim();
+  // La raison n'est gardée que pour « Non retenu » ; pour tout autre statut elle est effacée.
+  if (hasRaisonColumn()) actionUpdate.Raison_du_refus = isNonRetenu(status) ? raison : '';
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
@@ -1409,7 +1463,10 @@ function statusFieldConfig(status) {
   if (normalized === 'planifie' || normalized === 'planifiee') return {kind: 'date', label: 'Date de planification'};
   if (normalized === 'realise' || normalized === 'realisee') return {kind: 'date', label: 'Date de réalisation'};
   if (normalized === 'annule' || normalized === 'annulee') return {kind: 'none', label: ''};
-  return {kind: 'date', label: 'Date'};
+  // Liste déroulante des raisons, lues dans Grist (colonne Raison_du_refus).
+  if (normalized === 'non-retenu') return {kind: 'reason', label: 'Raison du refus'};
+  // Statut inconnu : aucun champ (avant : un sélecteur de date).
+  return {kind: 'none', label: ''};
 }
 
 function statusPeriodControl(status, action) {
@@ -1480,11 +1537,12 @@ function frDateToIso(fr) {
 }
 
 function exportCsv(actions) {
-  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
+  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
   const lines = actions.map(action => [
     action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
     action.participants, action.public, action.ville, action.statut, formatDate(action.date), Math.round(action.budget), Math.round(action.financed),
-    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | ')
+    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
+    isNonRetenu(action.statut) ? action.raison : ''
   ]);
   const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'});
