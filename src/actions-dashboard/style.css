@@ -714,6 +714,10 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
 /* Contour de la case choisie (E4-16, option A) : « outline » ne prend aucune place,
    contrairement a « border », donc la grille ne bouge pas quand on change de statut. */
+/* Contour gris permanent (E4-18, option C) sur les 5 cases : on voit ainsi la
+   forme de chaque case, meme non choisie. Meme epaisseur que le contour bleu,
+   sans decalage ; la regle bleue ci-dessous, plus precise, le remplace sur la case choisie. */
+.status-options .form-check { border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--line); }
 .status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--ft-color-border-primary-default); }
 .status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
