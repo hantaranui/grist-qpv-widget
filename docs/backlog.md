@@ -24,3 +24,11 @@ Décisions de Hanta (réponses aux questions bloquantes du chef de projet) :
 - E4-8 (Q10) : nouvelle branche feature/statut-non-retenu, créée depuis main (pas depuis feature/convention, non fusionnée et à ne pas mélanger).
 
 Questions encore ouvertes (non bloquantes, à trancher avec designer-ux/dev-interface) : Q7 (affichage tableau/synthèse), Q9 (droits d'écriture sur Raison_du_refus par profil), Q11 (largeurs exactes fr vs px), Q12 (composant liste du design system), Q13 (ordre de déploiement Grist/widget pour la colonne).
+
+### Réponses de Hanta aux questions du §12 de docs/ux/statut-non-retenu.md (designer-ux)
+
+- E4-9 (A, B, C) : confirmé, les trois effacements sont corrects. Passer à "Non retenu" efface la date (comme "Annulée") ; un statut inconnu voit aussi ses dates effacées ; une raison déjà remplie sur un autre statut est effacée sans avertir l'agent (cohérent avec E4-2).
+- E4-10 (D) : OUI, ajouter la raison du refus à l'export CSV.
+- E4-11 (E) : OUI, bloquer l'enregistrement d'une action "Non retenu" sans raison, même si l'agent modifie autre chose (cohérent avec E4-3, raison obligatoire).
+- E4-12 (F) : suivre la structure d'erreur de la fenêtre d'ajout d'une action existante, pas une nouvelle structure du design system.
+- E4-13 (G) : couleur (--ft-color-background-neutral-weak), seuil mobile (560 ou 700px) et largeurs de cartes (.85fr/1.15fr) acceptés tels quels pour démarrer, à confirmer visuellement une fois codé.
