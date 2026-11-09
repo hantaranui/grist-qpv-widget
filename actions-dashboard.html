@@ -711,7 +711,11 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    texte) et le navigateur la renvoie a la ligne quand il n'y a plus de place.
    Aucun chiffre en pixels a deviner : aucune case ne peut en recouvrir une
    autre, meme avec un nom de statut plus long. */
-.status-options { display: flex; flex-wrap: wrap; gap: 8px; }
+/* « align-items: flex-start » : aucune case ne s'etire a la hauteur de sa ligne.
+   Le design system ajoute 4 px de marge basse a toutes les cases sauf la derniere
+   (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
+   son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
+.status-options { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
