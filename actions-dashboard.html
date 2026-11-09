@@ -721,6 +721,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    déborder du bloc. À largeur normale, il ne change rien. */
 .status-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .status-row > .form-check { flex: 0 0 auto; }
+/* Ligne du bas (2 cases) : pas d'écartement. Les cases restent groupées à gauche,
+   avec le même espace fixe de 8 px (« gap ») que partout ailleurs. */
+.status-row-2 { justify-content: flex-start; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
