@@ -1290,7 +1290,7 @@ Qui : un agent France Travail, dans la fiche d'une action dont la convention est
 2. Une pop-up s'ouvre dans le widget et affiche le PDF.
 3. Dans la pop-up, il lit, puis soit clique sur « Télécharger » (le fichier est enregistré avec son vrai nom), soit sur la croix « ✕ » (Fermer) ou Échap. Le focus revient sur le bouton « Voir ». (Mis à jour le 2026-10-30 (E2, boutons en en-tête) : les deux commandes sont dans l'en-tête, il n'y a plus de pied de page.)
 
-Variante : sans ouvrir la pop-up, il clique sur « Télécharger » dans le bloc : le fichier est enregistré directement. (Mis à jour le 2026-10-30 (E2, bouton Télécharger de la pop-up sans survol d'adresse), E2-10 : les DEUX boutons « Télécharger » sont conservés, celui du bloc pour un téléchargement rapide sans ouvrir la pop-up, celui de la pop-up pour un téléchargement après consultation.)
+(Mis à jour le 2026-11-07 (E3-31) : la variante ci-dessous ne vaut plus pour le fichier signé, dont le bouton « Télécharger » du bloc est retiré ; elle ne subsiste que pour le document généré, devenu « Télécharger la convention », §15.4.) Variante : sans ouvrir la pop-up, il clique sur « Télécharger » dans le bloc : le fichier est enregistré directement. (Mis à jour le 2026-10-30 (E2, bouton Télécharger de la pop-up sans survol d'adresse), E2-10 : les DEUX boutons « Télécharger » sont conservés, celui du bloc pour un téléchargement rapide sans ouvrir la pop-up, celui de la pop-up pour un téléchargement après consultation.)
 
 ### 14.2 Ce qui change dans le bloc Convention (écran A)
 
@@ -1299,7 +1299,7 @@ Rangée `convention-actions` (classe existante, `display: flex; flex-wrap: wrap;
 | État | Rangée |
 |---|---|
 | Générée | « Voir la convention » · **« Télécharger »** · « Re-générer » · « Déposer la convention signée » |
-| Signée | « Voir la convention signée » · **« Télécharger »** (puis, en dessous, le lien « Remplacer le fichier signé », inchangé) |
+| Signée | « Voir la convention signée » seul (puis, en dessous, le lien « Remplacer le fichier signé », inchangé). **Mis à jour le 2026-11-07 (E3-31) : le bouton « Télécharger » du bloc est retiré à cet état**, le téléchargement se fait par le « Télécharger » de l'en-tête de la pop-up (§14.3). |
 
 « Télécharger » est juste après « Voir » : les deux boutons qui agissent sur le même fichier restent côte à côte. Il est `btn btn-secondary` (comme « Voir » : le style « principal » `btn-primary` est réservé à l'action principale d'une fenêtre). Aucune icône (je n'ai pas vérifié qu'une icône de téléchargement existe dans la feuille ; ne pas en inventer).
 
@@ -1313,7 +1313,7 @@ Structure du bouton du bloc (même gabarit que « Voir », §2 ; classes `btn`, 
 </button>
 ```
 
-Pour l'état « Signée » : `id="conventionTelechargerSignee"` et texte caché « le fichier PDF de la convention signée ».
+Pour l'état « Signée » : ~~`id="conventionTelechargerSignee"`~~ **supprimé, mis à jour le 2026-11-07 (E3-31)** : ce bouton n'existe plus dans le bloc (redondant avec « Télécharger » de la pop-up, §14.3). Plus de verrou ni de texte « Téléchargement en cours… » pour l'état Signée.
 
 Comportement du bouton du bloc :
 - Pendant la récupération : texte « Téléchargement en cours… » (texte caché retiré), `aria-disabled="true"` (jamais `disabled`, pour garder le focus), clics ignorés, comme « Voir » (§2). Le texte d'origine revient ensuite. Le focus ne bouge pas.
@@ -1528,7 +1528,7 @@ La rangée est toujours `convention-actions` (classe existante). Style de tous l
 |---|---|---|---|
 | **À générer** | « Aucune convention générée. » | aucune (mis à jour le 2026-11-06 (E3, retrait de la phrase d'aide du dépôt libre) : la phrase « Vous pouvez déposer une convention déjà signée… » est retirée, E3-23) | « Générer la convention » (grisé si génération bloquée, §2) · **« Déposer la convention signée »** (nouveau) |
 | **Générée** | « Convention générée le [date]. » | aucune (mis à jour le 2026-11-07 (E3-26, phrase Générée simplifiée) ; voir 15.7). Seule la ligne « Format » du 15.8 s'affiche | **« Télécharger la convention »** · « Re-générer » · « Déposer la convention signée » |
-| **Signée** | « Convention signée, déposée le [date]. » | aucune | « Voir la convention signée » · « Télécharger » (inchangé, §14.2), puis, en dessous, le lien « Remplacer le fichier signé » (inchangé) |
+| **Signée** | « Convention signée, déposée le [date]. » | aucune | « Voir la convention signée » seul, puis, en dessous, le lien « Remplacer le fichier signé » (inchangé). **Mis à jour le 2026-11-07 (E3-31) : « Télécharger » (bloc, état Signée) est retiré**, redondant avec « Télécharger » de l'en-tête de la pop-up (§14.3). Le bouton « Télécharger la convention » de l'état Générée n'est pas concerné. |
 | **Sans modèle** | « Pas encore de modèle de convention pour ce dispositif. » | aucune (mis à jour le 2026-11-06 (E3, retrait de la phrase d'aide du dépôt libre), E3-23) | **« Déposer la convention signée »** (nouveau, seul bouton) |
 | **Droits insuffisants** | inchangée (§2, A7) | aucune | **aucun bouton, donc pas de bouton de dépôt** (E3-6) |
 
