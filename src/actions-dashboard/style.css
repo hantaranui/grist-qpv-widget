@@ -701,18 +701,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
    son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
 .status-options { display: grid; gap: 8px; }
-/* Deux lignes fixes (E4-23) : chaque case garde la largeur de son texte et c'est
-   l'ESPACE ENTRE les cases qui s'agrandit pour remplir la ligne
-   (« justify-content: space-between »). Aucune case ne grandit ni ne rétrécit
+/* Deux lignes fixes (E4-23, décision finale E4-24) : chaque case garde la largeur
+   de son texte, toutes groupées à GAUCHE (« justify-content: flex-start »), avec un
+   espace fixe de 8 px (« gap ») entre elles. Les deux lignes suivent la même règle.
+   Aucune case ne grandit ni ne rétrécit
    (« flex: 0 0 auto »), donc aucune ne peut en recouvrir une autre.
    « flex-wrap: wrap » est un filet de sécurité : si la carte devient trop étroite
    pour contenir toute la ligne, la dernière case passe à la ligne au lieu de
    déborder du bloc. À largeur normale, il ne change rien. */
-.status-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.status-row { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; gap: 8px; }
 .status-row > .form-check { flex: 0 0 auto; }
-/* Ligne du bas (2 cases) : pas d'écartement. Les cases restent groupées à gauche,
-   avec le même espace fixe de 8 px (« gap ») que partout ailleurs. */
-.status-row-2 { justify-content: flex-start; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
