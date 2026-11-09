@@ -704,7 +704,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    Le design system ajoute 4 px de marge basse a toutes les cases sauf la derniere
    (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
    son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
-.status-options { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.status-options { display: grid; gap: 8px; }
+/* Deux lignes fixes (E4-23) : 3 cases a parts egales, puis 2 cases a parts egales,
+   chaque ligne etiree sur toute la largeur de la carte. « min-width: 0 » laisse une
+   colonne se reduire sans que son contenu deborde sur la voisine. */
+.status-row { display: grid; align-items: flex-start; gap: 8px; }
+.status-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.status-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.status-row > .form-check { min-width: 0; }
+/* Ecran etroit : une seule colonne par ligne, les cases s'empilent sans se recouvrir. */
+@media (max-width: 560px) {
+  .status-row-3, .status-row-2 { grid-template-columns: minmax(0, 1fr); }
+}
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -714,7 +725,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
    aussi : la case garde donc la largeur de son texte (le conteneur flex ne
    l'etire pas) et ne deborde pas du cadre sur la droite. */
-.status-option { white-space: nowrap; }
+.status-option { white-space: normal; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence

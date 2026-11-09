@@ -715,7 +715,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    Le design system ajoute 4 px de marge basse a toutes les cases sauf la derniere
    (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
    son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
-.status-options { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.status-options { display: grid; gap: 8px; }
+/* Deux lignes fixes (E4-23) : 3 cases a parts egales, puis 2 cases a parts egales,
+   chaque ligne etiree sur toute la largeur de la carte. « min-width: 0 » laisse une
+   colonne se reduire sans que son contenu deborde sur la voisine. */
+.status-row { display: grid; align-items: flex-start; gap: 8px; }
+.status-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.status-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.status-row > .form-check { min-width: 0; }
+/* Ecran etroit : une seule colonne par ligne, les cases s'empilent sans se recouvrir. */
+@media (max-width: 560px) {
+  .status-row-3, .status-row-2 { grid-template-columns: minmax(0, 1fr); }
+}
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -725,7 +736,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
    aussi : la case garde donc la largeur de son texte (le conteneur flex ne
    l'etire pas) et ne deborde pas du cadre sur la droite. */
-.status-option { white-space: nowrap; }
+.status-option { white-space: normal; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
@@ -1614,7 +1625,7 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
               <div class="status-head-row"><p class="form-legend" id="statusLegend">Statut de l'action</p></div>
-              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`).join('')}</div>
+              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusRowsHtml(statusChoices, action.statut)}</div>
               <div class="status-period-slot">
                 <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
                 ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
@@ -2393,6 +2404,24 @@ function funderTotals(actions) {
   const map = new Map();
   actions.forEach(action => action.financeurs.forEach(item => map.set(item.label, (map.get(item.label) || 0) + item.montant)));
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+// Une case de statut (bouton radio + étiquette). « index » garde l'ordre de la
+// liste complète pour que chaque identifiant (status-0, status-1…) reste unique.
+function statusOptionHtml(status, index, current) {
+  return `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === current ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`;
+}
+
+// Les cases sont rangées sur DEUX LIGNES FIXES (E4-23) : les 3 premiers statuts
+// sur la ligne 1, les suivants sur la ligne 2. Chaque ligne est une grille qui
+// partage la largeur à parts égales. S'il n'y a pas de statut pour la ligne 2,
+// on ne l'affiche pas.
+function statusRowsHtml(choices, current) {
+  const cases = choices.map((status, index) => statusOptionHtml(status, index, current));
+  const ligne1 = cases.slice(0, 3).join('');
+  const ligne2 = cases.slice(3).join('');
+  return `<div class="status-row status-row-3">${ligne1}</div>` +
+    (ligne2 ? `<div class="status-row status-row-2">${ligne2}</div>` : '');
 }
 
 function statusClass(status) {
