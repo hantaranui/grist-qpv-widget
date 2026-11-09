@@ -3851,7 +3851,7 @@ function conventionGenereeHtml(actionId, donnees) {
   const regenerer = `<button class="btn btn-secondary" type="button" id="conventionRegenerer"${attributs}><span class="btn-content">Re-générer</span></button>`;
   const format = conventionFormatGenere(conventionEtat(actionId, donnees).convention);
   return `<div id="conventionBlocage" role="status">${message}</div>
-            <div class="convention-actions">${conventionTelechargerHtml(false, format)}${regenerer}${conventionDeposerHtml()}</div>`;
+            <div class="convention-actions">${conventionTelechargerHtml(format)}${regenerer}${conventionDeposerHtml()}</div>`;
 }
 
 // Vrai quand la fenetre s'ouvre pour une re-generation : la ligne Conventions de l'action
@@ -4115,11 +4115,11 @@ function bindConvention(actionId) {
   // document genere (evolution 3) : un navigateur n'affiche pas un fichier Word.
   const voirSignee = document.getElementById('conventionVoirSignee');
   if (voirSignee) voirSignee.addEventListener('click', () => conventionVoirSigneeClic(actionId));
-  // « Telecharger la convention » existe a l'etat « Generee », « Telecharger » a l'etat « Signee ».
-  [false, true].forEach(signee => {
-    const telecharger = document.getElementById(conventionTelechargerId(signee));
-    if (telecharger) telecharger.addEventListener('click', () => conventionTelecharger(actionId, signee));
-  });
+  // « Telecharger la convention » n'existe qu'a l'etat « Generee ».
+  {
+    const telecharger = document.getElementById(conventionTelechargerId());
+    if (telecharger) telecharger.addEventListener('click', () => conventionTelecharger(actionId));
+  }
   bindConventionDepot(actionId);
 }
 
@@ -5314,7 +5314,7 @@ function conventionAnnoncerReussite(logosManquants) {
 // convention ». Au clic : on lit un jeton d'ECRITURE (voir conventionTelechargerAcces), on lit le nom
 // reel de la piece jointe PDF_genere (pour en deduire l'extension), on la telecharge par l'API REST,
 // puis on l'enregistre sous son vrai nom. Plus de pop-up ni d'apercu : un navigateur n'affiche pas
-// un fichier Word. Fichier signe : « Voir la convention signee » (pop-up) et « Telecharger » (inchanges).
+// un fichier Word. Fichier signe : seul « Voir la convention signee » (pop-up) reste dans le bloc ; le telechargement se fait depuis la pop-up (E3-31).
 // Le jeton n'est lu qu'au clic, vit dans des variables locales et n'est ni garde, ni ecrit dans la
 // page, la console, un message ou une adresse visible. Rien n'est ecrit dans la console : une erreur
 // de reseau peut recopier l'adresse.
@@ -5334,17 +5334,16 @@ const CONVENTION_MESSAGE_TELECHARGER_ECHEC = "Le fichier n'a pas pu être télé
 const CONVENTION_VOIR_LIBERATION_MS = 5000;
 
 // Verrou propre a chaque bouton « Telecharger » (cle : son id).
-const conventionTelechargementEnCours = {conventionTelecharger: false, conventionTelechargerSignee: false};
+const conventionTelechargementEnCours = {conventionTelecharger: false};
 
-function conventionTelechargerId(signee) {
-  return signee ? 'conventionTelechargerSignee' : 'conventionTelecharger';
+function conventionTelechargerId() {
+  return 'conventionTelecharger';
 }
 
 // Libelle du bouton : le texte visible, puis le texte cache pour les lecteurs d'ecran.
 // Document genere : « Telecharger la convention » + « (fichier Word) » ou « (fichier PDF) » selon
 // `format` ('docx', 'pdf' ; format inconnu : pas de texte cache). Fichier signe : « Telecharger » (inchange).
-function conventionTelechargerLibelleHtml(signee, format) {
-  if (signee) return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE)}</span>`;
+function conventionTelechargerLibelleHtml(format) {
   const cache = format && CONVENTION_FORMATS[format] ? `<span class="sr-only">${escapeHtml(CONVENTION_FORMATS[format].cache)}</span>` : '';
   return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER_CONVENTION)}${cache}`;
 }
@@ -5352,10 +5351,10 @@ function conventionTelechargerLibelleHtml(signee, format) {
 // Un <button> (et non un lien) : l'adresse blob: n'existe qu'apres la recuperation du fichier avec le jeton,
 // qu'on ne fait jamais avant le clic. Si le bloc est refait pendant la recuperation, texte et
 // aria-disabled sont reposes d'apres le verrou. Pas d'aria-haspopup : aucune fenetre ne s'ouvre.
-function conventionTelechargerHtml(signee, format) {
-  const id = conventionTelechargerId(signee);
+function conventionTelechargerHtml(format) {
+  const id = conventionTelechargerId();
   const attente = conventionTelechargementEnCours[id];
-  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(signee, format)}</span></button>`;
+  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(format)}</span></button>`;
 }
 
 // Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
@@ -5470,8 +5469,8 @@ async function conventionOuvrirApercu(actionId, declencheur) {
 
 // Texte du bouton « Telecharger » du bloc pendant (ou apres) la recuperation. aria-disabled, jamais
 // disabled : le focus reste sur le bouton.
-function conventionTelechargerAttente(signee, attente, actionId) {
-  const bouton = document.getElementById(conventionTelechargerId(signee));
+function conventionTelechargerAttente(attente, actionId) {
+  const bouton = document.getElementById(conventionTelechargerId());
   if (!bouton) return;
   const libelle = bouton.querySelector('.btn-content') || bouton;
   if (attente) {
@@ -5479,29 +5478,27 @@ function conventionTelechargerAttente(signee, attente, actionId) {
     libelle.textContent = CONVENTION_TEXTE_TELECHARGEMENT;
   } else {
     bouton.removeAttribute('aria-disabled');
-    libelle.innerHTML = conventionTelechargerLibelleHtml(signee, conventionFormatGenere(conventionEtat(actionId, state).convention));
+    libelle.innerHTML = conventionTelechargerLibelleHtml(conventionFormatGenere(conventionEtat(actionId, state).convention));
   }
 }
 
-// Clic sur « Telecharger la convention » (document genere) ou « Telecharger » (fichier signe) : recupere
+// Clic sur « Telecharger la convention » (document genere, etat « Generee » uniquement) : recupere
 // le fichier, fabrique l'adresse blob:, cree un lien <a download="[nom]"> temporaire, le declenche par
 // programme, puis retire le lien et libere l'adresse apres CONVENTION_VOIR_LIBERATION_MS. Reussite : aucun
 // message (le navigateur affiche son propre telechargement). Echec : l'alerte du bloc. Le focus ne bouge pas.
-async function conventionTelecharger(actionId, signee) {
-  const id = conventionTelechargerId(signee);
+async function conventionTelecharger(actionId) {
+  const id = conventionTelechargerId();
   const bouton = document.getElementById(id);
   if (!bouton || conventionTelechargementEnCours[id] || bouton.getAttribute('aria-disabled') === 'true') return;
   conventionAlerteVoirEffacer();
   conventionTelechargementEnCours[id] = true;
-  conventionTelechargerAttente(signee, true, actionId);
+  conventionTelechargerAttente(true, actionId);
   let adresse = '';
   let lien = null;
   try {
     // Le delai couvre toute la recuperation (jeton, nom reel, fichier).
     const {blob, nom} = await conventionAvecDelai(
-      signee
-        ? conventionTelechargerPdfSigne(actionId).then(pdf => ({blob: pdf, nom: conventionNomFichierSigne(actionId, state)}))
-        : conventionRecupererGeneree(actionId),
+      conventionRecupererGeneree(actionId),
       CONVENTION_TELECHARGEMENT_DELAI_MS,
       () => new Error('delai')
     );
@@ -5524,7 +5521,7 @@ async function conventionTelecharger(actionId, signee) {
     conventionAlerteTelechargerEchec();
   } finally {
     conventionTelechargementEnCours[id] = false;
-    conventionTelechargerAttente(signee, false, actionId);
+    conventionTelechargerAttente(false, actionId);
   }
 }
 
@@ -5577,7 +5574,7 @@ function conventionVoirSigneeLibelleHtml() {
 // Si le bloc est refait pendant l'ouverture, texte et aria-disabled sont reposes d'apres le verrou.
 function conventionVoirSigneeHtml() {
   const attente = conventionOuvertureSigneeEnCours;
-  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee" aria-haspopup="dialog"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button>${conventionTelechargerHtml(true)}</div>`;
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee" aria-haspopup="dialog"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button></div>`;
 }
 
 // Contenu des boutons de l'etat « Signee » : « Voir la convention signee », puis en dessous
