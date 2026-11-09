@@ -1256,3 +1256,8 @@ Ajustements finaux (07/11, après premier essai utilisateur) :
 Tests : 915 tests, 0 échec après ces trois ajustements.
 Vérifié à l'écran par Hanta dans DEV7 : plus d'espace vide, phrase courte, ligne Format toujours présente.
 Commit : 94d181a (tests), 3fe46ea (code), d8e87a8 (note UX).
+Ajustement supplémentaire (07/11, demande de Pierre après test) :
+- E3-31/E3-32 : le bouton "Télécharger" du bloc, à l'état "Signée", est retiré (redondant avec le "Télécharger" déjà présent dans l'en-tête de la pop-up "Voir la convention signée"). Il partageait 5 fonctions avec le bouton "Télécharger la convention" (état "Générée") via un paramètre "signee" : retrait complet du paramètre, pas seulement de l'appel, pour ne laisser aucun code mort. "Remplacer le fichier signé" et le "Télécharger" de la pop-up restent inchangés.
+Tests : 913 tests, 0 échec (2 tests retirés, devenus obsolètes).
+Vérifié sur TEST par Hanta : le bloc à l'état Signée n'affiche plus que "Voir la convention signée" et "Remplacer le fichier signé" ; la pop-up et son téléchargement fonctionnent normalement.
+Commit : 9885357 (tests), 9df63f1 (code), 145c4b3 (backlog).
