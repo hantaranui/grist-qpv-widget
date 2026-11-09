@@ -695,10 +695,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-/* Le nombre de colonnes s'ajuste tout seul a la largeur disponible (E4-20) :
-   chaque case garde au moins 100 px (la plus large, « Non retenu », en mesure
-   84,4 px), donc deux cases ne peuvent plus se chevaucher, a aucune largeur. */
-.status-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+/* Les cases de statut sont placees en ligne et passent a la ligne suivante
+   toutes seules (E4-21) : chaque case garde sa largeur naturelle (celle de son
+   texte) et le navigateur la renvoie a la ligne quand il n'y a plus de place.
+   Aucun chiffre en pixels a deviner : aucune case ne peut en recouvrir une
+   autre, meme avec un nom de statut plus long. */
+.status-options { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -706,9 +708,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    correspondance que celle de la pastille du tableau. */
 /* Le design system dessine l'option choisie avec un calque qui epouse le contenu,
    du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
-   aussi : sans cela il remplit toute la cellule de la grille et deborde du cadre
-   sur la droite. */
-.status-option { white-space: nowrap; justify-self: start; }
+   aussi : la case garde donc la largeur de son texte (le conteneur flex ne
+   l'etire pas) et ne deborde pas du cadre sur la droite. */
+.status-option { white-space: nowrap; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
