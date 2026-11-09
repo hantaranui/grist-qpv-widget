@@ -702,7 +702,7 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
               <div class="status-head-row"><p class="form-legend" id="statusLegend">Statut de l'action</p></div>
-              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusRowsHtml(statusChoices, action.statut)}</div>
+              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => statusOptionHtml(status, index, action.statut)).join('')}</div>
               <div class="status-period-slot">
                 <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
                 ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
@@ -1487,18 +1487,6 @@ function funderTotals(actions) {
 // liste complète pour que chaque identifiant (status-0, status-1…) reste unique.
 function statusOptionHtml(status, index, current) {
   return `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === current ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`;
-}
-
-// Les cases sont rangées sur DEUX LIGNES FIXES (E4-23) : les 3 premiers statuts
-// sur la ligne 1, les suivants sur la ligne 2. Chaque ligne est une grille qui
-// partage la largeur à parts égales. S'il n'y a pas de statut pour la ligne 2,
-// on ne l'affiche pas.
-function statusRowsHtml(choices, current) {
-  const cases = choices.map((status, index) => statusOptionHtml(status, index, current));
-  const ligne1 = cases.slice(0, 3).join('');
-  const ligne2 = cases.slice(3).join('');
-  return `<div class="status-row status-row-3">${ligne1}</div>` +
-    (ligne2 ? `<div class="status-row status-row-2">${ligne2}</div>` : '');
 }
 
 function statusClass(status) {
