@@ -128,6 +128,60 @@ Règles CSS à suivre (sans nouvelle convention) :
 - La classe `non-retenu` vient de `statusClass('Non retenu')` (script.js:1397) : « Non retenu » devient `non-retenu`. Nom de classe absent du design system (test/styles.test.js à lancer par Hanta).
 - Cas du camembert : voir §6.
 
+### 5.1 Rendre l'option sélectionnée plus marquée (E4-15, point c)
+
+Demande de Pierre : se rapprocher de la maquette de comparaison (fond crème, contour bleu plus épais, texte en gras) sans inventer de couleur. Feuille du CDN téléchargée et lue en entier (bloc `.conseiller,.outil-agent` pour les valeurs de l'univers « Outils agent »).
+
+**Ce que la maquette a de plus que le widget actuel, et ce que le design system permet :**
+
+| Élément de la maquette | Dans le widget aujourd'hui | Dans le design system |
+|---|---|---|
+| Texte en gras sur l'option choisie | déjà en place (style.css:716, `font-weight: 700`, la même valeur que `--ft-font-weight-bold`: 700) | rien à ajouter |
+| Contour bleu plus épais sur l'option choisie | absent | OUI : `--ft-color-border-primary-default` = #355eca (Outils agent). Le design system l'utilise pour exactement ce cas : `.ds-check-card:has(.form-check-input:checked)` pose un `outline: 2px solid` de la couleur primaire sur la carte choisie |
+| Fond crème/beige | fond neutre `neutral-weak` #d2dae8 | NON, voir ci-dessous |
+| Contour gris fin sur toutes les cases | absent | OUI : `--ft-color-border-neutral-default` = #cdcfd8 (même recette que `.ds-check-card` : `border: 1px solid`) |
+
+**Le fond crème ne peut pas être repris.** Le seul jeton chaud proche est `--ft-color-background-warning-weaker` (#f8f0d6, valeur de la feuille, non redéfinie par Outils agent). Je le déconseille : la famille « warning » est déjà celle d'« À confirmer » et de « Planifiée » (style.css:719-721). « Non retenu » aurait alors la même famille de couleur qu'un statut en cours, ce que la décision G voulait éviter. Rien d'autre dans le catalogue n'est crème. Je ne propose donc aucune teinte de fond nouvelle : le fond reste `--ft-color-background-neutral-weak` (#d2dae8).
+
+#### Option A — contour primaire sur l'option choisie (recommandée, la plus petite)
+
+Le fond ne change pas ; on ajoute seulement le contour, qui est l'élément le plus visible de la maquette.
+
+```css
+.status-options .form-check:has(.form-check-input:checked) {
+  outline: 2px solid var(--ft-color-border-primary-default);   /* #355eca */
+}
+```
+
+- Le fond (`--statut-fond`), l'arrondi (`--ft--button-border-radius-sm`, 8px) et le gras restent comme au style.css:715-716.
+- Jetons vérifiés sur la feuille : `--ft-color-border-primary-default` = #355eca dans `.outil-agent`.
+- Contraste du contour (calcul WCAG fait par moi, à recontrôler par testeur) : #355eca contre le fond #d2dae8 = 4,14:1 ; contre le blanc de la carte = 5,82:1. Le minimum demandé pour un contour d'interface est 3:1 : atteint.
+- Le contour est un `outline` (pas une bordure) : aucun décalage de 1 px dans la grille quand on change de statut. À vérifier à l'écran qu'il suit bien l'arrondi du fond, et qu'il n'est pas coupé au bord de la carte Statut.
+- Le focus clavier du design system (anneau noir 2 px sur le bouton radio lui-même) n'est pas touché.
+
+#### Option B — option A + contour gris fin sur toutes les cases (plus proche de la maquette)
+
+Reproduit l'aspect « cartes » de la capture : chaque case a un cadre gris, la choisie a en plus le contour bleu. C'est la recette de `.ds-check-card` du design system, reprise sur nos cases sans changer leur HTML.
+
+```css
+.status-options .form-check {
+  border: 1px solid var(--ft-color-border-neutral-default);     /* #cdcfd8 */
+  border-radius: var(--ft--button-border-radius-sm);
+}
+.status-options .form-check:has(.form-check-input:checked) {
+  outline: 2px solid var(--ft-color-border-primary-default);    /* #355eca */
+  outline-offset: -1px;       /* même réglage que .ds-check-card : le contour recouvre le cadre gris */
+}
+```
+
+- Contraste du cadre gris seul : il décore, il n'est pas la seule indication de la sélection (le bouton radio, le gras et le contour primaire la portent). Pas d'exigence de 3:1 sur lui.
+- Coût : la case prend 2 px de plus en largeur et en hauteur (bordure 1 px de chaque côté) ; à vérifier sur la grille 3 + 2 et au seuil de 560 px (§8), où « Non retenu » est la case la plus serrée.
+- Les cases gardent `justify-self: start` (style.css:710) : elles épousent leur contenu, elles ne remplissent pas la cellule comme sur la maquette. Pour des cases pleine cellule comme sur la capture, il faudrait retirer cette ligne, ce que le commentaire du style.css:707-709 déconseille (le calque du design system déborde alors à droite). Je ne le propose pas sans test à l'écran.
+
+**Ce que je ne propose pas :** reprendre le composant `ds-check-card` lui-même (HTML différent : bande grise de 3,5 rem à gauche, contenu à droite). Je n'ai pas lu sa page sur le site du design system, seulement ses règles dans la feuille ; ce serait changer la structure d'une case (§10, composant 1), ce que la note a écarté.
+
+**Question ouverte pour Hanta :** le contour s'applique-t-il à TOUTES les options choisies (recommandé : même bouton, même règle partout) ou seulement à « Non retenu » (sélecteur `.status-option.non-retenu:has(.form-check-input:checked)`) ? Avec un contour réservé à « Non retenu », les autres statuts paraîtraient moins « choisis » : incohérence que je déconseille.
+
 ## 6. Tableau et synthèse (réponse à Q7)
 
 ### 6.1 Tableau (colonne Statut)
