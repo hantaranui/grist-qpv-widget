@@ -1,7 +1,7 @@
 # Note UX — 5ème statut « Non retenu » (Sprint E4)
 
 Widget : actions-dashboard (src/actions-dashboard/). Branche : feature/statut-non-retenu.
-Statut de la note : PROPOSITION, à valider par Hanta avant que dev-interface ne touche au HTML.
+Statut de la note : DÉCISIONS DE HANTA INTÉGRÉES (§12). Prête pour dev-interface.
 Sources lues : CLAUDE.md, docs/backlog.md (Sprint E4, décisions E4-1 à E4-8), docs/design-system-france-travail.md, docs/ux/contacts-fiche-club.md (format), src/actions-dashboard/script.js et style.css, feuille du CDN (styles.css), pages du design system citées au §10.
 
 ## 0. Point de départ (ce qui existe, vérifié dans le code)
@@ -15,7 +15,7 @@ Sources lues : CLAUDE.md, docs/backlog.md (Sprint E4, décisions E4-1 à E4-8), 
 
 ## 1. Parcours
 
-Qui : un agent France Travail (National, Régional, Départemental) ou ANS qui ouvre la fiche d'une action avec le bouton « Modifier » du tableau. Ce sont les règles d'accès de Grist qui acceptent ou refusent l'enregistrement (voir §12, question Q9).
+Qui : un agent France Travail (National, Régional, Départemental) ou ANS qui ouvre la fiche d'une action avec le bouton « Modifier » du tableau. Ce sont les règles d'accès de Grist qui acceptent ou refusent l'enregistrement (voir §12, points hors périmètre).
 
 ### 1.1 Refuser une action (6 étapes)
 
@@ -71,7 +71,7 @@ Il occupe l'emplacement actuel du champ de date/période (`.status-period-slot`,
 | **Non retenu** | **liste déroulante** | **Raison du refus \*** |
 | Statut inconnu | aucun (§4) | — |
 
-Conséquence à l'enregistrement, qui suit la logique existante (script.js:945-946) : en choisissant « Non retenu », Date et Periode_approx sont vidées dans Grist, comme pour « Annulée ». À signaler à Hanta : une action planifiée puis refusée perd sa date de planification (§12, question A).
+Conséquence à l'enregistrement, qui suit la logique existante (script.js:945-946) : en choisissant « Non retenu », Date et Periode_approx sont vidées dans Grist, comme pour « Annulée ». Décision A : une action planifiée puis refusée perd sa date de planification, c'est accepté (§12).
 
 ### 3.3 Texte et maquette
 
@@ -94,7 +94,7 @@ Le champ prend la largeur de la carte (pas de `max-width: 280px` comme `.status-
 
 ### 3.5 Message d'erreur (raison manquante, E4-3)
 
-Sous le champ, avec la structure d'erreur du design system (§10, composant 2) :
+Sous le champ, avec la structure d'erreur de la fenêtre d'ajout d'une action (décision F, §10 composant 2) :
 « Choisissez une raison du refus pour enregistrer le statut « Non retenu ». »
 En plus, l'alerte rouge existante en haut de la fiche (`#editMessage`) reprend : « La raison du refus est obligatoire pour le statut « Non retenu ». » Même principe que les erreurs de la fenêtre d'ajout d'une action. Rien n'est envoyé à Grist.
 
@@ -102,20 +102,20 @@ En plus, l'alerte rouge existante en haut de la fiche (`#editMessage`) reprend :
 
 Aujourd'hui `.edit-row-bottom` = `.55fr / 1.45fr` (style.css:666), soit 27,5 % / 72,5 % de la largeur utile. Avec 3 colonnes de cases, la carte Statut doit contenir trois cases de ~120 px et un champ « raison » lisible.
 
-Proposition : `minmax(0, .85fr) minmax(0, 1.15fr)` (42,5 % / 57,5 %). Sur la largeur maximale de la fiche (1280 px, moins 2 × 40 de marge et 24 d'écart, soit 1176 px), cela donne environ 500 px pour Statut et 676 px pour Financement. Financement passe de ~850 à ~676 px : sa grille intérieure (`1.45fr / 1fr / .95fr / 62px`) reste exploitable, car la ligne la plus étroite, le « Statut de versement », ne contient qu'un texte court (style.css:743-746). À vérifier par dev-interface à l'écran sur une fiche avec 3 financeurs ; si Financement se serre trop, repli à `.75fr / 1.25fr`. Valeur à valider par Hanta au vu du rendu : je ne peux pas la mesurer sans lancer le widget.
+Retenu : `minmax(0, .85fr) minmax(0, 1.15fr)` (42,5 % / 57,5 %). Sur la largeur maximale de la fiche (1280 px, moins 2 × 40 de marge et 24 d'écart, soit 1176 px), cela donne environ 500 px pour Statut et 676 px pour Financement. Financement passe de ~850 à ~676 px : sa grille intérieure (`1.45fr / 1fr / .95fr / 62px`) reste exploitable, car la ligne la plus étroite, le « Statut de versement », ne contient qu'un texte court (style.css:743-746). À vérifier par dev-interface à l'écran sur une fiche avec 3 financeurs ; si Financement se serre trop, repli à `.75fr / 1.25fr`. Valeur acceptée par Hanta pour démarrer (décision G) ; à regarder sur le rendu réel.
 
 ## 4. Statut inconnu : aucun champ (E4-5)
 
 - Un statut qui n'est pas géré explicitement par `statusFieldConfig` (donc ni À confirmer, Projet, Planifiée, Réalisée, Annulée, Non retenu) n'affiche AUCUN champ sous les cases : ni date, ni période, ni raison, ni étiquette.
 - Sa case radio reste visible et sélectionnée (la valeur n'est pas perdue, `withExistingValues` la garde), avec le fond neutre par défaut (§5).
 - Dans le tableau : pastille grise (par défaut), sans ligne grise dessous.
-- À l'enregistrement : Date et Periode_approx sont vidées (comportement existant pour « Annulée » ; pour un statut inconnu c'est un effet de bord à confirmer, §12 question B).
+- À l'enregistrement : Date et Periode_approx sont vidées (comportement existant pour « Annulée » ; décision B, §12 : conservé tel quel).
 
 ## 5. Couleur de la case « Non retenu »
 
 Les 4 statuts utilisent un fond « weakest » de famille sémantique. « Non retenu » est un statut final négatif, comme « Annulée » (rouge), mais ce n'est pas la même chose : il ne faut pas que les deux se confondent, et il ne faut pas ajouter une 5ème famille sémantique inventée.
 
-PROPOSITION À VALIDER PAR HANTA : famille neutre, teinte « weak » : `--ft-color-background-neutral-weak`.
+DÉCISION G (acceptée pour démarrer) : famille neutre, teinte « weak » : `--ft-color-background-neutral-weak`.
 - Valeur dans l'univers Outils agent : #d2dae8 (lue sur la feuille du CDN, bloc `.outil-agent`). Ce jeton existe dans la feuille ; il n'est pas encore utilisé dans notre CSS.
 - Pourquoi pas `neutral-default-weaker` (#e7ebf1) : c'est déjà le fond par défaut de `.status-tag` (style.css:589), donc une pastille de statut inconnu ressemblerait à « Non retenu ».
 - Pourquoi pas `neutral-weakest` (#f2f4fb) : presque identique au fond blanc de la carte, la sélection ne se verrait pas.
@@ -143,7 +143,7 @@ Règles CSS à suivre (sans nouvelle convention) :
 - Même emplacement que la période ou la date des autres statuts : la ligne grise sous la pastille. Pas de nouvelle colonne.
 - Texte : « Raison : » + la raison complète (même façon d'écrire que « Public : … » et « Ville : … » de la colonne Action). Aucune troncature : l'info-bulle ne marche ni au clavier ni au doigt.
 - Raison vide sur un statut « Non retenu » (cas d'import, §7) : « Raison : non renseignée », comme « Public : non renseigné ».
-- Statut ≠ « Non retenu » : la raison n'est pas affichée, même si Grist en contient une (§12, question C).
+- Statut ≠ « Non retenu » : la raison n'est pas affichée, même si Grist en contient une (décision C, §12).
 - À noter : `.col-status` ne fait que 12 % (style.css:491) et les raisons font 33 à 55 caractères : elles iront sur 3 à 5 lignes. Seules les lignes « Non retenu » seront plus hautes. Ne pas élargir la colonne sans accord de Hanta ; dev-interface regarde le rendu.
 
 ### 6.2 Filtres
@@ -157,7 +157,15 @@ Aucun nouveau filtre. Le filtre « Statut » existant liste les valeurs trouvée
 
 ### 6.4 Export CSV
 
-Le fichier exporte « Statut » mais pas la raison. Je ne propose pas de colonne : non demandé. Question D au §12.
+Décision D : l'export ajoute la raison du refus.
+
+- Nouvelle colonne « Raison du refus », ajoutée EN DERNIER (après « Financeurs »), pour ne décaler aucune colonne existante : les fichiers déjà exploités par les équipes gardent leur disposition.
+- Contenu : la raison complète pour une action « Non retenu » ; vide pour tout autre statut (même règle que le tableau, §6.1) ; vide aussi si « Non retenu » sans raison (pas de texte « non renseignée » dans un fichier de données).
+- Où, dans script.js : fonction `exportCsv` (ligne 1482). Deux endroits à compléter, dans le même ordre :
+  1. le tableau `header` (ligne 1483) : ajouter `'Raison du refus'` à la fin ;
+  2. chaque ligne de `lines` (lignes 1484-1488) : ajouter à la fin `action.statut === 'Non retenu' ? action.raison : ''`.
+- Prérequis : l'objet action n'a pas encore de champ raison. Il se crée là où `statut: action.Statut || ''` est construit (script.js:360), avec la valeur de la colonne Raison_du_refus d'Actions (`raison: action.Raison_du_refus || ''`). Le même champ sert au tableau (§6.1) et à l'export. Nom de colonne Grist à vérifier par dev-interface dans le document avant de coder.
+- Le codage existant (guillemets doublés, séparateur `;`, BOM) est inchangé : les raisons contiennent des accents et des virgules, déjà gérés.
 
 ## 7. Cas d'incohérence venant de l'extérieur (E4-4)
 
@@ -170,7 +178,7 @@ Principe : afficher ce qui est dans Grist, tel quel, sans corriger ni bloquer à
 | Autre statut avec une raison remplie | le champ « raison » n'apparaît pas ; rien à l'écran | pas de raison |
 | Statut inconnu | aucun champ (§4) | pastille grise, pas de ligne grise |
 
-Point à décider (question E) : si l'agent modifie, par exemple, le titre d'une action importée « Non retenu » sans raison, l'enregistrement est bloqué par l'obligation E4-3. Je le préconise (règle simple : pas de « Non retenu » sans raison dans le document) avec le message du §3.5 ; à confirmer par Hanta.
+Décision E : si l'agent modifie, par exemple, le titre d'une action importée « Non retenu » sans raison, l'enregistrement est bloqué par l'obligation E4-3, avec le message du §3.5. Règle simple : pas de « Non retenu » sans raison dans le document.
 
 ## 8. Largeurs d'écran
 
@@ -180,16 +188,16 @@ Le point de rupture existant pour la fiche est `@media (max-width: 900px)` (styl
 |---|---|---|---|
 | Grand (> 900 px) | Statut et Financement côte à côte, 42,5 % / 57,5 % (§3.6) | 3 + 2, sur 3 colonnes égales | pleine largeur de la carte Statut (~450 px utiles) : phrases lisibles sur 1 à 2 lignes dans la liste ouverte, tronquées visuellement à la fermeture, info-bulle au survol |
 | Moyen (700 à 900 px) | Cartes l'une sous l'autre (règle existante `.edit-row-bottom { 1fr }`) | 3 + 2 conservée : la carte fait toute la largeur, trois cases tiennent | pleine largeur de la carte |
-| Étroit (< 700 px, téléphone) | idem | 3 colonnes risquent de serrer « Non retenu » + « Planifiée ». PROPOSITION : repasser à 2 colonnes sous 560 px (3 lignes : 2+2+1). Seuil à valider sur écran réel | pleine largeur ; sur mobile la liste native du système affiche les phrases en entier |
+| Étroit (< 700 px, téléphone) | idem | 3 colonnes risquent de serrer « Non retenu » + « Planifiée ». Décision G : repasser à 2 colonnes sous 560 px (3 lignes : 2+2+1). À revoir sur écran réel | pleine largeur ; sur mobile la liste native du système affiche les phrases en entier |
 
-Le seuil 560 px est une proposition (nouveau seuil, le dépôt n'en a pas à cette valeur) : si Hanta préfère n'utiliser que les seuils existants, garder 3 colonnes jusqu'à 700 px puis 2 colonnes sous 700 px (seuil déjà présent, style.css:797).
+Le seuil 560 px est accepté pour démarrer (nouveau seuil, le dépôt n'en a pas à cette valeur). Repli possible si le rendu déçoit : 3 colonnes jusqu'à 700 px puis 2 colonnes (seuil déjà présent, style.css:797).
 
 ## 9. Accessibilité
 
 - Cases de statut : inchangées (radios natifs dans un `role="group"` relié à la légende « Statut de l'action »). L'ordre de tabulation suit l'ordre visuel (ligne par ligne) ; flèches du clavier : natif des radios.
 - Étiquette : « Raison du refus » avec `<label for>` relié au `<select>` (id proposé : `editRaisonRefus`, nom `editRaisonRefus`, à vérifier contre les noms existants). Pas de champ sans étiquette.
 - Obligatoire : `required` et `aria-required="true"` sur le select, plus l'astérisque dans l'étiquette (l'astérisque seul ne suffit pas aux lecteurs d'écran, d'où `required`).
-- Erreur : structure du design system (§10, composant 2) : `aria-invalid="true"`, `aria-describedby` vers le message, message précédé de « Erreur : » pour lecteur d'écran (`sr-only`). Le focus va sur le select en erreur. Alerte globale existante `role="alert"`.
+- Erreur : structure de la fenêtre d'ajout (§10, composant 2) : `is-invalid`, `aria-invalid="true"`, `aria-describedby` vers le message (décision F, §10). Le focus va sur le select en erreur. Alerte globale existante `role="alert"`.
 - Apparition/disparition du champ : le changement de statut est fait par l'agent lui-même, il n'a pas besoin d'annonce. Mais l'étiquette `#statusPeriodLabel` actuelle (texte au-dessus du champ de période) doit être vide pour « Non retenu » : le champ porte sa propre étiquette, pour ne pas lire deux étiquettes.
 - Un champ masqué (`.is-hidden`, `display: none`) sort de l'arbre d'accessibilité et de la tabulation : à conserver pour les contrôles non affichés.
 - Info-bulle `title` : complément pour la souris, jamais seule porteuse de l'information (§3.3, §6.1).
@@ -231,23 +239,21 @@ Réponse à Q12 : le design system propose un composant `Select` officiel, c'est
 
 Note : le gabarit du design system met l'option vide en `disabled`. Pour une action importée sans raison, elle est `selected`; une fois une raison choisie, l'agent ne peut pas revenir à « vide » : voulu, puisque la raison est obligatoire.
 
-État erreur (structure de la page `select--error`) :
+État erreur (décision F : même structure que la fenêtre d'ajout d'une action, `addActionField`, script.js:1100-1101). Le design system propose `has-error` + `help-block` (page select--error), mais on suit l'existant du dépôt pour rester cohérent entre les deux fenêtres :
 
 ```html
-<div class="has-error">
+<div class="edit-field">
   <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
   <select class="form-control is-invalid" id="editRaisonRefus" name="editRaisonRefus"
-          aria-invalid="true" aria-describedby="error-editRaisonRefus" required>
+          required aria-required="true" aria-invalid="true" aria-describedby="editRaisonRefusError" title="">
     <option selected disabled value="">Choisir une raison</option>
     ...
   </select>
-  <p class="help-block invalid-feedback" id="error-editRaisonRefus">
-    <span class="sr-only">Erreur:&nbsp;</span>Choisissez une raison du refus pour enregistrer le statut « Non retenu ».
-  </p>
+  <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
 </div>
 ```
 
-Écart à signaler : la fenêtre d'ajout d'une action utilise `div.invalid-feedback` + `is-invalid` sans `has-error` ni `help-block` (script.js:1101). Pour rester cohérent avec l'existant, dev-interface peut reprendre le mécanisme de `addActionField` / `is-invalid` du fichier, tant que le message est relié par `aria-describedby`. Hanta choisit (question F).
+Le bloc `invalid-feedback` est présent dans le HTML en permanence et ne s'affiche que quand le select porte `is-invalid` (comme dans la fenêtre d'ajout). Au retour à un état valide : retirer `is-invalid` et `aria-invalid`. Le préfixe « Erreur : » pour lecteur d'écran (`sr-only`) n'existe pas dans la fenêtre d'ajout ; en l'absence de ce préfixe, `aria-invalid` et `aria-describedby` suffisent à annoncer l'erreur.
 
 ### Composant 3 — Alerte d'erreur (existant)
 `<div class="alert alert-error edit-message is-hidden" id="editMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>` (script.js:655).
@@ -263,16 +269,19 @@ Note : le gabarit du design system met l'option vide en `disabled`. Pour une act
 4. La raison est lue dans Grist (liste dynamique `loadColumnChoices('Actions','Raison_du_refus')`, avec les valeurs existantes ajoutées par `withExistingValues`), jamais écrite en dur dans le widget (E4-6).
 5. Écriture dans la même opération `applyUserActions` que le reste de la fiche (UpdateRecord sur Actions) : Raison_du_refus = la raison si Statut = « Non retenu », sinon vide (E4-2).
 6. Aucune donnée personnelle : Raison_du_refus est un choix de liste, pas un texte libre.
-7. Ordre de travail : cette note, validation de Hanta, puis HTML/CSS/JS, puis build et tests par Hanta.
+7. Export CSV : colonne « Raison du refus » en dernier (§6.4).
+8. Ordre de travail : cette note (validée), puis HTML/CSS/JS, puis build et tests par Hanta.
 
-## 12. Questions ouvertes pour Hanta
+## 12. Décisions prises par Hanta
 
-- A. En passant une action « Planifiée » ou « Réalisée » à « Non retenu », sa date est effacée à l'enregistrement (logique existante pour « Annulée »). Acceptez-vous de perdre la date ?
-- B. Même question pour un statut inconnu : les dates sont vidées à l'enregistrement. Préférez-vous les laisser intactes ?
-- C. Un autre statut que « Non retenu » avec une raison déjà remplie dans Grist : la raison est effacée à l'enregistrement de la fiche (E4-2), sans rien dire à l'agent. OK ?
-- D. Faut-il ajouter la raison à l'export CSV (non demandé, donc non prévu) ?
-- E. Bloquer l'enregistrement d'une action « Non retenu » sans raison même si l'agent modifie autre chose (ma recommandation) ?
-- F. Message d'erreur du champ : structure officielle du design system (`has-error` + `help-block`) ou mécanisme déjà utilisé dans la fenêtre d'ajout ?
-- G. Teinte de « Non retenu » : `neutral-weak` (proposition) ou autre ? Seuil mobile à 560 px ou le seuil existant de 700 px ? Largeurs `.85fr / 1.15fr` à confirmer sur écran.
-- Q9 (droits d'écriture sur Raison_du_refus par profil) : je n'ai rien à dessiner. Aucun écran ne cache le champ selon le profil ; si Grist refuse l'écriture, le message de refus existant de la fiche s'affiche. À régler dans les règles d'accès (Hanta, dans Grist).
-- Q13 (ordre de déploiement Grist/widget) : hors de mon périmètre. Point d'attention UX : si le widget est en ligne avant la colonne Raison_du_refus, le champ n'a pas de liste de raisons.
+- A. Confirmé : passer à « Non retenu » efface la date et la période à l'enregistrement.
+- B. Confirmé : un statut inconnu vide aussi les dates à l'enregistrement (comportement existant).
+- C. Confirmé : un autre statut avec une raison dans Grist n'affiche rien, et la raison est effacée à l'enregistrement (E4-2).
+- D. Oui : l'export CSV reçoit la colonne « Raison du refus » (§6.4).
+- E. Oui : l'enregistrement est bloqué sans raison pour « Non retenu », même si l'agent modifie autre chose (§3.5, §7).
+- F. Message d'erreur : structure de la fenêtre d'ajout d'une action existante (§3.5, §10 composant 2).
+- G. Acceptés tels quels pour démarrer : teinte `neutral-weak` (§5), seuil mobile 560 px (§8), largeurs `.85fr / 1.15fr` (§3.6).
+
+Points hors de mon périmètre, inchangés :
+- Droits d'écriture sur Raison_du_refus par profil : aucun écran ne cache le champ selon le profil ; si Grist refuse l'écriture, le message de refus existant de la fiche s'affiche. À régler dans les règles d'accès (Hanta, dans Grist).
+- Ordre de déploiement Grist/widget : si le widget est en ligne avant la colonne Raison_du_refus, le champ n'a pas de liste de raisons.
