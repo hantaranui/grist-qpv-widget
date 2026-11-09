@@ -841,6 +841,14 @@ function referenceOptions(items, selectedId, labelFor, placeholder) {
   return options.join('');
 }
 
+// Nom complet du financement choisi, pour l'info-bulle (title) du select
+// « Financeur » : texte vide si rien n'est choisi.
+function financeLabelById(id) {
+  if (!id) return '';
+  const financement = (state.raw.Financements || []).find(item => item.id === id);
+  return financement ? financeLabel(financement, byId(state.raw.Financeurs)) : '';
+}
+
 function financeOptions(selectedId) {
   const financeurs = byId(state.raw.Financeurs);
   return [...state.raw.Financements]
@@ -907,8 +915,11 @@ function markRaisonProblem(invalid) {
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
+  // Info-bulle posée seulement si un financeur est déjà choisi : sinon pas d'attribut title.
+  const financeTitle = financeLabelById(item.Financement);
+  const titleAttr = financeTitle ? ` title="${escapeAttr(financeTitle)}"` : '';
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="form-control finance-select"${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <select class="form-control finance-select"${titleAttr}${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}"${verse ? ' readonly' : ''}>
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     ${verse ? '<span aria-hidden="true"></span>' : '<button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>'}
@@ -938,6 +949,14 @@ function bindFinanceRows() {
     };
   });
   document.querySelectorAll('.finance-amount').forEach(input => input.oninput = updateFinanceSummary);
+  // Info-bulle du select « Financeur » : on y remet le nom complet choisi (le texte
+  // de l'option, pas son numéro). Une seule écoute sur le conteneur, elle vaut aussi
+  // pour les lignes ajoutées ensuite.
+  const financeRows = document.getElementById('financeRows');
+  if (financeRows) financeRows.onchange = event => {
+    const select = event.target.closest('.finance-select');
+    if (select) select.title = select.selectedOptions[0]?.value ? select.selectedOptions[0].text : '';
+  };
 }
 
 function updateFinanceSummary() {
@@ -1511,10 +1530,12 @@ function raisonControl(status, action, visible) {
     .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
     .join('');
   const requis = visible ? ' required aria-required="true"' : '';
+  // Info-bulle posée seulement si une raison est déjà choisie : sinon pas d'attribut title.
+  const titleAttr = selected ? ` title="${escapeAttr(selected)}"` : '';
   return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
     <div class="edit-field">
       <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
-      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis} title="${escapeAttr(selected)}">
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis}${titleAttr}>
         <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
       </select>
       <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>

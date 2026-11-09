@@ -676,8 +676,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
 /* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
-   Repli prevu si Financement se serre avec 3 financeurs : .75fr / 1.25fr. */
-.edit-row-bottom { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+   Repli applique (E4-15 a) : Financement se serrait avec .85fr / 1.15fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -761,15 +761,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
-   jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
-   lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+   jusqu'ici la colonne la plus etroite de la ligne. E4-15 (b) : le montant etait
+   devenu trop large, on lui reprend de la place au profit du financeur (noms longs).
+   L'en-tete et les lignes partagent la meme grille. */
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
@@ -1747,6 +1748,14 @@ function referenceOptions(items, selectedId, labelFor, placeholder) {
   return options.join('');
 }
 
+// Nom complet du financement choisi, pour l'info-bulle (title) du select
+// « Financeur » : texte vide si rien n'est choisi.
+function financeLabelById(id) {
+  if (!id) return '';
+  const financement = (state.raw.Financements || []).find(item => item.id === id);
+  return financement ? financeLabel(financement, byId(state.raw.Financeurs)) : '';
+}
+
 function financeOptions(selectedId) {
   const financeurs = byId(state.raw.Financeurs);
   return [...state.raw.Financements]
@@ -1813,8 +1822,11 @@ function markRaisonProblem(invalid) {
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
+  // Info-bulle posée seulement si un financeur est déjà choisi : sinon pas d'attribut title.
+  const financeTitle = financeLabelById(item.Financement);
+  const titleAttr = financeTitle ? ` title="${escapeAttr(financeTitle)}"` : '';
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="form-control finance-select"${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <select class="form-control finance-select"${titleAttr}${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}"${verse ? ' readonly' : ''}>
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     ${verse ? '<span aria-hidden="true"></span>' : '<button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>'}
@@ -1844,6 +1856,14 @@ function bindFinanceRows() {
     };
   });
   document.querySelectorAll('.finance-amount').forEach(input => input.oninput = updateFinanceSummary);
+  // Info-bulle du select « Financeur » : on y remet le nom complet choisi (le texte
+  // de l'option, pas son numéro). Une seule écoute sur le conteneur, elle vaut aussi
+  // pour les lignes ajoutées ensuite.
+  const financeRows = document.getElementById('financeRows');
+  if (financeRows) financeRows.onchange = event => {
+    const select = event.target.closest('.finance-select');
+    if (select) select.title = select.selectedOptions[0]?.value ? select.selectedOptions[0].text : '';
+  };
 }
 
 function updateFinanceSummary() {
@@ -2417,10 +2437,12 @@ function raisonControl(status, action, visible) {
     .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
     .join('');
   const requis = visible ? ' required aria-required="true"' : '';
+  // Info-bulle posée seulement si une raison est déjà choisie : sinon pas d'attribut title.
+  const titleAttr = selected ? ` title="${escapeAttr(selected)}"` : '';
   return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
     <div class="edit-field">
       <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
-      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis} title="${escapeAttr(selected)}">
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis}${titleAttr}>
         <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
       </select>
       <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>

@@ -665,8 +665,8 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
 /* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
-   Repli prevu si Financement se serre avec 3 financeurs : .75fr / 1.25fr. */
-.edit-row-bottom { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+   Repli applique (E4-15 a) : Financement se serrait avec .85fr / 1.15fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -750,15 +750,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
-   jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
-   lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+   jusqu'ici la colonne la plus etroite de la ligne. E4-15 (b) : le montant etait
+   devenu trop large, on lui reprend de la place au profit du financeur (noms longs).
+   L'en-tete et les lignes partagent la meme grille. */
+.finance-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
