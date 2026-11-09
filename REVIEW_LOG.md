@@ -390,4 +390,5 @@ Tests : 244 tests avant, 276 passés après (32 ajoutés), 0 échec (npm test). 
 Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/helpers/widget.js, test/filtres-gardes.test.js (créé)
 Build refait : oui
 Commit : ee547d9 (code) et 9fd8fd3 (tests) sur feature/conserver-filtres
-Reste à faire : recette à écrire et jouer (carnet du tableau de bord) ; vérifier dans Grist DEV/TEST que sessionStorage n'est pas restreint par le navigateur quand le widget est chargé en iframe tiers (risque signalé par le testeur, non vérifié formellement)
+Reste à faire : recette à écrire et jouer (carnet du tableau de bord) ; vérifier dans Grist DEV/TEST que sessionStorage n'est pas restreint par le navigateur quand le widget est chargé en iframe tiers (risque signalé par le testeur, non vérifié formellement).
+Mise en PROD : 07/11/2026, commit b168b5d (fusion fast-forward depuis feature/conserver-filtres, sans la Convention/Word). 276 tests, 0 échec. Fusionné directement dans main indépendamment de l'Évolution 3 (Convention), toujours en attente du retour du chef de projet.
