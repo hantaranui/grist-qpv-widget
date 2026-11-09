@@ -760,7 +760,23 @@ function bindStatusEditor() {
       const input = container.querySelector('.edit-status-period');
       if (visible && input && previousKind === input.dataset.periodKind && previousValue) writePeriodValue(input, previousValue);
     });
+    // Liste des raisons : obligatoire seulement quand elle est affichée, et on
+    // efface une éventuelle erreur d'un essai précédent.
+    const raisonSelect = document.getElementById('editRaisonRefus');
+    if (raisonSelect) {
+      const raisonVisible = config.kind === 'reason';
+      raisonSelect.required = raisonVisible;
+      if (raisonVisible) raisonSelect.setAttribute('aria-required', 'true');
+      else raisonSelect.removeAttribute('aria-required');
+      markRaisonProblem(false);
+    }
   }));
+  // Info-bulle = raison choisie en entier ; l'erreur disparaît dès qu'une raison est choisie.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  if (raisonSelect) raisonSelect.addEventListener('change', () => {
+    raisonSelect.title = raisonSelect.value;
+    if (raisonSelect.value) markRaisonProblem(false);
+  });
 }
 
 // <ft-datepicker> (widget officiel France Travail) n'expose pas de propriété
@@ -1479,7 +1495,31 @@ function statusPeriodControl(status, action) {
   } else if (config.kind === 'text') {
     input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
+  if (config.kind === 'reason') return raisonControl(status, action, visible);
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+// Champ « Raison du refus » (statut « Non retenu ») : une liste déroulante qui
+// prend la place du champ date/période. Même structure que les erreurs de la
+// fenêtre d'ajout d'une action : is-invalid + message .invalid-feedback.
+// « required » n'est posé que tant que le champ est visible : un champ caché
+// et obligatoire bloquerait l'envoi du formulaire pour les autres statuts
+// (voir bindStatusEditor, qui le retire et le remet à chaque changement).
+function raisonControl(status, action, visible) {
+  const selected = action.raison || '';
+  const options = raisonOptionsFor(action)
+    .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
+    .join('');
+  const requis = visible ? ' required aria-required="true"' : '';
+  return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
+    <div class="edit-field">
+      <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis} title="${escapeAttr(selected)}">
+        <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
+      </select>
+      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
+    </div>
+  </div>`;
 }
 
 function outerPeriodLabel(status) {
@@ -1491,6 +1531,8 @@ function statusPeriodValue(action) {
   const config = statusFieldConfig(action.statut);
   if (config.kind === 'text') return action.periodeApprox;
   if (config.kind === 'date') return formatDate(action.date);
+  // « Non retenu » : la raison en entier, comme « Public : … » (jamais coupée).
+  if (config.kind === 'reason') return `Raison : ${action.raison || 'non renseignée'}`;
   return '';
 }
 

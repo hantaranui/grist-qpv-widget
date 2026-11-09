@@ -607,6 +607,7 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+.status-tag.non-retenu { background: var(--ft-color-background-neutral-weak); }
 
 .bar {
   display: flex;
@@ -663,7 +664,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-.edit-row-bottom { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
+/* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
+   Repli prevu si Financement se serre avec 3 financeurs : .75fr / 1.25fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -692,7 +695,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* 3 colonnes : les 5 statuts s'affichent 3 + 2. Sous 560 px, retour a 2 colonnes
+   (voir le bloc @media plus bas). */
+.status-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -718,10 +723,17 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
 .status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
+/* « Non retenu » : statut final negatif, mais distinct d'« Annulee » (rouge).
+   Teinte neutre « weak » du design system, plus foncee que le fond par defaut
+   des pastilles pour qu'on ne les confonde pas avec un statut inconnu. */
+.status-option.non-retenu { --statut-fond: var(--ft-color-background-neutral-weak); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
 .status-period { min-width: 0; max-width: 280px; }
+/* Le champ « Raison du refus » prend toute la largeur de la carte : ses phrases
+   (33 a 55 caracteres) seraient coupees dans les 280 px des dates. */
+.status-period.status-period-reason { max-width: none; }
 .status-period input { min-width: 0; }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -788,6 +800,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-header-actions { width: 100%; justify-content: flex-end; }
   .edit-actions { padding-left: 14px; padding-right: 14px; }
   .edit-message { margin-left: 14px; margin-right: 14px; }
+}
+
+/* Telephone : 3 colonnes serrent « Non retenu » et « Planifiee ». On repasse a
+   2 colonnes (2 + 2 + 1). Seuil propre aux cases de statut. */
+@media (max-width: 560px) {
+  .status-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Sur un ecran de telephone, les 100px de la colonne « Modifier » figee

@@ -618,6 +618,7 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+.status-tag.non-retenu { background: var(--ft-color-background-neutral-weak); }
 
 .bar {
   display: flex;
@@ -674,7 +675,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-.edit-row-bottom { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
+/* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
+   Repli prevu si Financement se serre avec 3 financeurs : .75fr / 1.25fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -703,7 +706,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* 3 colonnes : les 5 statuts s'affichent 3 + 2. Sous 560 px, retour a 2 colonnes
+   (voir le bloc @media plus bas). */
+.status-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -729,10 +734,17 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
 .status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
+/* « Non retenu » : statut final negatif, mais distinct d'« Annulee » (rouge).
+   Teinte neutre « weak » du design system, plus foncee que le fond par defaut
+   des pastilles pour qu'on ne les confonde pas avec un statut inconnu. */
+.status-option.non-retenu { --statut-fond: var(--ft-color-background-neutral-weak); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
 .status-period { min-width: 0; max-width: 280px; }
+/* Le champ « Raison du refus » prend toute la largeur de la carte : ses phrases
+   (33 a 55 caracteres) seraient coupees dans les 280 px des dates. */
+.status-period.status-period-reason { max-width: none; }
 .status-period input { min-width: 0; }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -799,6 +811,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-header-actions { width: 100%; justify-content: flex-end; }
   .edit-actions { padding-left: 14px; padding-right: 14px; }
   .edit-message { margin-left: 14px; margin-right: 14px; }
+}
+
+/* Telephone : 3 colonnes serrent « Non retenu » et « Planifiee ». On repasse a
+   2 colonnes (2 + 2 + 1). Seuil propre aux cases de statut. */
+@media (max-width: 560px) {
+  .status-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Sur un ecran de telephone, les 100px de la colonne « Modifier » figee
@@ -1646,7 +1664,23 @@ function bindStatusEditor() {
       const input = container.querySelector('.edit-status-period');
       if (visible && input && previousKind === input.dataset.periodKind && previousValue) writePeriodValue(input, previousValue);
     });
+    // Liste des raisons : obligatoire seulement quand elle est affichée, et on
+    // efface une éventuelle erreur d'un essai précédent.
+    const raisonSelect = document.getElementById('editRaisonRefus');
+    if (raisonSelect) {
+      const raisonVisible = config.kind === 'reason';
+      raisonSelect.required = raisonVisible;
+      if (raisonVisible) raisonSelect.setAttribute('aria-required', 'true');
+      else raisonSelect.removeAttribute('aria-required');
+      markRaisonProblem(false);
+    }
   }));
+  // Info-bulle = raison choisie en entier ; l'erreur disparaît dès qu'une raison est choisie.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  if (raisonSelect) raisonSelect.addEventListener('change', () => {
+    raisonSelect.title = raisonSelect.value;
+    if (raisonSelect.value) markRaisonProblem(false);
+  });
 }
 
 // <ft-datepicker> (widget officiel France Travail) n'expose pas de propriété
@@ -2365,7 +2399,31 @@ function statusPeriodControl(status, action) {
   } else if (config.kind === 'text') {
     input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
+  if (config.kind === 'reason') return raisonControl(status, action, visible);
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+// Champ « Raison du refus » (statut « Non retenu ») : une liste déroulante qui
+// prend la place du champ date/période. Même structure que les erreurs de la
+// fenêtre d'ajout d'une action : is-invalid + message .invalid-feedback.
+// « required » n'est posé que tant que le champ est visible : un champ caché
+// et obligatoire bloquerait l'envoi du formulaire pour les autres statuts
+// (voir bindStatusEditor, qui le retire et le remet à chaque changement).
+function raisonControl(status, action, visible) {
+  const selected = action.raison || '';
+  const options = raisonOptionsFor(action)
+    .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
+    .join('');
+  const requis = visible ? ' required aria-required="true"' : '';
+  return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
+    <div class="edit-field">
+      <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis} title="${escapeAttr(selected)}">
+        <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
+      </select>
+      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
+    </div>
+  </div>`;
 }
 
 function outerPeriodLabel(status) {
@@ -2377,6 +2435,8 @@ function statusPeriodValue(action) {
   const config = statusFieldConfig(action.statut);
   if (config.kind === 'text') return action.periodeApprox;
   if (config.kind === 'date') return formatDate(action.date);
+  // « Non retenu » : la raison en entier, comme « Public : … » (jamais coupée).
+  if (config.kind === 'reason') return `Raison : ${action.raison || 'non renseignée'}`;
   return '';
 }
 
