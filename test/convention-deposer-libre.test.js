@@ -198,7 +198,7 @@ test("après un dépôt à l'état À générer : état Signée, « Convention s
   const bloc = m.bloc();
   assert.deepEqual(textesDuBloc(bloc), [`Convention signée, déposée le ${formatDate(ligne.Date_depot)}.`]);
   assert.ok(!/générée|modèle|Modèle|année|Année/.test(bloc.replace(/<[^>]+>/g, " ")), "aucune mention du modèle, de l'année ni de « générée »");
-  assert.deepEqual(idsDesBoutons(bloc), ["conventionVoirSignee", "conventionTelechargerSignee", "conventionRemplacer"]);
+  assert.deepEqual(idsDesBoutons(bloc), ["conventionVoirSignee", "conventionRemplacer"]);
   assert.match(m.alerte(), /<div class="alert alert-success"><p class="alert-content">Convention signée enregistrée\.<\/p><\/div>/);
   assert.ok(m.alerte().includes(MESSAGE_REUSSITE));
   assert.equal(m.focus[m.focus.length - 1], "conventionVoirSignee", "le focus arrive sur « Voir la convention signée »");
@@ -222,7 +222,7 @@ test("dépôt à l'état Sans modèle : état Signée sans erreur (modèle nul),
     assert.equal(m.etat().etat, "Signée", dispositif);
     assert.equal(m.etat().modele, null, "pas de modèle : aucun code ne doit en dépendre");
     assert.equal(m.formulaires[0].parties[0][2], nomAttendu, `nom du fichier pour « ${dispositif} »`);
-    assert.deepEqual(idsDesBoutons(m.bloc()), ["conventionVoirSignee", "conventionTelechargerSignee", "conventionRemplacer"]);
+    assert.deepEqual(idsDesBoutons(m.bloc()), ["conventionVoirSignee", "conventionRemplacer"]);
     assert.deepEqual(m.appels.map((a) => a[0][1]), ["Conventions"], "la ligne est créée");
     assert.ok(m.fetchs.filter(estPatch).length === 1);
   }

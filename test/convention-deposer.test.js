@@ -257,9 +257,9 @@ test("« Déposer la convention signée » : dernier bouton de la rangée à l'�
 // Echoue si le lien « Remplacer le fichier signé » apparait ailleurs qu'a l'etat Signee, manque
 // a l'etat Signee ou y est en double ; s'il perd btn btn-link (il devient un bouton plein), prend
 // btn-secondary, btn-sm ou une icone ; s'il est dans la rangee convention-actions (qui ne contient que
-// « Voir la convention signée » puis « Télécharger », evolution 2) ou partage son <div> avec autre chose ;
+// « Voir la convention signée » seul, E3-31/E3-32) ou partage son <div> avec autre chose ;
 // s'il passe avant « Voir la convention signée » ; s'il porte aria-haspopup, aria-disabled ou disabled au
-// repos ; ou si l'etat Signee affiche aussi « Déposer » ou a un nombre de boutons different de trois.
+// repos ; ou si l'etat Signee affiche aussi « Déposer » ou a un nombre de boutons different de deux (si « Télécharger » revient dans le bloc, ce test echoue).
 test("« Remplacer le fichier signé » n'existe qu'à l'état Signée, en lien (btn-link), seul sur sa ligne dans son propre <div>", () => {
   const w = loadWidget();
   const autres = {
@@ -276,11 +276,11 @@ test("« Remplacer le fichier signé » n'existe qu'à l'état Signée, en lien 
   assert.equal(html.split('id="conventionRemplacer"').length - 1, 1, "un seul « Remplacer » à l'état Signée");
   assert.ok(html.includes('<div><button class="btn btn-link" type="button" id="conventionRemplacer"><span class="btn-content">Remplacer le fichier signé</span></button></div>'),
     "lien btn-link, type button, seul dans son <div>, libellé exact dans btn-content, sans attribut d'accessibilité");
-  // L'etat Signee a une rangee convention-actions : « Voir la convention signée » puis « Télécharger » (pas « Remplacer »).
-  assert.deepEqual([...rangee(html).matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]), ["conventionVoirSignee", "conventionTelechargerSignee"], "la rangée des boutons ne contient que « Voir la convention signée » et « Télécharger » (pas « Remplacer »)");
+  // L'etat Signee a une rangee convention-actions avec le seul « Voir la convention signée » (ni « Remplacer », ni « Télécharger » : E3-31/E3-32).
+  assert.deepEqual([...rangee(html).matchAll(/<button\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]), ["conventionVoirSignee"], "la rangée des boutons ne contient que « Voir la convention signée » (ni « Remplacer », ni « Télécharger »)");
   assert.ok(html.indexOf('id="conventionVoirSignee"') < html.indexOf('id="conventionRemplacer"'), "« Voir la convention signée » est avant « Remplacer »");
   assert.ok(!html.includes("conventionDeposer"), "pas de « Déposer » à l'état Signée");
-  assert.deepEqual(html.match(/<button\b/g), ["<button", "<button", "<button"], "trois boutons à l'état Signée : « Voir la convention signée », « Télécharger » et « Remplacer »");
+  assert.deepEqual(html.match(/<button\b/g), ["<button", "<button"], "deux boutons à l'état Signée : « Voir la convention signée » et « Remplacer »");
   const balise = /<button\b[^>]*\sid="conventionRemplacer"[^>]*>/.exec(html)[0];
   assert.ok(!/btn-secondary|btn-sm|btn-primary|icon-/.test(html.slice(html.indexOf(balise))), "« Remplacer » : ni bouton secondaire ou principal, ni petite taille, ni icône");
   assert.ok(!/aria-haspopup|aria-disabled|\sdisabled\b/.test(balise), "« Remplacer » : ni aria-haspopup, ni aria-disabled, ni disabled au repos");
