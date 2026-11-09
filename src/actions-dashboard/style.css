@@ -695,9 +695,10 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-/* 3 colonnes : les 5 statuts s'affichent 3 + 2. Sous 560 px, retour a 2 colonnes
-   (voir le bloc @media plus bas). */
-.status-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+/* Le nombre de colonnes s'ajuste tout seul a la largeur disponible (E4-20) :
+   chaque case garde au moins 100 px (la plus large, « Non retenu », en mesure
+   84,4 px), donc deux cases ne peuvent plus se chevaucher, a aucune largeur. */
+.status-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -754,7 +755,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
@@ -763,7 +764,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    jusqu'ici la colonne la plus etroite de la ligne. E4-15 (b) : le montant etait
    devenu trop large, on lui reprend de la place au profit du financeur (noms longs).
    L'en-tete et les lignes partagent la meme grille. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+.finance-row { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 .edit-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 0 40px 36px; }
@@ -801,18 +802,12 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-fields-action { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
   .finance-list-head { display: none; }
-  .finance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; }
+  .finance-row { grid-template-columns: minmax(80px, 1fr) minmax(70px, 1fr) 62px; }
   .finance-row .finance-select { grid-column: 1 / -1; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
   .edit-header-actions { width: 100%; justify-content: flex-end; }
   .edit-actions { padding-left: 14px; padding-right: 14px; }
   .edit-message { margin-left: 14px; margin-right: 14px; }
-}
-
-/* Telephone : 3 colonnes serrent « Non retenu » et « Planifiee ». On repasse a
-   2 colonnes (2 + 2 + 1). Seuil propre aux cases de statut. */
-@media (max-width: 560px) {
-  .status-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Sur un ecran de telephone, les 100px de la colonne « Modifier » figee
