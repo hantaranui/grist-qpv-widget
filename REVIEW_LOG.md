@@ -1263,3 +1263,40 @@ Tests : 913 tests, 0 échec (2 tests retirés, devenus obsolètes).
 Vérifié sur TEST par Hanta : le bloc à l'état Signée n'affiche plus que "Voir la convention signée" et "Remplacer le fichier signé" ; la pop-up et son téléchargement fonctionnent normalement.
 Commit : 9885357 (tests), 9df63f1 (code), 145c4b3 (backlog).
 Mise en PROD : 10/11/2026, commit 15029a3 (fusion de feature/convention dans main). 913 tests, 0 échec. Risque assumé consciemment (E3-39) : le domaine jsdelivr.net n'a pas pu être vérifié sur le réseau interne de France Travail avant la mise en ligne (aucune personne de l'équipe n'y a accès). Si bloqué, le message d'erreur prévu s'affichera clairement ; le code de l'ancien système PDF (pdfmake) reste en place comme solution de repli.
+
+## Tâche 28 — Sprint E4 : 5ème statut "Non retenu"
+
+Date : 09/11/2026
+Agents : chef-de-projet (cadrage), designer-ux (note UX, plusieurs itérations), dev-backend (données/logique), dev-interface (interface, nombreux ajustements visuels)
+Prompt : demande initiale de Pierre, carte "Non retenu" (actions refusées faute de budget ou non pertinentes, avec raison du refus)
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Nouveau statut "Non retenu" dans Actions.Statut, nouvelle colonne Actions.Raison_du_refus (Choice, liste extensible, 4 raisons définies).
+- Quand "Non retenu" est choisi, le champ "Raison du refus" apparaît (liste déroulante), obligatoire pour enregistrer, à la place de tout autre champ (même exclusivité que les 4 statuts existants).
+- Un statut inconnu n'affiche plus de sélecteur de date par erreur (bug corrigé au passage).
+- Affichage des 5 statuts : un seul conteneur flex, qui s'adapte automatiquement à la largeur réelle de l'écran (pas de disposition "3+2" forcée, après plusieurs itérations). Chaque case garde sa largeur naturelle, contour gris permanent + contour bleu sur la case choisie, groupées à gauche avec un espace fixe.
+- Bloc Financement ajusté (largeurs des colonnes) pour rester lisible avec plusieurs financeurs.
+- Info-bulles ajoutées sur "Raison du refus" et "Financeur" pour voir le texte complet si tronqué visuellement.
+- Export CSV : nouvelle colonne "Raison du refus" en dernière position, protégée contre l'injection de formule (audit de sécurité).
+Ce qui a pris du temps : la disposition visuelle des 5 cases de statut a demandé de nombreux ajustements (contour, chevauchement à certaines largeurs, hauteur incohérente, espacement). Plusieurs approches techniques essayées avant de converger sur la solution finale.
+Tests : 276 tests, 0 échec. 11 points vérifiés manuellement par Hanta, 7 parcours testés OK par Gaylord sur TEST.
+Audit de sécurité : fait, une faille basse corrigée (injection de formule CSV), deux points bas acceptés tels quels.
+Droits d'écriture : vérifiés avec de vrais comptes (National, Régional, Départemental), tous autorisés.
+Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html, docs/ux/statut-non-retenu.md, docs/backlog.md, CLAUDE.md
+Build refait : oui
+Mise en PROD : 10/11/2026, commit af83c22 (fusion de feature/statut-non-retenu dans main). 913 tests, 0 échec après fusion avec la Convention.
+Reste à faire : correction urgente de genre appliquée après coup (voir Tâche 29).
+
+## Tâche 29 — Correction urgente : accord au féminin "Non retenue"
+
+Date : 10/11/2026
+Agents : dev-backend
+Prompt : Hanta a remarqué, par cohérence grammaticale avec les autres statuts (Planifiée, Réalisée, Annulée), que "Non retenu" aurait dû être "Non retenue". Changé directement dans Grist PROD par Hanta, ce qui a cassé silencieusement le champ "Raison du refus" (le code comparait encore "non-retenu", sans le e).
+
+Note /5 : sans objet
+Ce qui a changé : accord au féminin corrigé dans 3 endroits exacts du code (une comparaison logique, deux classes CSS) plus les textes affichés à l'écran. Correction urgente, car le champ obligatoire ne s'affichait plus en PROD après le changement du texte dans Grist.
+Tests : 913 tests, 0 échec (aucun test automatisé dédié à ce statut, donc rien ne pouvait détecter la casse avant la vérification manuelle de Hanta).
+Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html
+Build refait : oui
+Mise en PROD : 10/11/2026, commit 71c08a4 (fusion directe dans main, urgence). Aucune action n'avait encore été enregistrée avec ce statut au moment du changement : aucune donnée à corriger.
