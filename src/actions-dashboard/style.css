@@ -607,7 +607,7 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
-.status-tag.non-retenu { background: var(--ft-color-background-neutral-weak); }
+.status-tag.non-retenue { background: var(--ft-color-background-neutral-weak); }
 
 .bar {
   display: flex;
@@ -741,7 +741,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 /* « Non retenu » : statut final negatif, mais distinct d'« Annulee » (rouge).
    Teinte neutre « weak » du design system, plus foncee que le fond par defaut
    des pastilles pour qu'on ne les confonde pas avec un statut inconnu. */
-.status-option.non-retenu { --statut-fond: var(--ft-color-background-neutral-weak); }
+.status-option.non-retenue { --statut-fond: var(--ft-color-background-neutral-weak); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }

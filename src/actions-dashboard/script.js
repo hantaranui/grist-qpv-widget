@@ -1081,7 +1081,7 @@ async function saveEdit(event, action) {
   const raisonManquante = raisonProblem(status, raison);
   markRaisonProblem(raisonManquante);
   if (raisonManquante) {
-    messageTexte.textContent = "La raison du refus est obligatoire pour le statut « Non retenu ».";
+    messageTexte.textContent = "La raison du refus est obligatoire pour le statut « Non retenue ».";
     message.classList.remove('is-hidden');
     if (raisonSelect) raisonSelect.focus();
     return;
@@ -1573,7 +1573,7 @@ function statusFieldConfig(status) {
   if (normalized === 'realise' || normalized === 'realisee') return {kind: 'date', label: 'Date de réalisation'};
   if (normalized === 'annule' || normalized === 'annulee') return {kind: 'none', label: ''};
   // Liste déroulante des raisons, lues dans Grist (colonne Raison_du_refus).
-  if (normalized === 'non-retenu') return {kind: 'reason', label: 'Raison du refus'};
+  if (normalized === 'non-retenue') return {kind: 'reason', label: 'Raison du refus'};
   // Statut inconnu : aucun champ (avant : un sélecteur de date).
   return {kind: 'none', label: ''};
 }
@@ -1612,7 +1612,7 @@ function raisonControl(status, action, visible) {
       <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis}${titleAttr}>
         <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
       </select>
-      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
+      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenue ».</div>
     </div>
   </div>`;
 }
