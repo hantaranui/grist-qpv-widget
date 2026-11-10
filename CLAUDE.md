@@ -24,12 +24,16 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 
 - Utilisateurs : équipes France Travail connectées au document (profils FT National, FT Régional, FT Départemental, ANS). Chacun ne voit que les lignes que les règles d'accès du document lui permettent de voir.
 - Accès demandé : complet (grist.ready({requiredAccess: 'full'})).
-- Lit les tables : Actions, Cofinancements, Agences, DD, DR, Structures, Dispositifs, Federations, Financements, Financeurs, Reponses_AAP. Une table refusée est remplacée par une liste vide, sans bloquer le widget.
+- Lit les tables : Actions, Cofinancements, Agences, DD, DR, Structures, Dispositifs, Federations, Financements, Financeurs, Reponses_AAP, et pour la Convention Contacts, Conventions, Modeles_convention (liste TABLES en tête de src/actions-dashboard/script.js). Une table refusée est remplacée par une liste vide, sans bloquer le widget ; pour la Convention, le refus de Conventions ou de Modeles_convention affiche l'état « Droits insuffisants ».
 - Lit les choix des colonnes Actions.Statut, Actions.Public et Actions.Format : par l'API REST avec un jeton en lecture seule, sinon dans les tables _grist_Tables et _grist_Tables_column, sinon dans la liste de secours FALLBACK_CHOICES du script.
 - Écrit dans Grist, par grist.docApi.applyUserActions :
   - Actions : ajout (Intitule, Dispositif, Club, Statut « A confirmer ») ; modification depuis la fiche (Intitule, Dispositif, Jauge, Format, Ville, Lieu, Commentaire, Public, Agence, Statut, Date, Periode_approx, Budget, Ouvert_au_financement, et Code_MEE si la colonne existe) ; mise à la corbeille (Corbeille = vrai). Aucune action n'est vraiment supprimée.
   - Cofinancements : ajout, modification et suppression des lignes d'une action (Financement, Montant, Action, Statut_Versement).
-- Données personnelles : aucune lue ni écrite. Le champ Commentaire est un texte libre : il ne doit pas servir à noter des données de personnes.
+  - Conventions (une ligne par action) : par applyUserActions, les informations saisies dans la fenêtre « Convention » (Action, Modele, Annee, Signataire_club, Representant_agence, Fonction_representant) ; par REST (PATCH sur /tables/Conventions/records, jeton d'écriture), PDF_genere + Date_generation (génération et re-génération) et PDF_signe + Date_depot (dépôt et remplacement du fichier signé), chaque paire en une seule requête. Jamais écrites : DR et DD (formules qui servent aux règles d'accès). Aucune ligne n'est supprimée.
+  - Pièces jointes, par REST (POST /attachments, jeton d'écriture dans l'adresse ?auth=, credentials 'omit', en-tête X-Requested-With) : le PDF généré (fabriqué dans le navigateur avec pdfmake 0.3.3, chargé depuis cdnjs avec empreinte SRI, seulement au clic sur « Générer ») et le PDF signé déposé par l'agent (PDF seulement, 10 Mo au maximum). Les logos des modèles (Modeles_convention.Logo et Logo_partenaire) sont seulement lus, jamais écrits. Le widget ne supprime jamais une pièce jointe : l'ancien fichier remplacé reste dans Grist, non rattaché (Grist ne le nettoie pas, vérifié le 26/10/2026).
+- Pièces jointes et droits : Grist ne filtre pas les pièces jointes par table. Quiconque a un jeton valide sur le document peut télécharger une pièce jointe dont il connaît l'identifiant, quelle que soit la table qui la porte. La protection des PDF de convention vient des règles d'accès sur Conventions et Modeles_convention (qui cachent l'identifiant de la pièce jointe), pas d'un filtre sur les fichiers. Ne jamais afficher, journaliser ni garder l'identifiant d'une pièce jointe de convention ailleurs que dans ces cellules.
+- Jeton d'écriture : le widget demande un jeton d'écriture (getAccessToken readOnly: false) pour envoyer les pièces jointes et écrire PDF_genere / PDF_signe. Il s'en sert aussi pour certaines lectures (« Voir la convention », « Voir la convention signée », logos des modèles), par nécessité : avec un jeton en lecture seule, un non-propriétaire passe au niveau lecteur et les règles par défaut du document refusent le téléchargement (403). Ne pas le remettre en readOnly: true. Le jeton reste dans des variables locales : jamais dans la console, un message, une adresse affichée (le PDF s'ouvre à une adresse blob:).
+- Données personnelles : la Convention manipule nom, prénom et fonction du signataire du club (lus dans Contacts) et du représentant de l'agence (saisis dans la fenêtre, écrits dans Conventions), reproduits dans le PDF ; le PDF signé porte en plus des signatures manuscrites. Le widget n'écrit jamais dans Contacts. Hors Convention, aucune donnée personnelle n'est lue ni écrite. Le champ Commentaire est un texte libre : il ne doit pas servir à noter des données de personnes.
 - Lien avec le widget clubs : clubs dépose dans le stockage du navigateur la note clubs-ouvrir-action-v1 = {"actionId": …, "ts": …}. Le tableau de bord la lit au chargement, l'efface aussitôt, et ouvre la fiche de l'action si la note a moins de 20 secondes. Clé et forme à ne changer que dans les deux widgets à la fois.
 
 ## Le widget clubs
@@ -77,6 +81,10 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 - Test local : npm run dev (port 8000), puis http://localhost:8000/actions-dashboard.html (ou /clubs.html) comme URL du widget dans le document Grist DEV. Pour tester le lien depuis clubs, servir les deux widgets avec le même npm run dev (même port). Après le test, remettre l'adresse GitHub Pages dans Grist DEV.
 - Aucune CI ne fait le build : commiter les sources ET le fichier généré.
 
+## Tests
+
+- Tout carnet de recette (fichier de suivi d'exécution) comporte une colonne "Validé par", distincte de "Testeur" : elle sert à noter qui confirme ou corrige un résultat après un premier passage (par exemple quand Hanta revient sur un cas marqué "À revoir" par le testeur). Un cas qui n'a jamais été revu après son premier passage n'a rien dans cette colonne.
+
 ## Publication
 
 Grist charge les widgets depuis GitHub Pages : https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html et https://hantaranui.github.io/grist-qpv-widget/clubs.html
@@ -105,6 +113,11 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Chaque compte rendu se termine par : 1. fichiers lus ; 2. fichiers modifiés ; 3. tests lancés et résultat ; 4. risques restants.
 - Quand Hanta appelle un agent avec @, tu transmets son rapport tel quel, sans le résumer ni le compléter, et tu ne proposes jamais de faire toi-même la suite (correction, modification, commit) : c'est Hanta qui choisit le prochain agent.
 
+## Bonnes pratiques de code
+
+- Pour tout réglage de configuration ou de mise en forme utilisé à plusieurs endroits d'un même fichier (police, tailles, marges, espacements, seuils de largeur d'écran, délais, couleurs, noms de colonnes Grist répétés, etc.) : regrouper ces valeurs en une seule constante, en tête du fichier concerné, plutôt que de les disperser dans le code. Objectif : qu'une demande de changement reste une petite modification localisée à un seul endroit, au lieu d'une recherche dans tout le fichier.
+- Cette règle s'applique à tout nouveau code écrit à partir de maintenant, et doit être appliquée en priorité quand un widget existant est retouché pour une autre raison.
+
 ## Pièges connus
 
 - build.js reconstruit les trois widgets : vérifier avec git status qu'aucun autre fichier généré n'a changé.
@@ -113,5 +126,6 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Les tables et colonnes Grist sont partagées entre tous les widgets du projet. Colonnes écrites par ces widgets : ne jamais les renommer.
 - Les règles d'accès du document (profils FT National, Régional, Départemental, ANS) décident de ce que chacun voit et modifie : le widget ne doit jamais essayer de les contourner.
 - Le script du bandeau est chargé depuis un autre site, sans numéro de version figé : s'il change, nos widgets changent sans commit de notre part. À faire examiner par auditeur-securite.
+- Envoyer un fichier en pièce jointe depuis un widget : jeton d'écriture dans l'adresse (?auth=), credentials 'omit' et en-tête X-Requested-With: XMLHttpRequest, comme pour le logo du widget clubs. Sans cet en-tête, Grist répond 401. Télécharger un fichier et ouvrir un onglet depuis le cadre de Grist fonctionnent.
 - Un jeton d'accès Grist (lecture ou écriture) ne doit jamais être écrit dans la console, un message d'erreur ou un journal, ni dans une adresse affichée.
 - Créer un contact : la règle d'accès refuse une ligne sans club. Le widget doit envoyer toutes les valeurs (club compris) en une seule opération, jamais créer une ligne vide puis la remplir. Création par un non-propriétaire vérifiée dans DEV7 le 21/10/2026 (« Voir en tant que » FT Régional).

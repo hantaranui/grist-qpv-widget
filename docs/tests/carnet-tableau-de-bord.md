@@ -339,3 +339,27 @@ Si ce que vous voyez n'est pas ce qui est écrit dans « Résultat attendu », n
 
 1. La chaîne exacte (agence, DD, DR) pour préparer le jeu de données dans DEV, puisque DD et DR sont des colonnes calculées de la table Actions.
 2. GEO-A09 et GEO-A10 : le nom de la DD sans DR (et de l'action avec DR sans DD) à utiliser, s'ils existent déjà dans DEV.
+
+---
+
+## Conservation des filtres le temps de la session (brouillon, 3 cas)
+
+Petite fonction : 3 cas seulement. Le résultat est toujours annoncé par la personne qui teste.
+
+| ID | Module | Modules voisins | Criticité | Étant donné | Quand | Alors | Données fictives |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FILT-001 | Tableau de bord, filtres | Filtres géographiques (GEO-A07) | Majeur | Le tableau de bord est ouvert. | 1. Choisir « DR Test Alpha » et écrire « TEST-001 » dans Numéro Osiris, lancer la recherche. 2. Ouvrir une autre page du document Grist. 3. Revenir sur la page du tableau de bord. | Les deux filtres sont encore choisis (DR Test Alpha, TEST-001) et le tableau est déjà filtré, sans avoir à les ressaisir. | DR Test Alpha, TEST-001 |
+| FILT-002 | Tableau de bord, filtres | Filtres géographiques (GEO-A07, GEO-B05) | Majeur | Les filtres de FILT-001 sont encore choisis. | 1. Cliquer sur « Réinitialiser ». 2. Ouvrir une autre page du document. 3. Revenir sur le tableau de bord. | Après le clic, tous les filtres sont vides. Au retour, ils sont toujours vides : les anciens filtres ne reviennent pas. | Aucune |
+| FILT-003 | Tableau de bord, filtres | Aucun | Majeur | Un filtre est choisi (DR Test Alpha) dans un onglet. | Ouvrir le même document dans un nouvel onglet du navigateur. | Le nouvel onglet s'ouvre sans aucun filtre choisi. L'onglet d'origine garde son filtre. | DR Test Alpha |
+
+À jouer dans DEV, avec le jeu de données du carnet.
+
+Cas limite non mis au carnet : navigateur qui ne peut pas garder les filtres (par exemple en navigation privée). Difficile à jouer à l'écran de façon fiable ; il est couvert par les tests automatiques (le tableau de bord continue de fonctionner, sans garder les filtres). Pas d'angle accessibilité ni mobile pour cette fonction.
+
+Tests voisins à rejouer après une correction : FILT-001 à FILT-003, GEO-A07 et GEO-B05, puis toute la suite automatique (lancée par Hanta).
+
+---
+
+## Note pour Hanta (ne pas transmettre aux testeurs)
+
+Idée à décider : vérifier aussi que les filtres d'un document ne se retrouvent pas dans un autre document (par exemple TEST au lieu de DEV). Cela demande un second document disponible. Si tu le souhaites, je l'ajoute au carnet comme cas numéroté.

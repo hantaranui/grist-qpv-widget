@@ -50,14 +50,16 @@ function makeElement() {
   };
 }
 
-// Options facultatives (sans elles, le comportement est inchange). Elles servent
-// aux tests des filtres gardes, qui ont besoin de ce que le script lit AU
-// chargement et qu'on ne peut donc pas poser apres coup :
-//   - sessionStorage, getDocName, fetchTable : l'ecriture/lecture des filtres et
-//     le nom du document se font pendant load(), lance par le script lui-meme ;
+// Options facultatives, pour les tests qui simulent le chargement des tables et
+// les filtres gardes (sans elles, le comportement est inchange) :
+//   - fetchTable(nom) : remplace la lecture des tables par l'API Grist (peut refuser) ;
+//   - console : remplace la console muette, pour lire ce que le widget journalise ;
+//   - sessionStorage, getDocName : l'ecriture et la lecture des filtres gardes et
+//     le nom du document se font pendant load(), lance par le script lui-meme, donc
+//     il faut les fournir AVANT le chargement, pas apres coup ;
 //   - elements : des elements prepares (ex. resetBtn), car le script y branche
-//     ses ecouteurs des le chargement ;
-//   - console : pour verifier que rien n'est journalise.
+//     ses ecouteurs des le chargement.
+
 function loadWidget(options = {}) {
   const code = fs.readFileSync(SCRIPT, "utf8")
     + `\n;globalThis.__widget = {${EXPORTED.join(", ")}};\n`;
@@ -82,6 +84,7 @@ function loadWidget(options = {}) {
     console: quiet,
     localStorage,
     setTimeout,
+    clearTimeout,
     requestAnimationFrame: () => {},
     fetch: () => Promise.reject(new Error("réseau indisponible en test")),
     document: {

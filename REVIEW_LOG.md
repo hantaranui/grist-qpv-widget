@@ -377,6 +377,840 @@ Fichiers modifiés : docs/tests/cas-de-test-contacts.tsv, docs/tests/cas-de-test
 Build refait : non
 Commit : 15c1258 sur feature/contacts-fiche-club
 
+## Tâche C1 — Maquette de la convention de partenariat
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : préparer docs/ux/convention.md (parcours, textes, états, accessibilité, données personnelles) et docs/ux/maquette-convention.html (bloc « Convention » dans la fiche d'action, fenêtre Convention, 3 états de la zone PDF), puis corriger la maquette pour l'impression en PDF
+
+Note /5 : 4
+Ce qui allait : bloc « Convention » séparé des boutons Supprimer, Annuler et Enregistrer ; fenêtre en trois parties (France Travail, Club, Convention) ; 3 états de la zone PDF ; feuille du design system chargée par CDN ; données fictives ; liens et HTML des composants recopiés ; points à confirmer listés ; impression corrigée (4 pages, une par partie, rien de coupé).
+Ce que j'ai fait corriger : première impression illisible (fenêtres coupées, texte tronqué) ; ajout de règles d'impression. À valider : 3 classes convention-* créées faute de composant dans le design system ; texte réduit à 66 % à l'impression.
+Tests : 0 lancés, 0 réussis (maquette) ; PDF de contrôle généré par l'agent : 4 pages
+Fichiers modifiés : docs/ux/convention.md (créé), docs/ux/maquette-convention.html (créé)
+Build refait : pas nécessaire
+Commit : 78ebd82 sur feature/convention
+
+
+## Tâche C2 — Essai technique : téléchargement et pièce jointe depuis un widget
+
+Date : 2026-10-20
+Agent : @dev-backend
+Prompt : page d'essai jetable essai-pieces-jointes.html (4 boutons : télécharger un fichier, l'ouvrir dans un onglet, l'enregistrer en pièce jointe dans la table Essai_pieces_jointes de DEV6, le relire), puis deux corrections de l'envoi
+
+Note /5 : 4
+Ce qui allait : les 4 points sont possibles depuis un widget dans Grist ; jeton jamais affiché ; une seule table d'essai écrite ; l'agent n'a pas recopié l'affichage du jeton de fiche-club.
+Ce que j'ai fait corriger : envoi refusé deux fois (« Failed to fetch » avec le jeton dans un en-tête, puis 401) ; il fallait la méthode de fiche-club : jeton dans l'adresse (?auth=), credentials 'omit' et en-tête X-Requested-With. Découvert : fiche-club affiche le jeton d'écriture dans la console (console.info), à corriger.
+Tests : 184 lancés, 184 réussis (npm test, page d'essai présente) ; essai manuel dans DEV6 : 4 sur 4
+Fichiers modifiés : aucun dans le dépôt (essai-pieces-jointes.html jamais commité, supprimé après l'essai)
+Build refait : pas nécessaire
+Commit : aucun pour l'essai (fiche seule)
+
+
+## Tâche C3 — Maquette de la convention mise à jour après les retours du chef
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : intégrer les décisions du chef dans docs/ux/convention.md et maquette-convention.html (4 états du bloc Convention, fenêtre large sans défilement, ordre des blocs, dépôt du fichier signé, choix du signataire parmi les contacts du club), puis trois corrections : « Ajouter un contact » dans le bloc, champs selon le modèle, siège du club complet, représentant de l'agence saisi dans la fenêtre
+
+Note /5 : 5
+Ce qui allait : décisions du chef intégrées ; fenêtre en modal-xl sur trois colonnes, sans défilement sur mon écran ; composants recopiés avec leur lien ; piège du formulaire dans un formulaire repéré et contourné ; tableau des champs par modèle ; seuls les fichiers de docs/ux/ modifiés.
+Ce que j'ai fait corriger : nombre d'opérations affiché à tort pour « Du stade vers l'emploi » ; « Ajouter un contact » en seconde fenêtre (remplacé par un formulaire dans le bloc) ; siège du club coupé ; représentant de l'agence prérempli (il est saisi). Composant de dépôt de fichier absent du design system : méthode de fiche-club retenue.
+Tests : 0 lancés, 0 réussis (maquette) ; fenêtre vérifiée à l'écran
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 9409f5b sur feature/convention
+
+
+## Tâche C4 — Maquette de la convention : re-générer et dépôt direct du fichier signé
+
+Date : 2026-10-20
+Agent : @designer-ux
+Prompt : intégrer les trois dernières décisions du chef dans docs/ux/convention.md et maquette-convention.html : bouton « Re-générer » à l'état Générée ; PDF généré gardé sans être montré après le dépôt du signé ; dépôt et remplacement du fichier signé sans vérification
+
+Note /5 :
+Ce qui allait : les trois décisions appliquées ; fenêtres de vérification retirées ; message de confirmation en alert-success ; points tranchés déplacés dans convention.md ; seuls les fichiers de docs/ux/ modifiés.
+Ce que j'ai fait corriger : rien. Choix de l'agent acceptés : « Re-générer » seulement à l'état Générée ; aria-haspopup retiré des boutons de dépôt.
+Tests : 0 lancés, 0 réussis (maquette)
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 1ea1315 sur feature/convention
+
+## Tâche C5 — Maquette de la convention alignée sur les réponses du client
+
+Date : 2026-10-22
+Agent : @designer-ux
+Prompt : intégrer les réponses du client dans docs/ux/convention.md et maquette-convention.html : une convention par action ; zones en pointillés remplies à la main (nombre d'opérations, date de fin, contact protection des données, « Fait à » et date) ; signataire France Travail = directeur d'agence
+
+Note /5 : 5
+Ce qui allait : fenêtre réduite à trois blocs, sans défilement (vérifié à l'écran) ; champs Nombre d'opérations, Date de fin et bloc Date et lieu retirés ; règle « action sans fédération » retirée ; fonction du représentant préremplie « Directeur d'agence » ; variante B ter supprimée car devenue inutile ; points à confirmer mis à jour.
+Ce que j'ai fait corriger : rien. À prévoir au développement : des pointillés assez longs pour écrire à la main dans le PDF.
+Tests : 0 lancés, 0 réussis (maquette)
+Fichiers modifiés : docs/ux/convention.md, docs/ux/maquette-convention.html
+Build refait : pas nécessaire
+Commit : 49821cd sur feature/convention
+
+## Tâche C6 — Cadrage du développement de la convention
+
+Date : 2026-10-22
+Agent : @chef-de-projet (cadrage), puis Claude sans agent (enregistrement dans docs/backlog.md)
+Prompt : cadrer le développement de la convention sans rien modifier : structure Grist (Modeles_convention, Conventions), règles d'accès par profil, format du texte des modèles, découpage en tâches de S0 à S10 avec recette à la fin de chaque fonction, risques et questions ; puis enregistrer le plan dans docs/backlog.md avec les réponses déjà connues
+
+Note /5 : sans objet
+Ce qui allait : état du bloc calculé à partir des fichiers présents, sans colonne Statut ; case inconnue qui bloque la génération ; piège des droits repéré (« pas de modèle » affiché à tort) ; recette à la fin de chaque fonction ; plan enregistré sans rien effacer ; tâche 0.4 ajoutée (ramener main dans la branche avant de s'inspirer de clubs).
+Ce que j'ai fait corriger : l'agent avait lu src/fiche-club/ au lieu de src/clubs/ (ancien prompt) : corrigé à l'enregistrement. Questions encore ouvertes : action en corbeille ou annulée, note de bas de page, logo du PDF.
+Tests : 0 lancés, 0 réussis (cadrage)
+Fichiers modifiés : docs/backlog.md
+Build refait : pas nécessaire
+Commit : 469d5c1 sur feature/convention
+
+## Tâche C7 — Ramener main dans la branche de la convention (manuel)
+
+Date : 2026-10-22
+Agent : aucun (fait à la main)
+Prompt : sans objet (tâche 0.4 du plan : git merge origin/main dans feature/convention)
+
+Note /5 : sans objet
+Ce qui allait : un seul conflit, dans REVIEW_LOG.md (fiches ajoutées au même endroit) ; CLAUDE.md fusionné automatiquement ; fiche-club retiré et jeton plus affiché dans clubs, comme sur main.
+Ce que j'ai fait corriger : conflit réglé en gardant les deux séries de fiches ; fiches de la convention renommées C1 à C6 pour ne plus entrer en collision avec les autres missions.
+Tests : 180 lancés, 180 réussis
+Fichiers modifiés : REVIEW_LOG.md (résolution du conflit), plus les fichiers venus de main
+Build refait : pas nécessaire (sources de la convention inchangées)
+Commit : 46621e8 sur feature/convention
+
+## Tâche C8 — Audit de sécurité avant le développement de la convention
+
+Date : 2026-10-22
+Agent : @auditeur-securite
+Prompt : tâche 0.3 du plan : examiner pdfmake (version figée, SRI, chargement au clic), l'envoi des PDF en pièce jointe, « Voir la convention » sans jeton visible, le dépôt du PDF signé, les données de personnes et les règles d'accès ; dire risques, gravité, précautions et tests à prévoir
+
+Note /5 : sans objet
+Ce qui allait : audit précis, avec les numéros de ligne ; 6 points évalués ; 15 tests proposés (jeton jamais dans la console ni dans une adresse, pdfmake chargé au clic avec SRI, refus des faux PDF) ; ce qui n'est pas vérifiable depuis le dépôt clairement signalé ; aucun fichier modifié.
+Ce que j'ai fait corriger : rien. Décisions : PDF signé de 10 Mo au maximum ; « Voir » par un fichier ouvert depuis la mémoire (adresse blob:, sans jeton), déjà prouvé par l'essai C2 ; contrôle de l'extension, du type et du début %PDF- du fichier signé. DT confirmé côté Utilisateurs. À faire : corriger convention.md, backlog.md (0.4 faite) et .gitignore (.env).
+Tests : 0 lancés, 0 réussis (audit en lecture seule)
+Fichiers modifiés : aucun
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
+
+## Tâche C9 — Note UX de la convention corrigée après l'audit
+
+Date : 2026-10-22
+Agent : @designer-ux
+Prompt : corriger docs/ux/convention.md après l'audit : boutons « Voir » (PDF ouvert depuis la mémoire, sans jeton visible) au lieu de liens ; contrôle du fichier signé (extension, type, début %PDF-, vide, 10 Mo au maximum) avec ses messages
+
+Note /5 : sans objet
+Ce qui allait : un seul fichier modifié ; les deux décisions appliquées partout où la note parlait de lien ; message ajouté pour le fichier vide ; risque de blocage de l'onglet blob: signalé.
+Ce que j'ai fait corriger : rien. À faire au développement : ordre des contrôles vide → taille → extension → type → %PDF- (l'agent avait mis « vide » en 4e position) ; tester l'ouverture blob: après chargement dans Grist DEV (S7).
+Tests : 0 lancés, 0 réussis (note)
+Fichiers modifiés : docs/ux/convention.md
+Build refait : pas nécessaire
+Commit : 468aa36 sur feature/convention
+
+## Tâche C10 — Backlog de la convention mis à jour après S0, .env ignoré
+
+Date : 2026-10-22
+Agent : Claude sans agent
+Prompt : marquer comme faites les tâches 0.2 (adresse du club : colonne Adresse, Siege = Oui/Non), 0.3 (audit et ses décisions) et 0.4 (main ramené dans la branche) dans docs/backlog.md ; ajouter l'adresse du club aux blocages de la génération ; ajouter .env à .gitignore
+
+Note /5 : sans objet
+Ce qui allait : seuls les deux fichiers demandés modifiés ; adresse du club ajoutée aux blocages à trois endroits (règle, tâche 3.3, recette R4) ; contradiction sur Siege repérée et signalée au lieu d'être corrigée sans accord.
+Ce que j'ai fait corriger : la ligne « Réponses intégrées » sur Structures.Siege, alignée sur la note de la tâche 0.2.
+Tests : 0 lancés, 0 réussis (documentation)
+Fichiers modifiés : docs/backlog.md, .gitignore
+Build refait : pas nécessaire
+Commit : a424826 sur feature/convention
+
+## Tâche C11 — Relecture des règles d'accès de la convention
+
+Date : 2026-10-22
+Agent : @auditeur-securite
+Prompt : relire, avant de les poser dans Grist DEV7, les règles d'accès proposées pour Conventions et Modeles_convention, et dire ce qu'il faut vérifier dans Contacts, Agences, Structures et Communes ; donner les essais « Voir en tant que »
+
+Note /5 :
+Ce qui allait : défaut réel trouvé (une convention aurait pu être déplacée vers une autre région) ; garde contre les DR ou DT vides ; vérifications de Contacts, Agences, Structures et Communes listées ; essais précis.
+Ce que j'ai fait corriger : sa correction newRec.Action.DR ne marche pas (une règle Grist ne suit pas une référence) : remplacée par newRec.DR et newRec.DD, prouvés par la création d'un contact en tant que Régional.
+Tests : 0 lancés, 0 réussis (relecture en lecture seule)
+Fichiers modifiés : aucun
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
+
+## Tâche C12 — Tables, colonnes et règles d'accès de la convention dans Grist DEV7 (manuel)
+
+Date : 2026-10-22
+Agent : aucun (fait à la main dans Grist)
+Prompt : sans objet (tâches S1 du plan)
+
+Note /5 : sans objet
+Ce qui allait : tables Modeles_convention (3 lignes) et Conventions créées ; colonnes Contacts.Nom_complet et Structures.Adresse ajoutées ; règles posées sur les deux tables, avec un refus final ; 6 essais « Voir en tant que » réussis (Régional, Départemental, ANS, National).
+Ce que j'ai fait corriger : colonne Conventions.DD qui pointait vers DR au lieu de DD ; conditions newRec.Action.DR et newRec.Action.DD remplacées par newRec.DR et newRec.DD ; règle de refus final ajoutée aux deux tables.
+Tests : 6 essais manuels, 6 réussis ; lignes d'essai supprimées
+Fichiers modifiés : aucun dans le dépôt
+Build refait : pas nécessaire
+Commit : aucun (fiche seule)
+
+## Tâche C13 — Texte d'un modèle de convention vers contenu pdfmake (S2, tâche 2.1)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.1 du plan, syntaxe relevée dans les 3 modèles (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : fonction pure conventionVersContenuPdf(texte) ajoutée à la fin de src/actions-dashboard/script.js, avec 3 fonctions d'aide (conventionBlocs, conventionRuns, conventionTexte) ; titres, retraits, listes à puces et numérotées, gras, italique, souligné, exposant, liens (texte puis adresse), notes rangées à la fin ; styles nommés seulement (titre1, titre2, titre3, titre, paragraphe, retrait, liste, note) ; 11 points ambigus signalés ; aucun écran ni test touché.
+Ce que j'ai fait corriger : rien ; validé : retour à la ligne simple gardé dans le paragraphe, ligne entièrement en gras = titre, titres sans niveau.
+Tests : npm test 180/180 réussis (rien de cassé) ; la nouvelle fonction n'est pas encore testée (testeur à suivre) ; exposant et souligné de pdfmake 0.3.3 à vérifier sur une page d'essai à la tâche PDF
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : ccc3dcd
+
+## Tâche C14 — Tests de la conversion du texte d'un modèle vers pdfmake (S2, tâche 2.2)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 18 cas tirés des 3 modèles (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : nouveau fichier de test, 22 tests (les 18 cas demandés, dont certains en 2 ou 3 parties, plus un cas 2c ajouté et signalé) ; comparaison de la structure complète ; aucun bug trouvé ; src/ non touché.
+Ce que j'ai fait corriger : l'agent a lancé lui-même node --test, ce qui ne remplace pas npm test lancé par Hanta ; fichier renommé en test/convention-modele.test.js, nom prévu au backlog (commit 2198a5b) ; les messages des commits af85b34 et 4ae3289 disent « tâche 2.1 » au lieu de 2.2.
+Tests : npm test 202/202 réussis
+Fichiers modifiés : test/convention-modele.test.js (créé sous le nom test/convention.test.js, puis renommé)
+Build refait : pas nécessaire (src/ inchangé)
+Commit : af85b34
+
+## Tâche C15 — Remplissage des cases du modèle de convention (S2, tâche 2.3)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.3 du plan, pointillés laissés en vrais points (décision du 2026-10-22)
+
+Note /5 : sans objet
+Ce qui allait : conventionVersContenuPdf(texte, valeurs) remplit les cases après l'analyse (une valeur n'est jamais relue comme du Markdown, la mise en forme est gardée) ; nouvelle fonction conventionCasesManquantes(texte, valeurs) ; \[ imprime un crochet ; fonction d'aide conventionValeurDeCase ; pointillés non touchés ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; points signalés pour le testeur : tout texte entre crochets est une case ([x], [1]), \] non géré, valeur avec retour à la ligne non vérifiée dans pdfmake ; le blocage de la génération se fera à l'écran avec conventionCasesManquantes.
+Tests : npm test 202/202 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b0f593b
+
+## Tâche C16 — Tests du remplissage des cases (S2, tâche 2.4)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 11 cas du remplissage des cases (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : 22 tests ajoutés dans test/convention-modele.test.js (44 au total dans ce fichier) ; cases dans paragraphe, gras, titre, liste, retrait et note ; caractères spéciaux ; apostrophe typographique ; cases vides ; \[ ; liens et notes non remplacés ; liste des cases manquantes ; clés comme constructor ; aucune commande lancée par l'agent.
+Ce que j'ai fait corriger : rien ; un test ajouté en plus (clé constructor écrite dans l'objet) gardé ; valeur 0 et case vide [ ] non testées (absentes des modèles).
+Tests : npm test 224/224 réussis
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : a7e8583
+
+## Tâche C17 — Description du PDF de la convention pour pdfmake (S2, tâche 2.5)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 2.5 du plan, repères {saut-de-page}, {signatures} et {signatures:lieu-date}, logo facultatif (Q-C ouverte)
+
+Note /5 : sans objet
+Ce qui allait : repères reconnus seuls sur leur ligne ; signatures en deux colonnes (organisation sportive à gauche, France Travail à droite) remplies par les cases, d'un seul tenant ; notes renumérotées dans l'ordre du premier appel, textes à la fin (provisoire, Q-A) ; nouvelles fonctions conventionProblemesNotes et conventionDocumentPdf (A4, « Page X sur Y », logo seulement si image data:image/) ; réglages regroupés dans CONVENTION_MISE_EN_PAGE ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; points signalés : note définie deux fois = la première gardée, repères non reconnus dans un retrait, page blanche possible si {saut-de-page} est en dernier, hauteur des signatures à régler en 7.6, noms des cases avec apostrophe typographique.
+Tests : npm test 224/224 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 7e951b4
+
+## Tâche C18 — Tests de la description du PDF (S2, tâche 2.6)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 12 cas de la tâche 2.6 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : 19 tests ajoutés (63 dans test/convention-modele.test.js) ; saut de page, signatures avec et sans valeurs, variante lieu-date, repères dans un retrait, renumérotation des notes, problèmes de notes, document A4, pied « Page 1 sur 3 », logo accepté ou ignoré, réglages de CONVENTION_MISE_EN_PAGE ; un test ajouté en plus (copie des réglages) gardé ; données fictives.
+Ce que j'ai fait corriger : rien ; l'agent a lancé grep et cat >> malgré la consigne (sans danger) ; à faire plus tard : ajouter CONVENTION_MISE_EN_PAGE à EXPORTED dans test/helpers/widget.js, car le test 18 relit le script avec une expression régulière (fragile).
+Tests : npm test 243/243 réussis
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : c7a780e
+
+## Tâche C19 — Lecture des tables de la convention (S3, tâche 3.1)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 3.1 du plan, lecture seule
+
+Note /5 : sans objet
+Ce qui allait : Contacts, Conventions et Modeles_convention ajoutées à TABLES (une ligne, plus un commentaire) ; données dans state.raw ; une table refusée ou absente donne une liste vide grâce au try/catch existant de load(), sans gêner les autres tables ; aucune valeur dans la console ; rien lancé par l'agent.
+Ce que j'ai fait corriger : rien ; à noter pour le README (10.2) : noms, e-mails et téléphones de Contacts et texte des modèles lus à chaque chargement.
+Tests : npm test 243/243 réussis (rien de cassé) ; la lecture des 3 tables n'est pas encore testée (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 977d16b
+
+## Tâche C20 — Tests de la lecture des tables de la convention (S3, tâche 3.2)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 4 cas de la tâche 3.2 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : nouveau fichier test/convention-donnees.test.js, 11 tests (lecture de chaque table, refus de chaque table sans gêner Actions, profil ANS avec les 3 tables refusées, console sans valeur de ligne) ; loadWidget() accepte des options facultatives fetchTable et console, sans changement pour les autres tests ; rien lancé par l'agent.
+Ce que j'ai fait corriger : colonnes fictives inventées (Reference…) remplacées par les vrais noms de colonnes ; limite connue : seul le refus par erreur est simulé.
+Tests : npm test 254/254 réussis
+Fichiers modifiés : test/convention-donnees.test.js (créé), test/helpers/widget.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : 9a85dc5
+
+## Tâche C21 — État du bloc Convention et blocage de la génération (S3, tâche 3.3)
+
+Date : 2026-10-22
+Agent : dev-backend
+Prompt : tâche 3.3 du plan, puis correction (ville du club)
+
+Note /5 : sans objet
+Ce qui allait : conventionEtat (À générer, Générée, Signée, Sans modèle, Droits insuffisants ; Signée l'emporte ; plus petit id gardé en cas de doublon) et conventionBlocage (agence, club, dispositif, adresse, dans cet ordre, avec message) ; state.tablesRefusees rempli par load() (noms de tables seulement) ; 3 messages proposés (agence, club, dispositif), à revoir en 4.1 ; rien lancé par l'agent.
+Ce que j'ai fait corriger : le widget ne lisait pas Communes (blocage « adresse » permanent) ; colonne formule Structures.Ville (Texte) créée dans DEV7, et adresse du club lue dans Adresse, Code_postal et Ville ; à créer aussi dans TEST puis en PROD avant la fusion. Q-B (corbeille, annulée) toujours ouverte.
+Tests : npm test 254/254 réussis (rien de cassé) ; les nouvelles fonctions ne sont pas encore testées (testeur à suivre)
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 63a5d62
+
+## Tâche C22 — Tests de l'état du bloc et du blocage (S3, tâche 3.4)
+
+Date : 2026-10-22
+Agent : testeur
+Prompt : 8 cas de la tâche 3.4 (préparé dans le projet Claude)
+
+Note /5 : sans objet
+Ce qui allait : tests ajoutés dans test/convention-donnees.test.js : les 5 états, Signée l'emporte, pièces jointes vides, doublon (plus petit id gardé), blocage par élément avec message exact, ordre du blocage, tout renseigné, state.tablesRefusees après un vrai load() ; 3 tests ajoutés en plus (autre dispositif, refus de Contacts sans effet, convention d'une autre action ignorée), gardés ; données fictives avec les vrais noms de colonnes.
+Ce que j'ai fait corriger : rien ; décompte de l'agent inexact (22 annoncés, 23 de plus selon npm test) ; deux echo lancés par erreur, sans effet ; code postal « 0 » non testé (Code_postal est du texte).
+Tests : npm test 277/277 réussis
+Fichiers modifiés : test/convention-donnees.test.js
+Build refait : pas nécessaire (src/ inchangé)
+Commit : b7b703e
+
+## Tâche C23 — Mise à jour de la note UX de la convention (S4, tâche 4.1)
+
+Date : 2026-10-22
+Agent : designer-ux
+Prompt : tâche 4.1 du plan, puis correction avec les réponses de Hanta
+
+Note /5 : sans objet
+Ce qui allait : droits des profils FT ; 5 états dont « Droits insuffisants » ; 4 messages de blocage exacts, un seul à la fois, bouton grisé avec aria-disabled et aria-describedby, help-block dans role="status" ; « Ajouter un contact » retiré, message si le club n'a aucun contact ; phrase d'aide à l'état « Générée » (imprimer, compléter, signer, déposer) ; écarts avec la maquette listés.
+Ce que j'ai fait corriger : pas de lecture du profil (tous les profils refusés, ANS compris, voient « Droits insuffisants ») ; blocage sur les données enregistrées ; « Enregistrer » actif sans contact ; la note l'emporte sur la maquette, qui n'est plus à jour ; note marquée validée ; l'agent a lancé grep et ls (lecture seule) malgré la consigne.
+Tests : sans objet (documentation)
+Fichiers modifiés : docs/ux/convention.md
+Build refait : pas nécessaire
+Commit : e47240b
+
+## Tâche C24 — Bloc « Convention » dans la fiche d'action (S4, tâche 4.2)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 4.2 du plan, lecture A (aucun bouton, aucun message de blocage)
+
+Note /5 : 5
+Ce qui allait : bloc en bas de la fiche, style des autres blocs (edit-card, section-head, edit-fields) ; conventionEtat réutilisée sans modification ; textes des 5 états copiés de la note ; aucun bouton, aucun clic, aucune lecture du profil ; classes convention-fields et convention-aide ; couleur --muted déjà définie dans le tableau de bord (variable du design system) ; aucune commande lancée par l'agent ; texte ajouté signalé.
+Ce que j'ai fait corriger : rien. Texte ajouté par l'agent et accepté : « Convention générée. » et « Convention signée. » quand la date est vide (à reporter dans docs/ux/convention.md en 10.2).
+Tests : 277 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : « Aucune convention générée » et « Pas encore de modèle » s'affichent. Non vus à l'écran : Générée, Signée (format de la date) et Droits insuffisants (l'ANS ne voit pas le tableau de bord), à couvrir en 4.3.
+Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html
+Build refait : oui
+Commit : 5a38b41
+
+## Tâche C25 — Tests du bloc « Convention » (S4, tâche 4.3)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tâche 4.3 du plan, 7 points à tester, puis correction sur l'écart de comptage
+
+Note /5 : 5
+Ce qui allait : nouveau fichier test/convention-bloc.test.js ; les 7 points couverts (5 états avec textes exacts, date en jour/mois/année, date vide, Signée l'emporte, aucun élément cliquable, aucun message de blocage, classes autorisées) et la place du bloc dans la fiche ; un commentaire par test sur ce qui le ferait échouer ; jeu d'essai du blocage vérifié avant usage ; dates à midi UTC ; données fictives ; src/ non modifié ; aucune commande lancée.
+Ce que j'ai fait corriger : rien dans le code. Compte rendu faux sur le nombre de tests (28 annoncés, 27 réels) : l'agent avait retiré 2 tests sans le dire (un doublon, un test qui comparait une liste à elle-même).
+Tests : 304 passés, 0 échec (npm test) ; 27 passés sur 27 (node --test test/convention-bloc.test.js).
+Fichiers modifiés : test/convention-bloc.test.js (nouveau)
+Build refait : pas nécessaire (src/ inchangé)
+Commit : e4691fa
+
+## Tâche C26 — Recette R1 de la convention : cas de test et campagne C01
+
+Date : 2026-10-23
+Agent : recetteur (écriture des cas), puis Hanta (relecture et exécution)
+Prompt : cas de recette de R1 (affichage du bloc), puis correction des valeurs selon les listes du carnet
+
+Note /5 : 5
+Ce qui allait : 15 cas en lecture seule, textes copiés de la note UX, données d'essai précises (dates à 12:00), « Droits insuffisants » non jouable et renvoyé aux tests de C25, absence de boutons signalée comme normale.
+Ce que j'ai fait corriger : ID (CONV-01 à 15), Fonction, Type et Automatisable aux valeurs du carnet, 3 tests de fumée au lieu de 5, Rejouable_PROD à Oui, pas de nouvelle DR ni DD, pas de comptes inventés, VoiceOver. Corrigé ensuite à la main : Automatisable à Non pour CONV-08 à 15, ligne sur le mode sombre.
+Tests : campagne C01 jouée en local sur DEV7 (TEST occupé par la recette des contacts), version 7e951b4 : 15 cas OK sur 15. npm test : 368 passés sur 368, après la fusion de main.
+Fichiers modifiés : docs/tests/cas-de-test-convention.tsv, docs/tests/cas-de-test-convention.md
+Build refait : pas nécessaire
+Commit : cas de test commités avant la fusion
+Reste à faire : campagne C02 sur TEST, jouée par un autre développeur. Mode sombre du tableau de bord à traiter à part.
+
+## Tâche C27 — Bouton « Générer » et fenêtre Convention en lecture seule (S5, tâche 5.1a)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 5.1a (découpage de la 5.1), puis correction du style de la fenêtre
+
+Note /5 : 5
+Ce qui allait : bouton seulement à l'état À générer ; bouton grisé avec aria-disabled et aria-describedby, un seul message de blocage, texte caché ; fenêtre en lecture seule (club, SIRET, siège, agence, adresse), valeurs échappées ; fermeture par Fermer et Échap, focus rendu au bouton, focus gardé dans la fenêtre ; périmètre respecté (pas de signataires, pas de bloc Modèle et Année) ; 4 tests en échec annoncés à l'avance.
+Ce que j'ai fait corriger : la ligne CSS des fenêtres Ajout et Suppression, modifiée alors qu'un test la vérifie au caractère près ; remise à l'identique, règle séparée pour #conventionModal. Libelle_agence dite « confirmée par le backlog » à tort : la colonne était déjà utilisée dans le code (vérifié).
+Tests : 368 tests, 364 passés, 4 échecs attendus (tests de la 4.2, mis à jour en C28). Vérifié à l'écran dans DEV7 : bouton grisé et message pour A7, ouverture de la fenêtre pour A1, Échap et focus, aucun bouton pour A2 à A6.
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 5ebcf04
+
+## Tâche C28 — Tests du bouton « Générer » et de la fenêtre (S5, tâche 5.3a)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tâche 5.3a, mise à jour des 4 tests de la 4.2 et tests de la 5.1a
+
+Note /5 : 5
+Ce qui allait : 4 tests mis à jour sans suppression ; 26 tests ajoutés dans test/convention-fenetre.test.js, chacun avec son commentaire « Échoue si… » ; helpers/widget.js non modifié ; nombre annoncé égal au nombre réel.
+Ce que j'ai fait corriger : rien. Constats à traiter : message « Renseignez le dispositif » impossible à afficher (note UX, en 10.2) ; test « aucun libellé de bouton » devenu fragile (en 5.3b) ; tests Tab et Maj+Tab à adapter quand la 5.1b ajoutera des champs.
+Tests : 394 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-bloc.test.js, test/convention-fenetre.test.js (nouveau)
+Build refait : pas nécessaire (src/ inchangé)
+Commit : c937fe8
+
+## Tâche C29 — Champs de la fenêtre Convention, sans enregistrement (S5, tâche 5.1b)
+
+Date : 2026-10-23
+Agent : dev-interface
+Prompt : tâche 5.1b, plus trois réponses de Hanta (bouton Enregistrer seul, brouillon sans contrôle des champs obligatoires, « Fonction non renseignée ») et le message de l'année
+
+Note /5 : 4
+Ce qui allait : trois blocs, liste des signataires du club, fonction en lecture seule, « Directeur d'agence » prérempli, pied sans « Générer », contrôle de l'année seul, point d'appel conventionEnregistrer pour la 5.2 ; questions posées au lieu d'inventer ; 5 tests en échec annoncés à l'avance.
+Ce que j'ai fait corriger : bug du message d'erreur de l'année visible dès l'ouverture (classe help-block avec invalid-feedback), voir C30.
+Tests : 389 passés, 5 échecs annoncés (mis à jour en C31). Vérifié à l'écran dans DEV7 : trois blocs, signataires, fonction, année refusée puis acceptée au clic suivant, Échap.
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 940d8b9
+
+## Tâche C30 — Bug : message d'erreur de l'année toujours visible
+
+Date : 2026-10-23
+Agents : relecteur (cause), testeur (test qui échoue), dev-interface (correction)
+Prompt : cycle d'un bug
+
+Note /5 : 5
+Ce qui allait : cause trouvée par comparaison avec la fenêtre d'ajout (help-block en plus), alerte du haut vérifiée non concernée ; cause confirmée par Hanta dans l'inspecteur (règle .help-block.invalid-feedback) ; test en échec avant la correction (6 échecs), vert après (5 échecs restants, attendus).
+Ce que j'ai fait corriger : rien. dev-interface a affirmé « le message n'est plus visible » sans l'avoir vérifié, et a décrit à tort qu'un champ vide affiche l'erreur.
+Tests : 395 tests, 390 passés, 5 échecs attendus. Vérifié à l'écran : aucun message à l'ouverture, message seulement pour une année invalide.
+Fichiers modifiés : src/actions-dashboard/script.js, test/convention-fenetre.test.js
+Build refait : oui
+Commit : 940d8b9 (code) et aac4996 (test)
+
+## Tâche C31 — Note UX à jour et tests de la fenêtre (S5, tâche 5.3b, première partie)
+
+Date : 2026-10-23
+Agents : designer-ux (note), Claude Code sans agent (décisions D-4 à D-6), testeur (tests)
+Prompt : décisions du jour reportées dans la note, puis tests de la 5.1b
+
+Note /5 : sans objet
+Ce qui allait : note datée « mis à jour le 2026-10-23 », décisions séparées des propositions (D-3 à décider avant S7) ; 19 tests ajoutés, 6 mis à jour, 0 retiré ; test fragile « aucun libellé de bouton » vraiment corrigé ; écart code/note signalé sans être caché.
+Ce que j'ai fait corriger : rien. Le testeur a lancé ses deux fichiers de test lui-même malgré la consigne. Reste à faire : la phrase « obligatoires pour générer la convention » dans le code (écart signalé par le testeur), le nom du test « deux blocs », le commentaire de keepFocusInConvention.
+Tests : 414 passés, 0 échec (npm test).
+Fichiers modifiés : docs/ux/convention.md, test/convention-fenetre.test.js, test/convention-bloc.test.js
+Build refait : pas nécessaire
+Commit : Commit : 5872cd1 (note) et aac4996 (tests)
+
+## Tâche C32 — Écart : phrase des champs obligatoires de la fenêtre Convention
+
+Date : 2026-10-23
+Agents : testeur (test qui échoue), dev-interface (correction)
+Prompt : écart signalé en C31 entre la note et le code
+
+Note /5 : 5
+Ce qui allait : test du texte exact, en échec avant la correction (415 tests, 1 échec) ; risque de l'apostrophe signalé par le testeur et pris en compte ; correction limitée à la phrase et au commentaire de keepFocusInConvention ; test « trois blocs » renommé.
+Ce que j'ai fait corriger : rien. dev-interface a lu la note avec grep malgré la consigne (lecture seule, sans conséquence).
+Tests : 415 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-fenetre.test.js, src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : Commit : 74cafa9 (correction) et 0af812d (test)
+
+## Tâche C33 — Enregistrement des informations de la convention (S5, tâche 5.2)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 5.2, avec le préremplissage à la réouverture
+
+Note /5 : sans objet
+Ce qui allait : une seule opération applyUserActions, mise à jour de la ligne existante (la plus ancienne en cas de doublon) sinon création ; six colonnes écrites, jamais les colonnes de PDF, de date ni DR et DD ; valeurs vides correctes (0, null, "") ; messages de la note, fenêtre laissée ouverte ; rien dans la console ; préremplissage à la réouverture.
+Ce que j'ai fait corriger : rien. À décider en S8 : quel modèle enregistrer lors d'une re-génération (celui de la génération ou le modèle actif). À regarder en R2 : message hors de l'écran sur un petit écran.
+Tests : 415 passés, 0 échec. Vérifié à l'écran dans DEV7 sur ESSAI-CONV-A1 : création d'une seule ligne, réouverture préremplie, mise à jour sans doublon, année vide écrite vide, enregistrement avec « Voir en tant que » FT Régional. L'agence d'essai a dû être rattachée à une DD et une DR existantes.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : cb52eb6
+
+## Tâche C34 — Tests de l'enregistrement de la convention (S5, tâche 5.3b, deuxième partie)
+
+Date : 2026-10-23
+Agent : testeur
+Prompt : tests de la 5.2 (10 points), puis correction de 6 tests
+
+Note /5 : sans objet
+Ce qui allait : nouveau fichier test/convention-enregistrement.test.js, 19 tests, chacun avec « Échoue si… » ; helpers/widget.js non modifié ; risque d'erreur dans ses doublures annoncé à l'avance.
+Ce que j'ai fait corriger : 6 tests en échec alors que le code était bon (comparaison stricte d'objets venant du bac à sable) ; ajout d'une fonction ordinaire() avant la comparaison, sans relâcher aucune vérification, plus un contrôle explicite de l'identifiant null.
+Tests : 434 tests, 428 passés, 6 échecs, puis 434 passés, 0 échec après correction (npm test).
+Fichiers modifiés : test/convention-enregistrement.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : c5928e3
+
+## Tâche C35 — Chargement de pdfmake (S7, tâche 7.1)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 7.1, avec les adresses et les empreintes SRI calculées par Hanta (fichiers vérifiés en HTTP 200)
+
+Note /5 : sans objet
+Ce qui allait : version 0.3.3 figée, deux scripts chargés dans l'ordre avec integrity, crossorigin et referrerpolicy ; un seul chargement par page, nouvel essai possible après un échec ; erreur reconnaissable (pdfmake-non-charge), rien dans la console ; rien chargé à l'ouverture ; enregistrement de Roboto compris en lisant le fichier, sans deviner.
+Ce que j'ai fait corriger : rien. À traiter en 7.2 : délai maximum de chargement (sinon attente sans fin, Échap et Fermer étant ignorés pendant la génération). À vérifier en 7.2 : nom de la police enregistrée.
+Tests : 434 passés, 0 échec (npm test). Tests propres à 7.1 prévus en 7.3.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b7fdb57
+
+## Tâche C36 — Génération du PDF de la convention, sans écran (S7, tâche 7.2)
+
+Date : 2026-10-23
+Agent : dev-backend
+Prompt : tâche 7.2, neuf étapes dans l'ordre de la décision D-S7-4
+
+Note /5 : sans objet
+Ce qui allait : conventionGenerer suit les neuf étapes ; contrôle de tous les champs obligatoires avec les six messages validés (D-3) ; enregistrement silencieux ; délai de 20 secondes pour pdfmake ; envoi du fichier par la méthode du logo de clubs, jeton jamais affiché ; une seule opération pour PDF_genere et Date_generation (D-S7-1) ; neuf codes d'erreur ; rien d'écrit avant la dernière opération ; risques signalés honnêtement.
+Ce que j'ai fait corriger : la liste des cases n'avait jamais été décidée (une partie inventée par l'agent) : liste officielle validée par Hanta et écrite dans la note ; apostrophe droite refusée et case connue mais vide traitée comme inconnue, corrigées en C37.
+Tests : 434 passés, 0 échec (npm test). Tests propres à 7.2 prévus en 7.3.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : b15f049
+Reste à vérifier au premier essai dans DEV7 : rattachement de la pièce jointe par un non-propriétaire (« Voir en tant que » FT Régional), formats de la pièce jointe et de la date, getBlob de pdfmake 0.3.3, nom de la police. Logo absent (Q-C ouverte). Colonne Modele non mise à jour à la génération (S8).
+
+## Tâche C37 — Cases du modèle : apostrophes et cases vides (S7, correction de la 7.2)
+
+Date : 2026-10-23
+Agents : dev-backend (code), testeur (tests)
+Prompt : liste officielle des cases décidée par Hanta et écrite dans la note ; deux règles à appliquer
+
+Note /5 : sans objet
+Ce qui allait : les deux apostrophes acceptées dans conventionValeurDeCase, qui sert aussi au remplacement et au bloc de signature ; case connue mais vide remplacée par 28 points (longueur reprise du bloc de signature, CONVENTION_POINTILLES) ; case inconnue toujours bloquante avec son nom d'origine ; [Année] dans un modèle sans année reste bloquante (gardé volontairement). Côté tests : l'ancien test de la règle 2.4 mis à jour, nouvelles règles couvertes.
+Ce que j'ai fait corriger : rien. Le testeur a annoncé 9 tests ajoutés pour 10 réels.
+Tests : 434 tests, 433 passés, 1 échec attendu (ancienne règle), puis 444 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : 65059ce (code) et 1d5b2d8 test (tests)
+Reste à faire : longueur des pointillés à vérifier sur papier (7.6).
+
+## Tâche C38 — Bouton « Générer » dans la fenêtre Convention (S7, tâche 7.2b)
+
+Date : 2026-10-24
+Agent : dev-interface
+Prompt : tâche 7.2b, décisions D-S7-1 à D-S7-7 de la note
+
+Note /5 : 5
+Ce qui allait : bouton principal en dernier dans le pied, grisé sans contact ; verrouillage avant toute opération asynchrone, Échap et Fermer ignorés pendant l'attente ; message exact par code d'échec, saisie gardée, focus sur le bouton ; réussite : fenêtre fermée, seul le bloc refait, message « Convention générée. », focus provisoire sur ce message ; 6 tests en échec annoncés à l'avance ; deux fonctions existantes adaptées et signalées.
+Ce que j'ai fait corriger : rien. À reprendre en finition : espacement écrit en dur (-16px), espace en trop au-dessus du texte du bloc (vu à l'écran).
+Tests : 444 tests, 438 passés, 6 échecs attendus (mis à jour en C40). Premier vrai PDF dans DEV7 en propriétaire : 10 cases remplies, nom du fichier, saut de page, numéros de page, signatures sur deux colonnes, gras. Logo absent (Q-C). Note placée en fin de document (Q-A).
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html
+Build refait : oui
+Commit : 64a62ef (avec la correction C39)
+
+## Tâche C39 — Bug : un FT Régional ne pouvait pas générer (rattachement du PDF)
+
+Date : 2026-10-24
+Agents : relecteur (cause), testeur (tests qui échouent), dev-backend (correction)
+Prompt : cycle d'un bug, message rattachement-echoue en « Voir en tant que » FT Régional
+
+Note /5 : 5
+Ce qui allait : cause confirmée par comparaison avec le logo de clubs (applyUserActions refusé à un non-propriétaire pour une pièce jointe neuve), cause probable et cause prouvée bien distinguées ; 11 tests, dont 10 en échec avant la correction ; correction par une seule requête PATCH REST qui écrit PDF_genere et Date_generation (D-S7-1 respectée), même jeton que l'envoi, jamais affiché, sans repli.
+Ce que j'ai fait corriger : rien.
+Tests : 455 tests, 6 échecs attendus de la 7.2b et 10 du rattachement, puis 449 passés (seuls les 6 de la 7.2b restants). Vérifié dans DEV7 : génération réussie en « Voir en tant que » FT Régional.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-generation.test.js (nouveau)
+Build refait : oui
+Commit : 64a62ef (code) et 8bbec31 (tests)
+Reste à faire : fichier envoyé mais non rattaché si l'écriture échoue (fichier orphelin, à voir avec S8).
+
+## Tâche C40 — Tests de l'écran du bouton « Générer » (S7, tâche 7.3, première partie)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : mise à jour des 6 tests de la 7.2b et tests de l'écran
+
+Note /5 : 5
+Ce qui allait : 6 tests mis à jour sans retrait ; 26 tests ajoutés, dont un nouveau fichier test/convention-generer-ecran.test.js (choix expliqué) ; un message exact vérifié par code d'échec ; noms de cases avec HTML affichés comme du texte ; compte annoncé exact (481).
+Ce que j'ai fait corriger : rien. Le testeur a lancé des commandes de lecture malgré la consigne.
+Tests : 481 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-fenetre.test.js, test/convention-bloc.test.js, test/convention-generer-ecran.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 66c6a40
+
+## Tâche C41 — « Voir la convention » (S7, tâche 7.4) et bug du jeton du propriétaire
+
+Date : 2026-10-24
+Agents : dev-interface (bouton, puis correction), relecteur (enquête)
+Prompt : tâche 7.4, puis cycle d'un bug (403 « Cannot access attachment »)
+
+Note /5 : sans objet
+Ce qui allait : onglet ouvert au clic (bloqueur de fenêtres), jeton dans des variables locales, ouverture depuis une adresse blob: libérée au bout de 60 s, opener à null, « Ouverture en cours… », message d'échec de la note, onglet vide refermé, focus sur « Voir la convention » après une génération (D-S7-6).
+Ce que j'ai fait corriger : le propriétaire recevait 403 « Cannot access attachment ». Enquête : numéro de fichier correct (12 = 12), type de colonne correct, règles d'accès correctes ; cause : le jeton en lecture seule fait passer le propriétaire au niveau lecteur, refusé par les règles par défaut. Correction : jeton d'écriture, avec un commentaire qui interdit de le remettre en lecture seule.
+Leçon : « Voir en tant que » ne simule pas l'utilisateur pour les jetons du widget. La génération « réussie en Régional » de C39 avait été faite avec le jeton du propriétaire. Preuve réelle obtenue avec un compte non propriétaire (éditeur, profil FT Régional complet dans Utilisateurs) : génération et « Voir » réussies.
+Tests : 481 tests, 6 échecs attendus, puis 495 tests, 1 échec (test du bug), puis 495 passés, 0 échec (npm test). Vérifié à l'écran en propriétaire : PDF ouvert depuis une adresse blob:.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : e719ebf
+Reste à faire : requestTableColumns utilise aussi un jeton en lecture seule (choix de Statut, Public, Format) ; pour un propriétaire, repli probable sur la liste de secours. Tâche à part.
+
+## Tâche C42 — Tests de « Voir la convention » (S7, tâche 7.5)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : mise à jour de 6 tests, tests de « Voir », test du bug
+
+Note /5 : 5
+Ce qui allait : 6 tests mis à jour sans retrait ; 14 tests dans test/convention-voir.test.js, dont le test du bug, seul en échec avant la correction, comme annoncé ; doublures justes du premier coup ; aucun jeton ni texte technique vérifié dans chaque échec.
+Ce que j'ai fait corriger : rien.
+Tests : 495 passés, 0 échec après la correction (npm test).
+Fichiers modifiés : test/convention-bloc.test.js, test/convention-generer-ecran.test.js, test/convention-voir.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 445b24d
+
+## Tâche C43 — Fin des tests de la génération (S7, tâche 7.3)
+
+Date : 2026-10-24
+Agent : testeur
+Prompt : tests du chargement de pdfmake, du nom du fichier, du contrôle de « Générer » et des neuf codes d'erreur
+
+Note /5 : sans objet
+Ce qui allait : 53 tests, tous verts du premier coup (compte annoncé exact) ; nouveau fichier test/convention-pdfmake.test.js, choix expliqué ; minuterie simulée pour le délai de 20 s ; pour chaque code d'erreur : rien dans PDF_genere ni Date_generation, état conservé, ni jeton ni nom de personne dans l'erreur, le message ou la console ; ordre des étapes (D-S7-4) vérifié.
+Ce que j'ai fait corriger : rien. Le testeur a lancé des commandes de lecture et node --check.
+Tests : 548 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-generation.test.js, test/convention-pdfmake.test.js (nouveau)
+Build refait : pas nécessaire
+Commit : 7b378e5
+À faire plus tard : après un délai de 20 s dépassé, un nouvel essai échoue tant que la page n'est pas rechargée, alors que le message dit « Réessayez » (petite tâche dev-backend). Commentaire d'en-tête périmé dans convention-generation.test.js.
+
+## Tâche C44 — Mise en page du PDF (S7, tâche 7.7a) et bug de pageBreakBefore
+
+Date : 2026-10-25
+Agents : designer-ux (§11 de la note), Claude Code sans agent (mesures et décisions D-MEP), dev-backend (code et correction)
+Prompt : §11 « Mise en page du PDF » d'après le Word officiel, hors logos ; puis correction de pageBreakBefore
+
+Note /5 : sans objet
+Ce qui allait : §11 sans mesure inventée, mesures manquantes relevées dans le Word et décisions D-MEP-1 à 7 ; code : marges 2,5 cm, Roboto 11 pt justifié, titres, retraits et espaces, numéro de page seul absent de la page 1, bloc « Fait à… » + signatures insécable, nouveau marqueur {signatures:ft-gauche}. Questions posées au lieu d'inventer (puce, ordre des signatures).
+Ce que j'ai fait corriger : génération impossible (echec-inattendu) : pageBreakBefore écrite pour pdfmake 0.2, plantait en 0.3.3 (« Cannot read properties of undefined (reading 'length') », relevé par Hanta avec la pause sur exception du navigateur) ; corrigée et rendue robuste (renvoie false si un argument manque).
+Décisions de Hanta : puce ronde acceptée ; ordre intitulé, nom, fonction, espace pour signer ; un titre suivi d'au moins une ligne suffit.
+Tests : 476 tests, 1 fichier en échec au chargement (corrigé en C45), puis 582 passés, 0 échec. Vérifié à l'écran dans DEV7 : titre centré, texte justifié, sous-titres en retrait, numéros de page, « Fait à… » collé aux signatures avec France Travail à gauche.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : e8ab27a
+Reste à faire : logos (7.7b) ; longueur des pointillés (« Fait à », SIRET, cases vides) après l'essai sur papier (7.6) ; vérifier sur un vrai PDF qu'un titre en bas de page passe à la suivante. Agent : nouvelles commandes de lecture malgré la consigne.
+
+## Tâche C45 — Tests de la mise en page du PDF (S7, tâche 7.7a)
+
+Date : 2026-10-25
+Agent : testeur
+Prompt : réparer le chargement de convention-modele.test.js, mettre à jour l'ancienne mise en page, tester le §11 et pageBreakBefore
+
+Note /5 : sans objet
+Ce qui allait : chargement réparé sans toucher à script.js ; valeurs attendues écrites en clair (pas relues dans le réglage) ; pageBreakBefore testée avec des arguments absents ou à la façon de pdfmake 0.2 ; compte annoncé exact (582).
+Ce que j'ai fait corriger : rien.
+Tests : 582 passés, 0 échec (npm test).
+Fichiers modifiés : test/convention-modele.test.js
+Build refait : pas nécessaire
+Commit : 96f9185
+
+## Tâche C46 — Logos de la convention (S7, tâche 7.7b) et réglages après comparaison avec le Word
+
+Date : 2026-10-25
+Agents : dev-backend (logos, puis réglages), Claude Code sans agent (note §11), testeur (tests)
+Prompt : tâche 7.7b (colonnes Logo et Logo_partenaire de Modeles_convention), puis réglages décidés par Hanta en comparant le PDF au Word
+
+Note /5 : sans objet
+Ce qui allait : logos lus dans Grist au moment de la génération ; PNG et JPEG reconnus d'après leurs octets ; jamais agrandis ni déformés ; un seul jeton par génération, en écriture, jamais affiché ; un logo absent ou illisible ne bloque pas (logosManquants) ; ancien logo d'en-tête retiré ; source pdfmake citée.
+Ce que j'ai fait corriger : après comparaison avec le Word : haut des logos à 1,25 cm du haut de la page, titre 24 pt sous les logos, titre en retrait de 1 cm à gauche et à droite et 24 pt après. Côté tests : un JPEG d'essai trop haut (réduit à juste titre par le code).
+Tests : 582 tests, 10 échecs attendus, puis 633 tests, 1 échec (test du JPEG), puis 633 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : logo à bonne taille, en haut de la première page seulement ; génération sans logo quand la colonne est vide.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, docs/ux/convention.md (§11.1, §11.2), test/convention-generation.test.js, test/convention-modele.test.js, test/convention-logos.test.js (nouveau)
+Build refait : oui
+Commit : 956fd5c (code) et 0ca0699 (tests)
+Reste à faire : 7.7c (message quand un logo manque) ; lisibilité (interligne 1,2, 10 pt entre paragraphes, 6 pt après les listes, vrai gras Roboto Bold) ; italique de « Entre » et « et » ajouté dans les modèles par Hanta.
+
+## Tâche C47 — Lisibilité du PDF : interligne et espaces (S7, partie A)
+
+Date : 2026-10-25
+Agents : Claude Code sans agent (note §11), dev-backend (code), testeur (tests)
+Prompt : décisions de Hanta après comparaison avec le Word (interligne 1,2, 10 pt après un paragraphe, 6 pt après un élément de liste), pour la lisibilité des personnes qui voient mal
+
+Note /5 : 5
+Ce qui allait : les trois réglages appliqués dans CONVENTION_MISE_EN_PAGE ; protection ajoutée de sa propre initiative pour que le numéro de page reste à 1,25 cm du bas malgré le nouvel interligne, signalée clairement ; conséquences sur les signatures et la place du titre sous les logos annoncées à l'avance et acceptées par Hanta ; 2 tests mis à jour, 1 ajouté pour la protection du numéro de page.
+Ce que j'ai fait corriger : rien.
+Tests : 633 tests, 2 échecs attendus, puis 634 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : PDF plus aéré, plus facile à lire, comparé au Word.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : b613b39 (code) et a29b460 (tests)
+Reste à faire : le vrai gras (partie B, auditeur-securite puis dev-backend) ; position exacte du numéro de page (1,25 cm) à vérifier à l'écran ; écart de 0,2 pt sous les logos, invisible, signalé pour mémoire.
+
+## Tâche C48 — Message d'information quand un logo manque (S7, tâche 7.7c)
+
+Date : 2026-10-25
+Agent : dev-interface
+Prompt : tâche 7.7c, afficher le message de la décision D-MEP-3 quand logosManquants n'est pas vide
+
+Note /5 : 5
+Ce qui allait : deux messages exacts selon le logo concerné ; les deux textes cohabitent dans la même alerte (deux lignes), pour respecter la règle « une seule alerte à la fois » de la note, sans écraser « Convention générée. » ; aucune classe inventée ; les textes du §5 déjà présents dans la note, vérifiés plutôt que dupliqués ; 634 tests toujours verts du premier coup.
+Ce que j'ai fait corriger : rien.
+Tests : 634 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : message affiché sans Logo, absent avec Logo rempli, lisible.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html
+Build refait : oui
+Commit : 96b4596
+Reste à faire : revoir si une alerte « succès » convient à un message qui demande de vérifier le modèle, une fois une variante d'alerte d'information confirmée dans le design system (§10 de la note).
+
+## Tâche C49 — Case [SIRET de l'agence] (S7, suite des cases officielles)
+
+Date : 2026-10-25
+Agents : Claude Code sans agent (note), dev-backend (code), testeur (tests)
+Prompt : ajout d'une 11e case officielle, SIRET de l'agence lu dans Agences.Siret, suite à la comparaison des modèles avec le Word officiel
+
+Note /5 : sans objet
+Ce qui allait : case ajoutée à CONVENTION_CASES, conventionInfos et conventionValeursCases ; apostrophe droite et courbe acceptées, comme les autres cases ; SIRET vide traité comme les autres cases connues mais vides (pointillés, pas de blocage) ; jamais écrit dans la console ; questions posées plutôt que deviner.
+Ce que j'ai fait corriger : 1 test cassé par le jeu de données qui ne donnait pas de SIRET d'agence (comportement attendu, pas un bug).
+Tests : 634 tests, 1 échec attendu, puis 637 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-modele.test.js
+Build refait : oui
+Commit : f95e87c (code) et f6578ab (tests)
+
+## Tâche C50 — Bouton « Re-générer » et phrases de la fenêtre (S8, tâche 8.1)
+
+Date : 2026-10-26
+Agents : designer-ux (§12 de la note), Claude Code sans agent (décisions D-S8), dev-interface (code), testeur (tests)
+Prompt : tâche 8.1, décisions D-S8-1 à D-S8-3 de la note
+
+Note /5 : sans objet
+Ce qui allait : bouton « Re-générer » après « Voir la convention », à l'état « Générée » seulement, même règle de blocage que « Générer » ; phrase de remplacement en tête de fenêtre, seulement à la re-génération, sans date si absente ; « L'ancienne convention reste disponible. » ajoutée aux messages d'échec de re-génération seulement ; questions posées (place de la phrase, date absente) plutôt que deviner ; D-S8-4 (modèle actif) correctement laissée pour la 8.2 ; test fragile trouvé et corrigé par le testeur.
+Ce que j'ai fait corriger : rien.
+Tests : 637 tests, 6 échecs attendus, puis 658 passés, 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-bloc.test.js, test/convention-fenetre.test.js, test/convention-generer-ecran.test.js
+Build refait : oui
+Commit : 007c603 (code) et cdf540a (tests)
+Reste à faire (tâche 8.2) : modèle actif enregistré dans Modele, remplacement du PDF en une seule écriture, PDF_signe et Date_depot jamais touchés, ancien PDF jamais supprimé, robustesse si la réponse réseau se perd après une écriture réussie.
+
+## Tâche C51 — Re-génération : modèle actif, relecture de secours, et bug du blocage réseau (S8, tâche 8.2)
+
+Date : 2026-10-26
+Agents : dev-backend (code, deux passes), relecteur (deux diagnostics), testeur (tests, plusieurs passes)
+Prompt : tâche 8.2 (D-S8-4 à D-S8-7), puis cycle d'un bug (fenêtre bloquée en coupure réseau)
+
+Note /5 : 5
+Ce qui allait : modèle actif toujours enregistré dans Modele (D-S8-4) ; une seule écriture par re-génération, aucune suppression de pièce jointe (D-S8-5) ; PDF_signe et Date_depot jamais touchés ; ancien PDF intact en cas d'échec à toute étape (D-S8-6) ; relecture de secours (conventionPdfRattache) si le rattachement échoue sans refus clair ; incohérence signalée honnêtement (la fenêtre suit encore le modèle enregistré, pas l'actif, jusqu'au rechargement) et laissée de côté par décision de Hanta.
+Ce que j'ai fait corriger : bug grave trouvé par Hanta à l'écran : coupure réseau pendant une re-génération → fenêtre bloquée indéfiniment, aucun message, obligation de recharger la page. Deux enquêtes du relecteur : 1) aucun appel réseau n'avait de délai maximum sauf pdfmake → ajout de conventionAvecDelai, appliqué au jeton, aux logos, à l'envoi, au PATCH et à la relecture ; 2) le blocage persistait encore (conventionEnregistrer, le tout premier appel de la chaîne, n'était pas protégé) → corrigé. Côté tests : clearTimeout manquant dans le bac à sable (33 échecs), corrigé en une ligne (test/helpers/widget.js) ; 7 tests de minuterie ensuite mis à jour pour la minuterie supplémentaire de l'enregistrement.
+Tests : plusieurs cycles (682 → 1 échec → 697 avec 33 échecs clearTimeout → 697 avec 7 échecs de minuterie → 697 passés, 0 échec).
+Vérifié à l'écran dans DEV7 : re-génération réussie (nouveau PDF, même fichier remplacé, ancien absent de Grist en double) ; coupure réseau (Offline) : message d'échec affiché tout seul après l'attente, boutons déverrouillés, ancien PDF resté accessible par « Voir la convention ».
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-generation.test.js, test/convention-delais.test.js (nouveau), test/helpers/widget.js
+Build refait : oui
+Commit : 2b82bf3 (code) et c17b574 (tests)
+Reste à faire : D-S8-7 (vérifier si Grist nettoie seul les pièces jointes orphelines, avant R5) ; incohérence fenêtre/modèle actif après re-génération (amélioration possible, non urgente) ; aucun test ne déclenche directement le délai de 20 s de l'enregistrement lui-même (signalé par le testeur).
+
+## Tâche C52 — Commandes de dépôt du fichier signé (S9, tâche 9.1a)
+
+Date : 2026-10-26
+Agents : designer-ux (§4.1 et §13 de la note), Claude Code sans agent (décisions S9-1 à S9-8), dev-interface (code), testeur (tests)
+Prompt : tâche 9.1a, décisions S9-1 à S9-8 toutes tranchées « oui »
+
+Note /5 : 5
+Ce qui allait : bouton « Déposer » après « Re-générer » à l'état « Générée » ; lien « Remplacer » seul sur sa ligne à l'état « Signée » ; champ fichier caché déclenché par input.click() ; verrou de la commande utilisée et de « Re-générer » seulement (« Voir » reste utilisable, S9-5) ; région d'attente annoncée ; annulation du sélecteur sans effet. Deux erreurs de ma consigne corrigées par l'agent avant de coder : verrouiller aussi « Voir » (contraire à la note) et l'absence de « Voir la convention signée » (hors périmètre, reporté en 9.1c). 20 tests ajoutés, 6 mis à jour, dont une précision sur l'état « Signée » qui affiche déjà un bouton (le lien).
+Ce que j'ai fait corriger : rien dans le code. Mon prompt initial contredisait la note sur le verrouillage de « Voir » ; corrigé avant tout code grâce aux questions de l'agent.
+Tests : 697 tests, 6 échecs attendus, puis 717 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : bouton « Déposer » visible, sélecteur de fichiers s'ouvre, annulation sans effet, espacement du bloc correct.
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html, test/convention-bloc.test.js, test/convention-generer-ecran.test.js, test/convention-deposer.test.js (nouveau)
+Build refait : oui
+Commit : b78596d (code) et 23a1552 (tests)
+Reste à faire : 9.1b (contrôle du fichier, envoi, écriture) ; 9.1c (« Voir la convention signée »).
+
+## Tâche C53 — Contrôle et envoi du fichier signé (S9, tâche 9.1b)
+
+Date : 2026-10-26
+Agents : dev-backend (code), dev-interface (correction du moment d'affichage), testeur (tests)
+Prompt : tâche 9.1b, contrôles dans l'ordre de la note, envoi par PATCH (PDF_signe + Date_depot ensemble, S9-1), délais sur tous les appels réseau
+
+Note /5 : 5
+Ce qui allait : 5 contrôles dans l'ordre exact (vide, taille, extension, type, contenu %PDF-) ; un seul message, le bon ; une seule écriture PATCH ; message distinct pour un refus de droits (S9-4) ; relecture de secours ajoutée de sa propre initiative, comme pour la génération ; tous les appels réseau protégés par un délai, leçon de C51 bien appliquée ; aucune suppression de l'ancien fichier signé (S9-8).
+Ce que j'ai fait corriger : « Envoi en cours… » s'affichait avant même les contrôles du fichier, contraire à la note ; corrigé pour n'apparaître qu'après un fichier valide. 6 tests mis à jour, 2 ajoutés en conséquence.
+Tests : 717 tests, 4 échecs attendus, puis 719 passés, 0 échec (npm test). Vérifié à l'écran dans DEV7 : faux PDF (texte renommé) refusé directement sans jamais afficher « Envoi en cours… » ; vrai PDF déposé avec succès, état passé à « Signée ».
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-deposer.test.js
+Build refait : oui
+Commit : 3f2a798 (tests) et 7763fed (code)
+Reste à faire : 9.1c, « Voir la convention signée » (le lien « Remplacer » fonctionne déjà, mais il n'y a aucun moyen de revoir le PDF signé) ; décision en attente : renommer ou non le fichier signé au dépôt (il garde aujourd'hui son nom d'origine, qui peut contenir un nom de personne).
+
+## Tâche C54 — « Voir la convention signée », nom du fichier signé renommé, et correction de l'année invalide (S9, tâche 9.1c)
+
+Date : 2026-10-26
+Agents : dev-backend (renommage, conventionVoirSignee, correction), dev-interface (bouton et écran), testeur (tests)
+Prompt : tâche 9.1c (fermeture du parcours de dépôt), puis correction d'un cas limite signalé
+
+Note /5 : 5
+Ce qui allait : fichier signé renommé au dépôt en Convention-signee-[dispositif]-[club]-[année].pdf, mêmes règles que le PDF généré (fonction commune conventionNomFichierAvec, pas de duplication) ; bouton « Voir la convention signée » à l'état « Signée », avant « Remplacer », même comportement que « Voir la convention », jamais verrouillé pendant un remplacement (S9-5) ; focus après un premier dépôt qui trouve maintenant un vrai bouton ; détail ajouté par dev-interface non demandé (bouton reconstruit avec son état verrouillé si le bloc est refait pendant l'ouverture) ; cas limite trouvé et corrigé : une année invalide (« abc », « 12 ») était recopiée telle quelle dans le nom du fichier, au lieu d'être omise comme pour un modèle sans année.
+Ce que j'ai fait corriger : rien en dehors de ce qui précède (le cas limite a été trouvé par une question de ma part, pas par un bug constaté à l'écran).
+Tests : 719 tests, 4 échecs attendus (état Signée, deux éléments au lieu d'un), puis 727 passés après la 9.1c, puis 729 passés après la correction de l'année invalide (npm test). Vérifié à l'écran dans DEV7 : bouton visible et fonctionnel, PDF signé ouvert, focus correct après un premier dépôt.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-bloc.test.js, test/convention-deposer.test.js, test/convention-voir-signee.test.js (nouveau), test/convention-pdfmake.test.js
+Build refait : oui
+Commit : c79d9d2 et 6374f44 (9.1c) ; 6408060 et 119c34a (correction année invalide)
+
+## Tâche C55 — Audit de sécurité final et corrections (S10, tâche 10.1)
+
+Date : 2026-10-26
+Agents : auditeur-securite (examen), dev-backend (corrections), testeur (tests)
+Prompt : examen de sécurité final de toute la fonctionnalité Convention, avant clôture
+
+Note /5 : sans objet
+Ce qui allait : aucun point bloquant sur l'ensemble de la fonctionnalité (jetons, pdfmake/SRI, logos, contenu du fichier généré, dépôt du fichier signé) ; 2 points mineurs identifiés et corrigés (jeton recopié dans un console.warn hors Convention ligne 194 ; logos sans limite de dimensions pouvant figer l'onglet) ; remarque documentaire importante : les pièces jointes Grist ne sont pas filtrées par table, la vraie protection vient des règles de Conventions/Modeles_convention (à ajouter à CLAUDE.md) ; CLAUDE.md en retard sur les écritures réelles (Conventions, pièces jointes) à mettre à jour en 10.2.
+Ce que j'ai fait corriger : les 2 points mineurs ci-dessus.
+Tests : 729 passés avant correction, puis 733 passés après (4 tests ajoutés pour les logos), 0 échec (npm test).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/convention-logos.test.js
+Build refait : oui
+Commit : a194073 (tests) et 07fbccf (code)
+Reste à faire (10.2) : vérifier les règles d'accès réelles dans DEV7/TEST (Modeles_convention en lecture seule hors propriétaires, ANS/anonyme sans accès) ; mettre à jour CLAUDE.md (écritures sur Conventions, pièces jointes non filtrées par table, jeton d'écriture utilisé aussi pour la lecture par nécessité).
+
+## Tâche C56 — Évolution 1 : allègement de la fenêtre Convention
+
+Date : 2026-10-29
+Agents : designer-ux (plusieurs passes), dev-interface (plusieurs passes), dev-backend (plusieurs passes), testeur (mise à jour massive), relecteur (diagnostic grille)
+Prompt : retours du chef de projet après la mise en production de S7-S10, affinés au fil de nombreux allers-retours (décisions D-E1-1 à D-E1-21, docs/backlog.md)
+
+Note /5 : 4
+Ce qui a changé, résumé :
+- Fenêtre allégée : plus de colonne "Informations", plus de champ Année ni Modèle utilisé dans le formulaire. Deux blocs, Club (encart en lecture seule, nom/SIRET/adresse sur une ligne, hauteur automatique) et Agence (nom seul).
+- Plus aucun champ obligatoire. Seul blocage restant à l'ouverture : club et agence doivent être renseignés sur l'action (le blocage "adresse du club", oublié dans une première passe, a été retiré après coup, trouvé par le testeur).
+- Signataire club : bouton "Ajouter un contact" (remplace une ligne dépliante abandonnée en cours de route) ouvrant un petit formulaire (Nom, Prénom, E-mail, Fonction, aucun obligatoire), qui crée un contact dans Contacts puis le référence dans Conventions.Signataire_club, sans jamais écraser une année existante par erreur.
+- Année : vient désormais de Actions.Campagne → Campagnes.Campagne, plus jamais saisie dans la fenêtre ; un bug grave (Annee: null écrasant une valeur existante à chaque enregistrement) a été trouvé et corrigé avant tout essai à l'écran.
+- Bouton "Enregistrer les informations" supprimé : Fermer/Échap enregistrent silencieusement.
+- Seuil de bascule à deux colonnes abaissé de 1200 px à 1100 px, après qu'un essai à l'écran de Hanta (fenêtre réduite, usage réel de travail) ait montré que 1200 px était trop haut pour un usage courant.
+- Pointillés du PDF doublés (28 → 56 points), sur demande du chef de projet.
+- Une maquette de référence (approximative, hors design system) a servi à cadrer les échanges avec le chef, puis a été intégrée au dépôt (docs/ux/maquette-convention-e1.html/.png) pour que les agents puissent la consulter ; plusieurs écarts entre elle et la note ont été tranchés un par un (sous-titre dans l'en-tête, pas de croix, ligne dépliante repliée par défaut, etc.), avant d'être eux-mêmes remplacés par la décision finale du bouton "Ajouter un contact".
+Ce que j'ai fait corriger en cours de route : bug Annee: null (grave, avant tout essai) ; grille à deux colonnes qui ne basculait pas (fausse alerte, cache navigateur) puis seuil réellement trop haut (vrai correctif) ; titres "Club"/"Agence" en double ; espace vide à droite (grille à trois colonnes jamais réduite à deux) ; espacements insuffisants (gap entre colonnes, champs du formulaire) ; phrase d'introduction erronée (deux fois) ; blocage de l'adresse du club oublié.
+Tests : plusieurs cycles sur la journée, de 733 (avant E1) à 765 puis 761 tests, 0 échec au final (npm test). Vérifié à l'écran par Hanta dans DEV7 : bouton Ajouter un contact, pointillés sur champ vide, bascule à deux colonnes sous 1100 px, encart Club sans poignée.
+Fichiers modifiés : src/actions-dashboard/script.js, style.css, actions-dashboard.html, 9 fichiers de test (dont convention-contact.test.js, nouveau),
+
+## Tâche C57 — Évolution 2 : pop-up plein écran pour Voir, téléchargem#ent avec le bon nom
+
+Date : 2026-10-30
+Agents : relecteur (deux diagnostics), designer-ux (plusieurs passes), auditeur-securite (examen de l'iframe), dev-interface (code), testeur (mise à jour complète)
+Prompt : bugs constatés par le chef de projet (PDF non téléchargeable avec le bon nom, adresse github.io trompeuse), affinés en plusieurs décisions (E2-1 à E2-11, docs/backlog.md)
+
+Note /5 : 4
+Ce qui a changé, résumé :
+- "Voir la convention" et "Voir la convention signée" ouvrent une pop-up PLEIN ÉCRAN (dans l'espace du widget) au lieu d'un nouvel onglet : plus d'adresse blob:/github.io visible dans la barre d'adresse du navigateur.
+- Bouton "Télécharger" ajouté à deux endroits : dans le bloc (indépendant, rapide) ET dans l'en-tête de la pop-up (après consultation) ; les deux garantissent le bon nom de fichier ("Convention-..."), quel que soit le navigateur.
+- Le bouton "Télécharger" de la pop-up n'est jamais un vrai lien permanent (pour qu'aucune adresse ne soit visible même au survol) : il fabrique un lien temporaire au clic, comme celui du bloc.
+- Plus de titre générique : le nom du fichier devient le seul titre de la pop-up.
+- Plus de pied de page : Télécharger et la croix de fermeture passent dans l'en-tête, pour maximiser la hauteur de lecture du PDF.
+- Plus de lien "Ouvrir dans un nouvel onglet" (risque d'exposer l'adresse) : un texte simple en cas d'échec d'affichage.
+- Vrai plein écran du navigateur étudié et écarté : dépend d'une autorisation que Grist devrait donner à l'iframe du widget, non garantie ; on reste sur le plein écran de l'espace du widget, fiable à coup sûr.
+- Audit de sécurité sur l'absence de sandbox de l'iframe : point mineur non bloquant, grâce au type du Blob toujours forcé à application/pdf ; 5 garde-fous appliqués (type forcé, src posé par JS, referrerpolicy, libération à la fermeture, pas de lien permanent exposant l'adresse).
+Ce que j'ai fait corriger en cours de route : bug du nom de fichier (UUID au lieu du vrai nom) diagnostiqué par le relecteur comme une limite structurelle des adresses blob: (pas un bug du code) ; plusieurs allers-retours de cadrage avec le chef de projet (taille de la pop-up, position des boutons, risque de survol d'adresse) avant de stabiliser la note.
+Tests : 761 tests avant l'évolution, 25 échecs attendus après le premier code, 783 passés au final (22 ajoutés), 0 échec (npm test). Le testeur a volontairement cassé le code 11 fois dans une copie jetable pour vérifier que ses tests détectent bien chaque régression. Vérifié à l'écran par Hanta dans DEV7 : pop-up plein écran sans bande visible, titre = nom du fichier, boutons en en-tête, téléchargement avec le bon nom, fermeture correcte (croix et Échap).
+Fichiers modifiés : src/actions-dashboard/index.html, script.js, style.css, actions-dashboard.html, 6 fichiers de test, test/helpers/convention-popup.js (nouveau), docs/ux/convention.md, docs/backlog.md
+Build refait : oui
+Commit : bedf338 (code) et fe1b558 (tests)
+Reste à faire : vérifier le rendu réel dans Chrome, Firefox et Safari (iframe PDF, téléchargement, absence de bande visible) ; mesurer la hauteur réelle du cadre PDF (calc(100vh - 150px) est une estimation) ; R9, la recette de cette évolution, à écrire.
+
 ## Tâche 26 — Tableau de bord : conservation des filtres entre deux pages (dev-backend, testeur)
 
 Date : 03/11/2026
@@ -392,3 +1226,39 @@ Build refait : oui
 Commit : ee547d9 (code) et 9fd8fd3 (tests) sur feature/conserver-filtres
 Reste à faire : recette à écrire et jouer (carnet du tableau de bord) ; vérifier dans Grist DEV/TEST que sessionStorage n'est pas restreint par le navigateur quand le widget est chargé en iframe tiers (risque signalé par le testeur, non vérifié formellement).
 Mise en PROD : 07/11/2026, commit b168b5d (fusion fast-forward depuis feature/conserver-filtres, sans la Convention/Word). 276 tests, 0 échec. Fusionné directement dans main indépendamment de l'Évolution 3 (Convention), toujours en attente du retour du chef de projet.
+
+## Tâche 27 — Évolution 3 : génération en Word (.docx) et dépôt libre permanent
+
+Date : 2026-11-06
+Agents : chef-de-projet (cadrage), dev-backend (étude de faisabilité, code, corrections), auditeur-securite (audit de la bibliothèque), designer-ux (plusieurs passes), testeur (mise à jour complète)
+Prompt : demande du chef de projet, génération en Word plutôt qu'en PDF, pour permettre aux agents de modifier le texte avant signature (habitude de tous les agents) ; plus, demande distincte, dépôt libre du fichier signé en permanence
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- "Générer la convention" et "Re-générer" produisent un fichier .docx (bibliothèque docx 9.15.2, dolanmiu, chargée depuis jsDelivr avec SRI, même modèle de sécurité que pdfmake). Le PDF est remplacé pour le document généré.
+- "Voir la convention" (aperçu intégré) est retiré pour le document généré (un navigateur n'affiche pas nativement un .docx) : il ne reste que "Télécharger la convention". "Voir la convention signée" (PDF scanné) reste inchangé, garde sa pop-up plein écran.
+- Champs vides du document Word : REVIREMENT en cours de journée. Essayé d'abord un surlignage jaune pour les données Grist et un soulignement sans couleur pour les zones manuscrites ("Fait à…", etc.), avant de tout simplifier en un seul traitement uniforme : des pointillés (56 points), SANS AUCUNE couleur, pour tous les champs vides, exactement comme pour le PDF. Décision finale motivée par la priorité du chef de projet : rester le plus proche possible des habitudes déjà connues des agents.
+- Bouton "Déposer la convention signée" devient permanent : visible aussi aux états "À générer" et "Sans modèle", pas seulement "Générée". Le dépôt crée la ligne Conventions si besoin (Action seulement, jamais DR/DD/Modele/Annee).
+- Bug trouvé et corrigé avant tout code : le nom de fichier doit lire l'année depuis Actions.Campagne, jamais depuis Conventions.Annee (qui reste vide après un dépôt libre).
+- Bug de chargement trouvé et corrigé après un premier essai en DEV7 : le fichier dist/index.umd.cjs a un type MIME refusé par les navigateurs ; remplacé par dist/index.iife.js (le bundle navigateur officiellement documenté par docx).
+- Métadonnées du document (auteur, titre) fixées à des valeurs neutres, jamais de donnée personnelle. Les dates réelles de création/modification ne sont pas fixées : confirmé sans risque RGPD.
+- Le fichier SIGNÉ reste exclusivement un PDF (scan), aucun changement sur son contrôle.
+Ce que j'ai fait corriger en cours de route : étude de faisabilité comparant 3 bibliothèques (docx retenue, gratuite et active) ; audit de sécurité favorable sous conditions ; bug du mauvais fichier de chargement (MIME refusé), diagnostiqué depuis la console du navigateur ; essai d'une distinction surlignage/soulignement, abandonnée au profit de pointillés uniformes, pour coller au plus près des habitudes des agents ; phrase d'aide du dépôt libre retirée (jugée inutile).
+Tests : 815 tests avant l'évolution, plusieurs cycles au fil des ajustements, 915 tests au final, 0 échec (npm test). Le testeur a cassé le code à de nombreuses reprises dans des copies jetables pour vérifier que ses tests détectent bien chaque régression (34/34 puis 6/6 lors du revirement final). Vérifié à l'écran par Hanta dans DEV7 : document Word généré et ouvert (titre, logos, pointillés, police Arial, marges, signatures, tous corrects).
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, 14 fichiers de test (existants et nouveaux), test/helpers/docx.js (nouveau), docs/ux/convention.md, docs/backlog.md
+Build refait : oui
+Commit : 11d6a3a (tests finaux), 2c35460 (code final), d36e741 et 5da8d34 (version intermédiaire avec surlignage), 54ec7d5, 9c956f8 (backlog)
+Reste à faire : vérifier manuellement dans Grist si les 3 modèles officiels contiennent encore des zones à traiter comme "Fait à…" (nombre d'opérations, date de fin, contact RGPD) ; vérifier que 56 points tiennent sur une ligne dans les champs étroits de signature (signalé par dev-backend et designer-ux) ; vérifier la création de ligne Conventions par un non-propriétaire avec "Voir en tant que" (FT Régional, FT Départemental) ; vérifier le domaine jsdelivr.net sur le réseau France Travail avant la mise en PROD ; recette R10 à écrire (en parcours utilisateur courts, cf. décision du 03/11) ; retirer le code mort pdfmake une fois la transition confirmée stable.
+
+Ajustements finaux (07/11, après premier essai utilisateur) :
+- E3-26/E3-29 : la phrase d'aide à l'état "Générée" était trop longue et contradictoire (invitait à la fois à modifier dans Word et à compléter à la main après impression). Simplifiée pour les deux formats (Word et ancien PDF) : il ne reste que "Convention générée le [date].", sur le même modèle que l'état "Signée".
+- E3-27 : bug visuel corrigé, un espace vide permanent restait en haut du bloc Convention (marge négative inefficace dans une grille CSS). Corrigé avec display:none sur les deux conteneurs vides via :empty.
+- E3-28 : étiquette affichée de Conventions.PDF_genere changée en "Docx/PDF généré" dans Grist (DEV7 et TEST), nom technique inchangé pour ne casser aucun autre widget du Partenariat simplifié. Description ajoutée sur la colonne pour expliquer ce choix.
+Tests : 915 tests, 0 échec après ces trois ajustements.
+Vérifié à l'écran par Hanta dans DEV7 : plus d'espace vide, phrase courte, ligne Format toujours présente.
+Commit : 94d181a (tests), 3fe46ea (code), d8e87a8 (note UX).
+Ajustement supplémentaire (07/11, demande de Pierre après test) :
+- E3-31/E3-32 : le bouton "Télécharger" du bloc, à l'état "Signée", est retiré (redondant avec le "Télécharger" déjà présent dans l'en-tête de la pop-up "Voir la convention signée"). Il partageait 5 fonctions avec le bouton "Télécharger la convention" (état "Générée") via un paramètre "signee" : retrait complet du paramètre, pas seulement de l'appel, pour ne laisser aucun code mort. "Remplacer le fichier signé" et le "Télécharger" de la pop-up restent inchangés.
+Tests : 913 tests, 0 échec (2 tests retirés, devenus obsolètes).
+Vérifié sur TEST par Hanta : le bloc à l'état Signée n'affiche plus que "Voir la convention signée" et "Remplacer le fichier signé" ; la pop-up et son téléchargement fonctionnent normalement.
+Commit : 9885357 (tests), 9df63f1 (code), 145c4b3 (backlog).

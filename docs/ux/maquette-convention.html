@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Maquette : convention de partenariat</title>
+    <link href="https://cdn.francetravail.fr/studio/design-system/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.francetravail.fr/webco/v1/ft-autoloader.js" fetchpriority="high"></script>
+    <!-- Les classes de la fiche (edit-card, section-head, edit-fields, edit-field, edit-row) viennent du style du tableau de bord, lu tel quel. -->
+    <link rel="stylesheet" href="../../src/actions-dashboard/style.css">
+    <style>
+      /* Réglages de cette maquette uniquement : ils ne sont pas à reprendre tels quels.
+         La feuille du design system masque .modal et la fixe à l'écran : ici on l'affiche dans la page,
+         pour pouvoir empiler les parties. Les classes convention-* sont à créer dans le widget
+         (aucune n'existe dans le design system). */
+      body { padding: 24px; }
+      .maquette-bloc { margin-bottom: 48px; }
+      .maquette-bloc > h2 { margin: 0 0 16px; }
+      .maquette-bloc > h3 { margin: 32px 0 12px; }
+      .maquette-note { margin: 0 0 16px; max-width: 520px; }
+      .maquette-modal { position: relative; background: var(--ft-color-background-opacity-dark-opacity); padding: 16px 0; margin-bottom: 24px; }
+      .maquette-modal .modal { position: static; display: block; width: auto; height: auto; overflow: visible; }
+      .maquette-modal .modal-dialog { margin: 0 auto; }
+      .maquette-carte { max-width: 520px; margin-bottom: 8px; }
+
+      /* Classes à créer dans le widget (sans nom du design system). */
+      .convention-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 32px; }
+      @media (min-width: 1200px) { .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      .convention-part { margin: 0 0 16px; padding: 0; border: 0; min-width: 0; }
+      .convention-part-full { grid-column: 1 / -1; }
+      .convention-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 12px; padding: 8px 0 0; }
+      .convention-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0 0; }
+      .convention-file { display: none; }
+
+      /* Impression (Cmd + P) : une partie par page, A4 paysage, fenêtre jamais coupée, rien de tronqué.
+         L'écran ne change pas. */
+      @media print {
+        @page { size: A4 landscape; margin: 10mm; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { padding: 0; }
+        .maquette-bloc { margin: 0; break-before: page; break-inside: avoid; page-break-before: always; page-break-inside: avoid; }
+        .maquette-bloc:first-of-type { break-before: auto; page-break-before: auto; }
+        /* La fenêtre défile à l'écran (hauteur limitée) : à l'impression elle se déroule en entier. */
+        .maquette-modal .modal-dialog,
+        .maquette-modal .modal-dialog-scrollable .modal-content,
+        .maquette-modal .modal-body { max-height: none; height: auto; overflow: visible; }
+        .maquette-modal .modal-content { width: 100%; }
+        /* Réduction pour tenir sur une page : la fenêtre large (1164 px) se réduit, rien n'est coupé. */
+        .maquette-modal { break-inside: avoid; page-break-inside: avoid; }
+        .maquette-modal-xl { zoom: .8; }
+        .maquette-modal-xl .modal-dialog { min-width: 1164px; max-width: 1164px; }
+        .maquette-modal-xl .convention-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .edit-field, .convention-part, .modal-header, .modal-footer { break-inside: avoid; page-break-inside: avoid; }
+        .edit-field input, .edit-field .form-control { min-width: 0; overflow: visible; text-overflow: clip; }
+        .maquette-carte, .edit-card { break-inside: avoid; page-break-inside: avoid; overflow: visible; }
+      }
+    </style>
+  </head>
+  <body class="outil-agent">
+    <h1>Maquette : convention de partenariat</h1>
+    <p>Maquette statique, sans JavaScript, données fictives. Les points marqués [À CONFIRMER] attendent la réponse du chef. Les conventions sont imprimées et signées à la main : les zones en pointillés du PDF (nombre d'opérations ou de parcours, date de fin, contact protection des données, « Fait à », dates de signature) sont remplies à la main et ne figurent pas dans la fenêtre. Voir docs/ux/convention.md. Les notes en italique sont des annotations de la maquette, pas des textes de l'écran. Pour voir la fenêtre B sur trois colonnes, la page doit faire au moins 1200 px de large.</p>
+
+    <!-- ================= PARTIE A ================= -->
+    <section class="maquette-bloc" aria-labelledby="mq-a">
+      <h2 id="mq-a">A. Bas de la fiche d'action : bloc « Convention » (4 états + 2 messages)</h2>
+      <div class="edit-row edit-row-bottom">
+        <section class="edit-card"><div class="section-head"><span>Statut</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
+        <section class="edit-card"><div class="section-head"><span>Financement</span></div><div class="edit-fields"><p>(bloc existant, inchangé)</p></div></section>
+      </div>
+      <p>Le bloc Convention est un bloc de plus, sous Statut et Financement, pleine largeur. Quatre états.</p>
+
+      <h3>A1. À générer</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Aucune convention générée.</p>
+          <div><button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Générer la convention</span></button></div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Ce bouton ouvre la fenêtre de la partie B.</em></p>
+
+      <h3>A2. Générée</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Convention générée le 12/09/2026.</p>
+          <div class="convention-actions">
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
+            <button class="btn btn-secondary" type="button" aria-haspopup="dialog"><span class="btn-content">Re-générer</span></button>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Déposer la convention signée</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>« Re-générer » rouvre la fenêtre de la partie B, préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF (sans historique). « Déposer la convention signée » ouvre directement le choix du fichier (pas de fenêtre).</em></p>
+
+      <h3>A3. Signée</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Convention signée, déposée le 03/10/2026.</p>
+          <div class="convention-actions">
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention signée<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
+          </div>
+          <div><button class="btn btn-link" type="button"><span class="btn-content">Remplacer le fichier signé</span></button></div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Plus de régénération, ni d'accès au PDF généré (il reste gardé dans Grist, mais n'est plus montré). Le lien « Remplacer le fichier signé » ouvre directement le choix du fichier (partie C).</em></p>
+
+      <h3>A4. Dispositif sans modèle</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Pas encore de modèle de convention pour ce dispositif.</p>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Aucun bouton. Concerne « Aller vers » et « Parcours complet d'insertion par le sport ».</em></p>
+
+      <h3>A5. Message si le fichier déposé n'est pas un PDF</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <div class="alert alert-error" role="alert" aria-live="assertive"><p class="alert-content">Le fichier n'a pas été enregistré : seuls les fichiers PDF sont acceptés.</p></div>
+          <p>Convention générée le 12/09/2026.</p>
+          <div class="convention-actions">
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Re-générer</span></button>
+            <button class="btn btn-secondary" type="button"><span class="btn-content">Déposer la convention signée</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Le message apparaît dans le bloc, au-dessus de l'état, et rien n'est enregistré. Le même message s'applique à « Remplacer le fichier signé ». L'état et la date ne changent pas.</em></p>
+
+      <h3>A6. Confirmation après le dépôt du fichier signé</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <div class="alert alert-success" role="status"><p class="alert-content">Convention signée enregistrée.</p></div>
+          <p>Convention signée, déposée le 03/10/2026.</p>
+          <div class="convention-actions">
+            <a class="btn btn-secondary" href="#" target="_blank" rel="noopener"><span class="btn-content">Voir la convention signée<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></a>
+          </div>
+          <div><button class="btn btn-link" type="button"><span class="btn-content">Remplacer le fichier signé</span></button></div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Le fichier est enregistré dès qu'il est choisi, sans autre fenêtre. Le message de confirmation s'affiche au-dessus de l'état, qui passe (ou reste) à « Signée » avec la date de dépôt du jour.</em></p>
+    </section>
+
+    <!-- ================= PARTIE B ================= -->
+    <section class="maquette-bloc" aria-labelledby="mq-b">
+      <h2 id="mq-b">B. Fenêtre « Convention », modèle « Du stade vers l'emploi » (état À générer uniquement), large, sans défilement</h2>
+      <p class="maquette-note"><em>Cette fenêtre s'ouvre aussi depuis « Re-générer » (état Générée), préremplie avec les informations enregistrées ; « Générer la convention » y remplace l'ancien PDF. Fenêtre de taille modal-xl : 1164 px de large à partir de 1200 px d'écran, trois colonnes. En dessous de 1200 px elle passe en une colonne et défile. Ici le formulaire « Ajouter un contact » est fermé. Le siège du club et l'adresse de l'agence s'affichent en entier, sur plusieurs lignes. Pour « Le Match des Métiers », la fenêtre est identique ; pour « Parcours de remobilisation », seul le champ « Année » disparaît (le bloc 1 ne contient plus que le modèle utilisé).</em></p>
+      <div class="maquette-modal maquette-modal-xl">
+        <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" tabindex="-1">
+          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <form class="modal-content" id="conventionForm" novalidate>
+              <div class="modal-header"><h2 class="modal-title" id="conventionTitle">Convention</h2></div>
+              <div class="modal-body">
+                <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+                <div class="convention-grid">
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Informations relatives à la convention</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="convModele">Modèle utilisé</label>
+                        <input class="form-control" id="convModele" name="convModele" type="text" readonly value="Du stade vers l'emploi">
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="convAnnee">Année<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="convAnnee" name="convAnnee" type="number" required value="2026">
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Signataire club</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubNom">Nom du club</label>
+                        <input class="form-control" id="clubNom" name="clubNom" type="text" readonly value="Association Sportive Exemple">
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="clubSiret">SIRET</label>
+                        <input class="form-control" id="clubSiret" name="clubSiret" type="text" readonly value="987 654 321 00019">
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubSiege">Siège</label>
+                        <textarea class="form-control" id="clubSiege" name="clubSiege" readonly rows="2">2 avenue du Stade, résidence des Sportifs, bâtiment C, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <p class="help-block edit-field-wide" style="margin:0">Pour corriger ces informations, modifiez la fiche du club.</p>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubSignataire">Signataire<span class="required">&nbsp;*</span></label>
+                        <select class="form-control" id="clubSignataire" name="clubSignataire" required>
+                          <option selected disabled value="">Veuillez sélectionner</option>
+                          <option value="contact_1">Camille Exemple</option>
+                          <option value="contact_2">Dominique Modèle</option>
+                          <option value="contact_3">Sacha Fictif</option>
+                        </select>
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="clubFonction">Fonction du signataire</label>
+                        <input class="form-control" id="clubFonction" name="clubFonction" type="text" readonly value="">
+                      </div>
+                      <div class="edit-field" style="align-content:end">
+                        <button class="btn btn-secondary btn-sm" type="button" aria-expanded="false"><span class="btn-content">Ajouter un contact<span class="sr-only"> (le signataire n'est pas dans la liste)</span></span></button>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Signataire agence</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAgence">Agence</label>
+                        <input class="form-control" id="ftAgence" name="ftAgence" type="text" readonly value="Agence Exemple Centre">
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAdresse">Adresse</label>
+                        <textarea class="form-control" id="ftAdresse" name="ftAdresse" readonly rows="2">1 rue de l'Exemple, bâtiment B, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftRepresentant">Représentant<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="ftRepresentant" name="ftRepresentant" type="text" required>
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftFonction">Fonction du représentant<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="ftFonction" name="ftFonction" type="text" required value="Directeur d'agence">
+                      </div>
+                    </div>
+                  </fieldset>
+
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
+                <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
+                <button class="btn btn-primary" type="button"><span class="btn-content">Générer la convention</span></button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>L'agence et son adresse viennent de la table Agences, en lecture seule ; le représentant est saisi ici (vide, obligatoire) ; sa fonction est préremplie « Directeur d'agence » et modifiable. La liste « Signataire » vient de la table Contacts, filtrée sur le club : la fonction s'affiche en lecture seule après le choix.</em></p>
+    </section>
+
+    <!-- ================= PARTIE B bis ================= -->
+    <section class="maquette-bloc" aria-labelledby="mq-b2">
+      <h2 id="mq-b2">B bis. Même fenêtre, formulaire « Ajouter un contact » ouvert dans le bloc « Signataire club »</h2>
+      <p class="maquette-note"><em>Le formulaire s'ouvre sous la liste des contacts, dans le bloc, sans seconde fenêtre. Le bouton passe en aria-expanded="true", le focus va sur « Nom ». Ce n'est pas un second &lt;form&gt; (la fenêtre en est déjà un) : c'est un fieldset dont les boutons sont de type button.</em></p>
+      <div class="maquette-modal maquette-modal-xl">
+        <div class="modal fade show" id="conventionDialogBis" role="dialog" aria-modal="true" aria-labelledby="conventionTitleBis" tabindex="-1">
+          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <form class="modal-content" id="conventionFormBis" novalidate>
+              <div class="modal-header"><h2 class="modal-title" id="conventionTitleBis">Convention</h2></div>
+              <div class="modal-body">
+                <p class="help-block">Les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+                <div class="convention-grid">
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Informations relatives à la convention</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="convModeleBis">Modèle utilisé</label>
+                        <input class="form-control" id="convModeleBis" name="convModeleBis" type="text" readonly value="Du stade vers l'emploi">
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="convAnneeBis">Année<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="convAnneeBis" name="convAnneeBis" type="number" required value="2026">
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Signataire club</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubNomBis">Nom du club</label>
+                        <input class="form-control" id="clubNomBis" name="clubNomBis" type="text" readonly value="Association Sportive Exemple">
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="clubSiretBis">SIRET</label>
+                        <input class="form-control" id="clubSiretBis" name="clubSiretBis" type="text" readonly value="987 654 321 00019">
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubSiegeBis">Siège</label>
+                        <textarea class="form-control" id="clubSiegeBis" name="clubSiegeBis" readonly rows="2">2 avenue du Stade, résidence des Sportifs, bâtiment C, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <p class="help-block edit-field-wide" style="margin:0">Pour corriger ces informations, modifiez la fiche du club.</p>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="clubSignataireBis">Signataire<span class="required">&nbsp;*</span></label>
+                        <select class="form-control" id="clubSignataireBis" name="clubSignataireBis" required>
+                          <option selected disabled value="">Veuillez sélectionner</option>
+                          <option value="contact_1">Camille Exemple</option>
+                          <option value="contact_2">Dominique Modèle</option>
+                          <option value="contact_3">Sacha Fictif</option>
+                        </select>
+                      </div>
+                      <div class="edit-field">
+                        <label class="form-label" for="clubFonctionBis">Fonction du signataire</label>
+                        <input class="form-control" id="clubFonctionBis" name="clubFonctionBis" type="text" readonly value="">
+                      </div>
+                      <div class="edit-field" style="align-content:end">
+                        <button class="btn btn-secondary btn-sm" type="button" aria-expanded="true" aria-controls="contactFormBis"><span class="btn-content">Ajouter un contact<span class="sr-only"> (le signataire n'est pas dans la liste)</span></span></button>
+                      </div>
+                      <fieldset class="convention-part edit-field-wide" id="contactFormBis" style="margin:0">
+                        <legend class="form-legend">Nouveau contact</legend>
+                        <p class="help-block" style="margin:0 0 8px">Le contact sera enregistré pour le club « Association Sportive Exemple » et choisi comme signataire.</p>
+                        <div class="edit-fields convention-fields" style="padding:0">
+                          <div class="edit-field">
+                            <label class="form-label" for="contactNomBis">Nom<span class="required">&nbsp;*</span></label>
+                            <input class="form-control" id="contactNomBis" name="contactNomBis" type="text" required value="">
+                          </div>
+                          <div class="edit-field">
+                            <label class="form-label" for="contactPrenomBis">Prénom<span class="required">&nbsp;*</span></label>
+                            <input class="form-control" id="contactPrenomBis" name="contactPrenomBis" type="text" required value="">
+                          </div>
+                          <div class="edit-field edit-field-wide">
+                            <label class="form-label" for="contactFonctionBis">Fonction<span class="required">&nbsp;*</span></label>
+                            <input class="form-control" id="contactFonctionBis" name="contactFonctionBis" type="text" required value="">
+                          </div>
+                        </div>
+                        <div class="convention-actions">
+                          <button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Annuler</span></button>
+                          <button class="btn btn-secondary btn-sm" type="button"><span class="btn-content">Ajouter ce contact</span></button>
+                        </div>
+                      </fieldset>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="convention-part">
+                    <legend class="form-legend">Signataire agence</legend>
+                    <div class="edit-fields convention-fields">
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAgenceBis">Agence</label>
+                        <input class="form-control" id="ftAgenceBis" name="ftAgenceBis" type="text" readonly value="Agence Exemple Centre">
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftAdresseBis">Adresse</label>
+                        <textarea class="form-control" id="ftAdresseBis" name="ftAdresseBis" readonly rows="2">1 rue de l'Exemple, bâtiment B, 00000 Ville-Exemple</textarea>
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftRepresentantBis">Représentant<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="ftRepresentantBis" name="ftRepresentantBis" type="text" required>
+                      </div>
+                      <div class="edit-field edit-field-wide">
+                        <label class="form-label" for="ftFonctionBis">Fonction du représentant<span class="required">&nbsp;*</span></label>
+                        <input class="form-control" id="ftFonctionBis" name="ftFonctionBis" type="text" required value="Directeur d'agence">
+                      </div>
+                    </div>
+                  </fieldset>
+
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-secondary" type="button"><span class="btn-content">Fermer</span></button>
+                <button class="btn btn-secondary" type="submit"><span class="btn-content">Enregistrer les informations</span></button>
+                <button class="btn btn-primary" type="button"><span class="btn-content">Générer la convention</span></button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>[À CONFIRMER] : nom, prénom et fonction suffisent-ils ? (la fiche du club montre aussi l'e-mail et le téléphone des contacts). L'agence et son adresse viennent de la table Agences, en lecture seule ; le représentant est saisi ici ; sa fonction est préremplie « Directeur d'agence ». La liste « Signataire » vient de la table Contacts, filtrée sur le club.</em></p>
+    </section>
+
+
+    <!-- ================= PARTIE C ================= -->
+    <section class="maquette-bloc" aria-labelledby="mq-c">
+      <h2 id="mq-c">C. Dépôt et remplacement du fichier signé : pas de fenêtre</h2>
+      <p class="maquette-note"><em>Le bouton « Déposer la convention signée » et le lien « Remplacer le fichier signé » ouvrent directement le sélecteur de fichiers du navigateur. Le fichier choisi est enregistré tout de suite, sans vérification ni fenêtre intermédiaire. Seuls les PDF sont acceptés.</em></p>
+
+      <h3>C1. Choix du fichier (comment le dépôt démarre)</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Convention générée le 12/09/2026.</p>
+          <div class="convention-actions">
+            <button class="btn btn-secondary" type="button" id="depotChoisir"><span class="btn-content">Déposer la convention signée</span></button>
+            <input class="convention-file" type="file" id="depotFichier" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Le bouton ouvre le sélecteur de fichiers (champ fichier caché, comme « Ajouter un logo » de la fiche du club). Le lien « Remplacer le fichier signé » (A3) fait la même chose. Un PDF choisi est enregistré aussitôt, en remplaçant l'ancien fichier signé s'il y en a un (sans historique), et la date de dépôt est mise à jour : message A6. Autre type de fichier : message A5, rien n'est enregistré.</em></p>
+
+      <h3>C2. Envoi en cours</h3>
+      <div class="edit-card maquette-carte">
+        <div class="section-head"><span>Convention</span></div>
+        <div class="edit-fields">
+          <p>Convention générée le 12/09/2026.</p>
+          <div class="convention-actions">
+            <button class="btn btn-secondary" type="button" aria-disabled="true"><span class="btn-content">Envoi en cours…</span></button>
+          </div>
+        </div>
+      </div>
+      <p class="help-block maquette-note"><em>Pendant l'envoi, le bouton (ou le lien) qui a lancé le dépôt affiche « Envoi en cours… » et reste en place. En cas d'échec : alerte « Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord. » (même style que A5), et l'état ne change pas.</em></p>
+    </section>
+  </body>
+</html>

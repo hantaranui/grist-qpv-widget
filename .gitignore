@@ -5,3 +5,6 @@ node_modules/
 # Audit de conformite au design system : document de travail, garde en local et
 # publie comme page consultable plutot que versionne.
 docs/audit-design-system.html
+
+# Secrets locaux
+.env

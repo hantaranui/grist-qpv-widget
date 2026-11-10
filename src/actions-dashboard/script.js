@@ -1,6 +1,66 @@
 grist.ready({requiredAccess: 'full'});
 
-const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP'];
+// ---- Convention : TOUS les reglages de mise en page du document Word (.docx) ----
+// Pour changer l'apparence du Word, on ne modifie que cette constante. Mise en page (note UX,
+// sections 11 et 15.9) : A4, marges 2,5 cm, Arial 11 pt, justifie, interligne 1,2.
+// Tailles de police en DEMI-POINTS (22 = 11 pt) ; espaces en twips (1 pt = 20 twips).
+// 1 cm = 566,93 twips (le twip est l'unite de Word : 1/20 de point).
+const CONVENTION_TWIPS_PAR_CM = 566.93;
+
+function conventionCmEnTwips(cm) {
+  return Math.round(cm * CONVENTION_TWIPS_PAR_CM);
+}
+
+const CONVENTION_MISE_EN_PAGE_DOCX = {
+  police: 'Arial',
+  taille: 22,
+  tailleTitre1: 24,
+  tailleNote: 20,
+  taillePied: 18,
+  interligne: 288,
+  // Interligne simple (240 = 1,0), pour les paragraphes techniques : logos, pied, paragraphes vides.
+  interligneSimple: 240,
+  // Taille (demi-points) du petit paragraphe vide qui separe deux tableaux : 1 pt.
+  tailleParagrapheVide: 2,
+  // Caractere des puces des listes.
+  puce: '-',
+  pageLargeur: 11906,
+  pageHauteur: 16838,
+  marge: conventionCmEnTwips(2.5),
+  distanceEnTetePied: conventionCmEnTwips(1.25),
+  largeurTexte: conventionCmEnTwips(16),
+  retrait: conventionCmEnTwips(1.25),
+  retraitPuce: conventionCmEnTwips(0.63),
+  retraitTitre1: conventionCmEnTwips(1),
+  // Espace avant / apres chaque sorte de paragraphe du texte (twips).
+  espacements: {
+    titre1: {avant: 0, apres: 480},
+    titre2: {avant: 360, apres: 160},
+    titre3: {avant: 240, apres: 160},
+    ligneSeule: {avant: 0, apres: 160},
+    paragraphe: {avant: 120, apres: 200},
+    elementListe: {avant: 0, apres: 120}
+  },
+  // Logos : boite de 6 cm sur 2 cm, en pixels (1 px = 1/96 pouce, l'unite d'ImageRun), et
+  // 24 pt d'espace entre le bas des logos et le titre.
+  logo: {largeurMax: Math.round(6 / 2.54 * 96), hauteurMax: Math.round(2 / 2.54 * 96), espaceSousLogos: 480},
+  signatures: {
+    lignesVides: 4,
+    espaceEntreColonnes: 480,
+    espaceSousIntitules: conventionCmEnTwips(3),
+    espaceAvantLieuDate: 360,
+    // Espace avant / apres chaque ligne du bloc de signature (intitule, nom, fonction).
+    espaceParagraphe: {avant: 120, apres: 200}
+  }
+};
+
+// Contacts, Conventions et Modeles_convention servent a la convention de
+// partenariat (lecture seule pour l'instant). Une table que les regles d'acces
+// refusent (ex. ANS : ni Conventions ni Modeles_convention) devient une liste
+// vide dans load(), comme toutes les autres.
+// Campagnes sert au sous-titre de la fenetre Convention (Actions.Campagne est une reference
+// vers Campagnes.Campagne, le texte de l'annee).
+const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP', 'Contacts', 'Conventions', 'Modeles_convention', 'Campagnes'];
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -35,7 +95,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
 
 // Conservation des filtres le temps de la session (tant que l'onglet reste
 // ouvert) : quand on quitte la page puis qu'on y revient, Grist recharge le
@@ -133,15 +193,20 @@ load();
 
 async function load() {
   try {
+    // Noms des tables que Grist n'a pas laisse lire (refus ou table introuvable) :
+    // sans cette trace, une table refusee et une table vide donnent la meme liste.
+    const refusees = [];
     const data = await Promise.all(TABLES.map(async table => {
       try {
         return [table, rows(await grist.docApi.fetchTable(table))];
       } catch (error) {
         console.warn(`Accès refusé ou table introuvable : ${table}`, error);
+        refusees.push(table);
         return [table, []];
       }
     }));
     state.raw = Object.fromEntries(data);
+    state.tablesRefusees = refusees;
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
@@ -241,8 +306,9 @@ async function choicesFromRestApi(tableId, colId) {
 
 function fetchTableColumns(tableId) {
   if (!columnsCache.has(tableId)) {
-    columnsCache.set(tableId, requestTableColumns(tableId).catch(error => {
-      console.warn(`Impossible de lire les colonnes de ${tableId} via l'API REST`, error);
+    columnsCache.set(tableId, requestTableColumns(tableId).catch(() => {
+      // Texte fixe : l'erreur d'un fetch peut contenir l'adresse, donc le jeton de lecture.
+      console.warn(`Impossible de lire les colonnes de ${tableId} via l'API REST.`);
       return [];
     }));
   }
@@ -721,12 +787,14 @@ function renderEdit() {
           </div>
         </section>
         </div>
+        ${conventionBlocHtml(action.id, state)}
       </div>
     </form>
   </div>
   `;
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   document.getElementById('deleteAction').addEventListener('click', () => openDeleteAction(action));
+  bindConvention(action.id);
   focusFirstField(editView);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -1502,4 +1570,3540 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
+// ---- Convention : texte d'un modele (Markdown simple) -> contenu pdfmake ----
+// Fonction pure : ni Grist, ni DOM, ni pdfmake. Elle renvoie un tableau de blocs
+// que pdfmake sait lire ("content"). Les styles ne sont designes que par un nom :
+// titre1, titre2, titre3, titre, paragraphe, retrait, liste, note.
+//
+// Syntaxe reconnue, et rien d'autre :
+//  - paragraphes separes par une ligne vide (espaces de fin de ligne ignores) ;
+//  - titre : ligne commencant par #, ## ou ###, OU ligne entierement en gras ;
+//  - "> " en debut de ligne : bloc en retrait (son contenu se lit normalement) ;
+//  - liste a puces "- " et liste numerotee "1. " ;
+//  - **gras**, *italique*, <u>souligne</u>, <sup>exposant</sup> ;
+//  - commentaire HTML vide seul sur sa ligne : ignore (il separe deux blocs) ;
+//  - lien [texte](adresse) : ecrit "texte (adresse)" car le document est imprime ;
+//  - note : appel [^1] (exposant) et definition "[^1]: texte" (rangee a la fin) ;
+//  - crochet litteral : \[ donne un [ imprime, sans etre une case ;
+//  - cases [Nom] : remplacees par leur valeur si le second argument (objet
+//    { "Nom": "valeur" }) est donne, sinon laissees telles quelles. La valeur est
+//    posee comme texte, apres l'analyse : elle n'est jamais relue comme du Markdown.
+//    Une case sans valeur dans l'objet reste "[Nom]" (voir conventionCasesManquantes) ;
+//  - pointilles : laisses tels quels (vrais points tapes dans le texte) ;
+//  - reperes, chacun seul sur sa ligne (au premier niveau, pas dans un retrait) :
+//      {saut-de-page}         saut de page ;
+//      {signatures}           bloc de signature a deux colonnes (club a gauche, agence a droite) ;
+//      {signatures:lieu-date} pareil, avec "A ..., le ..." en tete de chaque colonne ;
+//      {signatures:ft-gauche} une ligne "Fait a ..., le ..." au-dessus, puis France Travail
+//                             a gauche et le club a droite (le tout sur la meme page).
+//  - notes renumerotees 1, 2, 3 dans l'ordre du premier appel, quelle que soit l'etiquette ecrite.
+//    Une note definie mais jamais citee est numerotee apres les autres (voir conventionProblemesNotes).
+function conventionVersContenuPdf(texte, valeurs) {
+  const {corps, definitions, numeros} = conventionAnalyseNotes(texte);
+  const blocs = conventionBlocs(corps, true, valeurs, numeros);
+  // Textes des notes a la fin du document (provisoire), dans l'ordre des numeros.
+  definitions
+    .slice()
+    .sort((a, b) => numeros.get(a.etiquette) - numeros.get(b.etiquette))
+    .forEach((note, index) => {
+      const runs = conventionRuns(note.texte, valeurs, numeros);
+      const bloc = {text: conventionTexte([{text: String(numeros.get(note.etiquette)), sup: true}, {text: ' '}, ...runs]), style: 'note'};
+      // Seule la premiere note porte l'espace avant : il separe le bloc des notes du texte.
+      if (index === 0) bloc.margin = [0, CONVENTION_MISE_EN_PAGE.notes.espaceAvant, 0, 0];
+      blocs.push(bloc);
+    });
+  return blocs;
+}
+
+// Separe les lignes du texte en corps (tout sauf les definitions de notes), definitions
+// de notes (la premiere definition d'une etiquette compte), et appels de notes dans
+// l'ordre du premier appel. "numeros" donne le numero imprime de chaque etiquette :
+// d'abord les etiquettes citees, puis celles definies sans appel.
+function conventionAnalyseNotes(texte) {
+  const lignes = String(texte ?? '').replace(/\r\n?/g, '\n').split('\n').map(ligne => ligne.trimEnd());
+  const corps = [];
+  const definitions = [];
+  lignes.forEach(ligne => {
+    const m = /^\[\^([^\]\s]+)\]:\s*(.*)$/.exec(ligne);
+    if (!m) corps.push(ligne);
+    else if (!definitions.some(d => d.etiquette === m[1])) definitions.push({etiquette: m[1], texte: m[2]});
+  });
+  // \[ est avale en premier, pour qu'un crochet litteral ne soit pas pris pour un appel.
+  const appels = [];
+  corps.forEach(ligne => {
+    const motif = /\\\[|\[\^([^\]\s]+)\]/g;
+    let m;
+    while ((m = motif.exec(ligne))) {
+      if (m[1] !== undefined && !appels.includes(m[1])) appels.push(m[1]);
+    }
+  });
+  const numeros = new Map();
+  appels.forEach(etiquette => numeros.set(etiquette, numeros.size + 1));
+  definitions.forEach(d => { if (!numeros.has(d.etiquette)) numeros.set(d.etiquette, numeros.size + 1); });
+  return {corps, definitions, appels, numeros};
+}
+
+// Problemes sur les notes du texte. Chaque probleme : { type, etiquette }.
+//  - "appel sans texte" : la note est citee ([^x]) mais jamais definie ([^x]: ...) ;
+//  - "texte sans appel" : la note est definie mais jamais citee.
+// Les appels sans texte viennent d'abord (dans l'ordre des appels), puis les textes
+// sans appel (dans l'ordre des definitions). Liste vide = aucun probleme.
+function conventionProblemesNotes(texte) {
+  const {definitions, appels} = conventionAnalyseNotes(texte);
+  const problemes = [];
+  appels.forEach(etiquette => {
+    if (!definitions.some(d => d.etiquette === etiquette)) problemes.push({type: 'appel sans texte', etiquette});
+  });
+  definitions.forEach(d => {
+    if (!appels.includes(d.etiquette)) problemes.push({type: 'texte sans appel', etiquette: d.etiquette});
+  });
+  return problemes;
+}
+
+// Liste des cases [Nom] du texte qui n'ont pas de valeur (absente ou vide), sans doublon,
+// dans l'ordre d'apparition. Liste vide = tout est rempli.
+// Ne sont pas des cases : \[ , les notes [^1], les liens [texte](adresse).
+function conventionCasesManquantes(texte, valeurs) {
+  const manquantes = [];
+  const motif = /\\\[|\[\^[^\]\s]+\]|\[[^\]]*\]\([^)\s]+\)|\[([^[\]\n]+)\]/g;
+  let m;
+  while ((m = motif.exec(String(texte ?? '').replace(/\r\n?/g, '\n')))) {
+    const nom = m[1];
+    if (nom === undefined || !nom.trim()) continue;
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    if ((valeur === undefined || valeur === '') && !manquantes.includes(nom)) manquantes.push(nom);
+  }
+  return manquantes;
+}
+
+// Valeur d'une case sous forme de texte, ou undefined si elle est absente ou vide.
+// Seules les cles propres de l'objet comptent (un nom comme "constructor" n'est pas une valeur).
+// L'apostrophe droite (') et l'apostrophe courbe (’) sont la meme lettre dans un nom de case :
+// « [Nom de l'agence] » tape au clavier trouve la case « Nom de l’agence ».
+function conventionValeurDeCase(valeurs, nom) {
+  if (!valeurs || typeof valeurs !== 'object') return undefined;
+  let cle = nom;
+  if (!Object.prototype.hasOwnProperty.call(valeurs, cle)) {
+    const courbe = String(nom).replace(/'/g, '’');
+    cle = Object.keys(valeurs).find(autre => autre.replace(/'/g, '’') === courbe);
+    if (cle === undefined) return undefined;
+  }
+  const valeur = valeurs[cle];
+  if (valeur === null || valeur === undefined) return undefined;
+  return String(valeur);
+}
+
+// Reperes de signature (chacun seul sur sa ligne) et ce qu'ils demandent a conventionSignatures.
+const CONVENTION_REPERES_SIGNATURES = new Map([
+  ['{signatures}', {avecLieuDate: false, ftAGauche: false}],
+  ['{signatures:lieu-date}', {avecLieuDate: true, ftAGauche: false}],
+  ['{signatures:ft-gauche}', {avecLieuDate: false, ftAGauche: true}],
+]);
+
+// Regroupe les lignes en blocs : titre, retrait, liste ou paragraphe.
+// Le retrait n'est reconnu qu'au premier niveau : un "> " dans un retrait reste du texte.
+function conventionBlocs(lignes, retraitAutorise, valeurs, numeros) {
+  const blocs = [];
+  let paragraphe = [];
+  let liste = null;
+  const fermer = () => {
+    if (paragraphe.length) {
+      const runs = [];
+      paragraphe.forEach((ligne, index) => {
+        if (index) runs.push({text: '\n'});
+        runs.push(...conventionRuns(ligne, valeurs, numeros));
+      });
+      blocs.push({text: conventionTexte(runs), style: 'paragraphe'});
+    }
+    if (liste) {
+      const bloc = {[liste.type]: liste.items, style: 'liste'};
+      if (liste.type === 'ol' && liste.debut !== 1) bloc.start = liste.debut;
+      blocs.push(bloc);
+    }
+    paragraphe = [];
+    liste = null;
+  };
+  const titre = (style, runs) => {
+    // Le style du titre porte deja le gras : on ne le repete pas dans le texte.
+    const sansGras = runs.map(run => { const copie = {...run}; delete copie.bold; return copie; });
+    // headlineLevel ne change rien a l'aspect : il permet seulement de reperer les titres
+    // pour ne jamais en laisser un seul en bas de page (voir pageBreakBefore plus bas).
+    blocs.push({text: conventionTexte(sansGras), style, headlineLevel: 1});
+  };
+  const ajouterItem = (type, debut, contenu) => {
+    if (!liste || liste.type !== type) {
+      fermer();
+      liste = {type, items: [], debut};
+    }
+    // Le style donne les 6 pt d'espace apres chaque element (la marge n'est pas heritee de la liste).
+    liste.items.push({text: conventionTexte(conventionRuns(contenu, valeurs, numeros)), style: 'elementListe'});
+  };
+
+  for (let i = 0; i < lignes.length; i++) {
+    const ligne = lignes[i];
+    let m;
+    if (!ligne.trim() || /^<!--\s*-->$/.test(ligne.trim())) {
+      fermer();
+    } else if (retraitAutorise && ligne.trim() === '{saut-de-page}') {
+      fermer();
+      blocs.push({text: '', pageBreak: 'after'});
+    } else if (retraitAutorise && CONVENTION_REPERES_SIGNATURES.has(ligne.trim())) {
+      fermer();
+      const repere = CONVENTION_REPERES_SIGNATURES.get(ligne.trim());
+      blocs.push(conventionSignatures(repere.avecLieuDate, valeurs, repere.ftAGauche));
+    } else if (retraitAutorise && ligne.startsWith('>')) {
+      fermer();
+      const interieur = [];
+      while (i < lignes.length && lignes[i].startsWith('>')) {
+        interieur.push(lignes[i].replace(/^> ?/, ''));
+        i++;
+      }
+      i--;
+      blocs.push({stack: conventionBlocs(interieur, false, valeurs, numeros), style: 'retrait'});
+    } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
+      fermer();
+      titre('titre' + m[1].length, conventionRuns(m[2], valeurs, numeros));
+    } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ul', 1, m[1]);
+    } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ol', Number(m[1]), m[2]);
+    } else {
+      const runs = conventionRuns(ligne, valeurs, numeros);
+      const toutEnGras = runs.some(run => run.text.trim()) && runs.every(run => run.bold || !run.text.trim());
+      if (toutEnGras) {
+        fermer();
+        titre('titre', runs);
+      } else {
+        if (liste) fermer();
+        paragraphe.push(ligne);
+      }
+    }
+  }
+  fermer();
+  return blocs;
+}
+
+// Decoupe une ligne en morceaux de texte portant chacun leur mise en forme.
+// Un marqueur ouvrant sans marqueur fermant plus loin reste du texte.
+// "numeros" (facultatif) : numero imprime de chaque note ; sans lui, l'etiquette est imprimee.
+function conventionRuns(ligne, valeurs, numeros) {
+  const runs = [];
+  const actif = {bold: false, italics: false, underline: false, sup: false};
+  let tampon = '';
+  const ajouter = (texte, supplement) => {
+    if (!texte) return;
+    const run = {text: texte};
+    if (actif.bold) run.bold = true;
+    if (actif.italics) run.italics = true;
+    if (actif.underline) run.decoration = 'underline';
+    if (actif.sup || supplement) run.sup = true;
+    const dernier = runs[runs.length - 1];
+    if (dernier && JSON.stringify({...dernier, text: ''}) === JSON.stringify({...run, text: ''})) dernier.text += texte;
+    else runs.push(run);
+  };
+  const vider = () => { ajouter(tampon); tampon = ''; };
+  const balises = [['<u>', 'underline', true], ['</u>', 'underline', false], ['<sup>', 'sup', true], ['</sup>', 'sup', false]];
+
+  let i = 0;
+  while (i < ligne.length) {
+    const reste = ligne.slice(i);
+    const balise = balises.find(([nom]) => reste.slice(0, nom.length).toLowerCase() === nom);
+    const marque = reste.startsWith('**') ? ['**', 'bold'] : reste.startsWith('*') ? ['*', 'italics'] : null;
+    let m;
+    if (balise) {
+      vider();
+      actif[balise[1]] = balise[2];
+      i += balise[0].length;
+    } else if (marque && (actif[marque[1]] || ligne.indexOf(marque[0], i + marque[0].length) !== -1)) {
+      vider();
+      actif[marque[1]] = !actif[marque[1]];
+      i += marque[0].length;
+    } else if (reste.startsWith('\\[')) {
+      tampon += '[';
+      i += 2;
+    } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
+      vider();
+      ajouter(numeros && numeros.has(m[1]) ? String(numeros.get(m[1])) : m[1], true);
+      i += m[0].length;
+    } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
+      vider();
+      ajouter(`${m[1]} (${m[2]})`);
+      i += m[0].length;
+    } else if ((m = /^\[([^[\]]+)\]/.exec(reste)) && conventionValeurDeCase(valeurs, m[1]) !== undefined && conventionValeurDeCase(valeurs, m[1]) !== '') {
+      // Case reconnue et remplie : la valeur est posee telle quelle, avec la mise en forme en cours.
+      vider();
+      ajouter(conventionValeurDeCase(valeurs, m[1]));
+      i += m[0].length;
+    } else {
+      tampon += ligne[i];
+      i++;
+    }
+  }
+  vider();
+  return runs;
+}
+
+// Un seul morceau sans mise en forme devient une chaine ; sinon, un tableau de morceaux
+// (un morceau sans mise en forme y est une simple chaine). Le texte n'est jamais un objet seul.
+function conventionTexte(runs) {
+  const simplifies = runs.map(run => (Object.keys(run).length === 1 ? run.text : run));
+  if (!simplifies.length) return '';
+  return simplifies.length === 1 && typeof simplifies[0] === 'string' ? simplifies[0] : simplifies;
+}
+
+// ---- Convention : mise en page du PDF (tout ce qui se regle sur papier est ici) ----
+// Les valeurs viennent de docs/ux/convention.md, section 11 (mesures du Word officiel).
+// Tailles en points (1 pt = 1/72 pouce), marges [gauche, haut, droite, bas].
+// Dans un style, "margin" se lit [gauche, haut, droite, bas] : le 2e chiffre est l'espace
+// avant, le 4e l'espace apres. pdfmake additionne les espaces de deux blocs qui se suivent.
+const CONVENTION_POINTS_PAR_CM = 28.35;
+const CONVENTION_MISE_EN_PAGE = {
+  pageMargins: [2.5, 2.5, 2.5, 2.5].map(cm => cm * CONVENTION_POINTS_PAR_CM),
+  // Texte courant : Roboto 11 pt, justifie, interligne 1,2 (lineHeight 1.2, note UX §11.1 :
+  // PDF volontairement plus aere que le Word). Les autres styles (listes, citations, notes)
+  // heritent de ces reglages, sauf ceux qu'ils redefinissent : aucun ne redefinit lineHeight.
+  defaultStyle: {font: 'Roboto', fontSize: 11, alignment: 'justify', lineHeight: 1.2},
+  // Logos (note UX, §11.1 et §11.2) : premiere page seulement. Chaque logo tient dans une boite
+  // de 6 cm sur 2 cm au plus. distanceHaut : le haut des logos est a 1,25 cm du haut de la page
+  // (comme l'en-tete du Word), donc dans la marge haute. espaceSousLogos : le titre commence
+  // 24 pt sous le bas des logos.
+  logo: {largeurMax: 6 * CONVENTION_POINTS_PAR_CM, hauteurMax: 2 * CONVENTION_POINTS_PAR_CM, distanceHaut: 1.25 * CONVENTION_POINTS_PAR_CM, espaceSousLogos: 24},
+  // Numero de page : 9 pt, a droite, a 1,25 cm du bas de la page.
+  pied: {fontSize: 9, distanceBas: 1.25 * CONVENTION_POINTS_PAR_CM},
+  notes: {espaceAvant: 12},
+  signatures: {
+    lignesVides: 4,
+    espaceEntreColonnes: 24,
+    // Seulement pour {signatures:ft-gauche} :
+    espaceSousIntitules: 3 * CONVENTION_POINTS_PAR_CM,
+    espaceAvantLieuDate: 18,
+  },
+  styles: {
+    // Titre du document : retrait de 1 cm a gauche et a droite, 24 pt apres.
+    titre1: {fontSize: 12, bold: true, alignment: 'center', margin: [1 * CONVENTION_POINTS_PAR_CM, 0, 1 * CONVENTION_POINTS_PAR_CM, 24]},
+    titre2: {fontSize: 11, bold: true, alignment: 'left', margin: [0, 18, 0, 8]},
+    titre3: {fontSize: 11, bold: true, alignment: 'left', margin: [1.25 * CONVENTION_POINTS_PAR_CM, 12, 0, 8]},
+    // Ligne entierement en gras : justifiee comme le texte.
+    titre: {fontSize: 11, bold: true, margin: [0, 0, 0, 8]},
+    paragraphe: {margin: [0, 6, 0, 10]},
+    // Citation : l'espace avant vient du paragraphe qu'elle contient (6 pt), pas du retrait.
+    retrait: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
+    liste: {margin: [1.25 * CONVENTION_POINTS_PAR_CM, 0, 0, 0]},
+    elementListe: {margin: [0, 0, 0, 6]},
+    note: {fontSize: 10, margin: [0, 0, 0, 0]},
+  },
+};
+
+// Bloc de signature a deux colonnes de meme largeur : club a gauche, agence a droite.
+// Avec ftAGauche : une ligne "Fait a ..., le ..." au-dessus, France Travail a gauche, club a droite,
+// intitules en gras, 3 cm d'espace pour la signature ; ligne et colonnes forment un seul bloc
+// qui ne se coupe jamais (s'il ne tient pas en bas de page, il passe en entier a la suivante).
+// Une case sans valeur reste ecrite [Nom], comme dans le reste du texte.
+function conventionSignatures(avecLieuDate, valeurs, ftAGauche) {
+  const reglages = CONVENTION_MISE_EN_PAGE.signatures;
+  const valeurOuCase = nom => {
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    return valeur === undefined || valeur === '' ? `[${nom}]` : valeur;
+  };
+  const colonne = (titre, nomPersonne, nomFonction) => {
+    const lignes = [];
+    if (avecLieuDate) lignes.push({text: 'À ........................................................, le ........................................................', style: 'paragraphe'});
+    lignes.push(
+      ftAGauche ? {text: titre, bold: true, style: 'paragraphe'} : {text: titre, style: 'paragraphe'},
+      {text: valeurOuCase(nomPersonne), bold: true, style: 'paragraphe'},
+      {text: valeurOuCase(nomFonction), style: 'paragraphe'},
+      // Espace pour la signature manuscrite. Une ligne de 1 pt (texte d'un espace) porte la marge :
+      // une marge seule, sans ligne de texte, ne serait pas assez sure.
+      ftAGauche
+        ? {text: ' ', fontSize: 1, margin: [0, 0, 0, reglages.espaceSousIntitules]}
+        : {text: '\n'.repeat(reglages.lignesVides), style: 'paragraphe'}
+    );
+    return {width: '*', stack: lignes};
+  };
+  const club = colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire');
+  const agence = colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant');
+  const colonnes = {
+    columns: ftAGauche ? [agence, club] : [club, agence],
+    columnGap: reglages.espaceEntreColonnes,
+    unbreakable: true,
+  };
+  if (!ftAGauche) return colonnes;
+  return {
+    stack: [
+      {text: 'Fait à ........................................................, le ........................................................', margin: [0, reglages.espaceAvantLieuDate, 0, 0]},
+      colonnes,
+    ],
+    unbreakable: true,
+  };
+}
+
+// Description complete du document pour pdfmake (fonction pure : elle n'appelle pas pdfmake).
+// options.logos : { logo, partenaire }, chacun null ou { image (data URL), width, height }
+// (voir conventionImageLogo). Ils sont dans l'en-tete de la page 1 seulement (Logo a gauche,
+// Logo_partenaire a droite), a 1,25 cm du haut de la page. Un en-tete ne pousse pas le contenu :
+// une petite ligne d'espace en tete du contenu descend le titre jusqu'a 24 pt sous le bas des
+// logos. Aucun logo : ni en-tete, ni espace, le titre reste en haut de la zone de texte.
+function conventionDocumentPdf(texte, valeurs, options) {
+  const mise = JSON.parse(JSON.stringify(CONVENTION_MISE_EN_PAGE));
+  const logos = (options && options.logos) || {};
+  const contenu = conventionVersContenuPdf(texte, valeurs);
+  const ligneLogos = conventionLigneLogos(logos.logo, logos.partenaire, mise.logo.distanceHaut, mise.pageMargins);
+  if (ligneLogos) {
+    const hauteurLogos = Math.max(...[logos.logo, logos.partenaire].filter(Boolean).map(logo => logo.height));
+    // Espace a ajouter entre le haut de la zone de texte (marge haute) et le titre. La ligne
+    // d'espace fait elle-meme environ 1,17 fois sa taille de police (1 pt) : on la retire.
+    const espace = mise.logo.distanceHaut + hauteurLogos + mise.logo.espaceSousLogos - mise.pageMargins[1];
+    if (espace > 0) contenu.unshift({text: ' ', fontSize: 1, margin: [0, 0, 0, Math.max(0, espace - 1.17)]});
+  }
+  const document = {
+    pageSize: 'A4',
+    pageMargins: mise.pageMargins,
+    defaultStyle: mise.defaultStyle,
+    content: contenu,
+    // Numero de page seul, a droite, absent de la premiere page. Le pied de page commence au
+    // bord de la marge du bas : on le descend pour que le bas du numero soit a 1,25 cm du bas
+    // de la page (1,17 = hauteur d'une ligne de Roboto, en multiples de la taille du texte).
+    footer: page => {
+      if (page === 1) return {text: ''};
+      const espaceAvant = mise.pageMargins[3] - mise.pied.distanceBas - mise.pied.fontSize * 1.17;
+      // lineHeight 1 : le numero garde l'interligne simple, sinon l'interligne 1,2 du texte le
+      // decalerait (la place de la ligne grandit) et il ne serait plus a 1,25 cm du bas.
+      return {text: String(page), alignment: 'right', fontSize: mise.pied.fontSize, lineHeight: 1, margin: [mise.pageMargins[0], espaceAvant, mise.pageMargins[2], 0]};
+    },
+    // Un titre n'est jamais seul en bas de page : s'il n'est suivi, sur sa page, que d'autres
+    // titres (ou de rien), il passe a la page suivante avec ce qui le suit. On ne saute pas
+    // un titre deja tout en haut d'une page (sinon il sauterait sans fin).
+    // pdfmake 0.3 appelle pageBreakBefore(noeud, aides) : « aides » est un objet qui porte
+    // deux FONCTIONS, getFollowingNodesOnPage() et getPreviousNodesOnPage(), qui renvoient les
+    // listes. En cas de souci (argument absent, liste illisible), on renvoie false : pas de saut
+    // de page, et la generation n'est jamais bloquee par la mise en page.
+    pageBreakBefore: (noeud, aides) => {
+      try {
+        if (!noeud || !noeud.headlineLevel || !aides) return false;
+        const suivants = aides.getFollowingNodesOnPage();
+        const precedents = aides.getPreviousNodesOnPage();
+        if (!Array.isArray(suivants) || !Array.isArray(precedents)) return false;
+        return precedents.length > 0 && suivants.every(autre => autre.headlineLevel);
+      } catch (erreur) {
+        return false;
+      }
+    },
+    styles: mise.styles,
+  };
+  // En-tete de la page 1 seulement (pdfmake 0.3 : header peut etre une fonction de la page).
+  if (ligneLogos) document.header = page => (page === 1 ? ligneLogos : {text: ''});
+  return document;
+}
+
+// Ligne des logos pour l'en-tete de la page 1, ou null s'il n'y en a aucun. Un logo seul garde
+// son cote : a droite, un espace extensible ('*') le pousse contre la marge droite.
+// Marge de l'en-tete : gauche et droite comme la page, haut = distanceHaut (depuis le haut de la page).
+function conventionLigneLogos(logo, partenaire, distanceHaut, pageMargins) {
+  if (!logo && !partenaire) return null;
+  const colonnes = [];
+  if (logo) colonnes.push({image: logo.image, width: logo.width, height: logo.height, alignment: 'left'});
+  colonnes.push({width: '*', text: ''});
+  if (partenaire) colonnes.push({image: partenaire.image, width: partenaire.width, height: partenaire.height, alignment: 'right'});
+  return {columns: colonnes, margin: [pageMargins[0], distanceHaut, pageMargins[2], 0]};
+}
+
+// Taille d'un logo PNG ou JPEG lue dans ses premiers octets : { type, largeur, hauteur }, ou
+// null si ce n'est ni l'un ni l'autre (le nom du fichier et le type annonce ne comptent pas).
+function conventionDimensionsImage(octets) {
+  const n = octets.length;
+  const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (n >= 24 && PNG.every((valeur, i) => octets[i] === valeur)) {
+    // Octets 12 a 15 : le bloc « IHDR » doit suivre la signature, sinon le fichier est illisible.
+    if (String.fromCharCode(octets[12], octets[13], octets[14], octets[15]) !== 'IHDR') return null;
+    const lire = debut => ((octets[debut] << 24) | (octets[debut + 1] << 16) | (octets[debut + 2] << 8) | octets[debut + 3]) >>> 0;
+    return {type: 'png', largeur: lire(16), hauteur: lire(20)};
+  }
+  if (n >= 4 && octets[0] === 0xff && octets[1] === 0xd8 && octets[2] === 0xff) {
+    let i = 2;
+    while (i + 3 < n) {
+      if (octets[i] !== 0xff) { i++; continue; }
+      const marque = octets[i + 1];
+      if (marque === 0xff) { i++; continue; }
+      if (marque === 0xd9) return null;
+      if (marque === 0x01 || (marque >= 0xd0 && marque <= 0xd8)) { i += 2; continue; }
+      // Marqueurs « Start Of Frame » (SOF0 a SOF15), sauf C4, C8 et CC : ils portent la taille.
+      if (marque >= 0xc0 && marque <= 0xcf && marque !== 0xc4 && marque !== 0xc8 && marque !== 0xcc) {
+        if (i + 8 >= n) return null;
+        return {type: 'jpeg', largeur: (octets[i + 7] << 8) | octets[i + 8], hauteur: (octets[i + 5] << 8) | octets[i + 6]};
+      }
+      const longueur = (octets[i + 2] << 8) | octets[i + 3];
+      if (longueur < 2) return null;
+      i += 2 + longueur;
+    }
+  }
+  return null;
+}
+
+// Poids maximum d'un logo (au-dela : traite comme illisible).
+const CONVENTION_LOGO_OCTETS_MAX = 5 * 1024 * 1024;
+
+// Taille maximum annoncee d'un logo, en pixels, pour largeur et hauteur : au-dela, un petit
+// fichier peut figer l'onglet au decodage (traite comme un logo absent).
+const CONVENTION_LOGO_PIXELS_MAX = 4000;
+
+// Transforme les octets d'un fichier en image pour pdfmake : { image (data URL), width, height },
+// ou null si ce n'est pas un PNG ou un JPEG lisible. pdfmake 0.3 accepte les images PNG et JPEG
+// en data URL (https://pdfmake.github.io/docs/0.3/document-definition-object/images/). La taille
+// (en points, comme les pixels pour pdfmake) tient dans 6 cm sur 2 cm, proportions gardees, sans
+// agrandissement. Fonction pure.
+function conventionImageLogo(tampon) {
+  try {
+    const octets = tampon instanceof Uint8Array ? tampon : new Uint8Array(tampon);
+    if (!octets.length || octets.length > CONVENTION_LOGO_OCTETS_MAX) return null;
+    const dim = conventionDimensionsImage(octets);
+    if (!dim || !(dim.largeur > 0) || !(dim.hauteur > 0)) return null;
+    if (dim.largeur > CONVENTION_LOGO_PIXELS_MAX || dim.hauteur > CONVENTION_LOGO_PIXELS_MAX) return null;
+    const boite = CONVENTION_MISE_EN_PAGE.logo;
+    const echelle = Math.min(1, boite.largeurMax / dim.largeur, boite.hauteurMax / dim.hauteur);
+    let binaire = '';
+    for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
+    return {
+      image: `data:image/${dim.type};base64,${btoa(binaire)}`,
+      width: dim.largeur * echelle,
+      height: dim.hauteur * echelle
+    };
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// ---- Convention : document Word (.docx), evolution 3 ----
+// Meme texte de modele que pour le PDF (memes cases, memes reperes), mais le resultat est un
+// fichier Word que l'agent modifie, complete et imprime lui-meme (note UX, section 15).
+// Deux etapes :
+//  1. conventionBlocsDocx lit le texte du modele et renvoie des « blocs » : de simples objets
+//     JavaScript (fonction pure, sans la bibliotheque) ;
+//  2. conventionDocumentDocx transforme ces blocs en objets de la bibliotheque docx.
+// Toute valeur (nom du club, du signataire, adresse...) est posee dans un TextRun, donc comme du
+// TEXTE SIMPLE : la bibliotheque l'echappe elle-meme (& < > " '). On n'assemble JAMAIS de XML a la main.
+// Le code PDF (pdfmake) plus haut reste en place pour l'instant : il sera retire dans une etape suivante.
+
+// (La conversion cm -> twips et tous les reglages de mise en page du Word sont en tete du fichier :
+// CONVENTION_MISE_EN_PAGE_DOCX.)
+
+// Types de fichier : fixes par le widget d'apres l'extension, jamais repris de la reponse de Grist.
+const CONVENTION_TYPE_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const CONVENTION_TYPE_PDF = 'application/pdf';
+const CONVENTION_TYPES_FICHIER = {docx: CONVENTION_TYPE_DOCX, pdf: CONVENTION_TYPE_PDF};
+
+// Proprietes du fichier Word (E3-12) : des valeurs neutres et fixes. Jamais le nom du club, de
+// l'agence ou du signataire : un agent qui ouvre « Proprietes » dans Word ne doit y trouver aucune
+// donnee de personne.
+const CONVENTION_DOCX_METADONNEES = {
+  creator: 'Partenariat simplifié',
+  lastModifiedBy: 'Partenariat simplifié',
+  title: 'Convention',
+  description: 'Convention générée par le tableau de bord Partenariat simplifié'
+};
+
+// Retire les caracteres de controle qu'un fichier Word (XML) n'accepte pas : sans cela, une valeur
+// qui en contiendrait un rendrait le fichier illisible. Tabulation et retour a la ligne ne sont pas touches.
+function conventionTexteSur(texte) {
+  return String(texte ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '');
+}
+
+// Champ vide (E3-25, note UX 15.5) : UN SEUL traitement pour tous les champs vides, qu'il s'agisse
+// d'une donnee Grist connue mais vide ou d'une zone ecrite a la main. 56 points, comme dans le PDF
+// (CONVENTION_POINTILLES), dans un morceau de texte ordinaire : aucune couleur, aucun surlignage,
+// aucun soulignement. `style` (facultatif) : gras / italique du texte qui l'entoure.
+function conventionPointillesDocx(style) {
+  const run = {text: CONVENTION_POINTILLES};
+  if (style && style.bold) run.bold = true;
+  if (style && style.italics) run.italics = true;
+  return run;
+}
+
+// « Fait à ......, le ...... » (ou « À ..., le ... ») : le lieu et la date sont ecrits a la main,
+// donc deux suites de points, comme tout champ vide.
+function conventionLieuDateDocx(debut) {
+  return [{text: debut}, conventionPointillesDocx(), {text: ', le '}, conventionPointillesDocx()];
+}
+
+// Decoupe une ligne du modele en morceaux de texte, chacun avec sa mise en forme. Meme syntaxe que
+// conventionRuns (gras, italique, souligne, exposant, notes, liens), avec deux differences :
+//  - une case connue mais VIDE donne des pointilles (conventionPointillesDocx), comme dans le PDF ;
+//  - un appel de note [^1] donne un vrai appel de note de bas de page ({note: numero}), a sa
+//    premiere apparition seulement ; un appel repete, ou sans texte de note, reste un exposant.
+// `valeurs` : cases connues ({ "Nom": "valeur" } ; "" = connue mais vide). `contexte` : { numeros,
+// definies (etiquettes qui ont un texte), appelees (etiquettes deja citees) }.
+function conventionRunsDocx(ligne, valeurs, contexte) {
+  const runs = [];
+  const actif = {bold: false, italics: false, underline: false, sup: false};
+  let tampon = '';
+  const ajouter = (texte, supplement) => {
+    if (!texte) return;
+    const run = {text: texte};
+    if (actif.bold) run.bold = true;
+    if (actif.italics) run.italics = true;
+    if (actif.underline) run.underline = true;
+    if (actif.sup || supplement) run.sup = true;
+    const dernier = runs[runs.length - 1];
+    const fusionnable = dernier && !dernier.note
+      && JSON.stringify({...dernier, text: ''}) === JSON.stringify({...run, text: ''});
+    if (fusionnable) dernier.text += texte;
+    else runs.push(run);
+  };
+  const vider = () => { ajouter(tampon); tampon = ''; };
+  const balises = [['<u>', 'underline', true], ['</u>', 'underline', false], ['<sup>', 'sup', true], ['</sup>', 'sup', false]];
+
+  let i = 0;
+  while (i < ligne.length) {
+    const reste = ligne.slice(i);
+    const balise = balises.find(([nom]) => reste.slice(0, nom.length).toLowerCase() === nom);
+    const marque = reste.startsWith('**') ? ['**', 'bold'] : reste.startsWith('*') ? ['*', 'italics'] : null;
+    let m;
+    if (balise) {
+      vider();
+      actif[balise[1]] = balise[2];
+      i += balise[0].length;
+    } else if (marque && (actif[marque[1]] || ligne.indexOf(marque[0], i + marque[0].length) !== -1)) {
+      vider();
+      actif[marque[1]] = !actif[marque[1]];
+      i += marque[0].length;
+    } else if (reste.startsWith('\\[')) {
+      tampon += '[';
+      i += 2;
+    } else if ((m = /^\[\^([^\]\s]+)\]/.exec(reste))) {
+      vider();
+      const numero = contexte.numeros && contexte.numeros.has(m[1]) ? contexte.numeros.get(m[1]) : null;
+      if (numero !== null && contexte.definies.has(m[1]) && !contexte.appelees.has(m[1])) {
+        contexte.appelees.add(m[1]);
+        runs.push({note: numero});
+      } else {
+        ajouter(numero !== null ? String(numero) : m[1], true);
+      }
+      i += m[0].length;
+    } else if ((m = /^\[([^\]]*)\]\(([^)\s]+)\)/.exec(reste))) {
+      vider();
+      ajouter(`${m[1]} (${m[2]})`);
+      i += m[0].length;
+    } else if ((m = /^\[([^[\]]+)\]/.exec(reste)) && conventionValeurDeCase(valeurs, m[1]) !== undefined) {
+      vider();
+      const valeur = conventionValeurDeCase(valeurs, m[1]);
+      if (valeur === '') {
+        // Case connue mais vide : des pointilles que l'agent complete dans Word ou a la main.
+        runs.push(conventionPointillesDocx(actif));
+      } else {
+        ajouter(valeur);
+      }
+      i += m[0].length;
+    } else {
+      tampon += ligne[i];
+      i++;
+    }
+  }
+  vider();
+  return runs;
+}
+
+// Regroupe les lignes du modele en blocs : titre, paragraphe, liste, retrait, saut de page ou
+// signatures. Meme lecture que conventionBlocs ; le resultat est decrit en objets simples :
+//  { type: 'titre', niveau (1, 2, 3, ou 0 pour une ligne entierement en gras), runs }
+//  { type: 'paragraphe', runs } | { type: 'liste', ordonnee, debut, items: [runs] }
+//  { type: 'retrait', blocs } | { type: 'saut' } | { type: 'signatures', avecLieuDate, ftAGauche }
+function conventionBlocsDocx(lignes, retraitAutorise, valeurs, contexte) {
+  const blocs = [];
+  let paragraphe = [];
+  let liste = null;
+  const fermer = () => {
+    if (paragraphe.length) {
+      const runs = [];
+      paragraphe.forEach((ligne, index) => {
+        if (index) runs.push({saut: true});
+        runs.push(...conventionRunsDocx(ligne, valeurs, contexte));
+      });
+      blocs.push({type: 'paragraphe', runs});
+    }
+    if (liste) blocs.push({type: 'liste', ordonnee: liste.type === 'ol', debut: liste.debut, items: liste.items});
+    paragraphe = [];
+    liste = null;
+  };
+  const titre = (niveau, runs) => {
+    // Le titre est mis en gras en bloc : on ne repete pas le gras dans chaque morceau.
+    blocs.push({type: 'titre', niveau, runs: runs.map(run => { const copie = {...run}; delete copie.bold; return copie; })});
+  };
+  const ajouterItem = (type, debut, contenu) => {
+    if (!liste || liste.type !== type) {
+      fermer();
+      liste = {type, items: [], debut};
+    }
+    liste.items.push(conventionRunsDocx(contenu, valeurs, contexte));
+  };
+
+  for (let i = 0; i < lignes.length; i++) {
+    const ligne = lignes[i];
+    let m;
+    if (!ligne.trim() || /^<!--\s*-->$/.test(ligne.trim())) {
+      fermer();
+    } else if (retraitAutorise && ligne.trim() === '{saut-de-page}') {
+      fermer();
+      blocs.push({type: 'saut'});
+    } else if (retraitAutorise && CONVENTION_REPERES_SIGNATURES.has(ligne.trim())) {
+      fermer();
+      const repere = CONVENTION_REPERES_SIGNATURES.get(ligne.trim());
+      blocs.push({type: 'signatures', avecLieuDate: repere.avecLieuDate, ftAGauche: repere.ftAGauche});
+    } else if (retraitAutorise && ligne.startsWith('>')) {
+      fermer();
+      const interieur = [];
+      while (i < lignes.length && lignes[i].startsWith('>')) {
+        interieur.push(lignes[i].replace(/^> ?/, ''));
+        i++;
+      }
+      i--;
+      blocs.push({type: 'retrait', blocs: conventionBlocsDocx(interieur, false, valeurs, contexte)});
+    } else if ((m = /^(#{1,3})\s+(.+)$/.exec(ligne))) {
+      fermer();
+      titre(m[1].length, conventionRunsDocx(m[2], valeurs, contexte));
+    } else if ((m = /^-\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ul', 1, m[1]);
+    } else if ((m = /^(\d+)\.\s+(.*)$/.exec(ligne))) {
+      ajouterItem('ol', Number(m[1]), m[2]);
+    } else {
+      // Premier passage « pour voir » avec un contexte jetable : il ne doit pas compter les appels de
+      // notes (la ligne est relue ensuite, pour de bon, par fermer ou par titre).
+      const essai = conventionRunsDocx(ligne, valeurs, {numeros: contexte.numeros, definies: contexte.definies, appelees: new Set()});
+      const toutEnGras = essai.some(run => (run.text ?? '').trim()) && essai.every(run => run.bold || !(run.text ?? '').trim());
+      if (toutEnGras) {
+        fermer();
+        titre(0, conventionRunsDocx(ligne, valeurs, contexte));
+      } else {
+        if (liste) fermer();
+        paragraphe.push(ligne);
+      }
+    }
+  }
+  fermer();
+  return blocs;
+}
+
+// Morceaux decrits (conventionRunsDocx) -> objets de la bibliotheque. `options` : { gras (tout en
+// gras), taille (demi-points) }. Le texte passe par TextRun : jamais de XML ecrit a la main.
+function conventionRunsVersDocx(lib, runs, options) {
+  const gras = !!(options && options.gras);
+  const taille = options && options.taille;
+  return runs.map(run => {
+    if (run.saut) return new lib.TextRun({break: 1});
+    if (run.note) return new lib.FootnoteReferenceRun(run.note);
+    const reglages = {text: conventionTexteSur(run.text)};
+    if (gras || run.bold) reglages.bold = true;
+    if (run.italics) reglages.italics = true;
+    if (run.underline) reglages.underline = {type: 'single'};
+    if (run.sup) reglages.superScript = true;
+    if (taille) reglages.size = taille;
+    return new lib.TextRun(reglages);
+  });
+}
+
+// Bordures « aucune » d'un tableau sans trait (blocs de signature, en-tete des logos).
+function conventionBorduresAucunes(lib) {
+  const aucune = {style: lib.BorderStyle.NONE, size: 0, color: 'auto'};
+  return {top: aucune, bottom: aucune, left: aucune, right: aucune};
+}
+
+// Petit paragraphe vide (1 pt) : Word veut un paragraphe apres un tableau, et deux tableaux
+// qui se touchent seraient fusionnes. `reglages` : espacement, saut de page...
+function conventionParagrapheVideDocx(lib, reglages) {
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  return new lib.Paragraph({children: [new lib.TextRun({text: ' ', size: L.tailleParagrapheVide})], spacing: {before: 0, after: 0, line: L.interligneSimple}, ...(reglages || {})});
+}
+
+// Bloc de signature : un tableau a deux colonnes de meme largeur, sans bordure, en une seule ligne
+// qui ne se coupe pas entre deux pages. Club a gauche et agence a droite ; avec ftAGauche : une
+// ligne « Fait a ..., le ... » au-dessus (gardee avec le tableau), France Travail a gauche, club a
+// droite, intitules en gras, 3 cm d'espace pour la signature. Une case connue mais vide donne des
+// pointilles ; une case inconnue reste ecrite [Nom], comme dans le reste du texte.
+function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const S = L.signatures;
+  const A = lib.AlignmentType;
+  const sautAvant = contexte.sautEnAttente;
+  contexte.sautEnAttente = false;
+  const valeurOuCase = nom => {
+    const valeur = conventionValeurDeCase(valeurs, nom);
+    if (valeur === undefined) return [{text: `[${nom}]`}];
+    return valeur === '' ? [conventionPointillesDocx()] : [{text: valeur}];
+  };
+  const paragraphe = (runs, options, dernier) => new lib.Paragraph({
+    children: conventionRunsVersDocx(lib, runs, options),
+    alignment: A.LEFT,
+    spacing: {before: S.espaceParagraphe.avant, after: S.espaceParagraphe.apres},
+    keepNext: !dernier
+  });
+  const colonne = (titre, nomPersonne, nomFonction) => {
+    const contenu = [];
+    if (bloc.avecLieuDate) contenu.push(paragraphe(conventionLieuDateDocx('À '), {}));
+    contenu.push(
+      paragraphe([{text: titre}], {gras: bloc.ftAGauche}),
+      paragraphe(valeurOuCase(nomPersonne), {gras: true}),
+      paragraphe(valeurOuCase(nomFonction), {})
+    );
+    // Espace pour la signature manuscrite.
+    contenu.push(bloc.ftAGauche
+      ? conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: S.espaceSousIntitules, line: L.interligneSimple}})
+      : new lib.Paragraph({children: [new lib.TextRun({break: S.lignesVides})], spacing: {before: S.espaceParagraphe.avant, after: S.espaceParagraphe.apres}}));
+    return contenu;
+  };
+  const club = colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire');
+  const agence = colonne('Pour France Travail', 'Représentant de l’agence', 'Fonction du représentant');
+  const [gauche, droite] = bloc.ftAGauche ? [agence, club] : [club, agence];
+
+  const moitie = Math.floor(L.largeurTexte / 2);
+  const cellule = (enfants, aGauche) => new lib.TableCell({
+    children: enfants,
+    width: {size: moitie, type: lib.WidthType.DXA},
+    borders: conventionBorduresAucunes(lib),
+    margins: {top: 0, bottom: 0, left: aGauche ? 0 : S.espaceEntreColonnes / 2, right: aGauche ? S.espaceEntreColonnes / 2 : 0, marginUnitType: lib.WidthType.DXA}
+  });
+  const tableau = new lib.Table({
+    width: {size: L.largeurTexte, type: lib.WidthType.DXA},
+    columnWidths: [moitie, L.largeurTexte - moitie],
+    layout: lib.TableLayoutType.FIXED,
+    borders: {...conventionBorduresAucunes(lib), insideHorizontal: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}, insideVertical: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}},
+    // cantSplit : la ligne du tableau ne se coupe jamais entre deux pages (elle passe en entier a la suivante).
+    rows: [new lib.TableRow({cantSplit: true, children: [cellule(gauche, true), cellule(droite, false)]})]
+  });
+
+  const sortie = [];
+  if (bloc.ftAGauche) {
+    // keepNext : la ligne « Fait a » reste sur la meme page que le tableau.
+    sortie.push(new lib.Paragraph({
+      children: conventionRunsVersDocx(lib, conventionLieuDateDocx('Fait à '), {}),
+      alignment: A.LEFT,
+      spacing: {before: S.espaceAvantLieuDate, after: 0},
+      keepNext: true,
+      pageBreakBefore: sautAvant || undefined
+    }));
+  } else if (sautAvant) {
+    sortie.push(conventionParagrapheVideDocx(lib, {pageBreakBefore: true}));
+  }
+  sortie.push(tableau, conventionParagrapheVideDocx(lib));
+  return sortie;
+}
+
+// Blocs decrits (conventionBlocsDocx) -> paragraphes et tableaux de la bibliotheque. `contexte`
+// garde ce qui se partage entre blocs : saut de page en attente, listes numerotees a creer.
+// `retrait` (vrai dans une citation) decale tout de 1,25 cm.
+function conventionBlocsVersDocx(lib, blocs, valeurs, contexte, retrait) {
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+  const decalage = retrait ? L.retrait : 0;
+  const sortie = [];
+  const paragraphe = (runs, reglages) => {
+    const options = {...reglages, children: runs};
+    // {saut-de-page} : le paragraphe suivant commence une nouvelle page.
+    if (contexte.sautEnAttente) {
+      options.pageBreakBefore = true;
+      contexte.sautEnAttente = false;
+    }
+    return new lib.Paragraph(options);
+  };
+  // Titres : jamais seuls en bas de page (keepNext les garde avec ce qui suit).
+  const E = L.espacements;
+  const titres = {
+    1: {alignment: A.CENTER, spacing: {before: E.titre1.avant, after: E.titre1.apres}, indent: {left: L.retraitTitre1 + decalage, right: L.retraitTitre1}, taille: L.tailleTitre1},
+    2: {alignment: A.LEFT, spacing: {before: E.titre2.avant, after: E.titre2.apres}, indent: {left: decalage}},
+    3: {alignment: A.LEFT, spacing: {before: E.titre3.avant, after: E.titre3.apres}, indent: {left: L.retrait + decalage}},
+    0: {alignment: A.JUSTIFIED, spacing: {before: E.ligneSeule.avant, after: E.ligneSeule.apres}, indent: {left: decalage}}
+  };
+
+  blocs.forEach(bloc => {
+    if (bloc.type === 'saut') {
+      contexte.sautEnAttente = true;
+    } else if (bloc.type === 'titre') {
+      const {taille, ...reglages} = titres[bloc.niveau];
+      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {gras: true, taille}), {...reglages, keepNext: true, keepLines: true}));
+    } else if (bloc.type === 'paragraphe') {
+      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {}), {alignment: A.JUSTIFIED, spacing: {before: E.paragraphe.avant, after: E.paragraphe.apres}, indent: {left: decalage}}));
+    } else if (bloc.type === 'liste') {
+      let reference = 'convention-puces';
+      if (bloc.ordonnee) {
+        // Une liste numerotee = sa propre numerotation, pour qu'elle reparte bien de son premier numero.
+        contexte.listes += 1;
+        reference = `convention-liste-${contexte.listes}`;
+        contexte.numerotations.push({
+          reference,
+          levels: [{level: 0, format: lib.LevelFormat.DECIMAL, text: '%1.', alignment: A.LEFT, start: bloc.debut,
+            style: {paragraph: {indent: {left: L.retrait + L.retraitPuce, hanging: L.retraitPuce}}}}]
+        });
+      }
+      bloc.items.forEach(runs => {
+        sortie.push(paragraphe(conventionRunsVersDocx(lib, runs, {}), {
+          alignment: A.JUSTIFIED,
+          spacing: {before: E.elementListe.avant, after: E.elementListe.apres},
+          numbering: {reference, level: 0},
+          indent: {left: decalage + L.retrait + L.retraitPuce, hanging: L.retraitPuce}
+        }));
+      });
+    } else if (bloc.type === 'retrait') {
+      sortie.push(...conventionBlocsVersDocx(lib, bloc.blocs, valeurs, contexte, true));
+    } else if (bloc.type === 'signatures') {
+      sortie.push(...conventionSignaturesDocx(lib, bloc, valeurs, contexte));
+    }
+  });
+  return sortie;
+}
+
+// En-tete de la page 1 : les deux logos cote a cote, dans un tableau sans bordure a deux colonnes
+// (Logo a gauche, Logo_partenaire a droite, chacun dans sa boite de 6 x 2 cm). Renvoie null s'il
+// n'y a aucun logo. Le haut de l'en-tete est a 1,25 cm du haut de la page ; un petit paragraphe
+// de 24 pt en dessous garde le titre 24 pt sous les logos (Word descend le texte si l'en-tete est
+// plus haut que la marge). `logos` : { logo, partenaire }, chacun null ou { type, data, width, height }.
+function conventionEnTeteDocx(lib, logos) {
+  const logo = logos && logos.logo;
+  const partenaire = logos && logos.partenaire;
+  if (!logo && !partenaire) return null;
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+  const image = (donnees, nom) => new lib.ImageRun({
+    type: donnees.type,
+    data: donnees.data,
+    transformation: {width: donnees.width, height: donnees.height},
+    altText: {title: nom, description: nom, name: nom}
+  });
+  const paragraphe = (donnees, nom, alignement) => new lib.Paragraph({
+    children: donnees ? [image(donnees, nom)] : [],
+    alignment: alignement,
+    spacing: {before: 0, after: 0, line: L.interligneSimple}
+  });
+  const moitie = Math.floor(L.largeurTexte / 2);
+  const cellule = enfant => new lib.TableCell({
+    children: [enfant],
+    width: {size: moitie, type: lib.WidthType.DXA},
+    borders: conventionBorduresAucunes(lib),
+    margins: {top: 0, bottom: 0, left: 0, right: 0, marginUnitType: lib.WidthType.DXA}
+  });
+  const tableau = new lib.Table({
+    width: {size: L.largeurTexte, type: lib.WidthType.DXA},
+    columnWidths: [moitie, L.largeurTexte - moitie],
+    layout: lib.TableLayoutType.FIXED,
+    borders: {...conventionBorduresAucunes(lib), insideHorizontal: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}, insideVertical: {style: lib.BorderStyle.NONE, size: 0, color: 'auto'}},
+    rows: [new lib.TableRow({children: [
+      cellule(paragraphe(logo, 'Logo', A.LEFT)),
+      cellule(paragraphe(partenaire, 'Logo du partenaire', A.RIGHT))
+    ]})]
+  });
+  return new lib.Header({children: [tableau, conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: L.logo.espaceSousLogos, line: L.interligneSimple}})]});
+}
+
+// Description complete du fichier Word (la bibliotheque est passee en parametre : options.lib, par
+// defaut window.docx). options.logos : { logo, partenaire } (voir conventionImageLogoDocx).
+//  - A4, marges 2,5 cm, Arial 11 pt, justifie, interligne 1,2 ;
+//  - logos dans l'en-tete de la page 1 seulement ;
+//  - numero de page seul, en bas a droite, absent de la page 1 ;
+//  - notes de bas de page (seulement celles qui sont citees dans le texte et qui ont un texte) ;
+//  - proprietes neutres (CONVENTION_DOCX_METADONNEES).
+function conventionDocumentDocx(texte, valeurs, options) {
+  const lib = (options && options.lib) || window.docx;
+  const logos = (options && options.logos) || {};
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  const A = lib.AlignmentType;
+
+  const {corps, definitions, numeros} = conventionAnalyseNotes(texte);
+  const contexte = {
+    numeros,
+    definies: new Set(definitions.map(note => note.etiquette)),
+    appelees: new Set(),
+    sautEnAttente: false,
+    listes: 0,
+    numerotations: []
+  };
+  const elements = conventionBlocsVersDocx(lib, conventionBlocsDocx(corps, true, valeurs, contexte), valeurs, contexte, false);
+
+  // Notes de bas de page : l'identifiant d'une note est son numero imprime. Dans le texte d'une note,
+  // un appel de note reste un simple exposant (contexte sans etiquette definie).
+  const notes = {};
+  definitions.forEach(note => {
+    if (!contexte.appelees.has(note.etiquette)) return;
+    const contexteNote = {numeros, definies: new Set(), appelees: new Set()};
+    const runs = [{text: ' '}, ...conventionRunsDocx(note.texte, valeurs, contexteNote)];
+    notes[numeros.get(note.etiquette)] = {
+      children: [new lib.Paragraph({children: conventionRunsVersDocx(lib, runs, {taille: L.tailleNote}), spacing: {before: 0, after: 0}})]
+    };
+  });
+
+  // Numero de page : 9 pt, a droite, a 1,25 cm du bas. Pas de numero sur la page 1 (pied « premiere page » vide).
+  const pied = new lib.Footer({children: [new lib.Paragraph({
+    alignment: A.RIGHT,
+    spacing: {before: 0, after: 0, line: L.interligneSimple},
+    children: [new lib.TextRun({children: [lib.PageNumber.CURRENT], size: L.taillePied})]
+  })]});
+  const section = {
+    properties: {
+      titlePage: true,
+      page: {
+        size: {width: L.pageLargeur, height: L.pageHauteur},
+        margin: {top: L.marge, right: L.marge, bottom: L.marge, left: L.marge, header: L.distanceEnTetePied, footer: L.distanceEnTetePied}
+      }
+    },
+    footers: {default: pied, first: new lib.Footer({children: [new lib.Paragraph({})]})},
+    children: elements
+  };
+  const enTete = conventionEnTeteDocx(lib, logos);
+  if (enTete) section.headers = {first: enTete, default: new lib.Header({children: [new lib.Paragraph({})]})};
+
+  return new lib.Document({
+    ...CONVENTION_DOCX_METADONNEES,
+    styles: {default: {document: {run: {font: L.police, size: L.taille}, paragraph: {alignment: A.JUSTIFIED, spacing: {line: L.interligne}}}}},
+    numbering: {config: [
+      {
+        reference: 'convention-puces',
+        levels: [{level: 0, format: lib.LevelFormat.BULLET, text: L.puce, alignment: A.LEFT,
+          style: {paragraph: {indent: {left: L.retrait + L.retraitPuce, hanging: L.retraitPuce}}}}]
+      },
+      ...contexte.numerotations
+    ]},
+    footnotes: notes,
+    sections: [section]
+  });
+}
+
+// Transforme les octets d'un logo en image pour la bibliotheque docx : { type ('png' ou 'jpg'),
+// data (octets), width, height (pixels) }, ou null si ce n'est pas un PNG ou un JPEG lisible. La
+// taille tient dans 6 cm sur 2 cm, proportions gardees, sans agrandissement. Memes controles que
+// conventionImageLogo (poids, taille annoncee). Fonction pure.
+function conventionImageLogoDocx(tampon) {
+  try {
+    const octets = tampon instanceof Uint8Array ? tampon : new Uint8Array(tampon);
+    if (!octets.length || octets.length > CONVENTION_LOGO_OCTETS_MAX) return null;
+    const dim = conventionDimensionsImage(octets);
+    if (!dim || !(dim.largeur > 0) || !(dim.hauteur > 0)) return null;
+    if (dim.largeur > CONVENTION_LOGO_PIXELS_MAX || dim.hauteur > CONVENTION_LOGO_PIXELS_MAX) return null;
+    const boite = CONVENTION_MISE_EN_PAGE_DOCX.logo;
+    const echelle = Math.min(1, boite.largeurMax / dim.largeur, boite.hauteurMax / dim.hauteur);
+    return {
+      type: dim.type === 'jpeg' ? 'jpg' : 'png',
+      data: octets,
+      width: Math.max(1, Math.round(dim.largeur * echelle)),
+      height: Math.max(1, Math.round(dim.hauteur * echelle))
+    };
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// ---- Convention : chargement de pdfmake (tache 7.1) ----
+// pdfmake n'est charge qu'au clic sur « Generer » (decision de l'examen de securite,
+// tache 0.3) : jamais a l'ouverture de la page ni de la fenetre. Version figee, depuis
+// cdnjs, avec empreinte SRI : si le fichier change, le navigateur le refuse.
+// Version pdfmake 0.3.3. Adresses et empreintes verifiees par Hanta le 2026-10-23
+// (reponse HTTP 200 pour les deux). Pour changer de version : refaire la verification
+// et recalculer les deux empreintes.
+// L'ordre compte : Roboto.min.js s'enregistre aupres de pdfMake (addFontContainer)
+// seulement si pdfMake existe deja ; sinon il ne fait rien et ne signale rien.
+const CONVENTION_PDFMAKE_SCRIPTS = [
+  {
+    url: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.3.3/pdfmake.min.js',
+    integrity: 'sha384-HsYB9F88cbFl+w8Pu5vyAezlEQxqQkPPj78NDtuRRjgl0t4YAfWS0Fy5pvJF80yI'
+  },
+  {
+    url: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.3.3/fonts/Roboto.min.js',
+    integrity: 'sha384-too3ol4VkM7cR44bgMJ3OfF8xS62cnE/YLdKop6uRj4q4rCMdS4SOmmrASLaCN2O'
+  }
+];
+
+// Code porte par l'erreur de chargerPdfmake (propriete `code`). La tache 7.2b le
+// traduit en message : ici, rien n'est affiche et rien n'est ecrit dans la console.
+const CONVENTION_PDFMAKE_ERREUR = 'pdfmake-non-charge';
+
+let pdfmakePromesse = null;
+
+function pdfmakePret() {
+  return !!(window.pdfMake && typeof window.pdfMake.createPdf === 'function');
+}
+
+// Ajoute un script a la page. Promesse resolue quand il est charge ; en cas d'echec
+// (reseau, empreinte refusee), le script est retire de la page et la promesse est rejetee.
+function pdfmakeAjouterScript(source) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = source.url;
+    script.integrity = source.integrity;
+    script.crossOrigin = 'anonymous';
+    script.referrerPolicy = 'no-referrer';
+    // Dans l'ordre : on n'attend le suivant qu'une fois celui-ci charge.
+    script.async = false;
+    script.onload = () => resolve(script);
+    script.onerror = () => {
+      script.remove();
+      reject(new Error('Script non charge'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// Charge pdfmake puis la police Roboto. Promesse resolue quand pdfMake peut fabriquer
+// un PDF avec Roboto, rejetee sinon par une erreur dont `code` vaut
+// CONVENTION_PDFMAKE_ERREUR. Un seul chargement par page : un deuxieme appel rend la
+// meme promesse. Apres un echec, le prochain appel recommence ; un script deja
+// charge avec succes n'est pas ajoute une deuxieme fois.
+function chargerPdfmake() {
+  if (pdfmakePromesse) return pdfmakePromesse;
+  pdfmakePromesse = (async () => {
+    const [bibliotheque, police] = CONVENTION_PDFMAKE_SCRIPTS;
+    if (!pdfmakePret()) {
+      const script = await pdfmakeAjouterScript(bibliotheque);
+      if (!pdfmakePret()) {
+        // Charge, mais n'a rien fourni : on le retire pour pouvoir recommencer.
+        script.remove();
+        throw new Error('pdfMake absent apres le chargement');
+      }
+    }
+    await pdfmakeAjouterScript(police);
+  })().catch(cause => {
+    pdfmakePromesse = null;
+    const erreur = new Error('pdfmake n\'a pas pu etre charge');
+    erreur.code = CONVENTION_PDFMAKE_ERREUR;
+    erreur.cause = cause;
+    throw erreur;
+  });
+  return pdfmakePromesse;
+}
+
+// ---- Convention : chargement de la bibliotheque docx (evolution 3) ----
+// Meme modele que pdfmake : la bibliotheque n'est chargee qu'au clic sur « Generer » (jamais a
+// l'ouverture de la page ni de la fenetre). Version figee (docx 9.15.2), fichier unique de la
+// distribution navigateur (index.iife.js : le .cjs est servi avec un type MIME que le navigateur
+// refuse d'executer), depuis jsDelivr, avec empreinte SRI : si le fichier change, le navigateur le refuse.
+// L'empreinte ci-dessous a ete calculee par Hanta sur index.iife.js (6 novembre 2026).
+// Pour changer de version : refaire la verification et recalculer l'empreinte.
+const CONVENTION_DOCX_SCRIPT = {
+  url: 'https://cdn.jsdelivr.net/npm/docx@9.15.2/dist/index.iife.js',
+  integrity: 'sha384-ud8085E8t6iW4uUom5nN5cpzTZ4OdsNKB/AKWfOsI62tzsoV2X7r7/o4KWESO8rq'
+};
+
+// Code porte par l'erreur de chargerDocx (propriete `code`) : traduit en message plus bas.
+// Rien n'est affiche ici et rien n'est ecrit dans la console.
+const CONVENTION_DOCX_ERREUR = 'docx-non-charge';
+
+let docxPromesse = null;
+
+function docxPret() {
+  return !!(window.docx && window.docx.Document && window.docx.Packer && typeof window.docx.Packer.toBlob === 'function');
+}
+
+// Charge la bibliotheque docx. Promesse resolue quand window.docx peut fabriquer un fichier Word,
+// rejetee sinon par une erreur dont `code` vaut CONVENTION_DOCX_ERREUR. Un seul chargement par page :
+// un deuxieme appel rend la meme promesse. Apres un echec, le prochain appel recommence (le script
+// en echec a ete retire de la page par pdfmakeAjouterScript, qui sert aux deux bibliotheques).
+function chargerDocx() {
+  if (docxPromesse) return docxPromesse;
+  docxPromesse = (async () => {
+    if (docxPret()) return;
+    const script = await pdfmakeAjouterScript(CONVENTION_DOCX_SCRIPT);
+    if (!docxPret()) {
+      // Charge, mais n'a rien fourni : on le retire pour pouvoir recommencer.
+      script.remove();
+      throw new Error('docx absent apres le chargement');
+    }
+  })().catch(cause => {
+    docxPromesse = null;
+    const erreur = new Error('docx n\'a pas pu etre charge');
+    erreur.code = CONVENTION_DOCX_ERREUR;
+    erreur.cause = cause;
+    throw erreur;
+  });
+  return docxPromesse;
+}
+
+// ---- Convention : etat du bloc et blocage de la generation ----
+// Deux fonctions pures : ni Grist, ni DOM, ni ecriture. Elles lisent "donnees", un
+// objet { raw, tablesRefusees } : on lui passe simplement `state`. Les droits sont
+// decides par Grist (une table refusee arrive vide dans raw), jamais par ces fonctions.
+// Une action en corbeille ou annulee n'est pas traitee ici (question Q-B du backlog).
+const CONVENTION_ETATS = {
+  aGenerer: 'À générer',
+  generee: 'Générée',
+  signee: 'Signée',
+  sansModele: 'Sans modèle',
+  droits: 'Droits insuffisants'
+};
+
+// Message affiche pour chaque element manquant (le champ a remplir est la cle).
+const CONVENTION_BLOCAGES = {
+  agence: "Renseignez l'agence de l'action dans sa fiche.",
+  club: "Renseignez le club de l'action.",
+  dispositif: "Renseignez le dispositif de l'action dans sa fiche."
+};
+
+// Une colonne de pieces jointes arrive de Grist sous la forme ['L', id, id...] ;
+// ['L'] seul, null ou une liste vide veulent dire « aucun fichier ».
+function conventionPieceJointeRemplie(valeur) {
+  if (!Array.isArray(valeur)) return false;
+  return valeur[0] === 'L' ? valeur.length > 1 : valeur.length > 0;
+}
+
+// Ligne de la table `lignes` portant l'identifiant `id` (undefined si absente).
+function conventionLigne(lignes, id) {
+  return id ? (lignes || []).find(ligne => ligne.id === id) : undefined;
+}
+
+// Modele actif d'un dispositif (le plus ancien s'il y en a plusieurs), ou null.
+// `raw` : les tables lues (state.raw).
+function conventionModeleActif(raw, dispositifId) {
+  if (!dispositifId) return null;
+  return (raw.Modeles_convention || [])
+    .filter(modele => modele.Dispositif === dispositifId && modele.Actif === true)
+    .reduce((plusAncien, modele) => (!plusAncien || modele.id < plusAncien.id ? modele : plusAncien), null);
+}
+
+// Etat du bloc « Convention » d'une action. Renvoie { etat, convention, modele } :
+// etat est l'une des valeurs de CONVENTION_ETATS ; convention est la ligne Conventions
+// de l'action et modele la ligne Modeles_convention concernee, ou null quand elles n'existent pas.
+function conventionEtat(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const refusees = (donnees && donnees.tablesRefusees) || [];
+  if (refusees.includes('Conventions') || refusees.includes('Modeles_convention')) {
+    return {etat: CONVENTION_ETATS.droits, convention: null, modele: null};
+  }
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  // Grist n'impose pas l'unicite de Conventions.Action : on garde la ligne la plus ancienne.
+  const convention = (raw.Conventions || [])
+    .filter(ligne => ligne.Action === actionId)
+    .reduce((plusAncienne, ligne) => (!plusAncienne || ligne.id < plusAncienne.id ? ligne : plusAncienne), null);
+  const actif = conventionModeleActif(raw, action.Dispositif);
+  // Une convention deja faite garde le modele avec lequel elle a ete faite.
+  const modeleUtilise = conventionLigne(raw.Modeles_convention, convention && convention.Modele) || actif;
+
+  if (convention && conventionPieceJointeRemplie(convention.PDF_signe)) {
+    return {etat: CONVENTION_ETATS.signee, convention, modele: modeleUtilise};
+  }
+  if (convention && conventionPieceJointeRemplie(convention.PDF_genere)) {
+    return {etat: CONVENTION_ETATS.generee, convention, modele: modeleUtilise};
+  }
+  if (actif) return {etat: CONVENTION_ETATS.aGenerer, convention: convention || null, modele: actif};
+  return {etat: CONVENTION_ETATS.sansModele, convention: convention || null, modele: null};
+}
+
+// Premier element qui empeche de generer, dans l'ordre : agence, club, dispositif.
+// Renvoie { element, message } (element : 'agence', 'club' ou 'dispositif'), ou null
+// si la generation est possible. L'adresse du club ne bloque plus : absente, elle
+// donne des pointillés dans le PDF (comme toute case connue mais vide).
+function conventionBlocage(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const bloque = element => ({element, message: CONVENTION_BLOCAGES[element]});
+  if (!action.Agence) return bloque('agence');
+  if (!action.Club) return bloque('club');
+  if (!action.Dispositif) return bloque('dispositif');
+  return null;
+}
+
+// ---- Convention : bloc affiche en bas de la fiche (lecture seule) ----
+// Textes de la note docs/ux/convention.md, un par etat. Seul l'etat « A generer » a
+// un bouton (et son message de blocage, lie a ce bouton) ; les autres viendront avec
+// la generation et le depot. Le profil de l'utilisateur n'est pas lu :
+// « Droits insuffisants » vient de conventionEtat, donc de ce que Grist a refuse.
+const CONVENTION_TEXTES = {
+  aGenerer: 'Aucune convention générée.',
+  sansModele: 'Pas encore de modèle de convention pour ce dispositif.',
+  droits: "Vous n'avez pas accès aux conventions avec vos droits actuels. Si vous en avez besoin, contactez l'équipe du tableau de bord."
+};
+
+// Format du document genere (E3-8, E3-9) : la ligne « Format : ... », le texte cache du bouton
+// « Telecharger la convention » en dependent. Plus de phrase d'aide a l'etat « Generee » (E3-26, E3-29).
+const CONVENTION_FORMATS = {
+  docx: {
+    ligne: 'Format : document Word (.docx).',
+    cache: ' (fichier Word)'
+  },
+  pdf: {
+    ligne: 'Format : document PDF (.pdf).',
+    cache: ' (fichier PDF)'
+  }
+};
+
+// Format du document genere de chaque convention connu dans cette page : cle = identifiant de la ligne
+// Conventions, valeur = 'docx' ou 'pdf'. Alimente a la generation et au « Telecharger la convention »
+// (qui lit le nom reel du fichier dans Grist). On ne garde que l'extension, jamais l'identifiant de
+// la piece jointe. Format inconnu : la ligne « Format » et le texte cache ne s'affichent pas.
+const conventionFormats = new Map();
+
+// Format ('docx', 'pdf' ou '') du document genere de la convention `convention` (ligne Conventions).
+function conventionFormatGenere(convention) {
+  return (convention && conventionFormats.get(convention.id)) || '';
+}
+
+// Phrases d'etat d'une action, dans l'ordre d'affichage : [{texte, aide, format}, ...].
+// La date vient de Conventions.Date_generation (etat Generee) ou Date_depot (etat Signee).
+function conventionPhrases(actionId, donnees) {
+  const {etat, convention} = conventionEtat(actionId, donnees);
+  const date = colonne => formatDate(convention && convention[colonne]);
+  switch (etat) {
+    case CONVENTION_ETATS.droits: return [{texte: CONVENTION_TEXTES.droits}];
+    case CONVENTION_ETATS.sansModele: return [{texte: CONVENTION_TEXTES.sansModele}];
+    case CONVENTION_ETATS.aGenerer: return [{texte: CONVENTION_TEXTES.aGenerer}];
+    case CONVENTION_ETATS.generee: {
+      const quand = date('Date_generation');
+      const format = conventionFormatGenere(convention);
+      const phrases = [{texte: quand ? `Convention générée le ${quand}.` : 'Convention générée.'}];
+      // Ligne « Format : ... » sous la phrase d'etat, seulement si le format est connu (E3-8).
+      if (format) phrases.push({texte: CONVENTION_FORMATS[format].ligne, format: true});
+      // E3-26 et E3-29 : plus de phrase d'aide a l'etat « Generee », pour les deux formats.
+      return phrases;
+    }
+    default: {
+      const quand = date('Date_depot');
+      return [{texte: quand ? `Convention signée, déposée le ${quand}.` : 'Convention signée.'}];
+    }
+  }
+}
+
+// Meme structure que les autres blocs de la fiche (edit-card, section-head,
+// edit-fields). Le texte porte l'information, sans couleur ni role d'alerte.
+// Boutons pour l'instant : « Generer la convention » a l'etat « A generer » (il ouvre la
+// fenetre) et « Voir la convention » a l'etat « Generee » (tache 7.4). Les autres
+// boutons viendront avec leurs taches.
+function conventionBlocHtml(actionId, donnees) {
+  // Deux parties dans la carte : la zone de message (role="status"), qui n'est jamais
+  // refaite pour que « Convention generee. » soit annoncee, et le contenu (phrases et
+  // boutons), que conventionRafraichirBloc peut refaire seul apres une generation.
+  return `<section class="edit-card" id="conventionBloc">
+          <div class="section-head"><span>Convention</span></div>
+          <div class="edit-fields convention-fields"><div class="convention-alerte" id="conventionAlerte" role="status"></div><div class="convention-depot-attente" id="conventionDepotAttente" role="status"></div><div class="convention-contenu" id="conventionBlocContenu">${conventionBlocContenuHtml(actionId, donnees)}</div></div>
+        </section>`;
+}
+
+// Phrases d'etat et boutons du bloc (tout sauf la zone de message).
+function conventionBlocContenuHtml(actionId, donnees) {
+  // La ligne « Format : ... » est un help-block (classe deja employee dans le bloc) ; la phrase d'aide
+  // garde sa classe convention-aide.
+  const phrases = conventionPhrases(actionId, donnees)
+    .map(({texte, aide, format}) => `<p${aide ? ' class="convention-aide"' : format ? ' class="help-block"' : ''}>${escapeHtml(texte)}</p>`)
+    .join('');
+  const etat = conventionEtat(actionId, donnees).etat;
+  const boutons = etat === CONVENTION_ETATS.aGenerer ? conventionGenererHtml(actionId, donnees)
+    : etat === CONVENTION_ETATS.generee ? conventionGenereeHtml(actionId, donnees)
+    : etat === CONVENTION_ETATS.signee ? conventionSigneeHtml()
+    : etat === CONVENTION_ETATS.sansModele ? conventionSansModeleHtml()
+    : '';
+  return `${phrases}${boutons}`;
+}
+
+// Etat « Sans modele » : seul bouton de la rangee, « Deposer la convention signee » (E3-23 : sans phrase d'aide).
+function conventionSansModeleHtml() {
+  return `<div class="convention-actions">${conventionDeposerHtml()}</div>`;
+}
+
+// Bouton « Générer la convention » et, au-dessus, la zone du message de blocage.
+// La zone (role="status") est toujours presente a cet etat, vide quand rien ne
+// manque : ainsi un message qui apparait ensuite est annonce par les lecteurs
+// d'ecran. Bouton grise = aria-disabled (jamais disabled, pour qu'il reste
+// atteignable au clavier) + aria-describedby vers le message. Sans blocage, il
+// annonce qu'il ouvre une fenetre (aria-haspopup).
+function conventionGenererHtml(actionId, donnees) {
+  const blocage = conventionBlocage(actionId, donnees);
+  const message = blocage
+    ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
+    : '';
+  // Pendant l'envoi d'un fichier signe, « Generer la convention » est grise sans message ni aria-haspopup (E3-6).
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"'
+    : conventionDepotEnCours ? ' aria-disabled="true"'
+    : ' aria-haspopup="dialog"';
+  // « Deposer la convention signee » est le second bouton de la rangee. Il ne porte jamais le message
+  // de blocage : celui-ci parle de la generation seule.
+  return `<div id="conventionBlocage" role="status">${message}</div>
+            <div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionGenerer"${attributs}><span class="btn-content">Générer la convention</span></button>${conventionDeposerHtml()}</div>`;
+}
+
+// Boutons de l'etat « Generee » : « Telecharger la convention » (E3-3), puis « Re-generer » et
+// « Deposer la convention signee » sur la meme rangee. « Re-generer » suit les memes regles que « Generer la
+// convention » : grise avec le message du premier element manquant (zone role="status"
+// toujours presente, vide quand rien ne manque), sinon il annonce qu'il ouvre une fenetre.
+function conventionGenereeHtml(actionId, donnees) {
+  const blocage = conventionBlocage(actionId, donnees);
+  const message = blocage
+    ? `<p class="help-block" id="conventionBlocageTexte"><span class="sr-only">Convention impossible à générer : </span>${escapeHtml(blocage.message)}</p>`
+    : '';
+  // Pendant l'envoi du fichier signé, « Re-générer » est grisé sans message ni aria-haspopup (S9-5).
+  const attributs = blocage ? ' aria-disabled="true" aria-describedby="conventionBlocageTexte"'
+    : conventionDepotEnCours ? ' aria-disabled="true"'
+    : ' aria-haspopup="dialog"';
+  const regenerer = `<button class="btn btn-secondary" type="button" id="conventionRegenerer"${attributs}><span class="btn-content">Re-générer</span></button>`;
+  const format = conventionFormatGenere(conventionEtat(actionId, donnees).convention);
+  return `<div id="conventionBlocage" role="status">${message}</div>
+            <div class="convention-actions">${conventionTelechargerHtml(format)}${regenerer}${conventionDeposerHtml()}</div>`;
+}
+
+// Vrai quand la fenetre s'ouvre pour une re-generation : la ligne Conventions de l'action
+// porte deja un PDF genere. Fonction pure : ni DOM, ni Grist.
+function conventionEstRegeneration(actionId, donnees) {
+  const {convention} = conventionEtat(actionId, donnees);
+  return !!(convention && conventionPieceJointeRemplie(convention.PDF_genere));
+}
+
+// ---- Convention : fenetre (tache 5.1a : informations du club et de l'agence, en lecture seule) ----
+// Les valeurs viennent des donnees enregistrees (state.raw), jamais d'une saisie
+// en cours dans la fiche. Fonction pure : ni DOM, ni Grist.
+//  - siege : adresse du club sur plusieurs lignes (adresse, puis code postal et ville) ;
+//  - adresse de l'agence : adresse, complement, puis code postal et ville.
+// Un code postal a 0 est la valeur par defaut d'une colonne numerique de Grist : on l'ignore,
+// de meme partout dans la fenetre.
+function conventionInfos(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const club = conventionLigne(raw.Structures, action.Club) || {};
+  const agence = conventionLigne(raw.Agences, action.Agence) || {};
+  const texte = valeur => String(valeur ?? '').trim();
+  const lignes = (...parties) => parties.map(texte).filter(partie => partie && partie !== '0');
+  const codePostalVille = element => lignes(element.Code_postal).concat(lignes(element.Ville)).join(' ');
+  return {
+    club: {
+      nom: texte(club.Nom),
+      siret: texte(club.SIRET),
+      siege: lignes(club.Adresse, codePostalVille(club)).join('\n')
+    },
+    agence: {
+      nom: texte(agence.Libelle_agence) || texte(agence.Code_Aurore),
+      siret: texte(agence.Siret),
+      adresse: lignes(agence.Adresse, agence.Complement_adresse, codePostalVille(agence)).join('\n')
+    }
+  };
+}
+
+// Ajuste la hauteur de l'encart du club (D-E1-19) a son contenu reel : ni poignee, ni espace vide,
+// ni defilement interne. Le champ part de rows="1" : sa hauteur « auto » vaut alors une ligne, et
+// scrollHeight donne la hauteur du texte. Appelee a l'ouverture de la fenetre et quand la largeur
+// change (la fenetre passe de deux colonnes a une, un telephone tourne).
+function conventionAjusterEncart() {
+  const encart = document.getElementById('clubEncart');
+  if (!encart) return;
+  encart.style.height = 'auto';
+  const bordures = encart.offsetHeight - encart.clientHeight;
+  encart.style.height = `${encart.scrollHeight + bordures}px`;
+}
+
+// `erreur` (facultatif) : message d'erreur place sous le champ, comme pour les champs de saisie.
+// Si libelleCache est vrai, l'etiquette reste pour les lecteurs d'ecran (sr-only) mais n'est plus
+// affichee : le titre de la section (legend) dit deja « Club » ou « Agence ».
+function conventionChampLecture(id, libelle, valeur, zone, erreur, libelleCache) {
+  const champ = zone
+    ? `<textarea class="form-control convention-encart" id="${id}" name="${id}" readonly rows="1">${escapeHtml(valeur)}</textarea>`
+    : `<input class="form-control" id="${id}" name="${id}" readonly type="text" value="${escapeAttr(valeur)}">`;
+  const classeLibelle = libelleCache ? 'form-label sr-only' : 'form-label';
+  return `<div class="edit-field"><label class="${classeLibelle}" for="${id}">${escapeHtml(libelle)}</label>${champ}${erreur || ''}</div>`;
+}
+
+// ---- Convention : champs de la fenetre (tache 5.1b : saisie et controle, sans enregistrement) ----
+const CONVENTION_FONCTION_AGENCE = "Directeur d'agence";
+const CONVENTION_FONCTION_VIDE = 'Fonction non renseignée';
+const CONVENTION_SANS_CONTACT = "Ce club n'a aucun contact dans sa fiche. Saisissez le signataire ci-dessous, ou laissez vide pour le compléter à la main.";
+// Evolution 1 : plus aucun champ obligatoire dans la fenetre, donc plus de controle des champs
+// (ni a la fermeture, ni a « Generer »). Un champ vide devient des pointilles (E3-25).
+const CONVENTION_INTRODUCTION = "Un champ laissé vide sera complété à la main, sous forme de pointillés, au moment de la signature.";
+// Valeur de l'option de la liste « Signataire » qui represente le contact saisi dans le formulaire « Ajouter un contact ».
+const CONVENTION_VALEUR_NOUVEAU_CONTACT = 'nouveau';
+
+// Titre du modele de l'action et indication « le modele demande une annee ».
+// Seule une colonne Avec_annee a non retire l'annee (Parcours de remobilisation).
+// Fonction pure : ni DOM, ni Grist.
+function conventionModeleInfos(actionId, donnees) {
+  const {modele} = conventionEtat(actionId, donnees);
+  return {
+    titre: String((modele && modele.Titre) ?? '').trim(),
+    avecAnnee: !modele || modele.Avec_annee !== false
+  };
+}
+
+// Contacts du club de l'action (table Contacts, colonne Club) : les seuls signataires
+// possibles. Un contact sans prenom ni nom ne peut designer personne : il est ignore.
+// Fonction pure ; la fonction du contact n'est lue qu'au choix, jamais mise dans la page avant.
+function conventionContacts(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  if (!action.Club) return [];
+  const texte = valeur => String(valeur ?? '').trim();
+  return (raw.Contacts || [])
+    .filter(contact => contact.Club === action.Club)
+    .map(contact => ({id: contact.id, libelle: [contact.Prenom, contact.Nom].map(texte).filter(Boolean).join(' '), fonction: texte(contact.Fonction)}))
+    .filter(contact => contact.libelle)
+    .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'));
+}
+
+// Texte du sous-titre de la fenetre : « [Dispositif] · Campagne [Campagne] » (note UX §3, E1).
+// Campagne vide : le dispositif seul. Fonction pure : ni DOM, ni Grist.
+// La campagne est Actions.Campagne, une reference vers Campagnes.Campagne (texte). Si la table
+// Campagnes n'est pas chargee (elle n'est pas dans TABLES), la reference ne peut pas etre lue : le
+// sous-titre n'a alors que le dispositif.
+function conventionSousTitre(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
+  const nom = String(dispositif.Dispositif || dispositif.Code || '').trim();
+  const campagne = conventionCampagne(actionId, donnees);
+  return campagne ? `${nom} · Campagne ${campagne}` : nom;
+}
+
+// Contenu de l'encart du club (lecture seule), sur une seule ligne logique, separe par des
+// virgules : « Nom, SIRET, adresse code postal ville ». Aucun retour a la ligne voulu : la zone
+// peut seulement passer a la ligne quand le texte est trop long. Une donnee absente ne bloque rien.
+function conventionEncartClub(infos) {
+  const adresse = infos.club.siege.split('\n').join(' ');
+  return [
+    infos.club.nom,
+    infos.club.siret || 'SIRET non renseigné',
+    adresse || 'adresse non renseignée'
+  ].join(', ');
+}
+
+// Champ de saisie sans asterisque : rien n'est obligatoire dans la fenetre.
+function conventionChampTexte(id, libelle, controle) {
+  return `<div class="edit-field"><label class="form-label" for="${id}">${escapeHtml(libelle)}</label>${controle}</div>`;
+}
+
+// Message d'erreur sous un champ : le design system ne l'affiche que si le champ
+// porte is-invalid. Le texte cache « Erreur : » evite que la couleur soit seule a informer.
+// Meme forme que la fenetre d'ajout (div invalid-feedback) : surtout pas de help-block,
+// car la regle .help-block.invalid-feedback du design system rend le message toujours visible.
+function conventionErreurHtml(id, message) {
+  return `<div class="invalid-feedback" id="${id}Erreur"><span class="sr-only">Erreur : </span>${escapeHtml(message)}</div>`;
+}
+
+// Contenu d'un message d'erreur : le texte cache « Erreur : », puis le message (echappe).
+function conventionErreurTexteHtml(message) {
+  return `<span class="sr-only">Erreur : </span>${escapeHtml(message)}`;
+}
+
+function conventionSignataireHtml(contacts) {
+  const options = contacts.map(contact => `<option value="${contact.id}">${escapeHtml(contact.libelle)}</option>`).join('');
+  const aide = contacts.length ? '' : `<p class="help-block" id="clubSignataireAide">${escapeHtml(CONVENTION_SANS_CONTACT)}</p>`;
+  const lien = contacts.length ? '' : ' aria-describedby="clubSignataireAide"';
+  // L'invite reste choisissable : on peut y revenir pour ne choisir personne (pointilles dans le PDF).
+  const liste = `<select class="form-control" id="clubSignataire" name="clubSignataire"${lien}><option selected value="">Veuillez sélectionner</option>${options}</select>`;
+  return conventionChampTexte('clubSignataire', 'Signataire', liste + aide);
+}
+
+// Bouton « Ajouter un contact » (D-E1-15) et son petit formulaire (ferme par defaut, attribut
+// hidden). Un clic sur le bouton l'ouvre, un second clic le referme (aria-expanded et
+// aria-controls). Champs dans l'ordre du formulaire du widget clubs : Nom, Prenom, E-mail.
+// Aucun asterisque, aucun required, aucun texte d'aide (D-E1-16 et D-E1-17). La fonction est le
+// champ unique « Fonction du signataire », place apres ce formulaire (conventionModalHtml).
+// Les champs referencent la phrase d'information par aria-describedby.
+// Le hidden est sur le div exterieur : le div interieur (convention-champs) est en display: grid,
+// ce qui l'emporterait sur hidden et laisserait le formulaire visible.
+function conventionSaisieLibreHtml() {
+  const aide = ' aria-describedby="signataireLibreAide"';
+  return `<div><button class="btn btn-secondary" type="button" id="signataireAjouter" aria-expanded="false" aria-controls="signataireLibre"><span class="btn-content">Ajouter un contact</span></button></div>
+                <div id="signataireLibre" hidden>
+                  <div class="convention-champs">
+                    ${conventionChampTexte('signataireNom', 'Nom', `<input class="form-control" id="signataireNom" name="signataireNom" type="text" autocomplete="off"${aide}>`)}
+                    ${conventionChampTexte('signatairePrenom', 'Prénom', `<input class="form-control" id="signatairePrenom" name="signatairePrenom" type="text" autocomplete="off"${aide}>`)}
+                    ${conventionChampTexte('signataireEmail', 'E-mail', `<input class="form-control" id="signataireEmail" name="signataireEmail" type="email" autocomplete="off"${aide}>`)}
+                  </div>
+                </div>`;
+}
+
+// Structure de la note (§3 et §8, evolution 1) : fenetre modal-xl defilante, titre h2
+// « Convention » et sous-titre dans l'en-tete, un fieldset par bloc (Club, Agence), pied avec
+// « Fermer » et « Generer la convention » (principal). Plus d'asterisque ni de required nulle part.
+function conventionModalHtml(actionId, donnees) {
+  const infos = conventionInfos(actionId, donnees);
+  const contacts = conventionContacts(actionId, donnees);
+  // Re-generation seulement : on previent que le nouveau document remplace l'ancien (sans historique).
+  // Le mot « document » est juste quel que soit l'ancien format (PDF avant l'evolution 3, Word apres).
+  // Sans date enregistree, la phrase s'ecrit sans date, comme « Convention generee. » du bloc.
+  const quand = conventionEstRegeneration(actionId, donnees) ? formatDate((conventionEtat(actionId, donnees).convention || {}).Date_generation) : null;
+  const remplacement = quand === null ? ''
+    : `<p>${escapeHtml(quand ? `Le nouveau document remplacera la convention générée le ${quand}.` : 'Le nouveau document remplacera la convention générée.')}</p>
+          `;
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="conventionDialog" role="dialog" aria-modal="true" aria-labelledby="conventionTitle" aria-describedby="conventionSubtitle" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <form class="modal-content" id="conventionForm" novalidate>
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="conventionTitle">Convention</h2>
+            <p class="convention-soustitre" id="conventionSubtitle">${escapeHtml(conventionSousTitre(actionId, donnees))}</p>
+          </div>
+        </div>
+        <div class="modal-body">
+          ${remplacement}<div class="alert alert-error is-hidden" id="conventionMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <div id="conventionAttente" role="status"></div>
+          <p class="convention-intro">${escapeHtml(CONVENTION_INTRODUCTION)}</p>
+          <div class="convention-grid">
+            <fieldset class="convention-part">
+              <legend class="form-legend">Club</legend>
+              <div class="convention-champs">
+                ${conventionChampLecture('clubEncart', 'Club', conventionEncartClub(infos), true, '', true)}
+                <p class="help-block">Pour corriger ces informations, modifiez la fiche du club.</p>
+                ${conventionSignataireHtml(contacts)}
+                ${conventionSaisieLibreHtml()}
+                ${conventionChampLecture('clubFonction', 'Fonction du signataire', '')}
+                <p class="help-block is-hidden" id="signataireLibreAide">Ce contact sera ajouté à la fiche du club.</p>
+              </div>
+            </fieldset>
+            <fieldset class="convention-part">
+              <legend class="form-legend">Agence</legend>
+              <div class="convention-champs">
+                ${conventionChampLecture('agenceNom', 'Agence', infos.agence.nom, false, '', true)}
+                ${conventionChampTexte('agenceRepresentant', 'Représentant', '<input class="form-control" id="agenceRepresentant" name="agenceRepresentant" type="text" autocomplete="off">')}
+                ${conventionChampTexte('agenceFonction', 'Fonction du représentant', `<input class="form-control" id="agenceFonction" name="agenceFonction" type="text" autocomplete="off" value="${escapeAttr(CONVENTION_FONCTION_AGENCE)}">`)}
+              </div>
+            </fieldset>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="conventionFermer"><span class="btn-content">Fermer</span></button>
+          <button type="button" class="btn btn-primary" id="conventionGenererFenetre"><span class="btn-content">Générer la convention</span></button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+let focusAvantConvention = null;
+// Action dont la fenetre est ouverte (Echap en a besoin), et suivi de la fermeture :
+// enregistrement en cours, ou echoue (un second « Fermer » ferme alors sans enregistrer).
+let conventionActionOuverte = 0;
+let conventionFermetureEnCours = false;
+let conventionFermetureEchouee = false;
+// Vrai tant que le message sous E-mail est affiche (voir conventionAfficherErreurEmail) : un second
+// « Fermer » ferme alors sans enregistrer. Remis a faux des que le message disparait.
+let conventionErreurEmailAffichee = false;
+// Dernier contact cree par cette fenetre : { cle (la saisie), id }. Un contact n'est cree qu'une
+// seule fois pour une meme saisie : si la bascule de la fenetre n'a pas pu avoir lieu, la saisie
+// identique reutilise cet identifiant au lieu de recreer le contact. Remis a null a l'ouverture.
+let conventionContactCree = null;
+// Vrai pendant « Generer la convention » (decision D-S7-2) : Fermer, Echap, Enregistrer et un
+// deuxieme clic sur Generer sont alors ignores. Pose avant la premiere operation asynchrone.
+let conventionGenerationEnCours = false;
+
+// Appelee par renderEdit apres la construction de la fiche. Un bouton grise
+// (aria-disabled) ignore le clic ; l'ouverture reverifie le blocage, au cas ou le
+// script du design system n'aurait pas deja bloque le clic.
+function bindConvention(actionId) {
+  // « Generer la convention » (etat « A generer ») et « Re-generer » (etat « Generee »)
+  // ouvrent la meme fenetre ; un seul des deux existe a la fois.
+  ['conventionGenerer', 'conventionRegenerer'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
+    bouton.addEventListener('click', () => {
+      if (bouton.getAttribute('aria-disabled') === 'true' || conventionBlocage(actionId, state)) return;
+      openConvention(actionId);
+    });
+  });
+  // « Voir la convention signée » n'existe qu'a l'etat « Signee ». Il n'y a plus de « Voir » pour le
+  // document genere (evolution 3) : un navigateur n'affiche pas un fichier Word.
+  const voirSignee = document.getElementById('conventionVoirSignee');
+  if (voirSignee) voirSignee.addEventListener('click', () => conventionVoirSigneeClic(actionId));
+  // « Telecharger la convention » n'existe qu'a l'etat « Generee ».
+  {
+    const telecharger = document.getElementById(conventionTelechargerId());
+    if (telecharger) telecharger.addEventListener('click', () => conventionTelecharger(actionId));
+  }
+  bindConventionDepot(actionId);
+}
+
+function openConvention(actionId) {
+  const host = document.getElementById('conventionModal');
+  focusAvantConvention = document.activeElement;
+  state.conventionOpen = true;
+  host.innerHTML = conventionModalHtml(actionId, state);
+  document.body.classList.add('modal-open');
+  conventionActionOuverte = actionId;
+  conventionFermetureEchouee = false;
+  conventionErreurEmailAffichee = false;
+  conventionContactCree = null;
+  conventionChoixListe = '';
+  // Plus de bouton « Enregistrer » : la touche Entree dans un champ ne fait rien.
+  document.getElementById('conventionForm').addEventListener('submit', event => event.preventDefault());
+  // « Fermer » enregistre en silence puis ferme ; pendant la generation, il est ignore (comme Echap).
+  document.getElementById('conventionFermer').addEventListener('click', () => fermerConvention());
+  document.getElementById('conventionGenererFenetre').addEventListener('click', () => lancerGenerationConvention(actionId));
+  document.getElementById('clubSignataire').addEventListener('change', () => choisirSignataireListe(actionId));
+  ['signataireNom', 'signatairePrenom'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => majSaisieLibre(actionId));
+  });
+  // Retaper dans E-mail efface le message d'erreur de ce champ.
+  document.getElementById('signataireEmail').addEventListener('input', conventionEffacerErreurEmail);
+  // « Ajouter un contact » : un clic ouvre le formulaire (focus sur Nom), un second clic le referme
+  // (focus sur le bouton). Fermer ne vide rien.
+  document.getElementById('signataireAjouter').addEventListener('click', () => {
+    const ouvrir = document.getElementById('signataireLibre').hidden;
+    conventionFormulaireContact(ouvrir);
+    majAideSaisieLibre();
+    document.getElementById(ouvrir ? 'signataireNom' : 'signataireAjouter').focus();
+  });
+  host.addEventListener('keydown', keepFocusInConvention);
+  conventionPrerempli(actionId);
+  conventionAjusterEncart();
+  if (typeof window !== 'undefined') window.addEventListener('resize', conventionAjusterEncart);
+  // Le focus va sur la liste « Signataire », premier champ modifiable.
+  document.getElementById('clubSignataire').focus();
+  requestResize();
+}
+
+// Affiche la fonction du contact choisi (lecture seule). Un contact sans fonction
+// donne « Fonction non renseignee » ; sans choix, la zone reste vide.
+function majFonctionSignataire(actionId) {
+  const id = Number(document.getElementById('clubSignataire').value || 0) || 0;
+  const contact = conventionContacts(actionId, state).find(item => item.id === id);
+  document.getElementById('clubFonction').value = contact ? (contact.fonction || CONVENTION_FONCTION_VIDE) : '';
+}
+
+// ---- Convention : signataire, liste ou saisie libre (evolution 1) ----
+// Il y a un seul signataire. La saisie libre est active des que le Nom n'est pas vide : la liste
+// montre alors l'option « Prenom Nom (nouveau contact) » et la fonction devient modifiable.
+// Choisir un contact dans la liste desactive la saisie libre et vide ses champs. Plier ou deplier
+// la ligne ne change que l'affichage : rien n'est perdu.
+
+// Dernier choix fait dans la liste (identifiant du contact, ou ''), pour y revenir quand la saisie
+// libre redevient inactive. Remis a '' a chaque ouverture de la fenetre.
+let conventionChoixListe = '';
+
+// Ouvre ou ferme le formulaire du bouton « Ajouter un contact » : attribut hidden sur le
+// formulaire, aria-expanded sur le bouton. Ne touche ni aux champs ni a leur contenu.
+function conventionFormulaireContact(ouvert) {
+  const bouton = document.getElementById('signataireAjouter');
+  const formulaire = document.getElementById('signataireLibre');
+  if (!bouton || !formulaire) return;
+  formulaire.hidden = !ouvert;
+  bouton.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+}
+
+// Phrase « Ce contact sera ajoute a la fiche du club. » : visible tant que la saisie libre est
+// active (Nom rempli) ou que le formulaire « Ajouter un contact » est ouvert, cachee sinon.
+function majAideSaisieLibre() {
+  const aide = document.getElementById('signataireLibreAide');
+  const formulaire = document.getElementById('signataireLibre');
+  if (!aide || !formulaire) return;
+  const nom = document.getElementById('signataireNom').value.trim();
+  aide.classList.toggle('is-hidden', !(nom || !formulaire.hidden));
+}
+
+// Saisie libre inactive : plus d'option « nouveau contact », fonction en lecture seule.
+function conventionFinSaisieLibre() {
+  const nouveau = document.getElementById('clubSignataireNouveau');
+  if (nouveau) nouveau.remove();
+  const fonction = document.getElementById('clubFonction');
+  fonction.readOnly = true;
+  fonction.removeAttribute('aria-describedby');
+}
+
+// Appelee a chaque frappe dans Nom ou Prenom.
+function majSaisieLibre(actionId) {
+  const liste = document.getElementById('clubSignataire');
+  const fonction = document.getElementById('clubFonction');
+  const nom = document.getElementById('signataireNom').value.trim();
+  const prenom = document.getElementById('signatairePrenom').value.trim();
+  let nouveau = document.getElementById('clubSignataireNouveau');
+  // Nom vide : la saisie libre est inactive, le message sous E-mail n'a plus de raison d'etre.
+  if (!nom) conventionEffacerErreurEmail();
+  if (nom) {
+    if (!nouveau) {
+      // La saisie libre commence : on retient le choix de la liste et la fonction part de vide.
+      conventionChoixListe = liste.value;
+      nouveau = document.createElement('option');
+      nouveau.id = 'clubSignataireNouveau';
+      nouveau.value = CONVENTION_VALEUR_NOUVEAU_CONTACT;
+      liste.insertBefore(nouveau, liste.options[1] || null);
+      fonction.readOnly = false;
+      fonction.value = '';
+      fonction.setAttribute('aria-describedby', 'signataireLibreAide');
+    }
+    // textContent : le nom saisi n'est jamais interprete comme du HTML.
+    nouveau.textContent = `${[prenom, nom].filter(Boolean).join(' ')} (nouveau contact)`;
+    liste.value = CONVENTION_VALEUR_NOUVEAU_CONTACT;
+  } else if (nouveau) {
+    // Nom vide : la saisie libre est abandonnee, la liste revient a son dernier choix.
+    conventionFinSaisieLibre();
+    liste.value = conventionChoixListe;
+    majFonctionSignataire(actionId);
+  }
+  majAideSaisieLibre();
+}
+
+// Changement dans la liste « Signataire » (choix d'un contact, ou retour a l'invite).
+function choisirSignataireListe(actionId) {
+  const liste = document.getElementById('clubSignataire');
+  if (liste.value === CONVENTION_VALEUR_NOUVEAU_CONTACT) return;
+  ['signataireNom', 'signatairePrenom', 'signataireEmail'].forEach(id => { document.getElementById(id).value = ''; });
+  conventionEffacerErreurEmail();
+  conventionFinSaisieLibre();
+  conventionChoixListe = liste.value;
+  majFonctionSignataire(actionId);
+  majAideSaisieLibre();
+}
+
+// Les valeurs saisies, sans controle. `signataire` : contact choisi dans la liste (0 si aucun ou
+// si la saisie libre est active). `nouveauContact` : le contact de la ligne depliante, ou null
+// tant que le Nom est vide (Prenom, E-mail ou Fonction seuls ne creent rien).
+// Pas de cle `annee` : le champ « Annee » n'existe plus. L'annee vient de la campagne de l'action,
+// lue a chaque enregistrement (conventionLireAnnee). Surtout ne pas remettre `annee: null` ici :
+// cela effacerait l'annee deja enregistree de la convention.
+function lireConventionForm() {
+  const texte = id => { const champ = document.getElementById(id); return champ ? champ.value.trim() : ''; };
+  const nom = texte('signataireNom');
+  return {
+    signataire: Number(document.getElementById('clubSignataire').value || 0) || 0,
+    nouveauContact: nom ? {nom, prenom: texte('signatairePrenom'), email: texte('signataireEmail'), fonction: texte('clubFonction')} : null,
+    representant: texte('agenceRepresentant'),
+    fonctionRepresentant: texte('agenceFonction')
+  };
+}
+
+// Message en haut du corps de la fenetre (zone #conventionMessage, deja dans la page).
+// Erreur : alert-error, annoncee tout de suite. Succes : alert-success, annoncee
+// poliment (role status), comme le demande la note.
+function afficherMessageConvention(succes, texte) {
+  const alerte = document.getElementById('conventionMessage');
+  alerte.classList.remove(succes ? 'alert-error' : 'alert-success');
+  alerte.classList.add(succes ? 'alert-success' : 'alert-error');
+  alerte.setAttribute('role', succes ? 'status' : 'alert');
+  alerte.setAttribute('aria-live', succes ? 'polite' : 'assertive');
+  alerte.querySelector('.alert-content').textContent = texte;
+  alerte.classList.remove('is-hidden');
+}
+
+// « Fermer » et Echap (evolution 1) : enregistrent ce qui est saisi, sans message de reussite,
+// puis ferment la fenetre. Ignores pendant la generation (decision D-S7-2).
+// Si l'enregistrement echoue, la fenetre reste ouverte avec le message d'echec habituel ; un
+// second « Fermer » (ou Echap) ferme alors sans enregistrer (proposition D-E1-5 de la note UX).
+async function fermerConvention() {
+  if (conventionGenerationEnCours || conventionFermetureEnCours) return;
+  // Second « Fermer » apres un echec d'enregistrement, ou apres le message sous E-mail : on ferme
+  // sans enregistrer (D-E1-5).
+  if (conventionFermetureEchouee || conventionErreurEmailAffichee) {
+    closeConvention();
+    return;
+  }
+  const valeurs = lireConventionForm();
+  // Nom rempli mais E-mail vide ou mal forme : rien n'est enregistre, la fenetre reste ouverte.
+  const probleme = conventionProblemeNouveauContact(valeurs);
+  if (probleme) {
+    conventionAfficherErreurEmail(probleme);
+    return;
+  }
+  conventionFermetureEnCours = true;
+  let enregistre = false;
+  try {
+    enregistre = await conventionEnregistrerALaFermeture(conventionActionOuverte, valeurs);
+  } finally {
+    conventionFermetureEnCours = false;
+  }
+  // La fenetre a pu etre fermee entre-temps : rien a faire.
+  if (!state.conventionOpen) return;
+  if (enregistre) {
+    closeConvention();
+    return;
+  }
+  conventionFermetureEchouee = true;
+  afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+}
+
+// Enregistrement a la fermeture. `valeurs` : ce que lireConventionForm renvoie, dont `nouveauContact`
+// (null ou {nom, prenom, email, fonction}). Le controle de l'E-mail du nouveau contact a deja ete
+// fait par l'appelant (fermerConvention) : ici, tout se passe dans conventionEnregistrer, dans
+// l'ordre de la note UX (§3, « Ordre technique ») :
+//  1. creation du contact dans Contacts (UNE operation applyUserActions, attendue) et bascule de la
+//     fenetre sur le contact cree ;
+//  2. lecture de la campagne de l'action (l'annee) ;
+//  3. ecriture dans Conventions (signataire = contact cree ou choisi, representant, fonction, annee).
+// Renvoie true si tout est ecrit, false sinon (la fenetre reste alors ouverte).
+function conventionEnregistrerALaFermeture(actionId, valeurs) {
+  return conventionEnregistrer(actionId, valeurs, {silencieux: true});
+}
+
+// ---- Convention : enregistrement des informations (tache 5.2) ----
+const CONVENTION_MESSAGES = {
+  enregistre: 'Informations enregistrées.',
+  echec: "Les informations n'ont pas pu être enregistrées. Réessayez ou contactez l'équipe du tableau de bord."
+};
+
+// Ce qu'il faut ecrire dans Conventions pour une action. Fonction pure : ni DOM, ni Grist.
+// `valeurs` : { annee, signataire (id du contact, 0 si aucun), representant, fonctionRepresentant }.
+// annee : undefined (ou absente) = NE PAS ECRIRE Annee, la valeur enregistree est gardee ; null ou ''
+// = Annee vide (campagne reellement vide) ; sinon l'annee, ecrite en nombre.
+// Renvoie { id, champs } : id est la ligne Conventions
+// existante de l'action (la plus ancienne en cas de doublon), ou 0 s'il faut en creer une.
+// Valeurs vides : reference = 0, entier = null, texte = ''.
+// Jamais ecrit : PDF_genere, Date_generation, PDF_signe, Date_depot, DR et DD (formules).
+// options.modeleActif (utilise par la generation, decision D-S8-4) : Modele recoit le modele
+// actif du dispositif a cet instant, meme si la convention en avait un autre. Sans cette
+// option (« Enregistrer les informations »), la convention deja faite garde son modele.
+function conventionAEcrire(actionId, valeurs, donnees, options) {
+  const {convention, modele: modeleEtat} = conventionEtat(actionId, donnees);
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  // Sans modele actif, on ne vide pas Modele : la generation s'arretera de toute facon a l'etape 3.
+  const modele = (options && options.modeleActif && conventionModeleActif(raw, action.Dispositif)) || modeleEtat;
+  const champs = {
+    Action: actionId,
+    Modele: modele ? modele.id : 0,
+    Signataire_club: valeurs.signataire || 0,
+    Representant_agence: valeurs.representant,
+    Fonction_representant: valeurs.fonctionRepresentant
+  };
+  // Annee absente de `valeurs` : on n'y touche pas (jamais d'ecrasement par une valeur vide).
+  if (valeurs.annee !== undefined) {
+    champs.Annee = valeurs.annee === null || String(valeurs.annee).trim() === '' ? null : Number(valeurs.annee);
+  }
+  return {id: convention ? convention.id : 0, champs};
+}
+
+// ---- Convention : annee, controle de l'E-mail et creation du nouveau contact (evolution 1) ----
+
+// Annee de la convention = campagne de l'action : Actions.Campagne (reference) -> Campagnes.Campagne
+// (texte). Lue a CHAQUE enregistrement, avec un delai maximum. Renvoie :
+//  - { lue: true, annee: nombre } si la campagne est une annee a quatre chiffres ;
+//  - { lue: true, annee: null } si la campagne est reellement vide (pas de reference, ou ligne
+//    introuvable dans Campagnes) : Annee devient vide ;
+//  - { lue: false } si elle n'a pas pu etre lue (reseau, delai, table refusee) ou n'est pas une
+//    annee a quatre chiffres : l'appelant n'ecrit PAS Annee et la valeur enregistree est gardee.
+// Rien dans la console.
+async function conventionLireAnnee(actionId) {
+  const action = conventionLigne(state.raw.Actions, actionId);
+  if (!action) return {lue: false};
+  const reference = action.Campagne;
+  let campagne = '';
+  if (typeof reference === 'number') {
+    // 0 = reference vide dans Grist : pas de campagne, donc pas d'appel reseau.
+    if (reference > 0) {
+      try {
+        const table = await conventionAvecDelai(
+          grist.docApi.fetchTable('Campagnes'),
+          CONVENTION_CAMPAGNE_DELAI_MS,
+          () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+        );
+        const ligne = rows(table).find(item => item.id === reference);
+        campagne = ligne ? String(ligne.Campagne ?? '').trim() : '';
+      } catch (erreur) {
+        return {lue: false};
+      }
+    }
+  } else {
+    // Colonne texte (ancien document) : la valeur est deja la campagne.
+    campagne = String(reference ?? '').trim();
+  }
+  if (!campagne) return {lue: true, annee: null};
+  return /^[1-9]\d{3}$/.test(campagne) ? {lue: true, annee: Number(campagne)} : {lue: false};
+}
+
+const CONVENTION_EMAIL_MESSAGES = {
+  vide: "Saisissez l'e-mail du nouveau signataire.",
+  malForme: 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.'
+};
+
+// Forme d'une adresse e-mail : meme regle que emailBienForme de src/clubs/script.js (controlerContact).
+// Copiee ici car les widgets ne partagent pas de module.
+function conventionEmailBienForme(valeur) {
+  return /^[^\s@]+@[^\s@]+$/.test(valeur);
+}
+
+// Nom du nouveau contact (saisie libre), ou '' : sans Nom, la saisie libre est inactive et ignoree.
+function conventionNomNouveauContact(valeurs) {
+  const contact = valeurs && valeurs.nouveauContact;
+  return contact ? String(contact.nom ?? '').trim() : '';
+}
+
+// Message d'erreur du champ E-mail, ou '' si tout va bien. Le controle ne s'applique que si un Nom
+// est saisi : E-mail vide ou mal forme avec un Nom = message ; sans Nom, jamais d'erreur.
+// Fonction pure : ni DOM, ni Grist.
+function conventionProblemeNouveauContact(valeurs) {
+  if (!conventionNomNouveauContact(valeurs)) return '';
+  const email = String(valeurs.nouveauContact.email ?? '').trim();
+  if (!email) return CONVENTION_EMAIL_MESSAGES.vide;
+  return conventionEmailBienForme(email) ? '' : CONVENTION_EMAIL_MESSAGES.malForme;
+}
+
+// Affiche le message sous le champ E-mail (note UX §3) : champ is-invalid, aria-invalid, message
+// precede de « Erreur : » pour les lecteurs d'ecran, ligne depliante ouverte, focus sur E-mail.
+// Pas d'alerte en haut : on cache celle d'un ancien echec pour ne garder qu'une indication.
+function conventionAfficherErreurEmail(message) {
+  const champ = document.getElementById('signataireEmail');
+  if (!champ) return;
+  const ancienne = document.getElementById('signataireEmailErreur');
+  if (ancienne) ancienne.remove();
+  champ.insertAdjacentHTML('afterend', conventionErreurHtml('signataireEmail', message));
+  champ.classList.add('is-invalid');
+  champ.setAttribute('aria-invalid', 'true');
+  // Le message remplace la phrase d'information dans aria-describedby (jamais les deux ensemble).
+  champ.setAttribute('aria-describedby', 'signataireEmailErreur');
+  const alerte = document.getElementById('conventionMessage');
+  if (alerte) alerte.classList.add('is-hidden');
+  // Le formulaire est ouvert pour que le message soit visible.
+  conventionFormulaireContact(true);
+  conventionErreurEmailAffichee = true;
+  champ.focus();
+}
+
+// Retire le message sous E-mail et remet les attributs d'origine du champ.
+function conventionEffacerErreurEmail() {
+  conventionErreurEmailAffichee = false;
+  const erreur = document.getElementById('signataireEmailErreur');
+  if (erreur) erreur.remove();
+  const champ = document.getElementById('signataireEmail');
+  if (!champ) return;
+  champ.classList.remove('is-invalid');
+  champ.removeAttribute('aria-invalid');
+  champ.setAttribute('aria-describedby', 'signataireLibreAide');
+}
+
+// Cree le contact de la saisie libre dans Contacts : UNE operation applyUserActions avec toutes les
+// valeurs, Club compris (la regle d'acces refuse une ligne sans club). DR et DD (formules) ne sont
+// jamais ecrits, Telephone n'est pas demande. Renvoie l'identifiant de la ligne creee, ATTENDU avant
+// toute ecriture dans Conventions ; echoue (erreur `enregistrement-echoue`) si Grist refuse, si le
+// delai est depasse ou si l'identifiant n'est pas rendu. Rien dans la console : l'erreur peut citer
+// le nom d'une personne. La ligne creee est ajoutee a state.raw.Contacts : elle rejoint la liste.
+async function conventionCreerContact(actionId, valeurs) {
+  const echec = () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+  const action = conventionLigne(state.raw.Actions, actionId) || {};
+  if (!action.Club) throw echec();
+  const contact = valeurs.nouveauContact;
+  const texte = valeur => String(valeur ?? '').trim();
+  const champs = {Club: action.Club, Nom: texte(contact.nom), Prenom: texte(contact.prenom), Email: texte(contact.email), Fonction: texte(contact.fonction)};
+  const cle = JSON.stringify(champs);
+  // Meme saisie, deja creee : on reutilise le contact.
+  if (conventionContactCree && conventionContactCree.cle === cle) return conventionContactCree.id;
+  const resultat = await conventionAvecDelai(
+    grist.docApi.applyUserActions([['AddRecord', 'Contacts', null, champs]]),
+    CONVENTION_CONTACT_DELAI_MS,
+    echec
+  );
+  const id = Number(resultat && resultat.retValues && resultat.retValues[0]);
+  if (!Number.isInteger(id) || id <= 0) throw echec();
+  conventionContactCree = {cle, id};
+  (state.raw.Contacts || (state.raw.Contacts = [])).push({id, ...champs});
+  return id;
+}
+
+// Bascule de la fenetre des que le contact existe : il devient un contact de la liste, choisi ;
+// Nom, Prenom, E-mail et la fonction saisis sont vides (la fonction affichee est celle du contact) ;
+// la ligne depliante est repliee. Sans fenetre ouverte, ne fait rien.
+function conventionBasculerSurContact(actionId, idContact) {
+  const liste = document.getElementById('clubSignataire');
+  if (!liste || !document.getElementById('conventionDialog')) return;
+  const contact = conventionContacts(actionId, state).find(item => item.id === idContact);
+  ['signataireNom', 'signatairePrenom', 'signataireEmail'].forEach(id => { document.getElementById(id).value = ''; });
+  conventionEffacerErreurEmail();
+  conventionFinSaisieLibre();
+  if (contact && ![...liste.options].some(option => option.value === String(idContact))) {
+    // Place dans l'ordre alphabetique, apres l'invite (comme conventionSignataireHtml).
+    const option = document.createElement('option');
+    option.value = String(idContact);
+    option.textContent = contact.libelle;
+    const suivante = [...liste.options].slice(1).find(autre => autre.value !== '' && autre.textContent.localeCompare(contact.libelle, 'fr') > 0);
+    liste.insertBefore(option, suivante || null);
+  }
+  liste.value = String(idContact);
+  conventionChoixListe = String(idContact);
+  majFonctionSignataire(actionId);
+  conventionFormulaireContact(false);
+  majAideSaisieLibre();
+}
+
+// Une seule operation applyUserActions, avec toutes les valeurs : une ligne n'est jamais
+// creee vide puis remplie. Les droits sont decides par Grist : on tente l'ecriture et un
+// refus donne le meme message que toute autre erreur. Rien dans la console : l'erreur peut
+// citer des valeurs, qui contiennent des noms de personnes.
+// Renvoie true si l'ecriture a reussi, false sinon. options.silencieux (utilise par la
+// generation) : ni message, ni bouton touche ; l'appelant traduit lui-meme le resultat.
+//
+// Evolution 1, dans l'ordre de la note UX (§3, « Ordre technique »), la premiere etape qui echoue
+// arrete tout (rien d'autre n'est ecrit) :
+//  1. nouveau contact (Nom rempli) : creation dans Contacts, attendue, puis bascule de la fenetre ;
+//     `valeurs` est alors MIS A JOUR sur place (signataire = contact cree, nouveauContact = null),
+//     pour que l'appelant (la generation) voie le meme signataire ;
+//  2. lecture de la campagne : Annee est ecrite d'apres elle, ou PAS ECRITE si la lecture a echoue ;
+//  3. ecriture dans Conventions, en une operation.
+// Le controle de l'E-mail est fait AVANT par l'appelant (message sous le champ, fenetre ouverte) ;
+// ici il n'est refait que par securite : un echec renvoie false sans rien ecrire.
+async function conventionEnregistrer(actionId, valeurs, options) {
+  const silencieux = !!(options && options.silencieux);
+  const bouton = silencieux ? null : document.getElementById('conventionEnregistrer');
+  try {
+    if (bouton) bouton.disabled = true;
+    const alerte = silencieux ? null : document.getElementById('conventionMessage');
+    if (alerte) alerte.classList.add('is-hidden');
+    if (conventionProblemeNouveauContact(valeurs)) return false;
+    if (conventionNomNouveauContact(valeurs)) {
+      const idContact = await conventionCreerContact(actionId, valeurs);
+      valeurs.signataire = idContact;
+      valeurs.nouveauContact = null;
+      // La bascule de l'ecran ne doit jamais faire echouer un enregistrement deja reussi.
+      try {
+        conventionBasculerSurContact(actionId, idContact);
+      } catch (erreur) {
+        // La fenetre reste telle quelle : la memoire de conventionContactCree evite un doublon.
+      }
+    }
+    // Annee : celle de la campagne si elle est lue ; sinon celle que l'appelant donne (jamais null),
+    // sinon rien (la valeur enregistree est gardee).
+    const lecture = await conventionLireAnnee(actionId);
+    const fournie = valeurs.annee === null || valeurs.annee === undefined || String(valeurs.annee).trim() === '' ? undefined : valeurs.annee;
+    const {id, champs} = conventionAEcrire(actionId, {...valeurs, annee: lecture.lue ? lecture.annee : fournie}, state, options);
+    const action = id ? ['UpdateRecord', 'Conventions', id, champs] : ['AddRecord', 'Conventions', null, champs];
+    // Delai depasse (reseau coupe avant le clic, par exemple) = echec d'enregistrement : le catch
+    // ci-dessous donne le message habituel. Sans delai, c'est le tout premier appel de la
+    // generation et la fenetre restait bloquee sur « Generation en cours… ».
+    const resultat = await conventionAvecDelai(
+      grist.docApi.applyUserActions([action]),
+      CONVENTION_ENREGISTREMENT_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement)
+    );
+    await conventionMemoriser(id, Number(resultat && resultat.retValues && resultat.retValues[0]), champs);
+    // La fenetre a pu etre fermee pendant l'ecriture (Echap) : il n'y a alors rien a afficher.
+    if (!silencieux && document.getElementById('conventionMessage')) afficherMessageConvention(true, CONVENTION_MESSAGES.enregistre);
+    return true;
+  } catch (error) {
+    if (!silencieux && document.getElementById('conventionMessage')) afficherMessageConvention(false, CONVENTION_MESSAGES.echec);
+    return false;
+  } finally {
+    const encore = silencieux ? null : document.getElementById('conventionEnregistrer');
+    if (encore) encore.disabled = false;
+  }
+}
+
+// Met state.raw.Conventions a jour sans recharger la fiche (un rechargement effacerait
+// ce que l'agent a saisi dans la fiche et pas encore enregistre). Ainsi, la reouverture
+// de la fenetre relit ce qui vient d'etre enregistre, et un deuxieme enregistrement met
+// la ligne a jour au lieu d'en creer une autre. Sans identifiant de la nouvelle ligne,
+// on relit la table.
+async function conventionMemoriser(idExistant, idCree, champs) {
+  const lignes = state.raw.Conventions || (state.raw.Conventions = []);
+  if (idExistant) {
+    const ligne = lignes.find(item => item.id === idExistant);
+    if (ligne) Object.assign(ligne, champs);
+  } else if (idCree) {
+    lignes.push({id: idCree, ...champs});
+  } else {
+    // L'ecriture a reussi : une relecture qui echoue ne doit pas passer pour un echec.
+    try {
+      // Delai depasse = relecture impossible : meme cas que toute autre erreur ci-dessous.
+      state.raw.Conventions = rows(await conventionAvecDelai(
+        grist.docApi.fetchTable('Conventions'),
+        CONVENTION_MEMORISATION_DELAI_MS,
+        () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+      ));
+    } catch (error) {
+      // Les donnees en memoire restent celles d'avant ; la fiche les relira au prochain chargement.
+    }
+  }
+}
+
+// Valeurs deja enregistrees de l'action (pour preremplir la fenetre), ou null si elle
+// n'a pas de ligne dans Conventions. Fonction pure : ni DOM, ni Grist.
+function conventionValeursEnregistrees(actionId, donnees) {
+  const {convention} = conventionEtat(actionId, donnees);
+  if (!convention) return null;
+  return {
+    annee: convention.Annee ? String(convention.Annee) : '',
+    signataire: Number(convention.Signataire_club || 0),
+    representant: String(convention.Representant_agence ?? ''),
+    fonctionRepresentant: String(convention.Fonction_representant ?? '')
+  };
+}
+
+// Pose ces valeurs dans les champs de la fenetre. Un signataire qui n'est plus parmi les
+// contacts du club (contact supprime depuis) n'est pas choisi : la liste reste a l'invite.
+function conventionPrerempli(actionId) {
+  const enregistrees = conventionValeursEnregistrees(actionId, state);
+  if (!enregistrees) return;
+  if (conventionContacts(actionId, state).some(contact => contact.id === enregistrees.signataire)) {
+    document.getElementById('clubSignataire').value = String(enregistrees.signataire);
+    conventionChoixListe = String(enregistrees.signataire);
+    majFonctionSignataire(actionId);
+  }
+  document.getElementById('agenceRepresentant').value = enregistrees.representant;
+  document.getElementById('agenceFonction').value = enregistrees.fonctionRepresentant;
+}
+
+function closeConvention() {
+  const host = document.getElementById('conventionModal');
+  host.removeEventListener('keydown', keepFocusInConvention);
+  if (typeof window !== 'undefined') window.removeEventListener('resize', conventionAjusterEncart);
+  host.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  state.conventionOpen = false;
+  conventionActionOuverte = 0;
+  // Le bouton qui a ouvert la fenetre reprend le focus.
+  if (focusAvantConvention && document.body.contains(focusAvantConvention)) focusAvantConvention.focus();
+  focusAvantConvention = null;
+  requestResize();
+}
+
+// Echap enregistre en silence puis ferme (comme « Fermer ») ; Tab et Maj+Tab tournent entre les
+// controles de la fenetre.
+function keepFocusInConvention(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    // Pendant la generation, Echap ne ferme pas (decision D-S7-2) : fermerConvention l'ignore.
+    fermerConvention();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const dialog = document.getElementById('conventionDialog');
+  const focusable = [...document.querySelectorAll('#conventionDialog input, #conventionDialog textarea, #conventionDialog select, #conventionDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  // Le focus d'ouverture est sur la liste Signataire.
+  // Maj+Tab depuis le premier champ boucle sur le dernier ; on garde aussi le cas
+  // ou le focus serait encore sur la fenetre elle-meme.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+// ---- Convention : generation du PDF d'une action (tache 7.2, aucun ecran) ----
+// conventionGenerer n'est appelee nulle part pour l'instant : le bouton, l'attente et les
+// messages viendront avec la tache 7.2b, qui traduira chaque `code` d'erreur en message.
+// Regles communes : rien dans la console, aucun nom de personne ni jeton dans une erreur
+// (les erreurs portent un message fixe et un code), et PDF_genere / Date_generation ne sont
+// ecrits qu'a la toute fin, en une seule operation : a tout echec, l'etat reste « A generer ».
+
+// Codes des erreurs de conventionGenerer (propriete `code`).
+//  enregistrement-echoue : les informations n'ont pas pu etre enregistrees
+//  modele-indisponible   : modele introuvable, inactif ou sans texte
+//  cases-inconnues       : cases du modele sans valeur (erreur.cases : noms, sans doublon)
+//  pdfmake-non-charge    : pdfmake absent ou trop long a charger (code de chargerPdfmake)
+//  envoi-refuse          : Grist refuse l'envoi du fichier (droits : reponse 401 ou 403)
+//  envoi-impossible      : envoi du fichier impossible (reseau, serveur, jeton, reponse illisible)
+//  rattachement-echoue   : fichier envoye, mais PDF_genere / Date_generation non ecrits
+//  echec-inattendu       : tout autre echec (fabrication du PDF comprise)
+const CONVENTION_GENERATION_ERREURS = {
+  enregistrement: 'enregistrement-echoue',
+  modele: 'modele-indisponible',
+  cases: 'cases-inconnues',
+  pdfmake: CONVENTION_PDFMAKE_ERREUR,
+  docx: CONVENTION_DOCX_ERREUR,
+  envoiRefuse: 'envoi-refuse',
+  envoiImpossible: 'envoi-impossible',
+  rattachement: 'rattachement-echoue',
+  inattendu: 'echec-inattendu'
+};
+
+// Delai maximum du chargement de pdfmake (decision de la tache 7.2).
+const CONVENTION_PDFMAKE_DELAI_MS = 20000;
+// Meme delai maximum pour le chargement de la bibliotheque docx.
+const CONVENTION_DOCX_DELAI_MS = 20000;
+
+// Delais maximum des autres appels reseau de la generation. Sans eux, un reseau coupe au mauvais
+// moment laissait la fenetre bloquee sur « Generation en cours… » pour toujours.
+//  - jeton, logos, relecture de secours : petites requetes, 15 s suffisent ;
+//  - envoi du PDF et rattachement : on laisse 20 s, comme pdfmake (un PDF avec logos pese plus
+//    lourd, et une reponse du serveur peut etre lente sans etre perdue).
+const CONVENTION_ACCES_DELAI_MS = 15000;
+const CONVENTION_LOGO_DELAI_MS = 15000;
+const CONVENTION_ENVOI_DELAI_MS = 20000;
+const CONVENTION_RATTACHEMENT_DELAI_MS = 20000;
+const CONVENTION_RELECTURE_DELAI_MS = 15000;
+//  - enregistrement des informations : une ecriture, 20 s comme le rattachement ;
+//    relecture apres cet enregistrement : petite requete, 15 s ;
+//  - ouverture de « Voir la convention » (jeton puis telechargement du PDF) : 20 s.
+const CONVENTION_ENREGISTREMENT_DELAI_MS = 20000;
+const CONVENTION_MEMORISATION_DELAI_MS = 15000;
+//  - lecture de la campagne de l'action (petite requete) : 15 s ;
+//    creation du nouveau contact (une ecriture) : 20 s, comme l'enregistrement.
+const CONVENTION_CAMPAGNE_DELAI_MS = 15000;
+const CONVENTION_CONTACT_DELAI_MS = 20000;
+const CONVENTION_TELECHARGEMENT_DELAI_MS = 20000;
+
+// Noms des cases [Nom] que le widget remplit. Les quatre cases du bloc de signature sont
+// celles de conventionSignatures ; « Nom du club » et « Siège du club » sont celles des
+// tests du modele. Cette liste est la liste officielle des cases (decision de Hanta) :
+// une case du modele qui n'est pas dans cette liste bloque la generation (cases-inconnues) ;
+// une case de la liste dont la valeur est vide est remplacee par des pointilles ; une entree
+// que le modele n'utilise pas ne gene pas.
+const CONVENTION_CASES = {
+  annee: 'Année',
+  clubNom: 'Nom du club',
+  clubSiret: 'SIRET du club',
+  clubSiege: 'Siège du club',
+  signataire: 'Signataire du club',
+  fonctionSignataire: 'Fonction du signataire',
+  agenceNom: 'Nom de l’agence',
+  agenceAdresse: 'Adresse de l’agence',
+  agenceSiret: 'SIRET de l’agence',
+  representant: 'Représentant de l’agence',
+  fonctionRepresentant: 'Fonction du représentant'
+};
+
+// Pointilles d'une case connue mais vide : meme longueur (56 points) que les zones
+// « À ........, le ........ » du bloc de signature.
+const CONVENTION_POINTILLES = '........................................................';
+
+// Forme courte du dispositif dans le nom du fichier (note UX, D-S7-3 : proposition a valider
+// par Hanta). Cle : nom du dispositif sans accent ni majuscule. Un dispositif absent d'ici
+// garde son nom complet nettoye.
+const CONVENTION_NOMS_COURTS = {
+  "du stade vers l'emploi": 'Stade-emploi',
+  'match des metiers': 'Match-metiers',
+  "parcours de remobilisation vers l'emploi": 'Remobilisation'
+};
+
+const CONVENTION_NOM_CLUB_MAX = 40;
+
+function conventionErreur(code, complements) {
+  const erreur = new Error(`Generation de la convention impossible : ${code}`);
+  erreur.code = code;
+  return complements ? Object.assign(erreur, complements) : erreur;
+}
+
+// Attend `promesse` au plus `delaiMs` millisecondes. Au-dela, rejette avec l'erreur que renvoie
+// `creerErreur` : chaque appel choisit le code deja prevu pour son cas (pas de nouveau code, donc
+// pas de nouveau message). Le minuteur est toujours arrete des que la promesse se termine.
+// L'appel reseau lui-meme n'est pas interrompu : sa reponse tardive est simplement ignoree.
+function conventionAvecDelai(promesse, delaiMs, creerErreur) {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(creerErreur()), delaiMs);
+    Promise.resolve(promesse).then(
+      valeur => { clearTimeout(minuteur); resolve(valeur); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
+}
+
+// Valeur de chaque case connue, pour conventionVersContenuPdf. Fonction pure.
+// Une adresse sur plusieurs lignes devient une seule ligne : elle se lit dans une phrase.
+// options.vides (evolution 3) : une case connue mais vide reste ''
+// au lieu de devenir des pointilles (le document Word la transforme lui-meme en pointilles). Avec '' elle serait comptee comme manquante par
+// conventionCasesManquantes : la generation repere donc les cases inconnues avec la version
+// a pointilles, et fabrique le document avec la version `vides`.
+function conventionValeursCases(actionId, valeurs, donnees, options) {
+  const infos = conventionInfos(actionId, donnees);
+  const signataire = conventionContacts(actionId, donnees).find(contact => contact.id === valeurs.signataire);
+  const surUneLigne = texte => String(texte || '').split('\n').join(', ');
+  const cases = {};
+  if (conventionModeleInfos(actionId, donnees).avecAnnee) cases[CONVENTION_CASES.annee] = String(valeurs.annee ?? '').trim();
+  cases[CONVENTION_CASES.clubNom] = infos.club.nom;
+  cases[CONVENTION_CASES.clubSiret] = infos.club.siret;
+  cases[CONVENTION_CASES.clubSiege] = surUneLigne(infos.club.siege);
+  cases[CONVENTION_CASES.signataire] = signataire ? signataire.libelle : '';
+  cases[CONVENTION_CASES.fonctionSignataire] = signataire ? signataire.fonction : '';
+  cases[CONVENTION_CASES.agenceNom] = infos.agence.nom;
+  cases[CONVENTION_CASES.agenceAdresse] = surUneLigne(infos.agence.adresse);
+  cases[CONVENTION_CASES.agenceSiret] = infos.agence.siret;
+  cases[CONVENTION_CASES.representant] = String(valeurs.representant ?? '').trim();
+  cases[CONVENTION_CASES.fonctionRepresentant] = String(valeurs.fonctionRepresentant ?? '').trim();
+  // Une case connue mais vide (un club sans SIRET, par exemple) devient des pointilles :
+  // elle se complete a la main sur le papier et ne bloque pas la generation.
+  Object.keys(cases).forEach(nom => {
+    if (cases[nom] === null || cases[nom] === undefined || !String(cases[nom]).trim()) cases[nom] = options && options.vides ? '' : CONVENTION_POINTILLES;
+  });
+  return cases;
+}
+
+// Nettoyage d'un morceau de nom de fichier (note UX, D-S7-3) : accents retires, œ → oe et
+// æ → ae, toute suite d'autres caracteres que A-Z a-z 0-9 remplacee par un tiret, tirets de
+// debut et de fin retires, casse gardee. longueurMax (facultatif) : coupe, puis retire un
+// tiret final.
+function conventionNomNettoye(texte, longueurMax) {
+  let nettoye = String(texte ?? '')
+    .replace(/œ/g, 'oe').replace(/Œ/g, 'Oe').replace(/æ/g, 'ae').replace(/Æ/g, 'Ae')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (longueurMax && nettoye.length > longueurMax) nettoye = nettoye.slice(0, longueurMax).replace(/-+$/, '');
+  return nettoye;
+}
+
+// Nom du fichier : Convention-[dispositif]-[club]-[annee].[extension], sans « -[annee] » quand le
+// modele n'a pas d'annee ou que la campagne de l'action est vide. Jamais de nom de personne.
+// `extension` : 'docx' (document genere depuis l'evolution 3) ou 'pdf' (ancien document). Elle est
+// deduite par l'appelant du nom reel du fichier deja present, jamais fixee ici (E3-9).
+// L'annee est lue dans Actions.Campagne de l'action, au moment de l'appel, et JAMAIS dans
+// Conventions.Annee (E3-17). Fonction pure.
+function conventionNomFichier(actionId, donnees, extension) {
+  return conventionNomFichierAvec(['Convention'], actionId, donnees, extension);
+}
+
+// Nom du fichier signe : Convention-signee-[dispositif]-[club]-[annee].pdf (decision du
+// 2026-10-26). Memes regles de nettoyage que le document genere, car meme code. Le fichier signe
+// est toujours un PDF. L'annee vient aussi d'Actions.Campagne (E3-17) : le nom est donc le meme
+// qu'il y ait eu generation ou non (un depot libre laisse Conventions.Annee vide).
+// Le nom d'origine du fichier n'est jamais repris.
+function conventionNomFichierSigne(actionId, donnees) {
+  return conventionNomFichierAvec(['Convention', 'signee'], actionId, donnees, 'pdf');
+}
+
+// Annee de la campagne de l'action (texte), ou '' : Actions.Campagne est une reference vers
+// Campagnes.Campagne (texte) ; dans un ancien document ce peut etre directement du texte.
+// Fonction pure : lit seulement les tables deja chargees.
+function conventionCampagne(actionId, donnees) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  if (typeof action.Campagne === 'number') {
+    const ligne = conventionLigne(raw.Campagnes || [], action.Campagne);
+    return ligne ? String(ligne.Campagne ?? '').trim() : '';
+  }
+  return String(action.Campagne ?? '').trim();
+}
+
+// Code commun aux deux noms : `debut` donne les mots places avant le dispositif. Une extension
+// inconnue (ni docx ni pdf) donne un nom sans extension plutot qu'une extension inventee.
+function conventionNomFichierAvec(debut, actionId, donnees, extension) {
+  const raw = (donnees && donnees.raw) || {};
+  const action = conventionLigne(raw.Actions, actionId) || {};
+  const dispositif = conventionLigne(raw.Dispositifs, action.Dispositif) || {};
+  const nomDispositif = String(dispositif.Dispositif || dispositif.Code || '').trim();
+  const court = CONVENTION_NOMS_COURTS[normalizeText(nomDispositif.replace(/[’‘]/g, "'"))];
+  const partDispositif = conventionNomNettoye(court || nomDispositif) || conventionNomNettoye(nomDispositif);
+  const partClub = conventionNomNettoye(conventionInfos(actionId, donnees).club.nom, CONVENTION_NOM_CLUB_MAX) || 'club';
+  // L'annee n'entre dans le nom que si le modele en demande une ET que la campagne a quatre chiffres.
+  // Vide, absente ou invalide : omise, jamais inventee. Un modele absent (depot libre sur un
+  // dispositif sans modele) en demande une, comme conventionModeleInfos le dit.
+  const anneeBrute = conventionModeleInfos(actionId, donnees).avecAnnee ? conventionCampagne(actionId, donnees) : '';
+  const annee = /^[1-9]\d{3}$/.test(anneeBrute) ? anneeBrute : '';
+  const suffixe = extension === 'docx' || extension === 'pdf' ? `.${extension}` : '';
+  return [...debut, partDispositif, partClub, annee].filter(Boolean).join('-') + suffixe;
+}
+
+// chargerPdfmake avec un delai maximum : au-dela, meme erreur que pdfmake-non-charge.
+function conventionChargerPdfmake() {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(conventionErreur(CONVENTION_GENERATION_ERREURS.pdfmake)), CONVENTION_PDFMAKE_DELAI_MS);
+    chargerPdfmake().then(
+      () => { clearTimeout(minuteur); resolve(); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
+}
+
+// chargerDocx avec un delai maximum : au-dela, erreur docx-non-charge.
+function conventionChargerDocx() {
+  return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(conventionErreur(CONVENTION_GENERATION_ERREURS.docx)), CONVENTION_DOCX_DELAI_MS);
+    chargerDocx().then(
+      () => { clearTimeout(minuteur); resolve(); },
+      erreur => { clearTimeout(minuteur); reject(erreur); }
+    );
+  });
+}
+
+// Fabrique le fichier Word (Blob) : conventionDocumentDocx decrit le document, Packer.toBlob l'assemble.
+// Le type est fixe ici (jamais celui que la bibliotheque aurait choisi).
+async function conventionFabriquerDocx(contenu, cases, logos) {
+  const lib = window.docx;
+  const fichier = await lib.Packer.toBlob(conventionDocumentDocx(contenu, cases, {lib, logos}));
+  return new Blob([fichier], {type: CONVENTION_TYPE_DOCX});
+}
+
+// Envoie un fichier (document genere ou PDF signe) comme piece jointe, par la methode du logo de clubs : jeton d'ecriture dans
+// l'adresse, credentials 'omit', en-tete X-Requested-With. Renvoie l'identifiant de la piece
+// jointe. Le jeton vit dans des variables locales et n'est mis dans aucune
+// erreur : les erreurs ne portent qu'un code (une erreur de fetch peut recopier l'adresse).
+// Le jeton (acces) est celui de conventionDemanderAcces, demande une fois par generation.
+async function conventionEnvoyerPdf(acces, blob, nomFichier) {
+  const impossible = () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  const formulaire = new FormData();
+  formulaire.append('upload', blob, nomFichier);
+  let reponse;
+  try {
+    reponse = await fetch(`${acces.baseUrl}/attachments?auth=${encodeURIComponent(acces.token)}`, {
+      method: 'POST',
+      body: formulaire,
+      credentials: 'omit',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+  } catch (error) {
+    throw impossible();
+  }
+  if (!reponse.ok) {
+    const refus = reponse.status === 401 || reponse.status === 403;
+    throw conventionErreur(refus ? CONVENTION_GENERATION_ERREURS.envoiRefuse : CONVENTION_GENERATION_ERREURS.envoiImpossible, {status: reponse.status});
+  }
+  let ids;
+  try {
+    ids = await reponse.json();
+  } catch (error) {
+    throw impossible();
+  }
+  const id = Array.isArray(ids) ? ids[0] : undefined;
+  if (!Number.isInteger(id) || id <= 0) throw impossible();
+  return id;
+}
+
+// UN seul jeton par generation, demande par conventionGenerer avant les logos puis reutilise
+// pour le telechargement des logos, l'envoi du PDF et le rattachement. Jeton d'ECRITURE voulu :
+// un jeton en lecture seule met le proprietaire au niveau lecteur, refuse par les regles par
+// defaut (voir conventionTelechargerPdf). Il vit dans des variables locales et n'est jamais
+// mis dans une erreur, la console ou un message.
+async function conventionDemanderAcces() {
+  let acces;
+  try {
+    acces = await conventionAvecDelai(
+      grist.docApi.getAccessToken({readOnly: false}),
+      CONVENTION_ACCES_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
+  } catch (error) {
+    throw conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  }
+  if (!acces || !acces.token || !acces.baseUrl) throw conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible);
+  return acces;
+}
+
+// Telecharge une piece jointe avec le jeton deja obtenu (meme methode que
+// conventionTelechargerPdf). Renvoie les octets ; echoue sans detail.
+async function conventionTelechargerPieceJointe(acces, pieceJointe) {
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}/download?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('telechargement');
+  return reponse.arrayBuffer();
+}
+
+// Logo d'une colonne de pieces jointes du modele : le premier fichier, converti pour la bibliotheque
+// (`convertir` : conventionImageLogoDocx pour le Word, conventionImageLogo pour pdfmake).
+// null si la cellule est vide, si le telechargement echoue ou si l'image est illisible : la
+// generation continue alors sans ce logo. Rien dans la console.
+async function conventionChargerLogo(acces, valeur, convertir) {
+  const id = conventionPieceJointeId(valeur);
+  if (!id) return null;
+  try {
+    // Delai depasse = logo absent comme un telechargement qui echoue : la generation continue.
+    const octets = await conventionAvecDelai(
+      conventionTelechargerPieceJointe(acces, id),
+      CONVENTION_LOGO_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    return (convertir || conventionImageLogo)(octets);
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// Logos du modele. Renvoie { logos: {logo, partenaire}, manquants } : manquants contient
+// 'Logo' des qu'il n'a pas pu etre mis, et 'Logo_partenaire' seulement s'il etait rempli.
+async function conventionChargerLogos(acces, modele, convertir) {
+  const [logo, partenaire] = await Promise.all([
+    conventionChargerLogo(acces, modele.Logo, convertir),
+    conventionChargerLogo(acces, modele.Logo_partenaire, convertir)
+  ]);
+  const manquants = [];
+  if (!logo) manquants.push('Logo');
+  if (!partenaire && conventionPieceJointeId(modele.Logo_partenaire)) manquants.push('Logo_partenaire');
+  return {logos: {logo, partenaire}, manquants};
+}
+
+// Ecrit PDF_genere et Date_generation en UNE requete PATCH REST, avec le jeton de l'envoi
+// (meme methode que uploadLogo dans clubs : applyUserActions est refuse a un non-proprietaire
+// pour une piece jointe). Aucun repli sur applyUserActions : un refus de Grist est transmis
+// tel quel. Les erreurs ne portent qu'un code : ni jeton, ni texte de la reponse.
+async function conventionRattacherPdf(acces, conventionId, champs) {
+  const echec = () => conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement);
+  let reponse;
+  try {
+    reponse = await fetch(`${acces.baseUrl}/tables/Conventions/records?auth=${encodeURIComponent(acces.token)}`, {
+      method: 'PATCH',
+      credentials: 'omit',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+      body: JSON.stringify({records: [{id: conventionId, fields: champs}]})
+    });
+  } catch (error) {
+    // Reseau coupe : on ne sait pas si Grist a ecrit (relire = verifier avant de conclure).
+    throw Object.assign(echec(), {relire: true});
+  }
+  if (!reponse.ok) {
+    // 4xx (droits, regle d'acces, requete refusee) : refus clair, rien n'est ecrit. 408 et 5xx
+    // (delai, passerelle) : la reponse ne dit pas si l'ecriture a eu lieu.
+    // Le code HTTP (nombre, sans texte de la reponse) permet au depot du fichier signe de
+    // distinguer un refus de droits (401, 403) des autres echecs.
+    const incertain = reponse.status === 408 || reponse.status >= 500;
+    throw Object.assign(echec(), {status: reponse.status}, incertain ? {relire: true} : {});
+  }
+}
+
+// Apres un echec incertain du rattachement : la ligne Conventions porte-t-elle deja le fichier
+// qu'on vient d'envoyer ? Relecture par l'API du widget (sans jeton). Vrai seulement si
+// PDF_genere contient CE fichier ; faux dans tous les autres cas, relecture impossible comprise
+// (le message d'echec habituel s'affiche alors, il peut etre inexact). Rien dans la console.
+async function conventionPdfRattache(conventionId, pieceJointe) {
+  try {
+    // Delai depasse = relecture impossible : on repond faux, comme pour toute autre erreur.
+    const table = await conventionAvecDelai(
+      grist.docApi.fetchTable('Conventions'),
+      CONVENTION_RELECTURE_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    const ligne = rows(table).find(item => item.id === conventionId);
+    return !!ligne && conventionPieceJointeId(ligne.PDF_genere) === pieceJointe;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Genere la convention d'une action. `valeurs` : ce que lireConventionForm renvoie.
+// Les etapes se suivent, la premiere qui echoue arrete tout (note UX, §3 et D-S7-4) :
+//  1. (plus de controle des champs, evolution 1) ; 2. enregistrement des informations (sans message) ;
+//  3. modele actif ; 4. remplissage des cases ; 4b. UN jeton d'ecriture, puis les logos du
+//  modele (Logo, Logo_partenaire : un logo absent ou illisible n'arrete rien) ;
+//  5. chargement de la bibliotheque docx (20 s au plus) ;
+//  6. fabrication du document Word et nom du fichier ; 7. envoi du fichier (meme jeton) ;
+//  8. UNE requete PATCH REST pour PDF_genere et Date_generation (meme jeton) ;
+//  9. mise a jour de state.raw.Conventions (le bloc peut passer a « Generee »).
+// Reussite : renvoie {nomFichier, logosManquants} (logosManquants : [] ou 'Logo' et/ou
+// 'Logo_partenaire', ce dernier seulement s'il etait rempli). Echec : rejette une Error portant `code`
+// (voir CONVENTION_GENERATION_ERREURS) ; rien n'est alors ecrit dans PDF_genere ni Date_generation.
+async function conventionGenerer(actionId, valeurs) {
+  try {
+    // Evolution 1 : plus de controle des champs ici, un champ vide donne des pointilles.
+    // Modele = modele actif au moment du clic, premiere generation ou re-generation (D-S8-4).
+    const enregistre = await conventionEnregistrer(actionId, valeurs, {silencieux: true, modeleActif: true});
+    const convention = conventionEtat(actionId, state).convention;
+    if (!enregistre || !convention) throw conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+
+    const action = conventionLigne(state.raw.Actions, actionId) || {};
+    const modele = conventionModeleActif(state.raw, action.Dispositif);
+    const contenu = modele ? String(modele.Contenu ?? '') : '';
+    if (!modele || !contenu.trim()) throw conventionErreur(CONVENTION_GENERATION_ERREURS.modele);
+
+    // L'annee du document (case [Année]) est celle qui vient d'etre enregistree
+    // d'apres la campagne de l'action, plus celle d'un champ de la fenetre (il n'existe plus).
+    // Si Annee n'a pas pu etre mise a jour, c'est l'ancienne valeur de la convention qui sert.
+    // (Le NOM du fichier, lui, lit la campagne de l'action : voir conventionNomFichier.)
+    const anneeEnregistree = convention.Annee ? String(convention.Annee) : String(valeurs.annee ?? '');
+    const valeursDocument = {...valeurs, annee: anneeEnregistree};
+    // Les cases inconnues se reperent avec la version a pointilles (aucune case connue n'y est vide) ;
+    // le document, lui, recoit la version ou une case connue mais vide reste '' et sera mise en pointilles par le document.
+    const inconnues = conventionCasesManquantes(contenu, conventionValeursCases(actionId, valeursDocument, state));
+    if (inconnues.length) throw conventionErreur(CONVENTION_GENERATION_ERREURS.cases, {cases: inconnues});
+    const cases = conventionValeursCases(actionId, valeursDocument, state, {vides: true});
+
+    // Le jeton est demande une seule fois, ici, avant les logos.
+    const acces = await conventionDemanderAcces();
+    const {logos, manquants} = await conventionChargerLogos(acces, modele, conventionImageLogoDocx);
+
+    await conventionChargerDocx();
+    let blob = null;
+    try {
+      blob = await conventionFabriquerDocx(contenu, cases, logos);
+    } catch (erreur) {
+      // Un logo que la bibliotheque n'arrive pas a lire ne doit pas bloquer : on refait le document sans logo.
+      if (!logos.logo && !logos.partenaire) throw erreur;
+      if (logos.logo && !manquants.includes('Logo')) manquants.push('Logo');
+      if (logos.partenaire && !manquants.includes('Logo_partenaire')) manquants.push('Logo_partenaire');
+      blob = await conventionFabriquerDocx(contenu, cases, {});
+    }
+    if (!blob || !(blob.size > 0)) throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
+    const nomFichier = conventionNomFichier(actionId, state, 'docx');
+
+    // Le delai couvre toute la fonction (envoi puis lecture de la reponse), pas seulement fetch.
+    const pieceJointe = await conventionAvecDelai(
+      conventionEnvoyerPdf(acces, blob, nomFichier),
+      CONVENTION_ENVOI_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
+
+    const champs = {PDF_genere: ['L', pieceJointe], Date_generation: Math.floor(Date.now() / 1000)};
+    // Remplacement sans historique (D-S8-5) : une seule ecriture, qui remplace la cellule
+    // PDF_genere. Le widget ne supprime jamais l'ancien fichier. Si la reponse s'est perdue
+    // (reseau, erreur serveur), l'ecriture a peut-etre eu lieu : on relit avant de conclure a un echec.
+    try {
+      // Delai depasse = reponse perdue : meme cas que « reseau coupe » (relire avant de conclure).
+      await conventionAvecDelai(
+        conventionRattacherPdf(acces, convention.id, champs),
+        CONVENTION_RATTACHEMENT_DELAI_MS,
+        () => Object.assign(conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement), {relire: true})
+      );
+    } catch (erreur) {
+      if (!(erreur && erreur.relire && await conventionPdfRattache(convention.id, pieceJointe))) throw erreur;
+    }
+    // Ecriture reussie : on met la ligne en memoire a jour, comme conventionMemoriser.
+    const ligne = conventionLigne(state.raw.Conventions, convention.id);
+    if (ligne) Object.assign(ligne, champs);
+    // Le document genere est un Word : le bloc peut afficher « Format : document Word (.docx). ».
+    conventionFormats.set(convention.id, 'docx');
+    return {nomFichier, logosManquants: manquants};
+  } catch (error) {
+    if (error && typeof error.code === 'string') throw error;
+    throw conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu);
+  }
+}
+
+// ---- Convention : bouton « Generer la convention » de la fenetre (tache 7.2b) ----
+// Branche conventionGenerer sur l'ecran : verrou et attente, puis fermeture de la fenetre
+// (reussite) ou message (echec). Rien dans la console : une erreur peut citer des valeurs
+// qui contiennent des noms de personnes.
+
+const CONVENTION_TEXTE_GENERER = 'Générer la convention';
+const CONVENTION_TEXTE_EN_COURS = 'Génération en cours…';
+const CONVENTION_ATTENTE = 'Génération de la convention en cours. Cela peut prendre quelques secondes.';
+const CONVENTION_MESSAGE_GENEREE = 'Convention générée.';
+// Messages d'information (decision D-MEP-3, note UX §11.2) : un logo manquant ou illisible ne
+// bloque jamais la generation, il est signale avec la reussite. Ce ne sont pas des erreurs.
+const CONVENTION_MESSAGE_SANS_LOGO = "La convention a été générée sans le logo France Travail. Vérifiez le modèle avant de l'imprimer.";
+const CONVENTION_MESSAGE_SANS_LOGO_PARTENAIRE = "La convention a été générée sans le logo du partenaire. Vérifiez le modèle avant de l'imprimer.";
+const CONVENTION_SUITE = 'Vos informations sont conservées.';
+
+// Messages des echecs (note UX, §3 « Echecs »), un par code. Les codes enregistrement-echoue
+// et cases-inconnues ont leur propre traitement (voir plus bas).
+const CONVENTION_MESSAGES_ECHEC = {
+  [CONVENTION_GENERATION_ERREURS.pdfmake]: `La convention n'a pas pu être générée : l'outil qui fabrique le PDF n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  // Texte exact de la note UX, section 15.7 (le mot « document » remplace « PDF »).
+  [CONVENTION_GENERATION_ERREURS.docx]: `La convention n'a pas pu être générée : l'outil qui fabrique le document n'a pas pu être chargé. Vérifiez votre connexion, puis réessayez. Si le problème continue, contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.modele]: `La convention n'a pas pu être générée : le modèle de convention n'est plus disponible pour ce dispositif. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.envoiRefuse]: `La convention n'a pas pu être enregistrée : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.envoiImpossible]: `La convention n'a pas pu être enregistrée : l'envoi du fichier a échoué. Vérifiez votre connexion, puis réessayez. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.rattachement]: `La convention n'a pas pu être enregistrée : le fichier a été fabriqué mais n'a pas pu être rattaché à l'action. Réessayez ou contactez l'équipe du tableau de bord. ${CONVENTION_SUITE}`,
+  [CONVENTION_GENERATION_ERREURS.inattendu]: `La convention n'a pas pu être générée. ${CONVENTION_SUITE}`
+};
+
+// Nombre de cases inconnues nommees dans le message ; au-dela : « et d'autres ».
+const CONVENTION_CASES_CITEES_MAX = 5;
+
+// Message des cases inconnues. Les noms viennent du modele saisi dans Grist : ils sont
+// affiches par textContent (afficherMessageConvention), jamais inseres en HTML.
+function conventionMessageCases(cases) {
+  const noms = (Array.isArray(cases) ? cases : []).map(nom => String(nom)).filter(nom => nom.trim());
+  if (!noms.length) return CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+  const cites = noms.slice(0, CONVENTION_CASES_CITEES_MAX).map(nom => `« ${nom} »`).join(', ') + (noms.length > CONVENTION_CASES_CITEES_MAX ? " et d'autres" : '');
+  const debut = noms.length === 1 ? 'le modèle contient une case inconnue, ' : 'le modèle contient des cases inconnues, ';
+  return `La convention n'a pas pu être générée : ${debut}${cites}. Contactez l'équipe du tableau de bord pour corriger le modèle. ${CONVENTION_SUITE}`;
+}
+
+// Phrase ajoutee a la fin des messages d'echec d'une RE-generation (decision D-S8-3).
+const CONVENTION_ANCIENNE_DISPONIBLE = "L'ancienne convention reste disponible.";
+
+// Message d'une erreur de conventionGenerer. Un code inconnu donne le message « inattendu ».
+// `regeneration` (vrai si une convention existait deja avant le clic) ajoute la phrase
+// D-S8-3 ; l'echec d'enregistrement des informations (etape 2) ne parle pas de generation
+// et ne la recoit pas.
+function conventionMessageEchec(erreur, regeneration) {
+  const code = erreur && erreur.code;
+  if (code === CONVENTION_GENERATION_ERREURS.enregistrement) return CONVENTION_MESSAGES.echec;
+  const message = code === CONVENTION_GENERATION_ERREURS.cases
+    ? conventionMessageCases(erreur.cases)
+    : CONVENTION_MESSAGES_ECHEC[code] || CONVENTION_MESSAGES_ECHEC[CONVENTION_GENERATION_ERREURS.inattendu];
+  return regeneration ? `${message} ${CONVENTION_ANCIENNE_DISPONIBLE}` : message;
+}
+
+// Verrouille ou deverrouille la fenetre. aria-disabled (jamais disabled) sur les deux
+// boutons du pied : le focus ne se perd pas ; les clics sont ignores par les gestionnaires
+// (conventionGenerationEnCours). Les deux fieldset passent en disabled (decision D-S7-7).
+function conventionVerrouiller(verrou) {
+  conventionGenerationEnCours = verrou;
+  ['conventionFermer', 'conventionGenererFenetre'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
+    if (verrou) bouton.setAttribute('aria-disabled', 'true');
+    else bouton.removeAttribute('aria-disabled');
+  });
+  document.querySelectorAll('#conventionDialog fieldset').forEach(zone => { zone.disabled = verrou; });
+  buttonLabel('conventionGenererFenetre', verrou ? CONVENTION_TEXTE_EN_COURS : CONVENTION_TEXTE_GENERER);
+  document.getElementById('conventionAttente').innerHTML = verrou ? `<p>${escapeHtml(CONVENTION_ATTENTE)}</p>` : '';
+}
+
+// Refait les phrases et les boutons du bloc (pas la zone de message, pas le reste de la
+// fiche : un rechargement de la fiche effacerait ce que l'agent a saisi et pas enregistre).
+function conventionRafraichirBloc(actionId) {
+  const contenu = document.getElementById('conventionBlocContenu');
+  if (!contenu) return;
+  contenu.innerHTML = conventionBlocContenuHtml(actionId, state);
+  bindConvention(actionId);
+}
+
+// Clic sur « Generer la convention » dans le pied de la fenetre.
+async function lancerGenerationConvention(actionId) {
+  const bouton = document.getElementById('conventionGenererFenetre');
+  // Generation deja en cours : le clic ne fait rien.
+  if (!bouton || conventionGenerationEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
+  const valeurs = lireConventionForm();
+  // Nom rempli mais E-mail vide ou mal forme : rien n'est enregistre ni genere, la fenetre reste
+  // ouverte avec le message sous le champ E-mail. Avant le verrou : pas de « Generation en cours… ».
+  const probleme = conventionProblemeNouveauContact(valeurs);
+  if (probleme) {
+    conventionAfficherErreurEmail(probleme);
+    return;
+  }
+  // Une convention existait-elle avant ce clic ? Lu avant toute operation, pour le message d'echec.
+  const regeneration = conventionEstRegeneration(actionId, state);
+  // Le verrou est pose tout de suite, avant la premiere operation asynchrone. Les anciens
+  // messages d'erreur sont effaces au debut de chaque tentative.
+  conventionVerrouiller(true);
+  document.getElementById('conventionMessage').classList.add('is-hidden');
+  let echec = null;
+  let resultat = null;
+  try {
+    resultat = await conventionGenerer(actionId, valeurs);
+  } catch (erreur) {
+    echec = erreur || new Error('echec');
+  }
+  // La fenetre ne peut pas etre fermee pendant l'attente ; garde-fou si elle l'etait quand meme.
+  if (!state.conventionOpen) {
+    conventionGenerationEnCours = false;
+    return;
+  }
+  if (!echec) {
+    conventionVerrouiller(false);
+    // Le bouton d'ouverture du bloc disparait avec l'etat « Generee » : rien a refocaliser.
+    focusAvantConvention = null;
+    closeConvention();
+    conventionRafraichirBloc(actionId);
+    conventionAnnoncerReussite(resultat && resultat.logosManquants);
+    return;
+  }
+  conventionVerrouiller(false);
+  afficherMessageConvention(false, conventionMessageEchec(echec, regeneration));
+  bouton.focus();
+  const alerte = document.getElementById('conventionMessage');
+  // Le corps de la fenetre defile : l'alerte, en haut, peut etre hors de vue.
+  if (alerte && typeof alerte.scrollIntoView === 'function') alerte.scrollIntoView({block: 'nearest'});
+}
+
+// Message d'information sur les logos, d'apres `logosManquants` (resultat de conventionGenerer).
+// 'Logo' manquant (avec ou sans Logo_partenaire) : message France Travail ; seulement
+// 'Logo_partenaire' : message du partenaire ; liste vide ou absente : '' (rien de plus).
+function conventionMessageLogos(logosManquants) {
+  if (!Array.isArray(logosManquants)) return '';
+  if (logosManquants.includes('Logo')) return CONVENTION_MESSAGE_SANS_LOGO;
+  if (logosManquants.includes('Logo_partenaire')) return CONVENTION_MESSAGE_SANS_LOGO_PARTENAIRE;
+  return '';
+}
+
+// « Convention generee. » en haut du bloc (alert-success). La zone role="status" existe deja,
+// vide, dans la page (conventionBlocHtml) : le texte qu'on y met est annonce.
+// Le focus va sur « Telecharger la convention » (E3-3, ancien D-S7-6), premier bouton de l'etat
+// « Generee ». Si le bloc n'a pas ce bouton (cas inattendu), il va sur le titre
+// « Convention » du bloc, rendu focalisable avec tabindex="-1".
+function conventionAnnoncerReussite(logosManquants) {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  // Le message de logo s'ajoute sous « Convention generee. », dans la meme alerte : une seule
+  // alerte a la fois en haut du bloc, et « Convention generee. » n'est jamais cachee.
+  const logo = conventionMessageLogos(logosManquants);
+  const infoLogo = logo ? `<p class="alert-content">${escapeHtml(logo)}</p>` : '';
+  zone.innerHTML = `<div class="alert alert-success" id="conventionReussite"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_GENEREE)}</p>${infoLogo}</div>`;
+  let cible = document.getElementById('conventionTelecharger');
+  if (!cible) {
+    cible = document.querySelector('#conventionBloc .section-head span');
+    if (cible) cible.setAttribute('tabindex', '-1');
+  }
+  if (cible) cible.focus();
+  requestResize();
+}
+
+// ---- Convention : boutons « Telecharger la convention » et « Telecharger » (evolutions 2 et 3) ----
+// Document genere (Word depuis l'evolution 3, PDF avant) : un seul bouton, « Telecharger la
+// convention ». Au clic : on lit un jeton d'ECRITURE (voir conventionTelechargerAcces), on lit le nom
+// reel de la piece jointe PDF_genere (pour en deduire l'extension), on la telecharge par l'API REST,
+// puis on l'enregistre sous son vrai nom. Plus de pop-up ni d'apercu : un navigateur n'affiche pas
+// un fichier Word. Fichier signe : seul « Voir la convention signee » (pop-up) reste dans le bloc ; le telechargement se fait depuis la pop-up (E3-31).
+// Le jeton n'est lu qu'au clic, vit dans des variables locales et n'est ni garde, ni ecrit dans la
+// page, la console, un message ou une adresse visible. Rien n'est ecrit dans la console : une erreur
+// de reseau peut recopier l'adresse.
+const CONVENTION_TEXTE_VOIR_CACHE = " (s'ouvre dans une fenêtre)";
+const CONVENTION_TEXTE_OUVERTURE = 'Ouverture en cours…';
+const CONVENTION_MESSAGE_VOIR_ECHEC = "Le fichier n'a pas pu être ouvert. Réessayez ou contactez l'équipe du tableau de bord.";
+// Boutons de telechargement du bloc. Le texte cache vient apres le texte visible : le nom accessible
+// commence par le texte visible.
+const CONVENTION_TEXTE_TELECHARGER = 'Télécharger';
+const CONVENTION_TEXTE_TELECHARGER_CONVENTION = 'Télécharger la convention';
+const CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE = ' le fichier PDF de la convention signée';
+const CONVENTION_TEXTE_TELECHARGEMENT = 'Téléchargement en cours…';
+const CONVENTION_MESSAGE_TELECHARGER_ECHEC = "Le fichier n'a pas pu être téléchargé. Réessayez ou contactez l'équipe du tableau de bord.";
+// Le lien temporaire et l'adresse blob: sont retires apres ce delai, le temps que le navigateur
+// ait commence l'enregistrement. La pop-up du fichier signe libere son adresse a sa fermeture
+// (conventionPdfFermer).
+const CONVENTION_VOIR_LIBERATION_MS = 5000;
+
+// Verrou propre a chaque bouton « Telecharger » (cle : son id).
+const conventionTelechargementEnCours = {conventionTelecharger: false};
+
+function conventionTelechargerId() {
+  return 'conventionTelecharger';
+}
+
+// Libelle du bouton : le texte visible, puis le texte cache pour les lecteurs d'ecran.
+// Document genere : « Telecharger la convention » + « (fichier Word) » ou « (fichier PDF) » selon
+// `format` ('docx', 'pdf' ; format inconnu : pas de texte cache). Fichier signe : « Telecharger » (inchange).
+function conventionTelechargerLibelleHtml(format) {
+  const cache = format && CONVENTION_FORMATS[format] ? `<span class="sr-only">${escapeHtml(CONVENTION_FORMATS[format].cache)}</span>` : '';
+  return `${escapeHtml(CONVENTION_TEXTE_TELECHARGER_CONVENTION)}${cache}`;
+}
+
+// Un <button> (et non un lien) : l'adresse blob: n'existe qu'apres la recuperation du fichier avec le jeton,
+// qu'on ne fait jamais avant le clic. Si le bloc est refait pendant la recuperation, texte et
+// aria-disabled sont reposes d'apres le verrou. Pas d'aria-haspopup : aucune fenetre ne s'ouvre.
+function conventionTelechargerHtml(format) {
+  const id = conventionTelechargerId();
+  const attente = conventionTelechargementEnCours[id];
+  return `<button class="btn btn-secondary" type="button" id="${id}"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_TELECHARGEMENT) : conventionTelechargerLibelleHtml(format)}</span></button>`;
+}
+
+// Identifiant de la piece jointe d'une colonne ['L', id], ou 0 s'il n'y en a pas.
+function conventionPieceJointeId(valeur) {
+  if (!Array.isArray(valeur)) return 0;
+  const id = Number(valeur[0] === 'L' ? valeur[1] : valeur[0]);
+  return Number.isInteger(id) && id > 0 ? id : 0;
+}
+
+// Jeton d'acces pour telecharger : demande au clic seulement, jamais garde. Jeton d'ecriture voulu :
+// un jeton en lecture seule met le proprietaire au niveau lecteur, et les regles par defaut du
+// document refusent tout aux lecteurs (403). Ne pas le remettre en readOnly: true.
+async function conventionTelechargerAcces() {
+  const acces = await grist.docApi.getAccessToken({readOnly: false});
+  if (!acces || !acces.token || !acces.baseUrl) throw new Error('acces');
+  return acces;
+}
+
+// Telecharge la piece jointe avec le jeton `acces`. Echoue (sans detail) si le jeton est refuse, si le
+// fichier est introuvable ou vide, ou si le reseau coupe. Meme methode que l'envoi : credentials 'omit'
+// et en-tete X-Requested-With. `type` : le type du Blob, fixe par l'appelant (table CONVENTION_TYPES_FICHIER),
+// jamais celui que renvoie Grist : le navigateur ne peut pas interpreter le fichier comme une page web.
+async function conventionTelechargerFichier(acces, pieceJointe, type) {
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}/download?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('telechargement');
+  const octets = await reponse.arrayBuffer();
+  if (!octets.byteLength) throw new Error('fichier vide');
+  return new Blob([octets], {type});
+}
+
+// Telecharge un PDF (fichier signe). Le type est force a application/pdf : le cadre de la pop-up
+// affiche ainsi le PDF.
+async function conventionTelechargerPdf(pieceJointe) {
+  return conventionTelechargerFichier(await conventionTelechargerAcces(), pieceJointe, CONVENTION_TYPE_PDF);
+}
+
+// Extension ('docx' ou 'pdf') d'un nom de fichier, ou '' pour toute autre extension ou aucune (Q-E3-7 :
+// on ne devine rien, l'appelant traite '' comme un echec).
+function conventionExtensionDeNom(nom) {
+  const m = /\.(docx|pdf)$/i.exec(String(nom ?? '').trim());
+  return m ? m[1].toLowerCase() : '';
+}
+
+// Extension du fichier present dans la piece jointe, lue dans son nom reel (metadonnees de la piece
+// jointe, API REST : GET /attachments/{id}) et non dans une regle fixe : une convention generee avant
+// l'evolution 3 est un PDF, une autre est un Word (E3-9). Le nom lu n'est ni garde ni affiche.
+async function conventionExtensionPieceJointe(acces, pieceJointe) {
+  const reponse = await fetch(`${acces.baseUrl}/attachments/${pieceJointe}?auth=${encodeURIComponent(acces.token)}`, {
+    credentials: 'omit',
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  });
+  if (!reponse.ok) throw new Error('metadonnees');
+  const meta = await reponse.json();
+  return conventionExtensionDeNom(meta && meta.fileName);
+}
+
+// Une seule alerte a la fois en haut du bloc : la plus recente remplace l'autre.
+function conventionAlerteVoirEffacer() {
+  const zone = document.getElementById('conventionAlerte');
+  if (zone) zone.innerHTML = '';
+}
+
+function conventionAlerteVoirEchec() {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_VOIR_ECHEC)}</p></div>`;
+  requestResize();
+}
+
+// Document genere de la convention d'une action : { blob, nom, extension }. Echoue sans detail s'il
+// n'y a pas de fichier, si le jeton est refuse, ou si le nom de la piece jointe ne finit ni par .docx
+// ni par .pdf (Q-E3-7 : on ne devine pas, le bouton affiche l'alerte d'echec). L'extension vient du
+// nom reel du fichier (E3-9) : le type du Blob et le nom enregistre en dependent. Un seul jeton pour
+// les deux requetes ; aucun jeton dans les erreurs.
+async function conventionRecupererGeneree(actionId) {
+  const {convention} = conventionEtat(actionId, state);
+  const pieceJointe = conventionPieceJointeId(convention && convention.PDF_genere);
+  if (!pieceJointe) throw new Error('pas de fichier');
+  const acces = await conventionTelechargerAcces();
+  const extension = await conventionExtensionPieceJointe(acces, pieceJointe);
+  if (!extension) throw new Error('extension inconnue');
+  const blob = await conventionTelechargerFichier(acces, pieceJointe, CONVENTION_TYPES_FICHIER[extension]);
+  // Le format est maintenant connu : le bloc l'affichera au prochain rafraichissement.
+  conventionFormats.set(convention.id, extension);
+  // Le nom enregistre : l'annee est lue dans Actions.Campagne maintenant (E3-17), jamais dans Conventions.Annee.
+  return {blob, nom: conventionNomFichier(actionId, state, extension), extension};
+}
+
+// Recupere le PDF signe puis ouvre la pop-up. Echoue (sans detail) si le fichier est introuvable, si le
+// jeton est refuse ou si le delai est depasse : rien ne s'ouvre alors, et l'adresse blob: eventuelle est liberee.
+// Delai depasse (reseau coupe) = echec : sans lui, le bouton restait sur « Ouverture en cours… » et les
+// clics suivants etaient ignores pour toujours.
+async function conventionOuvrirApercu(actionId, declencheur) {
+  const nom = conventionNomFichierSigne(actionId, state);
+  const pdf = await conventionAvecDelai(
+    conventionTelechargerPdfSigne(actionId),
+    CONVENTION_TELECHARGEMENT_DELAI_MS,
+    () => new Error('delai')
+  );
+  const adresse = URL.createObjectURL(pdf);
+  try {
+    conventionPdfOuvrir({adresse, nom, declencheur});
+  } catch (erreur) {
+    conventionPdfFermer();
+    URL.revokeObjectURL(adresse);
+    throw erreur;
+  }
+}
+
+// Texte du bouton « Telecharger » du bloc pendant (ou apres) la recuperation. aria-disabled, jamais
+// disabled : le focus reste sur le bouton.
+function conventionTelechargerAttente(attente, actionId) {
+  const bouton = document.getElementById(conventionTelechargerId());
+  if (!bouton) return;
+  const libelle = bouton.querySelector('.btn-content') || bouton;
+  if (attente) {
+    bouton.setAttribute('aria-disabled', 'true');
+    libelle.textContent = CONVENTION_TEXTE_TELECHARGEMENT;
+  } else {
+    bouton.removeAttribute('aria-disabled');
+    libelle.innerHTML = conventionTelechargerLibelleHtml(conventionFormatGenere(conventionEtat(actionId, state).convention));
+  }
+}
+
+// Clic sur « Telecharger la convention » (document genere, etat « Generee » uniquement) : recupere
+// le fichier, fabrique l'adresse blob:, cree un lien <a download="[nom]"> temporaire, le declenche par
+// programme, puis retire le lien et libere l'adresse apres CONVENTION_VOIR_LIBERATION_MS. Reussite : aucun
+// message (le navigateur affiche son propre telechargement). Echec : l'alerte du bloc. Le focus ne bouge pas.
+async function conventionTelecharger(actionId) {
+  const id = conventionTelechargerId();
+  const bouton = document.getElementById(id);
+  if (!bouton || conventionTelechargementEnCours[id] || bouton.getAttribute('aria-disabled') === 'true') return;
+  conventionAlerteVoirEffacer();
+  conventionTelechargementEnCours[id] = true;
+  conventionTelechargerAttente(true, actionId);
+  let adresse = '';
+  let lien = null;
+  try {
+    // Le delai couvre toute la recuperation (jeton, nom reel, fichier).
+    const {blob, nom} = await conventionAvecDelai(
+      conventionRecupererGeneree(actionId),
+      CONVENTION_TELECHARGEMENT_DELAI_MS,
+      () => new Error('delai')
+    );
+    adresse = URL.createObjectURL(blob);
+    lien = document.createElement('a');
+    lien.href = adresse;
+    lien.download = nom;
+    lien.rel = 'noopener';
+    lien.hidden = true;
+    document.body.appendChild(lien);
+    lien.click();
+    const aRetirer = {adresse, lien};
+    setTimeout(() => {
+      aRetirer.lien.remove();
+      URL.revokeObjectURL(aRetirer.adresse);
+    }, CONVENTION_VOIR_LIBERATION_MS);
+  } catch (erreur) {
+    if (lien) lien.remove();
+    if (adresse) URL.revokeObjectURL(adresse);
+    conventionAlerteTelechargerEchec();
+  } finally {
+    conventionTelechargementEnCours[id] = false;
+    conventionTelechargerAttente(false, actionId);
+  }
+}
+
+function conventionAlerteTelechargerEchec() {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(CONVENTION_MESSAGE_TELECHARGER_ECHEC)}</p></div>`;
+  requestResize();
+}
+
+// Telecharge le fichier signe (colonne PDF_signe) : meme methode que conventionTelechargerPdf
+// (jeton d'ecriture, credentials 'omit', X-Requested-With), qu'elle reutilise. Renvoie le Blob
+// PDF. Echoue sans detail s'il n'y a pas de fichier signe. Aucun jeton dans les erreurs.
+async function conventionTelechargerPdfSigne(actionId) {
+  const {convention} = conventionEtat(actionId, state);
+  const pieceJointe = conventionPieceJointeId(convention && convention.PDF_signe);
+  if (!pieceJointe) throw new Error('pas de fichier signe');
+  return conventionTelechargerPdf(pieceJointe);
+}
+
+// Point d'appel pour « Voir la convention signee » : meme deroulement que conventionVoir (la pop-up
+// s'ouvre quand le PDF signe est recupere). Ne touche ni au bouton ni a l'ecran sauf l'alerte d'echec
+// commune. Renvoie true si la pop-up est ouverte, false sinon (l'appelant gere le texte du bouton et le verrou).
+async function conventionVoirSignee(actionId) {
+  try {
+    await conventionOuvrirApercu(actionId, 'conventionVoirSignee');
+    return true;
+  } catch (erreur) {
+    conventionAlerteVoirEchec();
+    return false;
+  }
+}
+
+// ---- Convention : bouton « Voir la convention signée » (tâche 9.1c) ----
+// Meme structure et meme comportement que « Voir la convention » (note UX, §2 et §4.1) : texte
+// « Ouverture en cours… » et aria-disabled (jamais disabled) pendant l'ouverture, clics ignores,
+// focus qui reste sur le bouton. Il n'est jamais verrouille par un depot ou un remplacement
+// (decision S9-5) : conventionDepotVerrouiller ne le touche pas.
+const CONVENTION_TEXTE_VOIR_SIGNEE = 'Voir la convention signée';
+
+// Vrai pendant l'ouverture : les clics sont alors ignores. Distinct de celui de « Voir la
+// convention » : les deux boutons n'existent jamais en meme temps (etats « Generee » et « Signee »).
+let conventionOuvertureSigneeEnCours = false;
+
+function conventionVoirSigneeLibelleHtml() {
+  return `${escapeHtml(CONVENTION_TEXTE_VOIR_SIGNEE)}<span class="sr-only">${escapeHtml(CONVENTION_TEXTE_VOIR_CACHE)}</span>`;
+}
+
+// Etat « Signee » : le bouton sur sa rangee, puis (conventionSigneeHtml) le lien « Remplacer ».
+// Si le bloc est refait pendant l'ouverture, texte et aria-disabled sont reposes d'apres le verrou.
+function conventionVoirSigneeHtml() {
+  const attente = conventionOuvertureSigneeEnCours;
+  return `<div class="convention-actions"><button class="btn btn-secondary" type="button" id="conventionVoirSignee" aria-haspopup="dialog"${attente ? ' aria-disabled="true"' : ''}><span class="btn-content">${attente ? escapeHtml(CONVENTION_TEXTE_OUVERTURE) : conventionVoirSigneeLibelleHtml()}</span></button></div>`;
+}
+
+// Contenu des boutons de l'etat « Signee » : « Voir la convention signee », puis en dessous
+// le lien « Remplacer le fichier signe » (qui a deja son propre div).
+function conventionSigneeHtml() {
+  return conventionVoirSigneeHtml() + conventionRemplacerHtml();
+}
+
+// Texte du bouton pendant (ou apres) l'ouverture : le texte cache est retire pendant l'attente
+// et revient ensuite.
+function conventionVoirSigneeAttente(attente) {
+  const bouton = document.getElementById('conventionVoirSignee');
+  if (!bouton) return;
+  const libelle = bouton.querySelector('.btn-content') || bouton;
+  if (attente) {
+    bouton.setAttribute('aria-disabled', 'true');
+    libelle.textContent = CONVENTION_TEXTE_OUVERTURE;
+  } else {
+    bouton.removeAttribute('aria-disabled');
+    libelle.innerHTML = conventionVoirSigneeLibelleHtml();
+  }
+}
+
+// Clic sur « Voir la convention signee ». conventionVoirSignee affiche elle-meme l'alerte
+// d'echec ; ici, on gere seulement le verrou et le texte du bouton.
+async function conventionVoirSigneeClic(actionId) {
+  const bouton = document.getElementById('conventionVoirSignee');
+  if (!bouton || conventionOuvertureSigneeEnCours || bouton.getAttribute('aria-disabled') === 'true') return;
+  conventionAlerteVoirEffacer();
+  conventionOuvertureSigneeEnCours = true;
+  conventionVoirSigneeAttente(true);
+  try {
+    await conventionVoirSignee(actionId);
+  } finally {
+    conventionOuvertureSigneeEnCours = false;
+    conventionVoirSigneeAttente(false);
+  }
+}
+
+// ---- Convention : pop-up d'apercu du PDF (evolution 2, note UX §14) ----
+// « Voir la convention » et « Voir la convention signee » affichent le PDF dans une pop-up du widget
+// (structure de la fenetre « Convention »). Garde-fous de l'audit de securite du 2026-10-30 :
+//  1. le Blob garde son type application/pdf force (conventionTelechargerPdf) ;
+//  2. l'adresse n'entre dans le cadre que par `cadre.src = adresse`, jamais dans un texte HTML ;
+//  3. le cadre porte referrerpolicy="no-referrer", sans attribut `allow` ni `sandbox` (la visionneuse
+//     PDF de Chrome refuse un cadre en bac a sable) ;
+//  4. a la FERMETURE (et si l'ouverture echoue), le src du cadre est vide et l'adresse est liberee ;
+//  5. aucun lien permanent ni window.open ne mene a l'adresse blob: : le seul lien est le lien
+//     temporaire (attribut download) cree au clic sur « Telecharger », puis retire aussitot.
+// Une seule adresse en memoire a la fois.
+// Mise a jour E2-5 a E2-11 : plein ecran dans l'espace du widget (sans fond assombri), le nom exact
+// du fichier est le seul titre, « Telecharger » et la croix sont dans l'en-tete, plus de pied de page.
+
+// Adresse blob: et nom du fichier de la pop-up ouverte ('' sinon), et id du bouton qui l'a ouverte
+// (« Voir » ou « Voir signee ») : le bloc peut etre refait entre-temps, on retrouve donc le bouton
+// par son id. L'adresse et le nom restent en memoire ici, jamais dans un attribut de la page.
+let conventionPdfAdresse = '';
+let conventionPdfNom = '';
+let conventionPdfDeclencheur = '';
+
+// Structure de la note §14.3. Ni l'adresse ni le jeton ne sont dans ce texte : elle est posee ensuite,
+// par propriete, dans conventionPdfOuvrir. Le nom du fichier est echappe. Pas de modal-backdrop : la
+// fenetre recouvre tout le widget. La classe convention-pdf-plein-ecran donne la taille (la feuille du
+// design system n'a pas de classe plein ecran pour modal-dialog). « Telecharger » est un bouton, sans
+// href : aucune adresse ne s'affiche au survol. La croix reprend le gabarit des boutons icone de clubs.
+function conventionPdfModalHtml(nom) {
+  // La pop-up ne sert plus que pour le fichier signe (evolution 3).
+  const sorte = 'signée';
+  const cache = CONVENTION_TEXTE_TELECHARGER_CACHE_SIGNEE;
+  return `<div class="modal fade show" id="conventionPdfDialog" role="dialog" aria-modal="true" aria-labelledby="conventionPdfTitle" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable convention-pdf-plein-ecran">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="conventionPdfTitle">${escapeHtml(nom)}</h2>
+          <div class="convention-actions">
+            <button type="button" class="btn btn-primary" id="conventionPdfTelecharger"><span class="btn-content">${escapeHtml(CONVENTION_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(cache)}</span></span></button>
+            <button type="button" class="btn btn-secondary btn-ratio-square" id="conventionPdfFermer" aria-label="Fermer" title="Fermer"><span aria-hidden="true" class="icon icon-close"></span></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <iframe class="convention-pdf-cadre" id="conventionPdfCadre" title="Aperçu de la convention ${sorte}" referrerpolicy="no-referrer"></iframe>
+          <p class="help-block" id="conventionPdfRepli">Le PDF ne s'affiche pas ? Utilisez « Télécharger ».</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Clic sur « Telecharger » de la pop-up : cree un lien <a download="[nom]"> temporaire vers l'adresse
+// deja en memoire, le declenche par programme, puis le retire aussitot. Pas de recuperation, pas de
+// texte d'attente, pas de verrou, pas d'alerte (contrairement au bouton du bloc). L'adresse n'est PAS
+// liberee ici : elle sert encore a l'apercu, elle l'est a la fermeture (conventionPdfFermer).
+function conventionPdfTelecharger() {
+  if (!conventionPdfAdresse) return;
+  const lien = document.createElement('a');
+  lien.href = conventionPdfAdresse;
+  lien.download = conventionPdfNom;
+  lien.rel = 'noopener';
+  lien.hidden = true;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+}
+
+// Ouvre la pop-up. `adresse` : l'adresse blob: deja creee (liberee par conventionPdfFermer) ; `nom` : le
+// nom exact du fichier ; `declencheur` : id du bouton qui reprendra le focus. Le focus d'ouverture va
+// sur la fenetre elle-meme, jamais sur « Telecharger » (une touche Entree distraite lancerait un
+// telechargement) ni sur le cadre (les touches n'en sortent plus).
+function conventionPdfOuvrir({adresse, nom, declencheur}) {
+  // Une seule pop-up a la fois : l'ancienne, s'il en restait une, est fermee et son adresse liberee.
+  if (state.conventionPdfOpen) conventionPdfFermer();
+  const host = document.getElementById('conventionPdfModal');
+  conventionPdfAdresse = adresse;
+  conventionPdfNom = nom;
+  conventionPdfDeclencheur = declencheur;
+  state.conventionPdfOpen = true;
+  host.innerHTML = conventionPdfModalHtml(nom);
+  document.getElementById('conventionPdfCadre').src = adresse;
+  document.getElementById('conventionPdfTelecharger').addEventListener('click', conventionPdfTelecharger);
+  document.getElementById('conventionPdfFermer').addEventListener('click', conventionPdfFermer);
+  host.addEventListener('keydown', keepFocusInConventionPdf);
+  document.body.classList.add('modal-open');
+  document.getElementById('conventionPdfDialog').focus();
+  requestResize();
+}
+
+// Fermeture (Fermer, Echap, ou ouverture qui echoue) : le src du cadre est vide et l'adresse blob:
+// est liberee a ce moment precis, puis la pop-up disparait et le bouton d'origine reprend le focus.
+function conventionPdfFermer() {
+  const host = document.getElementById('conventionPdfModal');
+  host.removeEventListener('keydown', keepFocusInConventionPdf);
+  const cadre = document.getElementById('conventionPdfCadre');
+  if (cadre) cadre.src = '';
+  if (conventionPdfAdresse) URL.revokeObjectURL(conventionPdfAdresse);
+  conventionPdfAdresse = '';
+  conventionPdfNom = '';
+  host.innerHTML = '';
+  if (!state.conventionOpen) document.body.classList.remove('modal-open');
+  state.conventionPdfOpen = false;
+  const bouton = conventionPdfDeclencheur ? document.getElementById(conventionPdfDeclencheur) : null;
+  conventionPdfDeclencheur = '';
+  if (bouton) bouton.focus();
+  requestResize();
+}
+
+// Echap ferme la pop-up (rien a enregistrer) ; Tab et Maj+Tab tournent entre Telecharger, la croix et
+// le cadre. Quand le focus est dans le PDF, les touches ne remontent plus ici : la croix reste
+// atteignable avec Tab (a noter dans la recette).
+function keepFocusInConventionPdf(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    conventionPdfFermer();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const dialog = document.getElementById('conventionPdfDialog');
+  const focusable = [...document.querySelectorAll('#conventionPdfDialog button:not(:disabled), #conventionPdfDialog iframe')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  // Le focus d'ouverture est sur la fenetre elle-meme : Maj+Tab y boucle sur le dernier element.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+// ---- Convention : dépôt et remplacement du fichier signé (tâche 9.1a : commandes et sélecteur) ----
+// Cette tâche pose seulement les deux commandes, le champ fichier caché (dans index.html) et le
+// verrou pendant l'envoi. Le contrôle du fichier, l'envoi et l'écriture dans Grist viennent avec
+// la tâche 9.1b, par conventionDeposerFichier (ci-dessous).
+const CONVENTION_TEXTE_DEPOSER = 'Déposer la convention signée';
+const CONVENTION_TEXTE_REMPLACER = 'Remplacer le fichier signé';
+const CONVENTION_TEXTE_ENVOI = 'Envoi en cours…';
+const CONVENTION_ATTENTE_DEPOT = 'Envoi de la convention signée en cours. Cela peut prendre quelques secondes.';
+
+// Vrai pendant le dépôt : les deux commandes et « Re-générer » ignorent alors les clics.
+// Posé avant la première opération asynchrone, levé à la fin de la tentative.
+let conventionDepotEnCours = false;
+// Id de la commande qui a ouvert le sélecteur (« conventionDeposer » ou « conventionRemplacer »).
+let conventionDepotCommande = '';
+// Vrai seulement pendant l'envoi réel : le fichier a passé les contrôles. Le texte « Envoi en cours… »
+// et la zone d'attente dépendent de lui, pas du verrou (qui, lui, est posé dès le choix du fichier).
+let conventionDepotAttenteVisible = false;
+
+// Une commande est verrouillée seulement pendant le dépôt, et seulement si c'est elle qui l'a lancé.
+// Le bloc peut être refait pendant l'envoi : texte et aria-disabled sont alors reposés d'après le verrou.
+function conventionDepotCommandeHtml(id, classe, libelle, attributs) {
+  const verrouille = conventionDepotEnCours && conventionDepotCommande === id;
+  const enAttente = verrouille && conventionDepotAttenteVisible;
+  return `<button class="btn ${classe}" type="button" id="${id}"${attributs || ''}${verrouille ? ' aria-disabled="true"' : ''}><span class="btn-content">${escapeHtml(enAttente ? CONVENTION_TEXTE_ENVOI : libelle)}</span></button>`;
+}
+
+// Bouton secondaire « Déposer la convention signée », visible à tous les états sauf « Droits
+// insuffisants » (E3-6). Pas d'aria-haspopup : aucune fenêtre. Plus de phrase d'aide
+// ni d'aria-describedby (E3-23) ; il n'est jamais relié au message de blocage de la génération.
+function conventionDeposerHtml() {
+  return conventionDepotCommandeHtml('conventionDeposer', 'btn-secondary', CONVENTION_TEXTE_DEPOSER, '');
+}
+
+// État « Signée » : lien (btn-link), seul sur sa ligne dans son propre div.
+function conventionRemplacerHtml() {
+  return `<div>${conventionDepotCommandeHtml('conventionRemplacer', 'btn-link', CONVENTION_TEXTE_REMPLACER)}</div>`;
+}
+
+// Appelée à chaque fois que le bloc est (re)construit. Le champ fichier reste dans la page : on lui
+// donne son gestionnaire par onchange (une affectation), pour ne jamais l'écouter deux fois.
+function bindConventionDepot(actionId) {
+  const champ = document.getElementById('conventionFichier');
+  ['conventionDeposer', 'conventionRemplacer'].forEach(id => {
+    const bouton = document.getElementById(id);
+    if (!bouton) return;
+    // Le clic ouvre seulement le sélecteur : aucun verrou, aucun message, aucun changement de texte.
+    bouton.addEventListener('click', () => {
+      if (conventionDepotEnCours || bouton.getAttribute('aria-disabled') === 'true' || !champ) return;
+      conventionDepotCommande = id;
+      champ.click();
+    });
+  });
+  if (champ) champ.onchange = () => conventionFichierChoisi(actionId, champ);
+}
+
+// Tout part de l'événement change, jamais du clic. Annuler le sélecteur ne donne aucun fichier :
+// on sort sans verrou, sans message et sans toucher à l'alerte déjà affichée.
+async function conventionFichierChoisi(actionId, champ) {
+  const fichier = champ.files && champ.files[0];
+  // Vidé tout de suite pour que le même fichier puisse être choisi une seconde fois.
+  champ.value = '';
+  if (!fichier || conventionDepotEnCours) return;
+  conventionDepotEnCours = true;
+  conventionAlerteVoirEffacer();
+  conventionDepotVerrouiller(true, actionId);
+  try {
+    await conventionDeposerFichier(actionId, fichier);
+  } finally {
+    conventionDepotEnCours = false;
+    conventionDepotVerrouiller(false, actionId);
+  }
+}
+
+// Verrouille ou déverrouille, dès le choix du fichier : la commande utilisée et « Re-générer »
+// ignorent les clics. aria-disabled, jamais disabled : le focus reste en place. « Voir » n'est pas
+// touché (lecture seule, décision S9-5). Au déverrouillage, le texte et la zone d'attente sont aussi remis.
+function conventionDepotVerrouiller(verrou, actionId) {
+  if (!verrou) conventionDepotAttendre(false);
+  const commande = document.getElementById(conventionDepotCommande);
+  if (commande) {
+    if (verrou) commande.setAttribute('aria-disabled', 'true');
+    else commande.removeAttribute('aria-disabled');
+  }
+  // « Re-générer » (état « Générée ») et « Générer la convention » (état « À générer ») : un seul existe à la fois.
+  ['conventionRegenerer', 'conventionGenerer'].forEach(idGeneration => {
+    const generation = document.getElementById(idGeneration);
+    if (!generation) return;
+    if (verrou) {
+      generation.setAttribute('aria-disabled', 'true');
+      generation.removeAttribute('aria-haspopup');
+    } else if (!conventionBlocage(actionId, state)) {
+      // Pas de blocage de génération : le bouton redevient normal. Sinon il reste grisé.
+      generation.removeAttribute('aria-disabled');
+      generation.setAttribute('aria-haspopup', 'dialog');
+    }
+  });
+  requestResize();
+}
+
+// Affiche ou retire « Envoi en cours… » sur la commande utilisée et la zone d'attente annoncée aux
+// lecteurs d'écran. Appelée avec true seulement quand le fichier est reconnu valide, juste avant l'envoi.
+function conventionDepotAttendre(actif) {
+  conventionDepotAttenteVisible = actif;
+  const commande = document.getElementById(conventionDepotCommande);
+  if (commande) {
+    const libelle = commande.querySelector('.btn-content') || commande;
+    libelle.textContent = actif ? CONVENTION_TEXTE_ENVOI : (conventionDepotCommande === 'conventionRemplacer' ? CONVENTION_TEXTE_REMPLACER : CONVENTION_TEXTE_DEPOSER);
+  }
+  const attente = document.getElementById('conventionDepotAttente');
+  if (attente) attente.innerHTML = actif ? `<p>${escapeHtml(CONVENTION_ATTENTE_DEPOT)}</p>` : '';
+  requestResize();
+}
+
+// ---- Convention : dépôt et remplacement du fichier signé (tâche 9.1b : contrôles, envoi, écriture) ----
+// Note UX : docs/ux/convention.md, §4 et §4.1. Rien dans la console : une erreur de fetch peut
+// recopier l'adresse, qui contient le jeton ; les erreurs ne portent qu'un code.
+const CONVENTION_DEPOT_TAILLE_MAX = 10 * 1024 * 1024; // 10 Mo ; un fichier de cette taille exacte est accepté (S9-7)
+const CONVENTION_DEPOT_SIGNATURE_PDF = [0x25, 0x50, 0x44, 0x46, 0x2D]; // « %PDF- »
+// Lecture des premiers octets du fichier choisi : un fichier local, 15 s comme les petites requêtes.
+const CONVENTION_DEPOT_LECTURE_DELAI_MS = 15000;
+
+const CONVENTION_DEPOT_MESSAGES = {
+  vide: "Le fichier n'a pas été enregistré : le fichier est vide.",
+  taille: "Le fichier n'a pas été enregistré : 10 Mo au maximum.",
+  pasPdf: "Le fichier n'a pas été enregistré : ce n'est pas un PDF.",
+  droits: "Le fichier n'a pas été enregistré : vos droits ne le permettent pas pour cette action. Contactez l'équipe du tableau de bord.",
+  echec: "Le fichier n'a pas pu être enregistré. Réessayez ou contactez l'équipe du tableau de bord.",
+  reussite: 'Convention signée enregistrée.'
+};
+
+// Contrôles du fichier, dans l'ordre de la note (§4) : vide, taille, extension, type, contenu.
+// Le premier qui échoue arrête tout. Renvoie le message à afficher, ou '' si le fichier est accepté.
+// Le contenu (« %PDF- ») n'est lu que si les quatre premiers contrôles sont passés.
+async function conventionDepotControler(fichier) {
+  if (!(fichier.size > 0)) return CONVENTION_DEPOT_MESSAGES.vide;
+  if (fichier.size > CONVENTION_DEPOT_TAILLE_MAX) return CONVENTION_DEPOT_MESSAGES.taille;
+  if (!/\.pdf$/i.test(String(fichier.name || ''))) return CONVENTION_DEPOT_MESSAGES.pasPdf;
+  // Un type vide est accepté (S9-6) : certains navigateurs ne le renseignent pas.
+  const type = String(fichier.type || '').toLowerCase();
+  if (type !== '' && type !== 'application/pdf') return CONVENTION_DEPOT_MESSAGES.pasPdf;
+  try {
+    const debut = new Uint8Array(await conventionAvecDelai(
+      fichier.slice(0, CONVENTION_DEPOT_SIGNATURE_PDF.length).arrayBuffer(),
+      CONVENTION_DEPOT_LECTURE_DELAI_MS,
+      () => new Error('lecture')
+    ));
+    const pdf = debut.length >= CONVENTION_DEPOT_SIGNATURE_PDF.length
+      && CONVENTION_DEPOT_SIGNATURE_PDF.every((octet, rang) => debut[rang] === octet);
+    return pdf ? '' : CONVENTION_DEPOT_MESSAGES.pasPdf;
+  } catch (erreur) {
+    // Fichier illisible : ce n'est pas un contrôle qui échoue, c'est un échec général.
+    return CONVENTION_DEPOT_MESSAGES.echec;
+  }
+}
+
+// Après une réponse perdue du PATCH : la ligne Conventions porte-t-elle déjà CE fichier dans
+// PDF_signe ? Renvoie la ligne relue si oui, null dans tous les autres cas (relecture impossible
+// comprise : le message d'échec habituel s'affiche alors, il peut être inexact).
+async function conventionSigneRattache(conventionId, pieceJointe) {
+  try {
+    const table = await conventionAvecDelai(
+      grist.docApi.fetchTable('Conventions'),
+      CONVENTION_RELECTURE_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.inattendu)
+    );
+    const ligne = rows(table).find(item => item.id === conventionId);
+    return ligne && conventionPieceJointeId(ligne.PDF_signe) === pieceJointe ? ligne : null;
+  } catch (erreur) {
+    return null;
+  }
+}
+
+// Message d'un échec de l'envoi ou de l'écriture : refus de droits (401 ou 403, S9-4), sinon le message général.
+function conventionDepotMessageEchec(erreur) {
+  const refus = !!erreur && (erreur.code === CONVENTION_GENERATION_ERREURS.envoiRefuse || erreur.status === 401 || erreur.status === 403);
+  return refus ? CONVENTION_DEPOT_MESSAGES.droits : CONVENTION_DEPOT_MESSAGES.echec;
+}
+
+// Alerte en haut du bloc (zone role="status" qui existe déjà, hors de la partie refaite).
+// Une seule alerte à la fois : la plus récente remplace l'autre.
+function conventionDepotAlerte(succes, texte) {
+  const zone = document.getElementById('conventionAlerte');
+  if (!zone) return;
+  zone.innerHTML = succes
+    ? `<div class="alert alert-success"><p class="alert-content">${escapeHtml(texte)}</p></div>`
+    : `<div class="alert alert-error" role="alert"><p class="alert-content">${escapeHtml(texte)}</p></div>`;
+  requestResize();
+}
+
+// Crée la ligne Conventions d'une action qui n'en a pas encore (dépôt libre, E3-6) : UNE opération
+// applyUserActions avec Action seulement. Jamais DR ni DD (formules), jamais Modele ni Annee (ils
+// restent vides : la convention est faite hors de l'outil). Renvoie l'identifiant de la ligne et la
+// garde en mémoire (conventionMemoriser) : si l'écriture du fichier échoue ensuite, le nouvel essai
+// réutilise cette ligne au lieu d'en créer une seconde. Un refus des règles d'accès de Grist est
+// transmis comme un refus de droits (message S9-4) ; le texte de l'erreur n'est jamais affiché.
+async function conventionCreerLigneDepot(actionId) {
+  let resultat;
+  try {
+    resultat = await conventionAvecDelai(
+      grist.docApi.applyUserActions([['AddRecord', 'Conventions', null, {Action: actionId}]]),
+      CONVENTION_ENREGISTREMENT_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement)
+    );
+  } catch (erreur) {
+    const refus = /access rule|blocked by|permission|denied|forbidden|not allowed/i.test(String((erreur && erreur.message) || ''));
+    throw conventionErreur(refus ? CONVENTION_GENERATION_ERREURS.envoiRefuse : CONVENTION_GENERATION_ERREURS.enregistrement);
+  }
+  const id = Number(resultat && resultat.retValues && resultat.retValues[0]);
+  if (!Number.isInteger(id) || id <= 0) throw conventionErreur(CONVENTION_GENERATION_ERREURS.enregistrement);
+  await conventionMemoriser(0, id, {Action: actionId});
+  return id;
+}
+
+// Dépose le fichier signé choisi (premier dépôt) ou remplace l'ancien (état « Signée »).
+// Étapes (note §4, §4.1 et §15.6) : contrôles ; UN jeton d'écriture ; envoi du fichier ; création de
+// la ligne Conventions si l'action n'en a pas (dépôt sans génération, E3-6) ; UN seul PATCH
+// qui écrit PDF_signe et Date_depot ensemble ; mise à jour de state.raw.Conventions.
+// L'ancien fichier signé n'est jamais supprimé (S9-8) : seul le pointeur de la cellule change.
+// À tout échec, rien de visible n'est écrit : message dans le bloc, focus sur la commande utilisée.
+// Le verrou est posé et levé par conventionFichierChoisi, qui attend la fin de cette fonction.
+async function conventionDeposerFichier(actionId, fichier) {
+  const commande = () => document.getElementById(conventionDepotCommande);
+  const echouer = message => {
+    conventionDepotAlerte(false, message);
+    const bouton = commande();
+    if (bouton) bouton.focus();
+  };
+
+  const refus = await conventionDepotControler(fichier);
+  if (refus) return echouer(refus);
+
+  // État « Droits insuffisants » : le bouton n'existe pas, mais on ne dépose rien si on y arrive quand même.
+  const {etat, convention} = conventionEtat(actionId, state);
+  if (etat === CONVENTION_ETATS.droits) return echouer(CONVENTION_DEPOT_MESSAGES.droits);
+  const remplacement = etat === CONVENTION_ETATS.signee;
+
+  // Fichier reconnu valide : l'envoi réel commence, l'attente peut s'afficher (levée par le finally de conventionFichierChoisi).
+  conventionDepotAttendre(true);
+
+  let champs;
+  let conventionId = convention ? convention.id : 0;
+  try {
+    // Un seul jeton (15 s dans conventionDemanderAcces), réutilisé pour l'envoi et l'écriture.
+    const acces = await conventionDemanderAcces();
+    const pieceJointe = await conventionAvecDelai(
+      conventionEnvoyerPdf(acces, fichier, conventionNomFichierSigne(actionId, state)),
+      CONVENTION_ENVOI_DELAI_MS,
+      () => conventionErreur(CONVENTION_GENERATION_ERREURS.envoiImpossible)
+    );
+    // Dépôt sans génération : la ligne Conventions n'existe pas encore, on la crée (après l'envoi du fichier).
+    if (!conventionId) conventionId = await conventionCreerLigneDepot(actionId);
+    champs = {PDF_signe: ['L', pieceJointe], Date_depot: Math.floor(Date.now() / 1000)};
+    try {
+      // Délai dépassé = réponse perdue : même cas que « réseau coupé » (relire avant de conclure).
+      await conventionAvecDelai(
+        conventionRattacherPdf(acces, conventionId, champs),
+        CONVENTION_RATTACHEMENT_DELAI_MS,
+        () => Object.assign(conventionErreur(CONVENTION_GENERATION_ERREURS.rattachement), {relire: true})
+      );
+    } catch (erreur) {
+      // Réponse perdue : si PDF_signe porte déjà le nouveau fichier, c'est une réussite.
+      const relue = erreur && erreur.relire ? await conventionSigneRattache(conventionId, pieceJointe) : null;
+      if (!relue) throw erreur;
+      champs = {PDF_signe: ['L', pieceJointe], Date_depot: relue.Date_depot};
+    }
+  } catch (erreur) {
+    return echouer(conventionDepotMessageEchec(erreur));
+  }
+
+  // Écriture réussie : la mémoire est mise à jour seulement maintenant, puis le bloc est refait.
+  // Sans génération préalable, Modele et Annee restent vides : l'état « Signée » n'en a pas besoin.
+  const ligne = conventionLigne(state.raw.Conventions, conventionId);
+  if (ligne) Object.assign(ligne, champs);
+  conventionRafraichirBloc(actionId);
+  conventionDepotAlerte(true, CONVENTION_DEPOT_MESSAGES.reussite);
+  // Remplacement : « Remplacer » existe toujours, le focus y reste (S9-3). Premier dépôt : la
+  // commande a disparu, le focus va sur « Voir la convention signée » (id conventionVoirSignee,
+  // pas encore dans l'écran : tâche 9.1c), sinon sur le titre du bloc, rendu focalisable.
+  let cible = document.getElementById(remplacement ? 'conventionRemplacer' : 'conventionVoirSignee');
+  if (!cible) {
+    cible = document.querySelector('#conventionBloc .section-head span');
+    if (cible) cible.setAttribute('tabindex', '-1');
+  }
+  if (cible) cible.focus();
 }
