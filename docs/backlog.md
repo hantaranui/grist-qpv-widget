@@ -384,8 +384,25 @@ Décisions déjà tranchées par Hanta et Pierre :
 - E5-6 : trois états à afficher, calculés automatiquement : document absent / présent et valide / présent et expiré.
 
 Questions encore ouvertes (à trancher avec designer-ux/chef-de-projet) :
-- Q1 : quelles dates afficher précisément (expiration, dépôt, dernière mise à jour) ? Désignent-elles des événements différents à garder toutes, ou certaines suffisent ?
-- Q2 : la validité doit-elle être appréciée à la date du jour, ou à la date de l'action concernée ?
-- Q3 : un document expiré reste-t-il téléchargeable/consultable ?
-- Q4 : le remplacement doit-il être proposé même quand le document actuel est encore valide (renouvellement anticipé) ?
-- Q5 : noms exacts des tables/colonnes Grist à créer (aucune n'existe encore) : à définir par dev-backend avec l'accord de Hanta avant tout code.
+- Q1 : quelles dates afficher précisément (expiration, dépôt, dernière mise à jour) ? Désignent-elles des événements différents à garder toutes, ou certaines suffisent ? (TRANCHÉE, voir E5-7)
+- Q2 : la validité doit-elle être appréciée à la date du jour, ou à la date de l'action concernée ? (TRANCHÉE, voir E5-7)
+- Q3 : un document expiré reste-t-il téléchargeable/consultable ? (TRANCHÉE, voir E5-7)
+- Q4 : le remplacement doit-il être proposé même quand le document actuel est encore valide (renouvellement anticipé) ? (TRANCHÉE, voir E5-7)
+- Q5 : noms exacts des tables/colonnes Grist à créer (aucune n'existe encore) : à définir par dev-backend avec l'accord de Hanta avant tout code. (TRANCHÉE, voir E5-7)
+
+Réponses de Hanta aux questions de cadrage du chef-de-projet :
+- E5-7 : réponses de Hanta.
+  - Q1 : deux dates seulement - expiration + date de dépôt (pas de "dernière mise à jour", redondante avec E5-2).
+  - Q2 : validité calculée à la date DU JOUR, pas celle de l'action.
+  - Q3 : un document expiré reste consultable/téléchargeable.
+  - Q4 : le remplacement est proposé même si le document actuel est encore valide.
+  - Q5 : colonnes ajoutées DIRECTEMENT dans Structures (pas de nouvelle table), cohérent avec Logo qui y est déjà.
+  - A : la date d'expiration est OBLIGATOIRE au dépôt.
+  - B : format PDF uniquement, 10 Mo max, comme pour la Convention.
+  - C : une date dans le passé est acceptée, affiche directement l'état "expiré", pas de blocage.
+  - D : pas de suppression possible, seulement un remplacement (comme la Convention).
+  - E : filtre/export CSV hors périmètre pour ce sprint.
+  - F : profil ANS non prévu du tout (cohérent avec E5-5).
+  - G : droits du profil Départemental à vérifier avec de vrais comptes (tâche 4 du plan).
+  - H : le bandeau commun du widget clubs ne doit pas changer.
+- E5-8 : clarification du risque de sécurité le plus important soulevé par chef-de-projet. "Tous les profils peuvent consulter" (E5-5) ne crée AUCUNE nouvelle règle de visibilité : ça veut dire que pour un club déjà visible par un profil selon les règles d'accès EXISTANTES sur Structures (DR/DD), ce profil peut aussi voir/déposer l'assurance de ce club. Pas de club visible par tous sans distinction. Les nouvelles colonnes héritent simplement de la protection déjà en place sur Structures, aucune règle nouvelle à inventer.
