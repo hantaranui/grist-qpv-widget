@@ -61,6 +61,27 @@ const CONVENTION_MISE_EN_PAGE_DOCX = {
 // Campagnes sert au sous-titre de la fenetre Convention (Actions.Campagne est une reference
 // vers Campagnes.Campagne, le texte de l'annee).
 const TABLES = ['Actions', 'Cofinancements', 'Agences', 'DD', 'DR', 'Structures', 'Dispositifs', 'Federations', 'Financements', 'Financeurs', 'Reponses_AAP', 'Contacts', 'Conventions', 'Modeles_convention', 'Campagnes'];
+
+// Table des clubs (Actions.Club y renvoie). Meme nom que dans le widget clubs.
+const TABLE_CLUBS = 'Structures';
+
+// Assurance RC Pro d'un club : trois colonnes de la table Structures (une
+// attestation par club, partagee par toutes ses actions). Copie a l'identique
+// du widget clubs (memes noms) : si l'un change, changer l'autre.
+const RC_COL_PDF = 'Assurance_RC_PDF';
+const RC_COL_EXPIRATION = 'Assurance_RC_Date_expiration';
+const RC_COL_DEPOT = 'Assurance_RC_Date_depot';
+const RC_COLONNES = [RC_COL_PDF, RC_COL_EXPIRATION, RC_COL_DEPOT];
+// Attestation : PDF seulement, 10 Mo au maximum (10 x 1024 x 1024 octets).
+const RC_PDF_TYPE = 'application/pdf';
+const RC_PDF_MAX_OCTETS = 10 * 1024 * 1024;
+// Fuseau qui decide si une attestation est encore valable : celui de Paris,
+// pas UTC (entre minuit et 1 h ou 2 h a Paris, UTC est encore la veille).
+const RC_FUSEAU = 'Europe/Paris';
+// Bornes des annees acceptees pour la date saisie (evite « 0202 » par faute de frappe).
+const RC_ANNEE_MIN = 2000;
+const RC_ANNEE_MAX = 2100;
+
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -947,6 +968,222 @@ function hasCodeMee() {
 // on n'essaie pas de l'écrire (sinon tout l'enregistrement de la fiche échouerait).
 function hasRaisonColumn() {
   return (state.raw.Actions || []).some(row => 'Raison_du_refus' in row);
+}
+
+// ---------------------------------------------------------------------------
+// Assurance RC Pro : lecture, calcul de l'etat, depot (pas d'ecran ici).
+// Copie du widget clubs, memes noms de fonctions et de colonnes. Seule difference
+// voulue : le « club ouvert » est le club de l'action dont la fiche est affichee
+// (state.editingId), car ce widget n'a pas de state.currentId.
+// ---------------------------------------------------------------------------
+
+function text(value) {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function attachmentIds(value) {
+  if (Array.isArray(value)) return value.filter(item => Number.isInteger(item) && item > 0);
+  if (Number.isInteger(value) && value > 0) return [value];
+  if (typeof value === 'string') return value.split(',').map(Number).filter(item => Number.isInteger(item) && item > 0);
+  return [];
+}
+
+// fetchTable livre les dates en secondes depuis l'epoque ; on accepte aussi un
+// objet Date ou une chaine ISO, que renvoient d'autres chemins de l'API.
+function dateSeconds(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const time = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(time) ? time / 1000 : null;
+}
+
+// Error.message n'est pas une propriete enumerable : on lit l'erreur elle-meme,
+// jamais seulement sa propriete message.
+function errorDetail(error) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message) return error.message;
+  try { return JSON.stringify(error); } catch (jsonError) { return String(error); }
+}
+
+// Le texte d'une erreur evoque-t-il un refus d'acces de Grist ?
+function ressembleAUnRefus(detail) {
+  return /access|acl|blocked|permission|refus/i.test(detail);
+}
+
+// Range une erreur d'ecriture dans 'droits', 'reseau' ou 'autre'. Le refus est
+// reconnu par les mots que Grist met dans son message : un refus au texte
+// inattendu tombera dans 'autre'. Ne journalise rien.
+function classerErreurEcriture(error) {
+  const detail = errorDetail(error);
+  if (ressembleAUnRefus(detail)) return 'droits';
+  if (/failed to fetch|network|load failed|timeout|timed out|disconnect|offline|réseau|reseau/i.test(detail)) return 'reseau';
+  return 'autre';
+}
+
+// Les trois colonnes sont-elles lisibles ? Quand les regles d'acces de Grist
+// refusent une colonne, fetchTable ne la renvoie tout simplement pas : on regarde
+// si les trois cles existent dans les lignes de Structures (meme principe que
+// hasRaisonColumn). Faux = le bloc RC Pro ne doit pas s'afficher du tout, sans
+// message (decision E5-12). Ne pas confondre avec « absent » (colonnes lisibles
+// mais aucun document depose).
+function hasRcProColumns() {
+  return (state.raw.Structures || []).some(row => RC_COLONNES.every(colonne => colonne in row));
+}
+
+// Date du jour a Paris, au format « aaaa-mm-jj » (la locale « en-CA » donne ce
+// format). `maintenant` est un parametre pour pouvoir tester avec une date choisie.
+function jourParis(maintenant = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {timeZone: RC_FUSEAU, year: 'numeric', month: '2-digit', day: '2-digit'}).format(maintenant);
+}
+
+// Jour (« aaaa-mm-jj ») d'une date Grist en secondes : Grist range une date
+// seule a minuit UTC, donc on la lit en UTC.
+function jourDeSecondes(secondes) {
+  return new Date(secondes * 1000).toISOString().slice(0, 10);
+}
+
+// Etat de l'attestation RC Pro d'un club, juge a la date du jour a Paris.
+// Recoit une ligne de Structures. Renvoie :
+//   null  si les colonnes RC Pro sont illisibles (bloc a ne pas afficher) ;
+//   {etat: 'absent', dateExpiration: null, dateDepot: null} sans document ;
+//   {etat: 'valide' | 'expire', dateExpiration, dateDepot} avec un document
+//   (dates en secondes, ou null si la cellule est vide).
+// Le jour d'expiration est inclus : valide jusqu'a la fin de ce jour. Un document
+// sans date d'expiration lisible compte comme « expire ».
+function rcProEtat(structure, maintenant = new Date()) {
+  if (!structure || !RC_COLONNES.every(colonne => colonne in structure)) return null;
+  if (!attachmentIds(structure[RC_COL_PDF]).length) {
+    return {etat: 'absent', dateExpiration: null, dateDepot: null};
+  }
+  const dateExpiration = dateSeconds(structure[RC_COL_EXPIRATION]);
+  const dateDepot = dateSeconds(structure[RC_COL_DEPOT]);
+  // Les dates « aaaa-mm-jj » se comparent correctement comme des textes.
+  const valide = dateExpiration !== null && jourDeSecondes(dateExpiration) >= jourParis(maintenant);
+  return {etat: valide ? 'valide' : 'expire', dateExpiration, dateDepot};
+}
+
+// Etat RC Pro du club dont l'id est donne, d'apres les donnees chargees.
+// null si les colonnes sont illisibles ou si le club est introuvable.
+function rcProDuClub(clubId) {
+  const structure = (state.raw.Structures || []).find(row => row.id === clubId);
+  return rcProEtat(structure);
+}
+
+// Transforme une date saisie (« aaaa-mm-jj » du champ date natif, ou
+// « jj/mm/aaaa ») en secondes (minuit UTC, comme Grist). Renvoie null si le
+// texte n'est pas une vraie date du calendrier.
+function dateSaisieEnSecondes(valeur) {
+  const texteSaisi = text(valeur);
+  let jour, mois, annee;
+  let trouve = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texteSaisi);
+  if (trouve) [, annee, mois, jour] = trouve;
+  else if ((trouve = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texteSaisi))) [, jour, mois, annee] = trouve;
+  else return null;
+  [jour, mois, annee] = [Number(jour), Number(mois), Number(annee)];
+  if (annee < RC_ANNEE_MIN || annee > RC_ANNEE_MAX) return null;
+  const date = new Date(Date.UTC(annee, mois - 1, jour));
+  // Refuse le 31/02 : JavaScript le « corrigerait » en mars sans rien dire.
+  if (date.getUTCFullYear() !== annee || date.getUTCMonth() !== mois - 1 || date.getUTCDate() !== jour) return null;
+  return date.getTime() / 1000;
+}
+
+// Controle ce que l'agent a saisi. Renvoie une liste de codes de problemes
+// (vide si tout est correct), que l'ecran traduira en textes :
+// 'fichier-absent', 'fichier-pas-pdf', 'fichier-vide', 'fichier-trop-lourd',
+// 'date-vide', 'date-invalide'. Une date passee n'est PAS un probleme.
+function controlerAttestationRc(fichier, dateTexte) {
+  const problemes = [];
+  if (!fichier) problemes.push('fichier-absent');
+  else if (fichier.type !== RC_PDF_TYPE) problemes.push('fichier-pas-pdf');
+  else if (!(fichier.size > 0)) problemes.push('fichier-vide');
+  else if (fichier.size > RC_PDF_MAX_OCTETS) problemes.push('fichier-trop-lourd');
+  if (!text(dateTexte)) problemes.push('date-vide');
+  else if (dateSaisieEnSecondes(dateTexte) === null) problemes.push('date-invalide');
+  return problemes;
+}
+
+// Range l'echec d'un depot dans 'droits', 'reseau' ou 'autre' (jamais de texte
+// brut de Grist : il peut contenir un identifiant de piece jointe ou un jeton).
+function classerErreurDepotRc(error) {
+  const status = error && (error.status || (error.cause && error.cause.status));
+  if (status === 401 || status === 403) return 'droits';
+  if (error && error.step === 'network') return 'reseau';
+  if (error && error.step === 'access') return 'autre';
+  const detail = errorDetail(error && error.cause !== undefined ? error.cause : error);
+  return classerErreurEcriture(new Error(detail));
+}
+
+// Depose (ou remplace) l'attestation du club de l'action dont la fiche est
+// ouverte. Meme schema que uploadLogo (clubs) : jeton d'ecriture, envoi du
+// fichier (POST /attachments), puis UN SEUL PATCH qui ecrit ensemble le fichier,
+// la date d'expiration et la date de depot (posee ici, a la date du jour a
+// Paris : l'agent ne la saisit pas), pour ne jamais avoir un fichier sans date.
+// L'ancien fichier n'est pas supprime de Grist : il reste non rattache.
+// Renvoie {ok: true}, {ok: false, type: 'club'} (ce n'est pas le club de la
+// fiche ouverte), {ok: false, type: 'saisie', problemes: [...]} (rien n'est
+// envoye) ou {ok: false, type: 'droits' | 'reseau' | 'autre'}. Ne journalise ni
+// jeton, ni adresse, ni texte brut d'erreur.
+async function deposerAttestationRc(clubId, fichier, dateExpirationTexte) {
+  const actionOuverte = state.actions.find(item => item.id === state.editingId);
+  if (!Number.isInteger(clubId) || !actionOuverte || actionOuverte.clubId !== clubId) return {ok: false, type: 'club'};
+  const problemes = controlerAttestationRc(fichier, dateExpirationTexte);
+  if (problemes.length) return {ok: false, type: 'saisie', problemes};
+
+  const expiration = dateSaisieEnSecondes(dateExpirationTexte);
+  const depot = dateSaisieEnSecondes(jourParis());
+  let access;
+  try {
+    access = await grist.docApi.getAccessToken({readOnly: false});
+  } catch (error) {
+    console.error("Dépôt RC Pro non abouti : jeton d'écriture refusé.");
+    return {ok: false, type: 'autre'};
+  }
+
+  try {
+    const form = new FormData();
+    form.append('upload', fichier, fichier.name);
+    let response;
+    try {
+      response = await fetch(`${access.baseUrl}/attachments?auth=${encodeURIComponent(access.token)}`, {
+        method: 'POST',
+        body: form,
+        credentials: 'omit',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      });
+    } catch (error) {
+      throw Object.assign(new Error('Connexion impossible.'), {step: 'network'});
+    }
+    if (!response.ok) throw Object.assign(new Error(`Téléversement refusé (${response.status})`), {step: 'upload', status: response.status});
+    const ids = attachmentIds(await response.json());
+    if (!ids.length) throw Object.assign(new Error('Téléversement sans identifiant de pièce jointe.'), {step: 'upload'});
+
+    let rattachement;
+    try {
+      rattachement = await fetch(`${access.baseUrl}/tables/${TABLE_CLUBS}/records?auth=${encodeURIComponent(access.token)}`, {
+        method: 'PATCH',
+        credentials: 'omit',
+        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        body: JSON.stringify({records: [{id: clubId, fields: {
+          [RC_COL_PDF]: ['L', ...ids],
+          [RC_COL_EXPIRATION]: expiration,
+          [RC_COL_DEPOT]: depot,
+        }}]}),
+      });
+    } catch (error) {
+      throw Object.assign(new Error('Connexion impossible.'), {step: 'network'});
+    }
+    if (!rattachement.ok) {
+      // On garde le texte de Grist seulement pour reconnaitre un refus, jamais pour l'afficher.
+      const detail = await rattachement.text().catch(() => '');
+      throw Object.assign(new Error(detail || `HTTP ${rattachement.status}`), {step: 'update', status: rattachement.status});
+    }
+    return {ok: true};
+  } catch (error) {
+    const type = classerErreurDepotRc(error);
+    console.error(`Dépôt RC Pro non abouti (étape ${error && error.step ? error.step : 'inconnue'}) : ${type}`);
+    return {ok: false, type};
+  }
 }
 
 // Vrai si ce statut est « Non retenu » (écriture tolérante : casse, accents).
