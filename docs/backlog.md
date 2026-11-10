@@ -49,6 +49,7 @@ Questions encore ouvertes (non bloquantes, à trancher avec designer-ux/dev-inte
   - (3) Effacement systématique de Raison_du_refus lors d'un changement de statut, qui échouerait si les droits Grist venaient un jour à protéger cette colonne spécifiquement : accepté tel quel, risque théorique non prioritaire.
   - Point annexe signalé : Raison_du_refus doit être ajoutée à la liste des colonnes écrites dans CLAUDE.md (documentation).
 - E4-27 : droits d'écriture sur Raison_du_refus vérifiés par Hanta avec de VRAIS comptes (pas « Voir en tant que »), pour les profils National, Régional et Départemental. Résultat : tous les profils peuvent écrire. Aucune restriction à gérer côté code.
+- E4-28 : les 7 parcours (P-01 à P-07) ont été joués par Gaylord sur TEST, le 10/11/2026. Résultat : OK pour les 7, aucune remarque négative. Pierre a validé la disposition visuelle finale. Toutes les conditions sont réunies pour la mise en PROD.
 
 ## Sprint E5 — Assurance RC Pro des clubs
 
