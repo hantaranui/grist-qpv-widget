@@ -48,3 +48,4 @@ Questions encore ouvertes (non bloquantes, à trancher avec designer-ux/dev-inte
   - (2) Message de refus d'écriture générique (pas de phrase dédiée pour un refus de droits) : accepté tel quel pour l'instant, pas bloquant pour la PROD. À retravailler plus tard si un vrai cas se présente.
   - (3) Effacement systématique de Raison_du_refus lors d'un changement de statut, qui échouerait si les droits Grist venaient un jour à protéger cette colonne spécifiquement : accepté tel quel, risque théorique non prioritaire.
   - Point annexe signalé : Raison_du_refus doit être ajoutée à la liste des colonnes écrites dans CLAUDE.md (documentation).
+- E4-27 : droits d'écriture sur Raison_du_refus vérifiés par Hanta avec de VRAIS comptes (pas « Voir en tant que »), pour les profils National, Régional et Départemental. Résultat : tous les profils peuvent écrire. Aucune restriction à gérer côté code.
