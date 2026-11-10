@@ -81,6 +81,10 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 - Test local : npm run dev (port 8000), puis http://localhost:8000/actions-dashboard.html (ou /clubs.html) comme URL du widget dans le document Grist DEV. Pour tester le lien depuis clubs, servir les deux widgets avec le même npm run dev (même port). Après le test, remettre l'adresse GitHub Pages dans Grist DEV.
 - Aucune CI ne fait le build : commiter les sources ET le fichier généré.
 
+## Tests
+
+- Tout carnet de recette (fichier de suivi d'exécution) comporte une colonne "Validé par", distincte de "Testeur" : elle sert à noter qui confirme ou corrige un résultat après un premier passage (par exemple quand Hanta revient sur un cas marqué "À revoir" par le testeur). Un cas qui n'a jamais été revu après son premier passage n'a rien dans cette colonne.
+
 ## Publication
 
 Grist charge les widgets depuis GitHub Pages : https://hantaranui.github.io/grist-qpv-widget/actions-dashboard.html et https://hantaranui.github.io/grist-qpv-widget/clubs.html
