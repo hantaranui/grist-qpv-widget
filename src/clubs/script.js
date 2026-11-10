@@ -2121,14 +2121,18 @@ function renderRcPro(club) {
     ? '<button class="btn btn-secondary btn-sm" type="button" id="rcProDeposer"><span class="btn-content">Déposer l\'attestation</span></button>'
     : `<button class="btn btn-secondary btn-sm" type="button" id="rcProVoir"><span class="btn-content">Voir l'attestation<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></button>
        <button class="btn btn-secondary btn-sm" type="button" id="rcProRemplacer"><span class="btn-content">Remplacer l'attestation</span></button>`;
-  return `<section class="edit-card"><div class="card-body">
-    <div class="rcpro-bloc" id="rcProBloc" aria-labelledby="rcProTitre">
-      <h2 class="rcpro-titre" id="rcProTitre">${RC_TITRE_BLOC}</h2>
-      ${rcProPhrasesHtml(etat)}
-      <div class="rcpro-boutons">${boutons}</div>
-      <div id="rcProAlerte"></div>
+  // Meme structure que les cartes Club, Contacts et Actions : bandeau de titre
+  // (section-head) hors du corps de la carte (card-body).
+  return `<section class="edit-card" aria-labelledby="rcProTitre">
+    <div class="section-head"><span id="rcProTitre">${RC_TITRE_BLOC}</span></div>
+    <div class="card-body">
+      <div class="rcpro-bloc" id="rcProBloc">
+        ${rcProPhrasesHtml(etat)}
+        <div class="rcpro-boutons">${boutons}</div>
+        <div id="rcProAlerte"></div>
+      </div>
     </div>
-  </div></section>`;
+  </section>`;
 }
 
 function bindRcPro(club) {

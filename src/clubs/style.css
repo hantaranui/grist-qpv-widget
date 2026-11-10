@@ -560,12 +560,6 @@ td:last-child {
    Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
 .rcpro-bloc { min-width: 0; }
 
-.rcpro-titre {
-  margin: 0 0 8px;
-  font-family: var(--font-title);
-  font-size: 17px;
-}
-
 .rcpro-etat,
 .rcpro-depot { margin: 0 0 4px; overflow-wrap: anywhere; }
 
