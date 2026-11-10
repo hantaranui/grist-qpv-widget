@@ -109,6 +109,11 @@ Ce qui est fusionné dans main est en ligne pour tous les utilisateurs, et tout 
 - Chaque compte rendu se termine par : 1. fichiers lus ; 2. fichiers modifiés ; 3. tests lancés et résultat ; 4. risques restants.
 - Quand Hanta appelle un agent avec @, tu transmets son rapport tel quel, sans le résumer ni le compléter, et tu ne proposes jamais de faire toi-même la suite (correction, modification, commit) : c'est Hanta qui choisit le prochain agent.
 
+## Bonnes pratiques de code
+
+- Pour tout réglage de configuration ou de mise en forme utilisé à plusieurs endroits d'un même fichier (police, tailles, marges, espacements, seuils de largeur d'écran, délais, couleurs, noms de colonnes Grist répétés, etc.) : regrouper ces valeurs en une seule constante, en tête du fichier concerné, plutôt que de les disperser dans le code. Objectif : qu'une demande de changement reste une petite modification localisée à un seul endroit, au lieu d'une recherche dans tout le fichier.
+- Cette règle s'applique à tout nouveau code écrit à partir de maintenant, et doit être appliquée en priorité quand un widget existant est retouché pour une autre raison.
+
 ## Pièges connus
 
 - build.js reconstruit les trois widgets : vérifier avec git status qu'aucun autre fichier généré n'a changé.
