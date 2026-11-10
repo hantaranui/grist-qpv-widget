@@ -546,7 +546,41 @@ td:last-child {
    son habillage viennent du design system. Sa feuille masque .modal par defaut :
    nous l'affichons nous-memes en ne la creant que pendant qu'elle est ouverte
    (meme regle que #addActionModal dans le tableau de bord). */
-#contactModal .modal { display: block; overflow-y: auto; }
+#contactModal .modal,
+#rcProModal .modal { display: block; overflow-y: auto; }
+
+/* Bloc « Assurance RC Pro » dans la carte Club : séparé du reste par un filet.
+   Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
+.rcpro-bloc {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.rcpro-titre {
+  margin: 0 0 8px;
+  font-family: var(--font-title);
+  font-size: 17px;
+}
+
+.rcpro-etat,
+.rcpro-depot { margin: 0 0 4px; overflow-wrap: anywhere; }
+
+.rcpro-boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rcpro-boutons .btn { flex: 0 0 auto; }
+
+/* Pop-up de dépôt : mêmes espacements que la fenêtre des contacts. */
+.rcpro-required-note { margin: 0 0 8px; }
+.rcpro-club,
+.rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
+.rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
+.rcpro-field { display: grid; gap: 6px; }
 
 /* Bouton de confirmation de suppression : le design system n'a pas de bouton
    destructeur, on colore le bouton primaire avec ses jetons d'erreur (regle

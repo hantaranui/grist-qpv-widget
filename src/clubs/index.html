@@ -62,6 +62,12 @@
          que la fenêtre est fermée, hors de la fiche pour survivre à son rendu. -->
     <div id="contactModal"></div>
 
+    <!-- Assurance RC Pro : zone d'annonce (réussite d'un dépôt ou d'un remplacement) et
+         conteneur du pop-up, vide tant qu'il est fermé. Même principe que les contacts :
+         hors de la fiche, qui est redessinée à chaque relecture. -->
+    <p class="sr-only" id="rcProStatus" role="status" aria-live="polite"></p>
+    <div id="rcProModal"></div>
+
     <script src="script.js"></script>
   </body>
 </html>
