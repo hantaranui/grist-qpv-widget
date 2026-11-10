@@ -1,5 +1,59 @@
 grist.ready({requiredAccess: 'full'});
 
+// ---- Convention : TOUS les reglages de mise en page du document Word (.docx) ----
+// Pour changer l'apparence du Word, on ne modifie que cette constante. Mise en page (note UX,
+// sections 11 et 15.9) : A4, marges 2,5 cm, Arial 11 pt, justifie, interligne 1,2.
+// Tailles de police en DEMI-POINTS (22 = 11 pt) ; espaces en twips (1 pt = 20 twips).
+// 1 cm = 566,93 twips (le twip est l'unite de Word : 1/20 de point).
+const CONVENTION_TWIPS_PAR_CM = 566.93;
+
+function conventionCmEnTwips(cm) {
+  return Math.round(cm * CONVENTION_TWIPS_PAR_CM);
+}
+
+const CONVENTION_MISE_EN_PAGE_DOCX = {
+  police: 'Arial',
+  taille: 22,
+  tailleTitre1: 24,
+  tailleNote: 20,
+  taillePied: 18,
+  interligne: 288,
+  // Interligne simple (240 = 1,0), pour les paragraphes techniques : logos, pied, paragraphes vides.
+  interligneSimple: 240,
+  // Taille (demi-points) du petit paragraphe vide qui separe deux tableaux : 1 pt.
+  tailleParagrapheVide: 2,
+  // Caractere des puces des listes.
+  puce: '-',
+  pageLargeur: 11906,
+  pageHauteur: 16838,
+  marge: conventionCmEnTwips(2.5),
+  distanceEnTetePied: conventionCmEnTwips(1.25),
+  largeurTexte: conventionCmEnTwips(16),
+  retrait: conventionCmEnTwips(1.25),
+  retraitPuce: conventionCmEnTwips(0.63),
+  retraitTitre1: conventionCmEnTwips(1),
+  // Espace avant / apres chaque sorte de paragraphe du texte (twips).
+  espacements: {
+    titre1: {avant: 0, apres: 480},
+    titre2: {avant: 360, apres: 160},
+    titre3: {avant: 240, apres: 160},
+    ligneSeule: {avant: 0, apres: 160},
+    paragraphe: {avant: 120, apres: 200},
+    elementListe: {avant: 0, apres: 120}
+  },
+  // Logos : boite de 6 cm sur 2 cm, en pixels (1 px = 1/96 pouce, l'unite d'ImageRun), et
+  // 24 pt d'espace entre le bas des logos et le titre.
+  logo: {largeurMax: Math.round(6 / 2.54 * 96), hauteurMax: Math.round(2 / 2.54 * 96), espaceSousLogos: 480},
+  signatures: {
+    lignesVides: 4,
+    espaceEntreColonnes: 480,
+    espaceSousIntitules: conventionCmEnTwips(3),
+    espaceAvantLieuDate: 360,
+    // Espace avant / apres chaque ligne du bloc de signature (intitule, nom, fonction).
+    espaceParagraphe: {avant: 120, apres: 200}
+  }
+};
+
 // Contacts, Conventions et Modeles_convention servent a la convention de
 // partenariat (lecture seule pour l'instant). Une table que les regles d'acces
 // refusent (ex. ANS : ni Conventions ni Modeles_convention) devient une liste
@@ -2031,12 +2085,8 @@ function conventionImageLogo(tampon) {
 // TEXTE SIMPLE : la bibliotheque l'echappe elle-meme (& < > " '). On n'assemble JAMAIS de XML a la main.
 // Le code PDF (pdfmake) plus haut reste en place pour l'instant : il sera retire dans une etape suivante.
 
-// 1 cm = 566,93 twips (le twip est l'unite de Word : 1/20 de point).
-const CONVENTION_TWIPS_PAR_CM = 566.93;
-
-function conventionCmEnTwips(cm) {
-  return Math.round(cm * CONVENTION_TWIPS_PAR_CM);
-}
+// (La conversion cm -> twips et tous les reglages de mise en page du Word sont en tete du fichier :
+// CONVENTION_MISE_EN_PAGE_DOCX.)
 
 // Types de fichier : fixes par le widget d'apres l'extension, jamais repris de la reponse de Grist.
 const CONVENTION_TYPE_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -2051,34 +2101,6 @@ const CONVENTION_DOCX_METADONNEES = {
   lastModifiedBy: 'Partenariat simplifié',
   title: 'Convention',
   description: 'Convention générée par le tableau de bord Partenariat simplifié'
-};
-
-// Mise en page (note UX, sections 11 et 15.9) : A4, marges 2,5 cm, Arial 11 pt, justifie,
-// interligne 1,2. Tailles de police en DEMI-POINTS (22 = 11 pt) ; espaces en twips (1 pt = 20 twips).
-const CONVENTION_MISE_EN_PAGE_DOCX = {
-  police: 'Arial',
-  taille: 22,
-  tailleTitre1: 24,
-  tailleNote: 20,
-  taillePied: 18,
-  interligne: 288,
-  pageLargeur: 11906,
-  pageHauteur: 16838,
-  marge: conventionCmEnTwips(2.5),
-  distanceEnTetePied: conventionCmEnTwips(1.25),
-  largeurTexte: conventionCmEnTwips(16),
-  retrait: conventionCmEnTwips(1.25),
-  retraitPuce: conventionCmEnTwips(0.63),
-  retraitTitre1: conventionCmEnTwips(1),
-  // Logos : boite de 6 cm sur 2 cm, en pixels (1 px = 1/96 pouce, l'unite d'ImageRun), et
-  // 24 pt d'espace entre le bas des logos et le titre.
-  logo: {largeurMax: Math.round(6 / 2.54 * 96), hauteurMax: Math.round(2 / 2.54 * 96), espaceSousLogos: 480},
-  signatures: {
-    lignesVides: 4,
-    espaceEntreColonnes: 480,
-    espaceSousIntitules: conventionCmEnTwips(3),
-    espaceAvantLieuDate: 360
-  }
 };
 
 // Retire les caracteres de controle qu'un fichier Word (XML) n'accepte pas : sans cela, une valeur
@@ -2288,7 +2310,8 @@ function conventionBorduresAucunes(lib) {
 // Petit paragraphe vide (1 pt) : Word veut un paragraphe apres un tableau, et deux tableaux
 // qui se touchent seraient fusionnes. `reglages` : espacement, saut de page...
 function conventionParagrapheVideDocx(lib, reglages) {
-  return new lib.Paragraph({children: [new lib.TextRun({text: ' ', size: 2})], spacing: {before: 0, after: 0, line: 240}, ...(reglages || {})});
+  const L = CONVENTION_MISE_EN_PAGE_DOCX;
+  return new lib.Paragraph({children: [new lib.TextRun({text: ' ', size: L.tailleParagrapheVide})], spacing: {before: 0, after: 0, line: L.interligneSimple}, ...(reglages || {})});
 }
 
 // Bloc de signature : un tableau a deux colonnes de meme largeur, sans bordure, en une seule ligne
@@ -2310,7 +2333,7 @@ function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
   const paragraphe = (runs, options, dernier) => new lib.Paragraph({
     children: conventionRunsVersDocx(lib, runs, options),
     alignment: A.LEFT,
-    spacing: {before: 120, after: 200},
+    spacing: {before: S.espaceParagraphe.avant, after: S.espaceParagraphe.apres},
     keepNext: !dernier
   });
   const colonne = (titre, nomPersonne, nomFonction) => {
@@ -2323,8 +2346,8 @@ function conventionSignaturesDocx(lib, bloc, valeurs, contexte) {
     );
     // Espace pour la signature manuscrite.
     contenu.push(bloc.ftAGauche
-      ? conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: S.espaceSousIntitules, line: 240}})
-      : new lib.Paragraph({children: [new lib.TextRun({break: S.lignesVides})], spacing: {before: 120, after: 200}}));
+      ? conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: S.espaceSousIntitules, line: L.interligneSimple}})
+      : new lib.Paragraph({children: [new lib.TextRun({break: S.lignesVides})], spacing: {before: S.espaceParagraphe.avant, after: S.espaceParagraphe.apres}}));
     return contenu;
   };
   const club = colonne("Pour l'organisation sportive", 'Signataire du club', 'Fonction du signataire');
@@ -2382,11 +2405,12 @@ function conventionBlocsVersDocx(lib, blocs, valeurs, contexte, retrait) {
     return new lib.Paragraph(options);
   };
   // Titres : jamais seuls en bas de page (keepNext les garde avec ce qui suit).
+  const E = L.espacements;
   const titres = {
-    1: {alignment: A.CENTER, spacing: {before: 0, after: 480}, indent: {left: L.retraitTitre1 + decalage, right: L.retraitTitre1}, taille: L.tailleTitre1},
-    2: {alignment: A.LEFT, spacing: {before: 360, after: 160}, indent: {left: decalage}},
-    3: {alignment: A.LEFT, spacing: {before: 240, after: 160}, indent: {left: L.retrait + decalage}},
-    0: {alignment: A.JUSTIFIED, spacing: {before: 0, after: 160}, indent: {left: decalage}}
+    1: {alignment: A.CENTER, spacing: {before: E.titre1.avant, after: E.titre1.apres}, indent: {left: L.retraitTitre1 + decalage, right: L.retraitTitre1}, taille: L.tailleTitre1},
+    2: {alignment: A.LEFT, spacing: {before: E.titre2.avant, after: E.titre2.apres}, indent: {left: decalage}},
+    3: {alignment: A.LEFT, spacing: {before: E.titre3.avant, after: E.titre3.apres}, indent: {left: L.retrait + decalage}},
+    0: {alignment: A.JUSTIFIED, spacing: {before: E.ligneSeule.avant, after: E.ligneSeule.apres}, indent: {left: decalage}}
   };
 
   blocs.forEach(bloc => {
@@ -2396,7 +2420,7 @@ function conventionBlocsVersDocx(lib, blocs, valeurs, contexte, retrait) {
       const {taille, ...reglages} = titres[bloc.niveau];
       sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {gras: true, taille}), {...reglages, keepNext: true, keepLines: true}));
     } else if (bloc.type === 'paragraphe') {
-      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {}), {alignment: A.JUSTIFIED, spacing: {before: 120, after: 200}, indent: {left: decalage}}));
+      sortie.push(paragraphe(conventionRunsVersDocx(lib, bloc.runs, {}), {alignment: A.JUSTIFIED, spacing: {before: E.paragraphe.avant, after: E.paragraphe.apres}, indent: {left: decalage}}));
     } else if (bloc.type === 'liste') {
       let reference = 'convention-puces';
       if (bloc.ordonnee) {
@@ -2412,7 +2436,7 @@ function conventionBlocsVersDocx(lib, blocs, valeurs, contexte, retrait) {
       bloc.items.forEach(runs => {
         sortie.push(paragraphe(conventionRunsVersDocx(lib, runs, {}), {
           alignment: A.JUSTIFIED,
-          spacing: {before: 0, after: 120},
+          spacing: {before: E.elementListe.avant, after: E.elementListe.apres},
           numbering: {reference, level: 0},
           indent: {left: decalage + L.retrait + L.retraitPuce, hanging: L.retraitPuce}
         }));
@@ -2446,7 +2470,7 @@ function conventionEnTeteDocx(lib, logos) {
   const paragraphe = (donnees, nom, alignement) => new lib.Paragraph({
     children: donnees ? [image(donnees, nom)] : [],
     alignment: alignement,
-    spacing: {before: 0, after: 0, line: 240}
+    spacing: {before: 0, after: 0, line: L.interligneSimple}
   });
   const moitie = Math.floor(L.largeurTexte / 2);
   const cellule = enfant => new lib.TableCell({
@@ -2465,7 +2489,7 @@ function conventionEnTeteDocx(lib, logos) {
       cellule(paragraphe(partenaire, 'Logo du partenaire', A.RIGHT))
     ]})]
   });
-  return new lib.Header({children: [tableau, conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: L.logo.espaceSousLogos, line: 240}})]});
+  return new lib.Header({children: [tableau, conventionParagrapheVideDocx(lib, {spacing: {before: 0, after: L.logo.espaceSousLogos, line: L.interligneSimple}})]});
 }
 
 // Description complete du fichier Word (la bibliotheque est passee en parametre : options.lib, par
@@ -2507,7 +2531,7 @@ function conventionDocumentDocx(texte, valeurs, options) {
   // Numero de page : 9 pt, a droite, a 1,25 cm du bas. Pas de numero sur la page 1 (pied « premiere page » vide).
   const pied = new lib.Footer({children: [new lib.Paragraph({
     alignment: A.RIGHT,
-    spacing: {before: 0, after: 0, line: 240},
+    spacing: {before: 0, after: 0, line: L.interligneSimple},
     children: [new lib.TextRun({children: [lib.PageNumber.CURRENT], size: L.taillePied})]
   })]});
   const section = {
@@ -2530,7 +2554,7 @@ function conventionDocumentDocx(texte, valeurs, options) {
     numbering: {config: [
       {
         reference: 'convention-puces',
-        levels: [{level: 0, format: lib.LevelFormat.BULLET, text: '-', alignment: A.LEFT,
+        levels: [{level: 0, format: lib.LevelFormat.BULLET, text: L.puce, alignment: A.LEFT,
           style: {paragraph: {indent: {left: L.retrait + L.retraitPuce, hanging: L.retraitPuce}}}}]
       },
       ...contexte.numerotations
