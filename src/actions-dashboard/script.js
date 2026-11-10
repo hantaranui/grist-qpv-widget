@@ -1613,7 +1613,12 @@ function exportCsv(actions) {
     action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
     isNonRetenu(action.statut) ? action.raison : ''
   ]);
-  const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
+  // Protection contre l'injection de formule : Excel interprète comme une formule
+  // toute cellule TEXTE qui commence par =, +, - ou @. On la préfixe d'une apostrophe
+  // pour qu'elle soit lue comme du texte. Les nombres (type number) ne sont pas touchés,
+  // donc un montant négatif reste un vrai nombre négatif.
+  const protegerCellule = cell => (typeof cell === 'string' && /^[=+\-@]/.test(cell)) ? `'${cell}` : cell;
+  const csv = [header, ...lines].map(row => row.map(cell => `"${String(protegerCellule(cell) ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
