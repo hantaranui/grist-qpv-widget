@@ -49,3 +49,24 @@ Questions encore ouvertes (non bloquantes, à trancher avec designer-ux/dev-inte
   - (3) Effacement systématique de Raison_du_refus lors d'un changement de statut, qui échouerait si les droits Grist venaient un jour à protéger cette colonne spécifiquement : accepté tel quel, risque théorique non prioritaire.
   - Point annexe signalé : Raison_du_refus doit être ajoutée à la liste des colonnes écrites dans CLAUDE.md (documentation).
 - E4-27 : droits d'écriture sur Raison_du_refus vérifiés par Hanta avec de VRAIS comptes (pas « Voir en tant que »), pour les profils National, Régional et Départemental. Résultat : tous les profils peuvent écrire. Aucune restriction à gérer côté code.
+
+## Sprint E5 — Assurance RC Pro des clubs
+
+Besoin d'origine : les agents France Travail ont besoin de disposer du document d'assurance RC Pro d'un club pour les actions financées. Le club transmet ce document hors de l'application (e-mail) ; un agent le dépose pour le rendre accessible au suivi. Le document concerne le CLUB (pas une action précise) : un club avec 5 actions ne doit avoir qu'un seul document, pas 5.
+
+Pour ce sprint, on se concentre UNIQUEMENT sur le dépôt manuel via les widgets (clubs et actions-dashboard). La piste "Démarche Numérique" (collecte automatique, ProConnect) est explicitement hors périmètre, à traiter plus tard si besoin.
+
+Décisions déjà tranchées par Hanta et Pierre :
+- E5-1 : parcours retenu - un pop-up compact (formulaire commun), accessible à la fois depuis la fiche club ET depuis la fiche action, sur le modèle déjà existant du bouton "Ajouter un contact" (ouverture d'une petite fenêtre, sans navigation complète vers une autre page). Les données restent toujours rattachées au CLUB, jamais à l'action.
+- E5-2 : lors d'un remplacement du document, on ÉCRASE l'ancien (pas d'historique conservé). Raison : une assurance expirée ne sert plus à rien une fois remplacée.
+- E5-3 : AUCUNE lecture automatique du PDF déposé. L'attestation RC Pro est un document variable d'un assureur à l'autre, sans format standardisé. L'agent saisit la date d'expiration À LA MAIN, quel que soit le contenu du fichier.
+- E5-4 : pas de donnée personnelle identifiée (le document concerne le club en tant que structure : SIRET, nom, pas une personne physique).
+- E5-5 : tous les profils actuels (National, Régional, Départemental) peuvent déposer, remplacer et consulter le document. Aucune restriction de droits spécifique identifiée pour l'instant.
+- E5-6 : trois états à afficher, calculés automatiquement : document absent / présent et valide / présent et expiré.
+
+Questions encore ouvertes (à trancher avec designer-ux/chef-de-projet) :
+- Q1 : quelles dates afficher précisément (expiration, dépôt, dernière mise à jour) ? Désignent-elles des événements différents à garder toutes, ou certaines suffisent ?
+- Q2 : la validité doit-elle être appréciée à la date du jour, ou à la date de l'action concernée ?
+- Q3 : un document expiré reste-t-il téléchargeable/consultable ?
+- Q4 : le remplacement doit-il être proposé même quand le document actuel est encore valide (renouvellement anticipé) ?
+- Q5 : noms exacts des tables/colonnes Grist à créer (aucune n'existe encore) : à définir par dev-backend avec l'accord de Hanta avant tout code.
