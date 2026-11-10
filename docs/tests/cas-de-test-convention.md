@@ -5,7 +5,7 @@ Document de recette de la fonction **Convention** du tableau de bord (générati
 - **Environnement** : TEST.
 - **Profil** : FT National.
 - **Données** : uniquement des données fictives, déjà présentes dans TEST. Aucune donnée n'est à créer.
-- **Fichier à joindre** : « convention-signee-fictive-test.pdf » (fictif, sans donnée personnelle). Il sert au parcours P-04 et doit être joint à ce document quand il est transmis au testeur.
+- **Fichier à joindre** : « convention-signee-fictive-test.pdf » (fictif, sans donnée personnelle). Il sert aux parcours P-04 et P-05 et doit être joint à ce document quand il est transmis au testeur.
 - **Fichier de suivi** : `cas-de-test-convention.tsv` (même contenu, à ouvrir dans un tableur).
 
 Avant de commencer, noter : version testée, nom du testeur, date.
@@ -16,13 +16,13 @@ Les lignes sont rangées en trois catégories :
 
 1. **Déjà joué** par Jean-Louis, résultat « Bon » : ne pas rejouer.
 2. **Déjà vérifié** par Hanta le 07/11/2026 : ne pas rejouer.
-3. **À jouer par le testeur** : 6 parcours courts (P-01 à P-04, P-06, P-07), ceux qui comptent. Chacun raconte une situation réelle d'agent de terrain.
+3. **À jouer par le testeur** : 7 parcours courts (P-01 à P-07), ceux qui comptent. Chacun raconte une situation réelle d'agent de terrain.
 
 Pour chaque parcours : suivre les étapes, comparer avec le résultat attendu, puis noter **OK**, **KO**, **Bloqué** ou **Non testé**. En cas de KO : décrire ce qui s'est passé et joindre une capture d'écran.
 
-## 1. Les 6 parcours à jouer
+## 1. Les 7 parcours à jouer
 
-Jouer dans l'ordre : P-01, P-02 et P-03 s'enchaînent sur la même action ; P-04 et P-06 s'enchaînent aussi sur une même action (P-06 se joue immédiatement après P-04). L'identifiant P-05 n'est pas utilisé (parcours retiré).
+Jouer dans l'ordre : P-01, P-02 et P-03 s'enchaînent sur la même action ; P-04 et P-06 s'enchaînent aussi sur une même action (P-06 se joue immédiatement après P-04). P-05 est indépendant : il se joue sur une autre action.
 
 ### P-01 : Générer une convention en Word (majeur)
 
@@ -124,6 +124,27 @@ Jouer dans l'ordre : P-01, P-02 et P-03 s'enchaînent sur la même action ; P-04
 | --- | --- | --- | --- |
 |  |  |  |  |
 
+### P-05 : Déposer une convention signée sur une action sans modèle (majeur)
+
+**Avant de commencer** : Profil FT National. Action ESSAI-CONV-A4 (dispositif « Aller vers », sans modèle de convention). Le fichier « convention-signee-fictive-test.pdf », joint à ce document.
+
+**Étapes**
+
+1. Ouvrir la fiche de ESSAI-CONV-A4, bloc Convention.
+1. Repérer le bouton « Déposer la convention signée ».
+1. Cliquer dessus et choisir le fichier « convention-signee-fictive-test.pdf ».
+1. Lire le bloc.
+
+**Données** : ESSAI-CONV-A4 : dispositif « Aller vers », aucun modèle de convention, aucune convention générée.
+
+**Résultat attendu** : Le bouton « Déposer la convention signée » est visible malgré l'absence de modèle. Après le choix du fichier, le dépôt réussit : le message « Convention signée enregistrée. » apparaît et le bloc affiche « Convention signée, déposée le [date du jour]. ». L'action est maintenant à l'état « Signée ».
+
+**À savoir** : ce parcours est indépendant des autres. Après ce test, l'action reste à l'état « Signée ».
+
+| Résultat (OK / KO / Bloqué / Non testé) | Testeur | Date | Remarque |
+| --- | --- | --- | --- |
+|  |  |  |  |
+
 ### P-07 : Télécharger une ancienne convention au format PDF (bloquant)
 
 **Avant de commencer** : Profil FT National. Action ESSAI-CONV-A5 (convention générée avec un ancien PDF).
@@ -181,7 +202,3 @@ Ces cas ont été joués avant les dernières évolutions de l'écran (générat
 | CONV-43 | Fenêtre et enregistrement de la convention (FT National) | Majeur | Jean-Louis | Bon |
 | CONV-44 | Génération complète d'une convention (Du stade vers l'emploi) (FT National) | Bloquant | Jean-Louis | Bon |
 | CONV-45 | Génération complète d'une convention (Match des métiers) (FT National) | Bloquant | Jean-Louis | Bon |
-
-## Risques et points à confirmer
-
-- P-05 (dépôt sur une action Sans modèle) retiré faute de donnée disponible dans TEST ; à couvrir dans une prochaine recette si une telle action existe.
