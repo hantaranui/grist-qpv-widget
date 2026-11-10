@@ -1262,3 +1262,4 @@ Ajustement supplémentaire (07/11, demande de Pierre après test) :
 Tests : 913 tests, 0 échec (2 tests retirés, devenus obsolètes).
 Vérifié sur TEST par Hanta : le bloc à l'état Signée n'affiche plus que "Voir la convention signée" et "Remplacer le fichier signé" ; la pop-up et son téléchargement fonctionnent normalement.
 Commit : 9885357 (tests), 9df63f1 (code), 145c4b3 (backlog).
+Mise en PROD : 10/11/2026, commit 15029a3 (fusion de feature/convention dans main). 913 tests, 0 échec. Risque assumé consciemment (E3-39) : le domaine jsdelivr.net n'a pas pu être vérifié sur le réseau interne de France Travail avant la mise en ligne (aucune personne de l'équipe n'y a accès). Si bloqué, le message d'erreur prévu s'affichera clairement ; le code de l'ancien système PDF (pdfmake) reste en place comme solution de repli.
