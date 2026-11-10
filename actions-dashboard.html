@@ -618,6 +618,7 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+.status-tag.non-retenu { background: var(--ft-color-background-neutral-weak); }
 
 .bar {
   display: flex;
@@ -674,7 +675,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-.edit-row-bottom { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
+/* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
+   Repli applique (E4-15 a) : Financement se serrait avec .85fr / 1.15fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -703,7 +706,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* « align-items: flex-start » : aucune case ne s'etire a la hauteur de sa ligne.
+   Le design system ajoute 4 px de marge basse a toutes les cases sauf la derniere
+   (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
+   son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
+/* Un SEUL conteneur pour les 5 cases (E4-25). Le navigateur décide seul combien
+   de cases tiennent par ligne selon la largeur disponible : aucune règle « 3 puis 2 »
+   dans le HTML. Les cases sont groupées à GAUCHE, avec un espace fixe de 8 px
+   (« gap »). Chaque case garde la largeur de son texte (« flex: 0 0 auto »), donc
+   aucune ne peut en recouvrir une autre. « flex-wrap: wrap » fait passer les cases
+   qui ne tiennent plus à la ligne suivante. */
+.status-options { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; gap: 8px; }
+.status-options > .form-check { flex: 0 0 auto; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -711,14 +725,20 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    correspondance que celle de la pastille du tableau. */
 /* Le design system dessine l'option choisie avec un calque qui epouse le contenu,
    du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
-   aussi : sans cela il remplit toute la cellule de la grille et deborde du cadre
-   sur la droite. */
-.status-option { white-space: nowrap; justify-self: start; }
+   aussi : la case garde donc la largeur de son texte (le conteneur flex ne
+   l'etire pas) et ne deborde pas du cadre sur la droite. */
+.status-option { white-space: nowrap; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
-.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
+/* Contour de la case choisie (E4-16, option A) : « outline » ne prend aucune place,
+   contrairement a « border », donc la grille ne bouge pas quand on change de statut. */
+/* Contour gris permanent (E4-18, option C) sur les 5 cases : on voit ainsi la
+   forme de chaque case, meme non choisie. Meme epaisseur que le contour bleu,
+   sans decalage ; la regle bleue ci-dessous, plus precise, le remplace sur la case choisie. */
+.status-options .form-check { border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--line); }
+.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--ft-color-border-primary-default); }
 .status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
 .status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); }
@@ -729,10 +749,17 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
 .status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
+/* « Non retenu » : statut final negatif, mais distinct d'« Annulee » (rouge).
+   Teinte neutre « weak » du design system, plus foncee que le fond par defaut
+   des pastilles pour qu'on ne les confonde pas avec un statut inconnu. */
+.status-option.non-retenu { --statut-fond: var(--ft-color-background-neutral-weak); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
 .status-period { min-width: 0; max-width: 280px; }
+/* Le champ « Raison du refus » prend toute la largeur de la carte : ses phrases
+   (33 a 55 caracteres) seraient coupees dans les 280 px des dates. */
+.status-period.status-period-reason { max-width: none; }
 .status-period input { min-width: 0; }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -747,15 +774,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
-   jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
-   lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+   jusqu'ici la colonne la plus etroite de la ligne. E4-15 (b) : le montant etait
+   devenu trop large, on lui reprend de la place au profit du financeur (noms longs).
+   L'en-tete et les lignes partagent la meme grille. */
+.finance-row { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 /* Bloc « Convention » : de simples phrases dans le cadre de la fiche. */
@@ -796,7 +824,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-fields-action { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
   .finance-list-head { display: none; }
-  .finance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; }
+  .finance-row { grid-template-columns: minmax(80px, 1fr) minmax(70px, 1fr) 62px; }
   .finance-row .finance-select { grid-column: 1 / -1; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
   .edit-header-actions { width: 100%; justify-content: flex-end; }
@@ -1042,7 +1070,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], raisonChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
 
 // Conservation des filtres le temps de la session (tant que l'onglet reste
 // ouvert) : quand on quitte la page puis qu'on y revient, Grist recharge le
@@ -1157,6 +1185,8 @@ async function load() {
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
+    // Raisons de refus (statut « Non retenu ») : lues dans Grist, jamais écrites en dur.
+    state.raisonChoices = await loadColumnChoices('Actions', 'Raison_du_refus');
     state.actions = buildActions(state.raw);
     await restaurerFiltres();
     ouvrirActionDemandee();
@@ -1371,6 +1401,8 @@ function buildActions(raw) {
       public: formatChoiceList(action.Public),
       publicChoices: choiceValues(action.Public),
       statut: action.Statut || '',
+      // Raison du refus : texte de la liste Grist, utile seulement pour « Non retenu ».
+      raison: action.Raison_du_refus || '',
       date: action.Date || null,
       periodeApprox: action.Periode_approx || '',
       clubId: action.Club || 0,
@@ -1711,7 +1743,7 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
               <div class="status-head-row"><p class="form-legend" id="statusLegend">Statut de l'action</p></div>
-              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`).join('')}</div>
+              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => statusOptionHtml(status, index, action.statut)).join('')}</div>
               <div class="status-period-slot">
                 <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
                 ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
@@ -1771,7 +1803,23 @@ function bindStatusEditor() {
       const input = container.querySelector('.edit-status-period');
       if (visible && input && previousKind === input.dataset.periodKind && previousValue) writePeriodValue(input, previousValue);
     });
+    // Liste des raisons : obligatoire seulement quand elle est affichée, et on
+    // efface une éventuelle erreur d'un essai précédent.
+    const raisonSelect = document.getElementById('editRaisonRefus');
+    if (raisonSelect) {
+      const raisonVisible = config.kind === 'reason';
+      raisonSelect.required = raisonVisible;
+      if (raisonVisible) raisonSelect.setAttribute('aria-required', 'true');
+      else raisonSelect.removeAttribute('aria-required');
+      markRaisonProblem(false);
+    }
   }));
+  // Info-bulle = raison choisie en entier ; l'erreur disparaît dès qu'une raison est choisie.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  if (raisonSelect) raisonSelect.addEventListener('change', () => {
+    raisonSelect.title = raisonSelect.value;
+    if (raisonSelect.value) markRaisonProblem(false);
+  });
 }
 
 // <ft-datepicker> (widget officiel France Travail) n'expose pas de propriété
@@ -1836,6 +1884,14 @@ function referenceOptions(items, selectedId, labelFor, placeholder) {
   return options.join('');
 }
 
+// Nom complet du financement choisi, pour l'info-bulle (title) du select
+// « Financeur » : texte vide si rien n'est choisi.
+function financeLabelById(id) {
+  if (!id) return '';
+  const financement = (state.raw.Financements || []).find(item => item.id === id);
+  return financement ? financeLabel(financement, byId(state.raw.Financeurs)) : '';
+}
+
 function financeOptions(selectedId) {
   const financeurs = byId(state.raw.Financeurs);
   return [...state.raw.Financements]
@@ -1862,11 +1918,51 @@ function hasCodeMee() {
   return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
 }
 
+// Même principe que Code_MEE : si la colonne n'existe pas encore dans Grist,
+// on n'essaie pas de l'écrire (sinon tout l'enregistrement de la fiche échouerait).
+function hasRaisonColumn() {
+  return (state.raw.Actions || []).some(row => 'Raison_du_refus' in row);
+}
+
+// Vrai si ce statut est « Non retenu » (écriture tolérante : casse, accents).
+function isNonRetenu(status) {
+  return statusFieldConfig(status).kind === 'reason';
+}
+
+// Liste affichée dans la liste déroulante « Raison du refus » de la fiche :
+// les choix de Grist, plus la raison déjà enregistrée sur cette action si elle
+// n'y figure plus (ajoutée ailleurs, import). Elle est gardée telle quelle, en dernier.
+function raisonOptionsFor(action) {
+  return withExistingValues(state.raisonChoices, [action.raison]);
+}
+
+// Validation : « Non retenu » exige une raison, même si l'agent ne modifie
+// qu'un autre champ. Renvoie true si l'enregistrement peut continuer.
+// Structure identique à la fenêtre d'ajout : is-invalid, aria-invalid, aria-describedby.
+function raisonProblem(status, raison) {
+  return isNonRetenu(status) && !String(raison || '').trim();
+}
+
+function markRaisonProblem(invalid) {
+  const select = document.getElementById('editRaisonRefus');
+  if (!select) return;
+  select.classList.toggle('is-invalid', invalid);
+  if (invalid) {
+    select.setAttribute('aria-invalid', 'true');
+    select.setAttribute('aria-describedby', 'editRaisonRefusError');
+  } else {
+    select.removeAttribute('aria-invalid');
+  }
+}
+
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
+  // Info-bulle posée seulement si un financeur est déjà choisi : sinon pas d'attribut title.
+  const financeTitle = financeLabelById(item.Financement);
+  const titleAttr = financeTitle ? ` title="${escapeAttr(financeTitle)}"` : '';
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="form-control finance-select"${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <select class="form-control finance-select"${titleAttr}${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}"${verse ? ' readonly' : ''}>
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     ${verse ? '<span aria-hidden="true"></span>' : '<button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>'}
@@ -1896,6 +1992,14 @@ function bindFinanceRows() {
     };
   });
   document.querySelectorAll('.finance-amount').forEach(input => input.oninput = updateFinanceSummary);
+  // Info-bulle du select « Financeur » : on y remet le nom complet choisi (le texte
+  // de l'option, pas son numéro). Une seule écoute sur le conteneur, elle vaut aussi
+  // pour les lignes ajoutées ensuite.
+  const financeRows = document.getElementById('financeRows');
+  if (financeRows) financeRows.onchange = event => {
+    const select = event.target.closest('.finance-select');
+    if (select) select.title = select.selectedOptions[0]?.value ? select.selectedOptions[0].text : '';
+  };
 }
 
 function updateFinanceSummary() {
@@ -1946,6 +2050,17 @@ async function saveEdit(event, action) {
   const statusConfig = statusFieldConfig(status);
   const periodInput = document.querySelector('.status-period:not(.is-hidden) .edit-status-period');
   const periodValue = periodInput ? readPeriodValue(periodInput).trim() : '';
+  // « Non retenu » sans raison : rien n'est envoyé à Grist.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  const raison = raisonSelect ? raisonSelect.value.trim() : '';
+  const raisonManquante = raisonProblem(status, raison);
+  markRaisonProblem(raisonManquante);
+  if (raisonManquante) {
+    messageTexte.textContent = "La raison du refus est obligatoire pour le statut « Non retenu ».";
+    message.classList.remove('is-hidden');
+    if (raisonSelect) raisonSelect.focus();
+    return;
+  }
   const actionUpdate = {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
@@ -1963,6 +2078,8 @@ async function saveEdit(event, action) {
     Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
   if (hasCodeMee()) actionUpdate.Code_MEE = document.getElementById('editCodeMee').value.trim();
+  // La raison n'est gardée que pour « Non retenu » ; pour tout autre statut elle est effacée.
+  if (hasRaisonColumn()) actionUpdate.Raison_du_refus = isNonRetenu(status) ? raison : '';
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
@@ -2409,6 +2526,12 @@ function funderTotals(actions) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+// Une case de statut (bouton radio + étiquette). « index » garde l'ordre de la
+// liste complète pour que chaque identifiant (status-0, status-1…) reste unique.
+function statusOptionHtml(status, index, current) {
+  return `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === current ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`;
+}
+
 function statusClass(status) {
   return String(status)
     .normalize('NFD')
@@ -2424,7 +2547,10 @@ function statusFieldConfig(status) {
   if (normalized === 'planifie' || normalized === 'planifiee') return {kind: 'date', label: 'Date de planification'};
   if (normalized === 'realise' || normalized === 'realisee') return {kind: 'date', label: 'Date de réalisation'};
   if (normalized === 'annule' || normalized === 'annulee') return {kind: 'none', label: ''};
-  return {kind: 'date', label: 'Date'};
+  // Liste déroulante des raisons, lues dans Grist (colonne Raison_du_refus).
+  if (normalized === 'non-retenu') return {kind: 'reason', label: 'Raison du refus'};
+  // Statut inconnu : aucun champ (avant : un sélecteur de date).
+  return {kind: 'none', label: ''};
 }
 
 function statusPeriodControl(status, action) {
@@ -2437,7 +2563,33 @@ function statusPeriodControl(status, action) {
   } else if (config.kind === 'text') {
     input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
+  if (config.kind === 'reason') return raisonControl(status, action, visible);
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+// Champ « Raison du refus » (statut « Non retenu ») : une liste déroulante qui
+// prend la place du champ date/période. Même structure que les erreurs de la
+// fenêtre d'ajout d'une action : is-invalid + message .invalid-feedback.
+// « required » n'est posé que tant que le champ est visible : un champ caché
+// et obligatoire bloquerait l'envoi du formulaire pour les autres statuts
+// (voir bindStatusEditor, qui le retire et le remet à chaque changement).
+function raisonControl(status, action, visible) {
+  const selected = action.raison || '';
+  const options = raisonOptionsFor(action)
+    .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
+    .join('');
+  const requis = visible ? ' required aria-required="true"' : '';
+  // Info-bulle posée seulement si une raison est déjà choisie : sinon pas d'attribut title.
+  const titleAttr = selected ? ` title="${escapeAttr(selected)}"` : '';
+  return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
+    <div class="edit-field">
+      <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis}${titleAttr}>
+        <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
+      </select>
+      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
+    </div>
+  </div>`;
 }
 
 function outerPeriodLabel(status) {
@@ -2449,6 +2601,8 @@ function statusPeriodValue(action) {
   const config = statusFieldConfig(action.statut);
   if (config.kind === 'text') return action.periodeApprox;
   if (config.kind === 'date') return formatDate(action.date);
+  // « Non retenu » : la raison en entier, comme « Public : … » (jamais coupée).
+  if (config.kind === 'reason') return `Raison : ${action.raison || 'non renseignée'}`;
   return '';
 }
 
@@ -2495,13 +2649,19 @@ function frDateToIso(fr) {
 }
 
 function exportCsv(actions) {
-  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
+  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
   const lines = actions.map(action => [
     action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
     action.participants, action.public, action.ville, action.statut, formatDate(action.date), Math.round(action.budget), Math.round(action.financed),
-    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | ')
+    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
+    isNonRetenu(action.statut) ? action.raison : ''
   ]);
-  const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
+  // Protection contre l'injection de formule : Excel interprète comme une formule
+  // toute cellule TEXTE qui commence par =, +, - ou @. On la préfixe d'une apostrophe
+  // pour qu'elle soit lue comme du texte. Les nombres (type number) ne sont pas touchés,
+  // donc un montant négatif reste un vrai nombre négatif.
+  const protegerCellule = cell => (typeof cell === 'string' && /^[=+\-@]/.test(cell)) ? `'${cell}` : cell;
+  const csv = [header, ...lines].map(row => row.map(cell => `"${String(protegerCellule(cell) ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

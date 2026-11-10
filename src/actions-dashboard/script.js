@@ -95,7 +95,7 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
-const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
+const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusChoices: [], publicChoices: [], formatChoices: [], raisonChoices: [], summaryOpen: false, filtersOpen: false, federationOthersOpen: false, sort: {}, view: 'dashboard', editingId: null, addActionOpen: false, deleteOpen: false, conventionOpen: false, conventionPdfOpen: false };
 
 // Conservation des filtres le temps de la session (tant que l'onglet reste
 // ouvert) : quand on quitte la page puis qu'on y revient, Grist recharge le
@@ -210,6 +210,8 @@ async function load() {
     state.statusChoices = await loadColumnChoices('Actions', 'Statut');
     state.publicChoices = await loadColumnChoices('Actions', 'Public');
     state.formatChoices = await loadColumnChoices('Actions', 'Format');
+    // Raisons de refus (statut « Non retenu ») : lues dans Grist, jamais écrites en dur.
+    state.raisonChoices = await loadColumnChoices('Actions', 'Raison_du_refus');
     state.actions = buildActions(state.raw);
     await restaurerFiltres();
     ouvrirActionDemandee();
@@ -424,6 +426,8 @@ function buildActions(raw) {
       public: formatChoiceList(action.Public),
       publicChoices: choiceValues(action.Public),
       statut: action.Statut || '',
+      // Raison du refus : texte de la liste Grist, utile seulement pour « Non retenu ».
+      raison: action.Raison_du_refus || '',
       date: action.Date || null,
       periodeApprox: action.Periode_approx || '',
       clubId: action.Club || 0,
@@ -764,7 +768,7 @@ function renderEdit() {
           <div class="edit-fields">
             <div class="status-editor" id="statusEditor">
               <div class="status-head-row"><p class="form-legend" id="statusLegend">Statut de l'action</p></div>
-              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === action.statut ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`).join('')}</div>
+              <div class="status-options" role="group" aria-labelledby="statusLegend">${statusChoices.map((status, index) => statusOptionHtml(status, index, action.statut)).join('')}</div>
               <div class="status-period-slot">
                 <span class="status-period-label" id="statusPeriodLabel">${escapeHtml(outerPeriodLabel(action.statut))}</span>
                 ${statusChoices.map(status => statusPeriodControl(status, action)).join('')}
@@ -824,7 +828,23 @@ function bindStatusEditor() {
       const input = container.querySelector('.edit-status-period');
       if (visible && input && previousKind === input.dataset.periodKind && previousValue) writePeriodValue(input, previousValue);
     });
+    // Liste des raisons : obligatoire seulement quand elle est affichée, et on
+    // efface une éventuelle erreur d'un essai précédent.
+    const raisonSelect = document.getElementById('editRaisonRefus');
+    if (raisonSelect) {
+      const raisonVisible = config.kind === 'reason';
+      raisonSelect.required = raisonVisible;
+      if (raisonVisible) raisonSelect.setAttribute('aria-required', 'true');
+      else raisonSelect.removeAttribute('aria-required');
+      markRaisonProblem(false);
+    }
   }));
+  // Info-bulle = raison choisie en entier ; l'erreur disparaît dès qu'une raison est choisie.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  if (raisonSelect) raisonSelect.addEventListener('change', () => {
+    raisonSelect.title = raisonSelect.value;
+    if (raisonSelect.value) markRaisonProblem(false);
+  });
 }
 
 // <ft-datepicker> (widget officiel France Travail) n'expose pas de propriété
@@ -889,6 +909,14 @@ function referenceOptions(items, selectedId, labelFor, placeholder) {
   return options.join('');
 }
 
+// Nom complet du financement choisi, pour l'info-bulle (title) du select
+// « Financeur » : texte vide si rien n'est choisi.
+function financeLabelById(id) {
+  if (!id) return '';
+  const financement = (state.raw.Financements || []).find(item => item.id === id);
+  return financement ? financeLabel(financement, byId(state.raw.Financeurs)) : '';
+}
+
 function financeOptions(selectedId) {
   const financeurs = byId(state.raw.Financeurs);
   return [...state.raw.Financements]
@@ -915,11 +943,51 @@ function hasCodeMee() {
   return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
 }
 
+// Même principe que Code_MEE : si la colonne n'existe pas encore dans Grist,
+// on n'essaie pas de l'écrire (sinon tout l'enregistrement de la fiche échouerait).
+function hasRaisonColumn() {
+  return (state.raw.Actions || []).some(row => 'Raison_du_refus' in row);
+}
+
+// Vrai si ce statut est « Non retenu » (écriture tolérante : casse, accents).
+function isNonRetenu(status) {
+  return statusFieldConfig(status).kind === 'reason';
+}
+
+// Liste affichée dans la liste déroulante « Raison du refus » de la fiche :
+// les choix de Grist, plus la raison déjà enregistrée sur cette action si elle
+// n'y figure plus (ajoutée ailleurs, import). Elle est gardée telle quelle, en dernier.
+function raisonOptionsFor(action) {
+  return withExistingValues(state.raisonChoices, [action.raison]);
+}
+
+// Validation : « Non retenu » exige une raison, même si l'agent ne modifie
+// qu'un autre champ. Renvoie true si l'enregistrement peut continuer.
+// Structure identique à la fenêtre d'ajout : is-invalid, aria-invalid, aria-describedby.
+function raisonProblem(status, raison) {
+  return isNonRetenu(status) && !String(raison || '').trim();
+}
+
+function markRaisonProblem(invalid) {
+  const select = document.getElementById('editRaisonRefus');
+  if (!select) return;
+  select.classList.toggle('is-invalid', invalid);
+  if (invalid) {
+    select.setAttribute('aria-invalid', 'true');
+    select.setAttribute('aria-describedby', 'editRaisonRefusError');
+  } else {
+    select.removeAttribute('aria-invalid');
+  }
+}
+
 function financeRow(item) {
   // Un financement deja verse ne se modifie plus et ne se retire plus.
   const verse = item.statutVersement === 'Versé';
+  // Info-bulle posée seulement si un financeur est déjà choisi : sinon pas d'attribut title.
+  const financeTitle = financeLabelById(item.Financement);
+  const titleAttr = financeTitle ? ` title="${escapeAttr(financeTitle)}"` : '';
   return `<div class="finance-row" data-cofinancement-id="${item.id || ''}">
-    <select class="form-control finance-select"${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
+    <select class="form-control finance-select"${titleAttr}${verse ? ' disabled' : ''}><option value="">Choisir un financeur</option>${financeOptions(item.Financement)}</select>
     <input class="form-control finance-amount" type="number" min="0" placeholder="Montant" value="${item.montant == null ? '' : Math.round(item.montant)}"${verse ? ' readonly' : ''}>
     <div class="finance-status" data-statut="${escapeAttr(item.statutVersement || '')}">${escapeHtml(item.statutVersement)}</div>
     ${verse ? '<span aria-hidden="true"></span>' : '<button class="btn btn-secondary btn-sm finance-remove" type="button"><span class="btn-content">Retirer</span></button>'}
@@ -949,6 +1017,14 @@ function bindFinanceRows() {
     };
   });
   document.querySelectorAll('.finance-amount').forEach(input => input.oninput = updateFinanceSummary);
+  // Info-bulle du select « Financeur » : on y remet le nom complet choisi (le texte
+  // de l'option, pas son numéro). Une seule écoute sur le conteneur, elle vaut aussi
+  // pour les lignes ajoutées ensuite.
+  const financeRows = document.getElementById('financeRows');
+  if (financeRows) financeRows.onchange = event => {
+    const select = event.target.closest('.finance-select');
+    if (select) select.title = select.selectedOptions[0]?.value ? select.selectedOptions[0].text : '';
+  };
 }
 
 function updateFinanceSummary() {
@@ -999,6 +1075,17 @@ async function saveEdit(event, action) {
   const statusConfig = statusFieldConfig(status);
   const periodInput = document.querySelector('.status-period:not(.is-hidden) .edit-status-period');
   const periodValue = periodInput ? readPeriodValue(periodInput).trim() : '';
+  // « Non retenu » sans raison : rien n'est envoyé à Grist.
+  const raisonSelect = document.getElementById('editRaisonRefus');
+  const raison = raisonSelect ? raisonSelect.value.trim() : '';
+  const raisonManquante = raisonProblem(status, raison);
+  markRaisonProblem(raisonManquante);
+  if (raisonManquante) {
+    messageTexte.textContent = "La raison du refus est obligatoire pour le statut « Non retenu ».";
+    message.classList.remove('is-hidden');
+    if (raisonSelect) raisonSelect.focus();
+    return;
+  }
   const actionUpdate = {
     Intitule: document.getElementById('editTitle').value.trim(),
     Dispositif: Number(document.getElementById('editDispositif').value || 0),
@@ -1016,6 +1103,8 @@ async function saveEdit(event, action) {
     Ouvert_au_financement: document.getElementById('editOpenToFunding').checked
   };
   if (hasCodeMee()) actionUpdate.Code_MEE = document.getElementById('editCodeMee').value.trim();
+  // La raison n'est gardée que pour « Non retenu » ; pour tout autre statut elle est effacée.
+  if (hasRaisonColumn()) actionUpdate.Raison_du_refus = isNonRetenu(status) ? raison : '';
   const currentIds = new Set(action.financeurs.map(item => item.id));
   const usedIds = new Set(rows.filter(row => row.id).map(row => row.id));
   const userActions = [['UpdateRecord', 'Actions', action.id, actionUpdate]];
@@ -1462,6 +1551,12 @@ function funderTotals(actions) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+// Une case de statut (bouton radio + étiquette). « index » garde l'ordre de la
+// liste complète pour que chaque identifiant (status-0, status-1…) reste unique.
+function statusOptionHtml(status, index, current) {
+  return `<div class="form-check with-checked-bg status-option ${statusClass(status)}"><input class="form-check-input" type="radio" id="status-${index}" name="editStatus" value="${escapeAttr(status)}"${status === current ? ' checked' : ''}><label class="form-check-label" for="status-${index}">${escapeHtml(status)}</label></div>`;
+}
+
 function statusClass(status) {
   return String(status)
     .normalize('NFD')
@@ -1477,7 +1572,10 @@ function statusFieldConfig(status) {
   if (normalized === 'planifie' || normalized === 'planifiee') return {kind: 'date', label: 'Date de planification'};
   if (normalized === 'realise' || normalized === 'realisee') return {kind: 'date', label: 'Date de réalisation'};
   if (normalized === 'annule' || normalized === 'annulee') return {kind: 'none', label: ''};
-  return {kind: 'date', label: 'Date'};
+  // Liste déroulante des raisons, lues dans Grist (colonne Raison_du_refus).
+  if (normalized === 'non-retenu') return {kind: 'reason', label: 'Raison du refus'};
+  // Statut inconnu : aucun champ (avant : un sélecteur de date).
+  return {kind: 'none', label: ''};
 }
 
 function statusPeriodControl(status, action) {
@@ -1490,7 +1588,33 @@ function statusPeriodControl(status, action) {
   } else if (config.kind === 'text') {
     input = `<input class="form-control edit-status-period" data-period-kind="text" type="text" value="${escapeAttr(action.periodeApprox)}">`;
   }
+  if (config.kind === 'reason') return raisonControl(status, action, visible);
   return `<div class="status-period${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">${input}</div>`;
+}
+
+// Champ « Raison du refus » (statut « Non retenu ») : une liste déroulante qui
+// prend la place du champ date/période. Même structure que les erreurs de la
+// fenêtre d'ajout d'une action : is-invalid + message .invalid-feedback.
+// « required » n'est posé que tant que le champ est visible : un champ caché
+// et obligatoire bloquerait l'envoi du formulaire pour les autres statuts
+// (voir bindStatusEditor, qui le retire et le remet à chaque changement).
+function raisonControl(status, action, visible) {
+  const selected = action.raison || '';
+  const options = raisonOptionsFor(action)
+    .map(choice => `<option value="${escapeAttr(choice)}"${choice === selected ? ' selected' : ''}>${escapeHtml(choice)}</option>`)
+    .join('');
+  const requis = visible ? ' required aria-required="true"' : '';
+  // Info-bulle posée seulement si une raison est déjà choisie : sinon pas d'attribut title.
+  const titleAttr = selected ? ` title="${escapeAttr(selected)}"` : '';
+  return `<div class="status-period status-period-reason${visible ? '' : ' is-hidden'}" data-status-date="${escapeAttr(status)}">
+    <div class="edit-field">
+      <label class="form-label" for="editRaisonRefus">Raison du refus<span class="required">&nbsp;*</span></label>
+      <select class="form-control" id="editRaisonRefus" name="editRaisonRefus"${requis}${titleAttr}>
+        <option value=""${selected ? '' : ' selected'} disabled>Choisir une raison</option>${options}
+      </select>
+      <div class="invalid-feedback" id="editRaisonRefusError">Choisissez une raison du refus pour enregistrer le statut « Non retenu ».</div>
+    </div>
+  </div>`;
 }
 
 function outerPeriodLabel(status) {
@@ -1502,6 +1626,8 @@ function statusPeriodValue(action) {
   const config = statusFieldConfig(action.statut);
   if (config.kind === 'text') return action.periodeApprox;
   if (config.kind === 'date') return formatDate(action.date);
+  // « Non retenu » : la raison en entier, comme « Public : … » (jamais coupée).
+  if (config.kind === 'reason') return `Raison : ${action.raison || 'non renseignée'}`;
   return '';
 }
 
@@ -1548,13 +1674,19 @@ function frDateToIso(fr) {
 }
 
 function exportCsv(actions) {
-  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs'];
+  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
   const lines = actions.map(action => [
     action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
     action.participants, action.public, action.ville, action.statut, formatDate(action.date), Math.round(action.budget), Math.round(action.financed),
-    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | ')
+    action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
+    isNonRetenu(action.statut) ? action.raison : ''
   ]);
-  const csv = [header, ...lines].map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
+  // Protection contre l'injection de formule : Excel interprète comme une formule
+  // toute cellule TEXTE qui commence par =, +, - ou @. On la préfixe d'une apostrophe
+  // pour qu'elle soit lue comme du texte. Les nombres (type number) ne sont pas touchés,
+  // donc un montant négatif reste un vrai nombre négatif.
+  const protegerCellule = cell => (typeof cell === 'string' && /^[=+\-@]/.test(cell)) ? `'${cell}` : cell;
+  const csv = [header, ...lines].map(row => row.map(cell => `"${String(protegerCellule(cell) ?? '').replaceAll('"', '""')}"`).join(';')).join('\n');
   const blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

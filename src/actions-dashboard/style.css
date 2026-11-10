@@ -607,6 +607,7 @@ tbody tr:hover { background: var(--ft--color-background-primary-weakest); }
 .status-tag.realisee { background: var(--ft-color-background-success-weakest); }
 .status-tag.annule,
 .status-tag.annulee { background: var(--ft-color-background-error-weakest); }
+.status-tag.non-retenu { background: var(--ft-color-background-neutral-weak); }
 
 .bar {
   display: flex;
@@ -663,7 +664,9 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .edit-layout { display: grid; gap: 24px; padding: 24px 40px 40px; }
 .edit-row { display: grid; gap: 24px; align-items: stretch; }
 .edit-row-top { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
-.edit-row-bottom { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
+/* Statut un peu plus large (3 colonnes de cases + liste des raisons de refus).
+   Repli applique (E4-15 a) : Financement se serrait avec .85fr / 1.15fr. */
+.edit-row-bottom { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
 .edit-stack { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 100%; }
 .edit-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-surface); }
 .edit-card.finance-card { grid-column: auto; }
@@ -692,7 +695,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-editor { display: grid; gap: 8px; }
 .status-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .status-head-row .form-legend { margin-top: 0; }
-.status-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* « align-items: flex-start » : aucune case ne s'etire a la hauteur de sa ligne.
+   Le design system ajoute 4 px de marge basse a toutes les cases sauf la derniere
+   (« :last-child ») ; sans cette ligne, la derniere case, plus haute de 4 px, voyait
+   son contour descendre plus bas que son fond. Chaque case garde sa hauteur naturelle. */
+/* Un SEUL conteneur pour les 5 cases (E4-25). Le navigateur décide seul combien
+   de cases tiennent par ligne selon la largeur disponible : aucune règle « 3 puis 2 »
+   dans le HTML. Les cases sont groupées à GAUCHE, avec un espace fixe de 8 px
+   (« gap »). Chaque case garde la largeur de son texte (« flex: 0 0 auto »), donc
+   aucune ne peut en recouvrir une autre. « flex-wrap: wrap » fait passer les cases
+   qui ne tiennent plus à la ligne suivante. */
+.status-options { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; gap: 8px; }
+.status-options > .form-check { flex: 0 0 auto; }
 /* Le fond de selection vient de « with-checked-bg », qui le peint en teinte
    primaire sur le ::before du libelle. On garde sa mecanique et on ne remplace
    que la teinte, par le jeton semantique du statut : le reperage par couleur
@@ -700,14 +714,20 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
    correspondance que celle de la pastille du tableau. */
 /* Le design system dessine l'option choisie avec un calque qui epouse le contenu,
    du bord gauche du bloc a sa marge droite. Notre fond doit donc s'arreter la
-   aussi : sans cela il remplit toute la cellule de la grille et deborde du cadre
-   sur la droite. */
-.status-option { white-space: nowrap; justify-self: start; }
+   aussi : la case garde donc la largeur de son texte (le conteneur flex ne
+   l'etire pas) et ne deborde pas du cadre sur la droite. */
+.status-option { white-space: nowrap; }
 
 /* Le fond va sur le conteneur, pas sur le ::before que peint le design system :
    celui-ci se superpose au texte, ce que sa teinte a 5 % rend sans consequence
    mais qu'une couleur franche masquerait. Le sien reste par-dessus, invisible. */
-.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); }
+/* Contour de la case choisie (E4-16, option A) : « outline » ne prend aucune place,
+   contrairement a « border », donc la grille ne bouge pas quand on change de statut. */
+/* Contour gris permanent (E4-18, option C) sur les 5 cases : on voit ainsi la
+   forme de chaque case, meme non choisie. Meme epaisseur que le contour bleu,
+   sans decalage ; la regle bleue ci-dessous, plus precise, le remplace sur la case choisie. */
+.status-options .form-check { border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--line); }
+.status-options .form-check:has(.form-check-input:checked) { background-color: var(--statut-fond); border-radius: var(--ft--button-border-radius-sm); outline: 2px solid var(--ft-color-border-primary-default); }
 .status-options .form-check-input:checked + .form-check-label { font-weight: 700; }
 
 .status-option.projet { --statut-fond: var(--ft-color-background-info-weakest); }
@@ -718,10 +738,17 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .status-option.realisee { --statut-fond: var(--ft-color-background-success-weakest); }
 .status-option.annule,
 .status-option.annulee { --statut-fond: var(--ft-color-background-error-weakest); }
+/* « Non retenu » : statut final negatif, mais distinct d'« Annulee » (rouge).
+   Teinte neutre « weak » du design system, plus foncee que le fond par defaut
+   des pastilles pour qu'on ne les confonde pas avec un statut inconnu. */
+.status-option.non-retenu { --statut-fond: var(--ft-color-background-neutral-weak); }
 .status-period-slot { display: grid; gap: 6px; margin-top: 8px; }
 .status-period-label { color: var(--muted); font-size: 12px; }
 .status-period-label:empty { display: none; }
 .status-period { min-width: 0; max-width: 280px; }
+/* Le champ « Raison du refus » prend toute la largeur de la carte : ses phrases
+   (33 a 55 caracteres) seraient coupees dans les 280 px des dates. */
+.status-period.status-period-reason { max-width: none; }
 .status-period input { min-width: 0; }
 .status-period ft-datepicker { display: block; width: 100%; }
 .finance-summary { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
@@ -736,15 +763,16 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .finance-budget input { min-width: 0; margin: 0; }
 .finance-list { display: grid; grid-template-rows: auto auto auto; row-gap: 10px; }
 .finance-list-head > span { padding: 0 8px; line-height: 1.2; overflow-wrap: break-word; }
-.finance-list-head { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
+.finance-list-head { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; align-items: end; min-height: 24px; color: var(--muted); }
 .finance-list #financeRows { display: grid; gap: 10px; padding: 0; }
 .finance-empty { display: flex; align-items: center; min-height: var(--ft--form-control-height); color: var(--muted); font-size: 14px; font-style: italic; }
 .finance-list .finance-add { justify-self: start; }
 /* Le statut de versement ne contient plus qu'un texte court : sa colonne laissait
    un grand vide avant le bouton Retirer. C'est cet espace qui revient au montant,
-   jusqu'ici la colonne la plus etroite de la ligne. Le selecteur de financeur,
-   lui, garde sa largeur. */
-.finance-row { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) minmax(0, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
+   jusqu'ici la colonne la plus etroite de la ligne. E4-15 (b) : le montant etait
+   devenu trop large, on lui reprend de la place au profit du financeur (noms longs).
+   L'en-tete et les lignes partagent la meme grille. */
+.finance-row { display: grid; grid-template-columns: minmax(140px, 1.7fr) minmax(90px, 0.7fr) minmax(80px, 0.95fr) 62px; gap: 12px; min-height: var(--ft--form-control-height); align-items: center; }
 .finance-row .finance-status { display: flex; align-items: center; min-height: var(--ft--form-control-height); padding: 6px 8px; color: var(--ink); }
 .finance-row .form-control { min-width: 0; }
 /* Bloc « Convention » : de simples phrases dans le cadre de la fiche. */
@@ -785,7 +813,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
   .edit-fields-action { grid-template-columns: 1fr; }
   .edit-card.finance-card { grid-column: auto; }
   .finance-list-head { display: none; }
-  .finance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; }
+  .finance-row { grid-template-columns: minmax(80px, 1fr) minmax(70px, 1fr) 62px; }
   .finance-row .finance-select { grid-column: 1 / -1; }
   .edit-header { align-items: flex-start; flex-direction: column; padding: 18px; }
   .edit-header-actions { width: 100%; justify-content: flex-end; }
