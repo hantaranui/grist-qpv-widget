@@ -82,6 +82,32 @@ const RC_FUSEAU = 'Europe/Paris';
 const RC_ANNEE_MIN = 2000;
 const RC_ANNEE_MAX = 2100;
 
+// Textes de l'ecran RC Pro : copie a l'identique de src/clubs/script.js (memes mots
+// dans les deux widgets). Si l'un change, changer l'autre.
+const RC_TITRE_BLOC = 'Assurance RC Pro';
+const RC_TITRE_DEPOT = "Dépôt de l'assurance RC Pro";
+const RC_TITRE_REMPLACEMENT = "Remplacement de l'assurance RC Pro";
+const RC_TEXTE_BOUTON_GERER = "Gérer l'assurance";
+const RC_AVERTISSEMENT_ECRASEMENT = 'Le document actuel sera remplacé par le nouveau et ne pourra pas être récupéré.';
+const RC_TEXTE_ENREGISTREMENT = 'Enregistrement en cours…';
+const RC_ANNONCE_DEPOT = "L'attestation d'assurance RC Pro a bien été déposée.";
+const RC_ANNONCE_REMPLACEMENT = "L'attestation d'assurance RC Pro a bien été remplacée.";
+const RC_MESSAGE_DROITS = "Vous n'avez pas les droits pour déposer l'attestation de ce club. Rien n'a été enregistré. Rapprochez-vous de l'équipe qui gère le document.";
+const RC_MESSAGE_RESEAU = "L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez.";
+const RC_MESSAGE_AUTRE = "L'enregistrement n'a pas abouti. Vérifiez votre connexion puis réessayez. Si le problème continue, vos droits ne permettent peut-être pas de déposer l'attestation de ce club.";
+// Erreurs de saisie, affichees sous le champ concerne (codes de controlerAttestationRc).
+const RC_MESSAGES_SAISIE = {
+  'fichier-absent': "Choisissez le fichier PDF de l'attestation.",
+  'fichier-pas-pdf': 'Ce fichier n\'est pas un PDF. Choisissez un fichier au format PDF.',
+  'fichier-vide': 'Ce fichier est vide. Choisissez un autre fichier.',
+  'fichier-trop-lourd': 'Ce fichier dépasse 10 Mo. Choisissez un fichier plus léger.',
+  'date-vide': "Saisissez la date d'expiration de l'attestation.",
+  'date-invalide': 'Saisissez une date valide, au format jj/mm/aaaa.',
+};
+// Les deux champs du pop-up : « id » du champ, « aide » du texte d'aide relie par aria-describedby.
+const RC_CHAMP_FICHIER = {id: 'rcProFichier', aide: 'rcProFichierHelp'};
+const RC_CHAMP_DATE = {id: 'rcProDate', aide: 'rcProDateHelp'};
+
 const COLORS = [
   '#283276',
   '#008ECF',
@@ -778,6 +804,7 @@ function renderEdit() {
             <div class="club-summary">
               <div><strong>Club :</strong> ${escapeHtml(action.club)}</div>
               <div><strong>Fédération :</strong> ${escapeHtml(action.federation)}</div>
+              <div id="rcProZone">${rcProResumeHtml(action)}</div>
             </div>
           </div>
         </section>
@@ -820,6 +847,7 @@ function renderEdit() {
   document.getElementById('cancelEdit').addEventListener('click', closeEdit);
   document.getElementById('deleteAction').addEventListener('click', () => openDeleteAction(action));
   bindConvention(action.id);
+  bindRcPro(action);
   focusFirstField(editView);
   document.getElementById('editBudget').addEventListener('input', updateFinanceSummary);
   bindPublicPicker();
@@ -1184,6 +1212,255 @@ async function deposerAttestationRc(clubId, fichier, dateExpirationTexte) {
     console.error(`Dépôt RC Pro non abouti (étape ${error && error.step ? error.step : 'inconnue'}) : ${type}`);
     return {ok: false, type};
   }
+}
+
+// ---------------------------------------------------------------------------
+// Assurance RC Pro : ecran (resume dans la carte « Club » de la fiche action et
+// pop-up de depot). Toute la logique (etat, controle, ecriture) est plus haut :
+// ici, on affiche et on relie le bouton. Le pop-up est le meme que dans clubs.
+// Ni jeton ni identifiant de piece jointe ne sont affiches ou ecrits dans la console.
+// ---------------------------------------------------------------------------
+
+// Pop-up ouvert : {mode: 'depot' | 'remplacement', busy}, sinon null.
+let rcProFenetre = null;
+
+// Phrase d'etat du resume (decision E5-16). Les dates sont formatees comme le reste du widget.
+// Un document sans date d'expiration compte comme « expire ».
+function rcProPhraseHtml(etat) {
+  if (etat.etat === 'absent') return 'aucune attestation déposée.';
+  if (etat.etat === 'valide') return `valide jusqu'au ${escapeHtml(formatDate(etat.dateExpiration))}.`;
+  // Seul l'etat « expire » prend la classe rouge et grasse ; « absent » et « valide » restent en texte normal.
+  const phrase = etat.dateExpiration !== null
+    ? `expirée le ${escapeHtml(formatDate(etat.dateExpiration))}.`
+    : "expirée, date d'expiration non renseignée.";
+  return `<span class="rcpro-etat-expire">${phrase}</span>`;
+}
+
+// Le resume (phrase + bouton « Gérer l'assurance »), ou RIEN du tout si Grist refuse
+// de lire les colonnes RC Pro (decision E5-12) : ni phrase, ni bouton, ni message.
+function rcProResumeHtml(action) {
+  if (!hasRcProColumns()) return '';
+  const etat = rcProDuClub(action.clubId);
+  if (!etat) return '';
+  return `<div class="rcpro-resume">
+    <p class="rcpro-phrase"><strong>${RC_TITRE_BLOC} :</strong> ${rcProPhraseHtml(etat)}</p>
+    <button class="btn btn-secondary btn-sm" type="button" id="rcProGerer"><span class="btn-content">${RC_TEXTE_BOUTON_GERER}</span></button>
+  </div>`;
+}
+
+// Relie le bouton « Gérer l'assurance » (s'il est affiche). Sans document : pop-up de
+// depot ; avec un document (valide ou expire) : pop-up de remplacement.
+function bindRcPro(action) {
+  const bouton = document.getElementById('rcProGerer');
+  if (!bouton) return;
+  bouton.addEventListener('click', () => {
+    const etat = rcProDuClub(action.clubId);
+    openRcProDialog(action, etat && etat.etat !== 'absent' ? 'remplacement' : 'depot');
+  });
+}
+
+// Ecrit (ou efface, avec '') le texte lu aux lecteurs d'ecran. Vide d'abord,
+// pour que deux reussites de suite soient annoncees toutes les deux.
+function annoncerRcPro(texte) {
+  const zone = document.getElementById('rcProStatus');
+  if (!zone) return;
+  zone.textContent = '';
+  if (texte) zone.textContent = texte;
+}
+
+// Apres un depot reussi : relit la table des clubs puis redessine seulement le resume.
+// On ne rappelle pas load() : il redessinerait toute la fiche et ferait perdre ce que
+// l'agent a deja modifie dans le formulaire, sans l'avoir enregistre.
+async function rcProRafraichirResume(action) {
+  try {
+    state.raw[TABLE_CLUBS] = rows(await grist.docApi.fetchTable(TABLE_CLUBS));
+  } catch (error) {
+    console.error("Relecture des clubs impossible après le dépôt de l'attestation RC Pro.");
+    return;
+  }
+  const zone = document.getElementById('rcProZone');
+  if (!zone || state.editingId !== action.id) return;
+  zone.innerHTML = rcProResumeHtml(action);
+  bindRcPro(action);
+  requestResize();
+}
+
+// --- Pop-up de depot / remplacement (meme structure et memes textes que dans clubs) ---
+
+function rcProDialogHtml(mode, nomClub) {
+  const remplacement = mode === 'remplacement';
+  return `<div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="rcProDialog" role="dialog" aria-modal="true" aria-labelledby="rcProDialogTitle" aria-describedby="rcProDialogNote" tabindex="-1">
+    <div class="modal-dialog">
+      <form class="modal-content" id="rcProForm" novalidate>
+        <div class="modal-header"><h2 class="modal-title" id="rcProDialogTitle">${remplacement ? RC_TITRE_REMPLACEMENT : RC_TITRE_DEPOT}</h2></div>
+        <div class="modal-body">
+          <div class="alert alert-error is-hidden" id="rcProMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
+          <div id="rcProDialogNote">
+            <p class="rcpro-club">Club : ${escapeHtml(nomClub)}</p>
+            ${remplacement ? `<p class="rcpro-ecrasement">${RC_AVERTISSEMENT_ECRASEMENT}</p>` : ''}
+          </div>
+          <div class="rcpro-fields">
+            <div class="rcpro-field" id="${RC_CHAMP_FICHIER.id}Champ">
+              <label class="form-label" for="${RC_CHAMP_FICHIER.id}">Attestation d'assurance RC Pro (PDF)<span class="required">&nbsp;*</span></label>
+              <p class="help-block" id="${RC_CHAMP_FICHIER.aide}">PDF uniquement, 10 Mo au maximum.</p>
+              <input class="form-control" id="${RC_CHAMP_FICHIER.id}" name="${RC_CHAMP_FICHIER.id}" required type="file" accept="application/pdf,.pdf" aria-describedby="${RC_CHAMP_FICHIER.aide}">
+            </div>
+            <div class="rcpro-field" id="${RC_CHAMP_DATE.id}Champ">
+              <label class="form-label" for="${RC_CHAMP_DATE.id}">Date d'expiration<span class="required">&nbsp;*</span></label>
+              <p class="help-block" id="${RC_CHAMP_DATE.aide}">Date indiquée sur l'attestation.</p>
+              <input class="form-control" id="${RC_CHAMP_DATE.id}" name="${RC_CHAMP_DATE.id}" required type="date" autocomplete="off" aria-describedby="${RC_CHAMP_DATE.aide}">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelRcPro"><span class="btn-content">Annuler</span></button>
+          <button type="submit" class="btn btn-primary" id="submitRcPro"><span class="btn-content">${remplacement ? 'Remplacer' : 'Déposer'}</span></button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+function openRcProDialog(action, mode) {
+  const host = document.getElementById('rcProModal');
+  annoncerRcPro('');
+  rcProFenetre = {mode, busy: false, action};
+  host.innerHTML = rcProDialogHtml(mode, action.club || 'Club sans nom');
+  document.body.classList.add('modal-open');
+  document.getElementById('rcProForm').addEventListener('submit', submitRcPro);
+  document.getElementById('cancelRcPro').addEventListener('click', () => closeRcProDialog());
+  host.addEventListener('keydown', keepFocusInRcProDialog);
+  // Les deux champs restent vides, meme au remplacement (jamais de pre-remplissage).
+  document.getElementById(RC_CHAMP_FICHIER.id).focus();
+  requestResize();
+}
+
+// Ferme le pop-up. Sans enregistrement, le focus retourne sur « Gérer l'assurance ».
+function closeRcProDialog(rendreLeFocus = true) {
+  if (!rcProFenetre || rcProFenetre.busy) return;
+  const host = document.getElementById('rcProModal');
+  host.removeEventListener('keydown', keepFocusInRcProDialog);
+  host.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  rcProFenetre = null;
+  const bouton = document.getElementById('rcProGerer');
+  if (rendreLeFocus && bouton) bouton.focus();
+  requestResize();
+}
+
+// Echap ferme sans rien enregistrer ; Tab et Maj+Tab tournent dans le pop-up.
+function keepFocusInRcProDialog(event) {
+  if (!rcProFenetre) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeRcProDialog();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = [...document.querySelectorAll('#rcProDialog input, #rcProDialog button:not(:disabled)')];
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const actif = document.activeElement;
+  if (!document.getElementById('rcProDialog').contains(actif)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && actif === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && actif === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+// Pose (ou retire, avec message vide) l'erreur d'un champ SANS redessiner le
+// formulaire : un champ fichier ne peut pas etre rempli par programme, le
+// redessiner ferait perdre le fichier choisi. Erreur = texte sous le champ +
+// aria-invalid + bordure.
+function rcProPoserErreur(champ, message) {
+  const input = document.getElementById(champ.id);
+  const conteneur = document.getElementById(`${champ.id}Champ`);
+  const erreurId = `${champ.id}Error`;
+  const ancienne = document.getElementById(erreurId);
+  if (ancienne) ancienne.remove();
+  conteneur.classList.toggle('has-error', Boolean(message));
+  input.classList.toggle('is-invalid', Boolean(message));
+  if (!message) {
+    input.removeAttribute('aria-invalid');
+    input.setAttribute('aria-describedby', champ.aide);
+    return;
+  }
+  input.setAttribute('aria-invalid', 'true');
+  input.setAttribute('aria-describedby', `${champ.aide} ${erreurId}`);
+  const paragraphe = document.createElement('p');
+  paragraphe.className = 'help-block invalid-feedback';
+  paragraphe.id = erreurId;
+  paragraphe.innerHTML = `<span class="sr-only">Erreur :&nbsp;</span>${escapeHtml(message)}`;
+  conteneur.appendChild(paragraphe);
+}
+
+// Affiche les erreurs de saisie (premier probleme de chaque champ) et met le
+// focus sur le premier champ en erreur. Sans probleme, efface les anciennes erreurs.
+function rcProMarquerProblemes(problemes) {
+  const pourFichier = problemes.find(code => code.startsWith('fichier-'));
+  const pourDate = problemes.find(code => code.startsWith('date-'));
+  rcProPoserErreur(RC_CHAMP_FICHIER, pourFichier ? RC_MESSAGES_SAISIE[pourFichier] : '');
+  rcProPoserErreur(RC_CHAMP_DATE, pourDate ? RC_MESSAGES_SAISIE[pourDate] : '');
+  if (pourFichier) document.getElementById(RC_CHAMP_FICHIER.id).focus();
+  else if (pourDate) document.getElementById(RC_CHAMP_DATE.id).focus();
+}
+
+function rcProMessageEchec(type) {
+  if (type === 'droits') return RC_MESSAGE_DROITS;
+  if (type === 'reseau') return RC_MESSAGE_RESEAU;
+  return RC_MESSAGE_AUTRE;
+}
+
+function rcProOccupe(occupe) {
+  rcProFenetre.busy = occupe;
+  const bouton = document.getElementById('submitRcPro');
+  bouton.disabled = occupe;
+  bouton.querySelector('.btn-content').textContent = occupe
+    ? RC_TEXTE_ENREGISTREMENT
+    : (rcProFenetre.mode === 'remplacement' ? 'Remplacer' : 'Déposer');
+}
+
+async function submitRcPro(event) {
+  event.preventDefault();
+  if (!rcProFenetre || rcProFenetre.busy) return;
+  const fichier = document.getElementById(RC_CHAMP_FICHIER.id).files[0] || null;
+  const dateTexte = document.getElementById(RC_CHAMP_DATE.id).value;
+  const problemes = controlerAttestationRc(fichier, dateTexte);
+  rcProMarquerProblemes(problemes);
+  if (problemes.length) return;
+
+  const {mode, action} = rcProFenetre;
+  document.getElementById('rcProMessage').classList.add('is-hidden');
+  rcProOccupe(true);
+  const resultat = await deposerAttestationRc(action.clubId, fichier, dateTexte);
+
+  if (resultat.ok) {
+    // Fermer le pop-up, relire les clubs, redessiner le resume, annoncer, puis remettre le focus.
+    rcProFenetre.busy = false;
+    closeRcProDialog(false);
+    await rcProRafraichirResume(action);
+    annoncerRcPro(mode === 'remplacement' ? RC_ANNONCE_REMPLACEMENT : RC_ANNONCE_DEPOT);
+    const cible = document.getElementById('rcProGerer');
+    if (cible) cible.focus();
+    return;
+  }
+
+  rcProOccupe(false);
+  if (resultat.type === 'saisie') {
+    rcProMarquerProblemes(resultat.problemes || []);
+    return;
+  }
+  const message = document.getElementById('rcProMessage');
+  message.querySelector('.alert-content').textContent = rcProMessageEchec(resultat.type);
+  message.classList.remove('is-hidden');
+  document.getElementById('submitRcPro').focus();
 }
 
 // Vrai si ce statut est « Non retenu » (écriture tolérante : casse, accents).

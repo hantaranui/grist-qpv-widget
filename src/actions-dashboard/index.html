@@ -73,6 +73,11 @@
     <div id="deleteActionModal"></div>
     <div id="conventionModal"></div>
     <div id="conventionPdfModal"></div>
+    <!-- Assurance RC Pro : zone d'annonce pour les lecteurs d'écran (réussite d'un dépôt ou d'un
+         remplacement) et conteneur du pop-up, vide tant qu'il est fermé. Ils sont ici, hors de la
+         fiche, car la fiche est redessinée : la zone d'annonce doit exister avant l'écriture du texte. -->
+    <p class="sr-only" id="rcProStatus" role="status" aria-live="polite"></p>
+    <div id="rcProModal"></div>
     <!-- Champ fichier caché de la convention signée : « Déposer » et « Remplacer » le déclenchent.
          Il reste ici, hors du bloc, car le bloc est refait après chaque action. -->
     <input class="convention-file" type="file" id="conventionFichier" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">

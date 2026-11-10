@@ -686,6 +686,18 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .readonly-value { min-height: var(--ft--form-control-height); color: var(--ink); font-size: 15px; }
 .club-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .club-summary strong { font-weight: 700; }
+/* Résumé « Assurance RC Pro » de la carte Club : une phrase d'état, puis un bouton. */
+.rcpro-resume { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+#rcProZone:empty { display: none; }
+.rcpro-phrase { margin: 0; overflow-wrap: anywhere; }
+/* Phrase « expirée » : couleur d'erreur du design system, en gras (même règle que dans clubs).
+   La couleur s'ajoute au mot « expirée » : elle ne porte jamais l'information seule. */
+.rcpro-etat-expire { color: var(--ft-color-text-error-default); font-weight: 700; }
+/* Pop-up de dépôt : mêmes espacements que dans clubs. */
+#rcProModal .modal { display: block; overflow-y: auto; }
+.rcpro-club, .rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
+.rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
+.rcpro-field { display: grid; gap: 6px; }
 .agency-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .agency-summary strong { font-weight: 700; }
 /* Une ligne par statut, sur le modele du widget de reference : le controle de
