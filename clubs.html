@@ -561,13 +561,16 @@ td:last-child {
 #contactModal .modal,
 #rcProModal .modal { display: block; overflow-y: auto; }
 
-/* Bloc « Assurance RC Pro » dans la carte Club : séparé du reste par un filet.
-   Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
-.rcpro-bloc {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+/* Colonne de droite de la fiche : bloc « Assurance RC Pro » au-dessus de la carte Actions. */
+.colonne-droite {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
 }
+
+/* Bloc « Assurance RC Pro » : il a sa propre carte (edit-card).
+   Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
+.rcpro-bloc { min-width: 0; }
 
 .rcpro-titre {
   margin: 0 0 8px;
@@ -577,6 +580,12 @@ td:last-child {
 
 .rcpro-etat,
 .rcpro-depot { margin: 0 0 4px; overflow-wrap: anywhere; }
+
+/* Phrase d'état « expirée » (ou sans date d'expiration) : couleur d'erreur du design system, en gras. */
+.rcpro-etat-expire {
+  color: var(--ft-color-text-error-default);
+  font-weight: 700;
+}
 
 .rcpro-boutons {
   display: flex;
@@ -588,7 +597,6 @@ td:last-child {
 .rcpro-boutons .btn { flex: 0 0 auto; }
 
 /* Pop-up de dépôt : mêmes espacements que la fenêtre des contacts. */
-.rcpro-required-note { margin: 0 0 8px; }
 .rcpro-club,
 .rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
 .rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
@@ -1162,7 +1170,6 @@ function renderFiche() {
                 <p class="zonage-note">Le zonage France Ruralités Revitalisation (FRR) remplace les zones de revitalisation rurale (ZRR) depuis le 1<sup>er</sup> juillet 2024.</p>
               </div>
             </div>
-            ${renderRcPro(club)}
           </div>
         </section>
         <div class="edit-row-lists">
@@ -1174,16 +1181,20 @@ function renderFiche() {
                 : '<button class="btn btn-secondary btn-sm contact-add" type="button" id="addContact"><span class="btn-content">+ Ajouter un contact</span></button>' + renderContacts(detail.contacts)}
             </div>
           </section>
-          <section class="edit-card" aria-labelledby="actionsTitle">
-            <div class="section-head"><span id="actionsTitle">Actions</span></div>
-            <div class="card-body">
-              ${actionOuverte
-                ? renderDashboardSetup()
-                : (state.unreadable.includes('Actions')
-                  ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
-                  : renderActionsList(detail.actions))}
-            </div>
-          </section>
+          <!-- Colonne de droite : le bloc « Assurance RC Pro » (s'il est affiché) puis la carte Actions -->
+          <div class="colonne-droite">
+            ${renderRcPro(club)}
+            <section class="edit-card" aria-labelledby="actionsTitle">
+              <div class="section-head"><span id="actionsTitle">Actions</span></div>
+              <div class="card-body">
+                ${actionOuverte
+                  ? renderDashboardSetup()
+                  : (state.unreadable.includes('Actions')
+                    ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
+                    : renderActionsList(detail.actions))}
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>
@@ -2769,7 +2780,9 @@ function rcProPhrasesHtml(etat) {
   if (etat.etat === 'valide') phrase = `Attestation valide jusqu'au ${escapeHtml(formatDate(etat.dateExpiration))}.`;
   else if (etat.dateExpiration !== null) phrase = `Attestation <strong>expirée</strong> le ${escapeHtml(formatDate(etat.dateExpiration))}.`;
   else phrase = "Attestation <strong>expirée</strong> : date d'expiration non renseignée.";
-  return `<p class="rcpro-etat">${phrase}</p>${depot}`;
+  // Classe d'erreur (rouge, gras) seulement sur la phrase d'état « expirée » ; « valide » reste noir.
+  const classeEtat = etat.etat === 'valide' ? 'rcpro-etat' : 'rcpro-etat rcpro-etat-expire';
+  return `<p class="${classeEtat}">${phrase}</p>${depot}`;
 }
 
 // Le bloc entier, ou rien du tout si Grist refuse de lire les colonnes (E5-12) :
@@ -2782,12 +2795,14 @@ function renderRcPro(club) {
     ? '<button class="btn btn-secondary btn-sm" type="button" id="rcProDeposer"><span class="btn-content">Déposer l\'attestation</span></button>'
     : `<button class="btn btn-secondary btn-sm" type="button" id="rcProVoir"><span class="btn-content">Voir l'attestation<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></button>
        <button class="btn btn-secondary btn-sm" type="button" id="rcProRemplacer"><span class="btn-content">Remplacer l'attestation</span></button>`;
-  return `<div class="rcpro-bloc" id="rcProBloc" aria-labelledby="rcProTitre">
-    <h2 class="rcpro-titre" id="rcProTitre">${RC_TITRE_BLOC}</h2>
-    ${rcProPhrasesHtml(etat)}
-    <div class="rcpro-boutons">${boutons}</div>
-    <div id="rcProAlerte"></div>
-  </div>`;
+  return `<section class="edit-card"><div class="card-body">
+    <div class="rcpro-bloc" id="rcProBloc" aria-labelledby="rcProTitre">
+      <h2 class="rcpro-titre" id="rcProTitre">${RC_TITRE_BLOC}</h2>
+      ${rcProPhrasesHtml(etat)}
+      <div class="rcpro-boutons">${boutons}</div>
+      <div id="rcProAlerte"></div>
+    </div>
+  </div></section>`;
 }
 
 function bindRcPro(club) {
@@ -2903,9 +2918,8 @@ function rcProDialogHtml(mode, nomClub) {
         <div class="modal-header"><h2 class="modal-title" id="rcProDialogTitle">${remplacement ? RC_TITRE_REMPLACEMENT : RC_TITRE_DEPOT}</h2></div>
         <div class="modal-body">
           <div class="alert alert-error is-hidden" id="rcProMessage" role="alert" aria-live="assertive"><p class="alert-content"></p></div>
-          <p class="rcpro-required-note">* champ obligatoire</p>
           <div id="rcProDialogNote">
-            <p class="rcpro-club">Club : ${escapeHtml(nomClub)} (non modifiable)</p>
+            <p class="rcpro-club">Club : ${escapeHtml(nomClub)}</p>
             ${remplacement ? `<p class="rcpro-ecrasement">${RC_AVERTISSEMENT_ECRASEMENT}</p>` : ''}
           </div>
           <div class="rcpro-fields">
@@ -2916,7 +2930,7 @@ function rcProDialogHtml(mode, nomClub) {
             </div>
             <div class="rcpro-field" id="${RC_CHAMP_DATE.id}Champ">
               <label class="form-label" for="${RC_CHAMP_DATE.id}">Date d'expiration<span class="required">&nbsp;*</span></label>
-              <p class="help-block" id="${RC_CHAMP_DATE.aide}">Date indiquée sur l'attestation. Une date passée est acceptée : le document sera alors affiché « expirée ».</p>
+              <p class="help-block" id="${RC_CHAMP_DATE.aide}">Date indiquée sur l'attestation.</p>
               <input class="form-control" id="${RC_CHAMP_DATE.id}" name="${RC_CHAMP_DATE.id}" required type="date" autocomplete="off" aria-describedby="${RC_CHAMP_DATE.aide}">
             </div>
           </div>
