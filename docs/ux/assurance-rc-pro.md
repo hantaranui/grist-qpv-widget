@@ -21,7 +21,7 @@ Aucun nom de colonne Grist n'est cité : ils sont à définir par dev-backend. C
 
 1. L'agent ouvre la fiche d'un club (bouton Voir de la liste) ou la fiche d'une action.
 2. Dans la carte « Club », un bloc « Assurance RC Pro » dit l'état en une phrase : absent, valide jusqu'à une date, ou expiré depuis une date, avec la date de dépôt.
-3. Si un document existe, « Voir l'attestation » l'ouvre dans un nouvel onglet. Un document expiré s'ouvre aussi (E5-7 Q3).
+3. Fiche club : si un document existe, « Voir l'attestation » l'ouvre dans un nouvel onglet. Un document expiré s'ouvre aussi (E5-7 Q3). Fiche action : résumé compact (§3.2), un seul bouton « Gérer l'assurance » qui ouvre le pop-up de dépôt ou de remplacement ; pas d'ouverture du PDF depuis cette fiche (E5-16).
 
 ### 2.2 Déposer le premier document (état « absent », 5 étapes)
 
@@ -65,15 +65,30 @@ Emplacement (décision Hanta, E5-10 : dans la carte « Club » existante, pas de
 
 ### 3.2 Bloc dans la fiche de l'action (carte « Club » de la fiche action)
 
-Emplacement : dans la carte « Club » de la fiche de modification d'une action (src/actions-dashboard/script.js, `section.edit-card` d'en-tête « Club », qui contient aujourd'hui « Club : » et « Fédération : »), après la ligne Fédération. Mêmes phrases, mêmes boutons, même ordre que §3.1 : l'agent retrouve les mêmes mots partout. C'est ce résumé et ses boutons qui évitent d'ouvrir la fiche club. Il ne s'agit pas d'un lien vers la fiche club.
+Emplacement : dans la carte « Club » de la fiche de modification d'une action (src/actions-dashboard/script.js, `section.edit-card` d'en-tête « Club », qui contient « Club : » et « Fédération : »), après la ligne Fédération.
 
+FORMAT FINAL (E5-16, décision Hanta confirmée) : un résumé COMPACT, différent de la fiche club (§3.1). Une seule phrase d'état, précédée de l'étiquette « Assurance RC Pro : » en `strong`, puis UN SEUL bouton « Gérer l'assurance », toujours présent, sur sa propre ligne. Pas de bouton « Voir l'attestation » séparé, pas de bouton « Déposer l'attestation » / « Remplacer l'attestation » séparés, pas de ligne « Déposée le… » dans la fiche action. Le bouton ouvre le pop-up commun (§3.3) ; il ne navigue PAS vers la fiche club (décision Hanta). Sans document, le pop-up est celui du dépôt ; avec un document (valide ou expiré), celui du remplacement. Pour CONSULTER le PDF, l'agent passe par la fiche club (§3.1) : la fiche action ne l'ouvre pas.
+
+Quatre cas (dates fictives) :
 ```
  Club : Nom du club
  Fédération : Nom de la fédération
- Assurance RC Pro : attestation expirée le 30/06/2026. Déposée le 10/11/2025.
- [ Voir l'attestation ]  [ Remplacer l'attestation ]
+ Assurance RC Pro : aucune attestation déposée.
+ [ Gérer l'assurance ]
 ```
-Proposition de présentation : même style que les lignes « Club : » et « Fédération : » (étiquette en `strong`, comme le reste de la carte), puis la phrase, puis les boutons sur leur propre ligne. Les phrases exactes sont celles du §4.
+```
+ Assurance RC Pro : valide jusqu'au 31/12/2027.
+ [ Gérer l'assurance ]
+```
+```
+ Assurance RC Pro : expirée le 30/06/2026.          ("expirée le 30/06/2026." en rouge gras)
+ [ Gérer l'assurance ]
+```
+```
+ Assurance RC Pro : expirée, date d'expiration non renseignée.   (phrase en rouge gras)
+ [ Gérer l'assurance ]
+```
+Présentation : même style que « Club : » et « Fédération : » (étiquette en `strong`, comme le reste de la carte), phrase à la suite, bouton `btn btn-secondary btn-sm` dessous. Sources : classe `rcpro-resume`, `rcpro-phrase`, bouton `id="rcProGerer"`. Phrases exactes : §4. Si Grist refuse de lire les colonnes RC Pro : rien n'est affiché (§1, §8 règle 12).
 
 ### 3.3 Le pop-up (identique dans les deux widgets)
 
@@ -126,7 +141,11 @@ L'erreur n'est jamais portée par la couleur seule : texte sous le champ + `aria
 - Pop-up : un seul bloc vertical, un champ par ligne ; Annuler / Déposer en bas, comme la fenêtre « Ajout d'un contact ». Deux champs seulement : plus court que la fenêtre contact, donc moins de risque de rognage dans l'iframe de Grist (risque déjà vérifié sans problème pour les contacts en recette du 21/10/2026).
 - Le champ date natif ouvre le sélecteur de date du téléphone.
 
-## 4. Textes exacts des trois états (valables sur les DEUX fiches)
+## 4. Textes exacts des états
+
+Les quatre états sont les mêmes sur les deux fiches, mais le FORMAT diffère (E5-16) : la fiche club garde le bloc complet (4.1) ; la fiche action affiche un résumé compact (4.2).
+
+### 4.1 Fiche club (bloc complet, §3.1)
 
 | État | Phrase affichée | Date de dépôt | Boutons (dans l'ordre) |
 |---|---|---|---|
@@ -135,16 +154,29 @@ L'erreur n'est jamais portée par la couleur seule : texte sous le champ + `aria
 | Présent et expiré | « Attestation expirée le [date d'expiration]. » | « Déposée le [date de dépôt]. » | « Voir l'attestation » · « Remplacer l'attestation » |
 | Présent sans date d'expiration | « Attestation expirée : date d'expiration non renseignée. » | « Déposée le [date de dépôt]. » si elle existe, sinon rien | « Voir l'attestation » · « Remplacer l'attestation » |
 
+### 4.2 Fiche action (résumé compact, §3.2, format final E5-16)
+
+Forme : `<strong>Assurance RC Pro :</strong>` + espace + phrase, puis le bouton. Aucune date de dépôt. Un seul bouton, « Gérer l'assurance », dans les quatre états.
+
+| État | Phrase après l'étiquette « Assurance RC Pro : » | Mise en forme | Bouton | Pop-up ouvert |
+|---|---|---|---|---|
+| Absent | « aucune attestation déposée. » | texte normal | « Gérer l'assurance » | Dépôt |
+| Présent et valide | « valide jusqu'au [date d'expiration]. » | texte normal | « Gérer l'assurance » | Remplacement |
+| Présent et expiré | « expirée le [date d'expiration]. » | rouge gras | « Gérer l'assurance » | Remplacement |
+| Sans date d'expiration (traité comme « expiré », décision Hanta) | « expirée, date d'expiration non renseignée. » | rouge gras | « Gérer l'assurance » | Remplacement |
+
+Le rouge gras est la classe `rcpro-etat-expire`, posée sur la phrase d'état seule (pas sur l'étiquette). Dans la fiche action, toute la phrase expirée est en rouge gras ; le mot « expirée » reste présent, donc l'état n'est jamais porté par la couleur seule. « Absent » et « Valide » restent en texte normal. Les phrases commencent par une minuscule parce qu'elles suivent l'étiquette.
+
 Règles :
 - Deux dates seulement, expiration et dépôt (E5-7 Q1). Pas de « dernière mise à jour ».
 - L'état est porté par les MOTS (« valide », « expirée »), jamais par une couleur ni par une icône seule.
 - **Mise en évidence de l'état expiré (demande de Hanta après le premier essai visuel, 10/11/2026).** La phrase des états « Présent et expiré » et « Présent sans date d'expiration » (lignes 3 et 4 du tableau ci-dessus) s'affiche en rouge d'erreur, avec la variable du design system `var(--ft-color-text-error-default)` (valeur #ba251a, vérifiée dans la feuille du CDN le 10/11/2026), et le mot « expirée » est en gras (`strong`). La couleur vient EN PLUS du mot et du gras : elle ne porte jamais l'information seule. Les états « Absent » et « Valide » restent dans la couleur de texte normale (pas de vert : rien n'est à repérer).
   - Pourquoi cette variable : c'est la variable de couleur de TEXTE « erreur » de la feuille. Contraste mesuré sur fond blanc : 6,24:1 (minimum exigé pour du texte courant : 4,5:1). Seule cette variable est proposée, pas la variable d'icône (`--ft--icon-error` / `--ft-color-icon-error-default`, #f04438), qui n'atteint que 3,76:1 sur blanc : trop faible pour un texte, et la classe `.text-error` de la feuille s'appuie justement sur cette variable d'icône, donc elle n'est pas à employer ici.
   - Cohérence avec l'existant : le statut « Annulée » du tableau de bord et de la liste d'actions de clubs reste signalé par un FOND `var(--ft-color-background-error-weakest)` avec texte noir (`.status-tag.annulee`). Ce choix de fond ne convient pas à une phrase entière de texte courant ; on reprend donc la même famille « error » du design system, mais en couleur de texte. Les boutons « Supprimer » emploient `--ft-color-background-error-default`, également de la famille « error ».
-  - Mise en œuvre pour dev-interface : une seule classe à nous (nom proposé `rcpro-etat-expire`, sans rapport avec un nom du design system) avec `color: var(--ft-color-text-error-default);`, posée sur l'élément de la phrase d'état. Dans la fiche action, la couleur s'applique à la phrase seulement, pas à l'étiquette « Assurance RC Pro : » ni à la ligne « Déposée le… » (qui reste en texte normal). Même classe, mêmes règles dans clubs et dans le tableau de bord. Le test `test/styles.test.js` impose de ne pas reprendre de nom de classe du design system : `rcpro-etat-expire` n'en est pas un. Valeur écrite une seule fois, en constante ou variable en tête de feuille (CLAUDE.md, bonnes pratiques).
+  - Mise en œuvre pour dev-interface : une seule classe à nous (nom proposé `rcpro-etat-expire`, sans rapport avec un nom du design system) avec `color: var(--ft-color-text-error-default);`, posée sur l'élément de la phrase d'état. Dans la fiche action, la couleur s'applique à la phrase seulement, pas à l'étiquette « Assurance RC Pro : » (il n'y a plus de ligne « Déposée le… » dans cette fiche, §4.2). Dans la fiche club, la ligne « Déposée le… » reste en texte normal. Même classe, mêmes règles dans clubs et dans le tableau de bord. Le test `test/styles.test.js` impose de ne pas reprendre de nom de classe du design system : `rcpro-etat-expire` n'en est pas un. Valeur écrite une seule fois, en constante ou variable en tête de feuille (CLAUDE.md, bonnes pratiques).
   - Pas de nouvelle alerte ni de pastille : le bloc reste un texte (voir §9.5).
-- Dans la fiche action, la phrase est précédée de l'étiquette « Assurance RC Pro : » (§3.2) ; dans la fiche club, du titre « Assurance RC Pro » (§3.1). Le texte de la phrase ne change pas.
-- Document sans date d'expiration : il est traité comme « expiré » (décision Hanta, E5-10) et affiche la phrase de la dernière ligne du tableau. Il reste consultable et remplaçable. Si la date de dépôt manque aussi, la ligne « Déposée le… » est omise.
+- Dans la fiche action, la phrase est celle du tableau 4.2, précédée de l'étiquette « Assurance RC Pro : » (§3.2) ; dans la fiche club, celle du tableau 4.1, sous le titre « Assurance RC Pro » (§3.1).
+- Document sans date d'expiration : il est traité comme « expiré » (décision Hanta, E5-10 ; confirmée pour la fiche action, E5-16) et affiche la phrase de la dernière ligne du tableau concerné, en rouge gras (4.2 : « expirée, date d'expiration non renseignée. »). Il reste consultable (fiche club) et remplaçable. Sur la fiche club, si la date de dépôt manque aussi, la ligne « Déposée le… » est omise.
 - « Voir l'attestation » est un bouton qui ouvre le PDF dans un nouvel onglet à une adresse blob:, comme « Voir la convention » (docs/ux/convention.md) ; texte caché pour lecteurs d'écran « (s'ouvre dans un nouvel onglet) » ; pendant l'ouverture : « Ouverture en cours… ». Mêmes contraintes de sécurité que la convention (CLAUDE.md) : l'identifiant de la pièce jointe et le jeton ne s'affichent jamais, ne vont jamais dans la console ni dans un message.
 - Échec d'ouverture : « L'attestation n'a pas pu être ouverte. Réessayez. Si le problème continue, vos droits ne permettent peut-être pas de la consulter. » (`role="alert"`, dans le bloc).
 
@@ -297,6 +329,8 @@ Page : https://designsystem.francetravail.io/components/detail/button--primary.h
 | Remplacer l'attestation (bloc) | `btn btn-secondary btn-sm` | « Remplacer l'attestation » |
 | Annuler (pop-up) | `btn btn-secondary` | « Annuler » |
 | Déposer / Remplacer (pop-up) | `btn btn-primary` | « Déposer » ou « Remplacer » |
+
+Fiche action (E5-16) : un seul bouton dans le résumé, `btn btn-secondary btn-sm`, texte « Gérer l'assurance », `id="rcProGerer"`, qui ouvre le pop-up commun. Les trois boutons du bloc ci-dessus ne servent que dans la fiche club. Au retour du pop-up dans la fiche action, le focus revient sur « Gérer l'assurance » (§7 : la règle « focus sur Voir l'attestation » ne vaut que pour la fiche club).
 
 Pas de bouton rouge : pas de suppression.
 
