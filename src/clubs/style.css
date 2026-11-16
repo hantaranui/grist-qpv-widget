@@ -16,12 +16,12 @@
   /* Carte Contacts, un contact par ligne (docs/ux/contacts-une-ligne.md,
      revision E6-10). Tailles a regler ici, en un seul endroit.
      Bloc « identite » (nom + fonction, empiles) : largeur plafonnee a
-     --contact-identite-max, jamais sous --contact-identite-min. Quand la place
+     --contact-identite-max, jamais sous --contact-identite-min (colonne en fit-content, plancher porté par le bloc). Quand la place
      manque, la fonction (plus longue) est coupee par « … » en premier, puis le
      nom, puis l'e-mail. Valeurs estimees, a constater au rendu.
      Seuils de largeur : ni @media ni @container ne savent lire une variable,
      ils sont ecrits en dur dans le bloc « Carte Contacts » plus bas :
-       - 560px de LARGEUR DE CARTE (une ligne par contact, avec coupure « … ») ;
+       - 600px de LARGEUR DE CARTE (une ligne par contact, avec coupure « … ») ;
        - 360px de LARGEUR DE CARTE (trois lignes en dessous, deux lignes au-dessus) ;
        - 900px de LARGEUR D'ECRAN (Contacts et Actions empiles en dessous).
      Les changer a tous les endroits ou ils sont ecrits (chercher la valeur). */
@@ -454,9 +454,9 @@ td:last-child {
    pouvoir retrecir dans la grille. */
 .contact-item .text-truncate { min-width: 0; }
 
-/* Carte de moins de 560 px (LARGEUR DE CARTE), rien n'est coupe : le texte long
+/* Carte de moins de 600 px (LARGEUR DE CARTE), rien n'est coupe : le texte long
    passe a la ligne. */
-@container carte-liste (width < 560px) {
+@container carte-liste (width < 600px) {
   .contact-item .text-truncate {
     overflow: visible;
     text-overflow: clip;
@@ -464,7 +464,7 @@ td:last-child {
   }
 }
 
-/* Carte moyenne (de 361 a 559 px de large) : deux lignes. Ligne 1 : bloc identite
+/* Carte moyenne (de 361 a 599 px de large) : deux lignes. Ligne 1 : bloc identite
    et boutons ; ligne 2 : e-mail et telephone. (width > 360px) plutot que
    min-width: 361px : pas de trou si la largeur est fractionnaire (360,5 px). */
 @container carte-liste (width > 360px) {
@@ -475,7 +475,7 @@ td:last-child {
   }
 }
 
-/* Grande carte (560 px de large et plus) : une seule ligne, colonnes alignees
+/* Grande carte (600 px de large et plus) : une seule ligne, colonnes alignees
    entre les contacts. Ordre : bloc identite (nom + fonction), e-mail, telephone,
    boutons. La liste porte les colonnes, chaque ligne les reprend (subgrid) et le
    bloc e-mail + telephone disparait (display: contents) pour que chacun ait sa
@@ -483,11 +483,11 @@ td:last-child {
    (fonction coupee, puis nom) jusqu'a son plancher, puis l'e-mail. Telephone et
    boutons gardent toute leur largeur (max-content). La derniere colonne (boutons)
    prend le reste et les pousse a droite. */
-@container carte-liste (width >= 560px) {
+@container carte-liste (width >= 600px) {
   .contact-list {
     display: grid;
     grid-template-columns:
-      minmax(var(--contact-identite-min), var(--contact-identite-max))
+      fit-content(var(--contact-identite-max))
       minmax(var(--contact-mail-min), max-content)
       max-content
       minmax(max-content, 1fr);
@@ -499,6 +499,10 @@ td:last-child {
   }
   .contact-identite,
   .contact-buttons { grid-column: auto; grid-row: auto; }
+  /* Plancher du bloc identite : fit-content() n'a pas de minimum, il est donc
+     porte par le bloc lui-meme. Son min-width compte dans la taille de la colonne
+     (y compris en subgrid), qui ne descend jamais sous --contact-identite-min. */
+  .contact-identite { min-width: var(--contact-identite-min); }
   .contact-coordonnees { display: contents; }
   .contact-tel { white-space: nowrap; }
   .contact-buttons { justify-self: end; }
