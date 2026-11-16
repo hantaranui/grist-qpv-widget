@@ -218,8 +218,8 @@ test("carte : la fonction renseignee s'affiche sous le nom, coupable et avec son
   // Classes par nom : Bernard (Alex, sans fonction) puis Martin (Zoe).
   const [, zoe] = lignesDe(fiche(ecran));
 
-  assert.match(zoe, /<span class="contact-name text-truncate" title="Zoe Martin">Zoe Martin<\/span>\s*<div class="contact-fonction muted-text text-truncate" title="Entraineuse">Entraineuse<\/div>\s*<div class="contact-coordonnees">/,
-    "la fonction est juste sous le nom, avant les coordonnees, avec text-truncate et title");
+  assert.match(zoe, /<div class="contact-identite">\s*<span class="contact-name text-truncate" title="Zoe Martin">Zoe Martin<\/span>\s*<div class="contact-fonction muted-text text-truncate" title="Entraineuse">Entraineuse<\/div>\s*<\/div>\s*<div class="contact-coordonnees">/,
+    "le nom puis la fonction sont empiles dans le bloc contact-identite, qui precede les coordonnees ; la fonction a text-truncate et title");
   assert.ok(!TIRET_FONCTION.test(zoe), "avec une fonction, pas de tiret");
 });
 
@@ -233,7 +233,11 @@ test("carte : sans fonction, un tiret lu « Fonction non renseignée » garde la
   // Une ligne « fonction » par contact, renseignee ou non : colonnes alignees.
   assert.equal(occurrences(fiche(ecran), 'class="contact-fonction'), 2);
   assert.ok(alex.indexOf("contact-fonction") < alex.indexOf("contact-coordonnees"), "le tiret est avant les coordonnees");
-  assert.ok(zoe.includes("contact-fonction"));
+  // Le tiret est a l'interieur du bloc contact-identite, sous le nom, et ce bloc se ferme avant les coordonnees.
+  assert.match(alex, /<div class="contact-identite">\s*<span class="contact-name[^>]*>[^<]*<\/span>\s*<div class="contact-fonction">[\s\S]*?<\/div>\s*<\/div>\s*<div class="contact-coordonnees">/,
+    "le tiret est dans contact-identite, sous le nom");
+  assert.match(zoe, /<div class="contact-identite">[\s\S]*?contact-fonction[\s\S]*?<\/div>\s*<\/div>\s*<div class="contact-coordonnees">/,
+    "la fonction renseignee est aussi dans contact-identite");
 });
 
 test("carte : une fonction faite d'espaces affiche le tiret, pas une ligne vide", async () => {
