@@ -25,6 +25,18 @@
   --line: var(--ft--color-border-neutral-default-weaker);
   --accent: var(--ft--color-primary);
   --logo-size: 128px;
+  /* Carte Contacts, un contact par ligne (docs/ux/contacts-une-ligne.md).
+     Tailles a regler ici, en un seul endroit. Largeurs minimales : en dessous,
+     le texte est coupe par « … » (au-dessus de 800 px seulement). Plus le
+     minimum est petit, plus la colonne est sacrifiee tot : fonction d'abord,
+     puis nom, puis e-mail. Valeurs estimees, a constater au rendu.
+     Seuils de largeur : les @media ne savent pas lire une variable, ils sont
+     ecrits en dur dans le bloc « Carte Contacts » plus bas : 800px (une ligne
+     par contact) et 560px (quatre lignes). Les changer aux deux endroits. */
+  --contact-gap: 16px;
+  --contact-nom-min: 96px;
+  --contact-fonction-min: 40px;
+  --contact-mail-min: 160px;
 }
 
 * { box-sizing: border-box; }
@@ -324,12 +336,14 @@ td:last-child {
 
 .club-identity { min-width: 0; }
 
-/* Contacts et actions cote a cote, sous la carte Club : deux cartes distinctes,
-   pas une troisieme colonne dans le meme edit-row que le club (leur contenu —
-   des listes qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
+/* Contacts puis actions, l'un sous l'autre, chacun en pleine largeur, a toutes
+   les largeurs (decision E6-1, qui remplace les deux moities egales : un contact
+   sur une ligne a besoin de la largeur). Deux cartes distinctes, pas une
+   troisieme colonne dans le meme edit-row que le club (leur contenu — des listes
+   qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
 .edit-row-lists {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -364,17 +378,12 @@ td:last-child {
 
 .contact-name { flex: 0 1 auto; font-weight: 700; }
 
-/* La fonction prend sa propre ligne sous le nom (pleine largeur dans la ligne
-   qui passe a la ligne). Une <div>, pas un <span> : la regle ci-dessous donne
-   aux <span> une largeur selon leur contenu. */
-.contact-fonction { width: 100%; }
-
-/* Boutons Modifier / Supprimer de la ligne : groupes, a droite de la ligne ; ils
-   passent a la ligne suivante si la carte est etroite, et restent espaces pour
-   qu'on puisse en toucher un sans toucher l'autre. */
+/* Boutons Modifier / Supprimer de la ligne : cote a cote, jamais coupes ni
+   passes a la ligne, et espaces pour qu'on puisse en toucher un sans toucher
+   l'autre. Leur place (a droite) est decidee par la grille « Carte Contacts ». */
 .contact-buttons {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -383,6 +392,88 @@ td:last-child {
 .contact-add { margin-bottom: 16px; }
 .contact-item a,
 .contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
+
+/* --- Carte Contacts : un contact = une ligne (docs/ux/contacts-une-ligne.md) ---
+   Pas un tableau, pas d'en-tetes : une grille dont les colonnes sont communes
+   a tous les contacts, pour qu'elles restent alignees d'une ligne a l'autre.
+   Ecrit en partant du plus petit ecran (quatre lignes), puis on enrichit. */
+
+/* Petit ecran (560 px et moins) : quatre lignes. Ligne 1 : nom et boutons ;
+   ligne 2 : fonction ; ligne 3 : e-mail ; ligne 4 : telephone. */
+.contact-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--contact-gap);
+  row-gap: 4px;
+}
+.contact-name { grid-column: 1; grid-row: 1; }
+.contact-fonction { grid-column: 1 / -1; grid-row: 2; }
+.contact-coordonnees {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  row-gap: 4px;
+}
+.contact-buttons { grid-column: 2; grid-row: 1; align-self: center; }
+
+/* Les elements coupes par « … » (classe text-truncate du design system) doivent
+   pouvoir retrecir dans la grille. */
+.contact-item .text-truncate { min-width: 0; }
+
+/* Sous 800 px, rien n'est coupe : le texte long passe a la ligne. */
+@media (max-width: 799px) {
+  .contact-item .text-truncate {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* Ecran moyen (561 a 799 px) : deux lignes. Ligne 1 : nom, fonction, boutons ;
+   ligne 2 : e-mail et telephone. */
+@media (min-width: 561px) {
+  .contact-item { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .contact-fonction { grid-column: 2; grid-row: 1; }
+  .contact-buttons { grid-column: 3; }
+  .contact-coordonnees {
+    grid-row: 2;
+    flex-direction: row;
+    flex-wrap: wrap;
+    column-gap: 24px;
+  }
+}
+
+/* Grand ecran (800 px et plus) : une seule ligne, cinq colonnes alignees entre
+   les contacts. Ordre : nom, fonction, e-mail, telephone, boutons. La liste porte
+   les colonnes, chaque ligne les reprend (subgrid) et le bloc e-mail + telephone
+   disparait (display: contents) pour que chacun ait sa colonne.
+   Ordre de coupure quand la place manque : la fonction (colonne souple, elle
+   prend ce qui reste), puis le nom, puis l'e-mail. Telephone et boutons gardent
+   toute leur largeur (max-content). */
+@media (min-width: 800px) {
+  .contact-list {
+    display: grid;
+    grid-template-columns:
+      minmax(var(--contact-nom-min), max-content)
+      minmax(var(--contact-fonction-min), 1fr)
+      minmax(var(--contact-mail-min), max-content)
+      max-content
+      max-content;
+    column-gap: var(--contact-gap);
+  }
+  .contact-item {
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+  .contact-name,
+  .contact-fonction,
+  .contact-buttons { grid-column: auto; grid-row: auto; }
+  .contact-coordonnees { display: contents; }
+  .contact-tel { white-space: nowrap; }
+  .contact-buttons { justify-self: end; }
+}
 
 .action-date { flex: 0 1 auto; }
 .action-status { flex: 0 0 auto; }
@@ -522,12 +613,6 @@ td:last-child {
 
 .logo-message.is-error { color: var(--ft--icon-error); }
 
-/* Contacts et actions cote a cote ne laissent plus assez de place a leurs
-   colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
-@media (max-width: 900px) {
-  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
-}
-
 @media (max-width: 560px) {
   .topbar { padding: 16px; }
   .filters-bar { padding: 16px; }
@@ -546,8 +631,8 @@ td:last-child {
      presque plus de place a chacun. */
   .contact-item,
   .action-item { flex-direction: column; align-items: stretch; }
-  /* En colonne, margin-left: auto pousserait le groupe de boutons a droite : on
-     veut une derniere ligne alignee a gauche. */
+  /* Pour les contacts, la grille « Carte Contacts » (plus haut) decide de la
+     disposition : flex-direction ne vaut ici que pour les actions. */
   .contact-buttons { margin-left: 0; }
   .action-dispositif,
   .action-funding { flex-basis: auto; max-width: none; min-width: 0; }
@@ -1356,11 +1441,25 @@ function renderContacts(contacts) {
     const libelleSupprimer = nomComplet ? `Supprimer le contact ${nomComplet}` : 'Supprimer le contact sans nom';
     const mail = mailHref(contact.email);
     const tel = telHref(contact.telephone);
+    // Un contact = une ligne (docs/ux/contacts-une-ligne.md). Le nom, la fonction
+    // et l'e-mail portent « text-truncate » (classe du design system : coupe avec
+    // « … ») et un title qui donne la valeur complete. La feuille de style
+    // annule la coupure sur petit ecran. Fonction vide : un tiret, lu « Fonction
+    // non renseignee » par un lecteur d'ecran, pour que les colonnes restent alignees.
+    const fonction = contact.fonction
+      ? `<div class="contact-fonction muted-text text-truncate" title="${escapeAttr(contact.fonction)}">${escapeHtml(contact.fonction)}</div>`
+      : `<div class="contact-fonction">${missing('Fonction non renseignée', contact.fonction)}</div>`;
+    // L'e-mail et le telephone sont groupes dans un meme <div> : sur ecran moyen
+    // ou etroit ils forment la 2e ligne ; sur grand ecran le <div> disparait
+    // (display: contents) et chacun redevient une colonne. L'ordre de tabulation
+    // ne change pas : e-mail, telephone, modifier, supprimer.
     return `<li class="contact-item">
-      <span class="contact-name">${escapeHtml(nom)}</span>
-      ${contact.fonction ? `<div class="contact-fonction muted-text">${escapeHtml(contact.fonction)}</div>` : ''}
-      ${mail ? `<a class="contact-mail" href="${escapeAttr(mail)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
-      ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+      <span class="contact-name text-truncate" title="${escapeAttr(nom)}">${escapeHtml(nom)}</span>
+      ${fonction}
+      <div class="contact-coordonnees">
+        ${mail ? `<a class="contact-mail text-truncate" href="${escapeAttr(mail)}" title="${escapeAttr(contact.email)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
+        ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+      </div>
       <div class="contact-buttons">
         <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Modifier" data-ft-vocalize="false" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span aria-hidden="true" class="icon icon-edit"></span></button>
         <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Supprimer" data-ft-vocalize="false" data-delete-contact="${contact.id}" aria-label="${escapeAttr(libelleSupprimer)}"><span aria-hidden="true" class="icon icon-trash"></span></button>
