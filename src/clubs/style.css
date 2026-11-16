@@ -551,17 +551,18 @@ td:last-child {
 #rcProModal .modal { display: block; overflow-y: auto; }
 
 /* Haut de la fiche : carte Club seule, ou carte Club puis carte « Assurance RC Pro »
-   à sa droite (classe avec-rcpro). align-items: start évite d'étirer la plus courte. */
+   à sa droite (classe avec-rcpro). align-items: stretch donne aux deux cartes la même
+   hauteur (celle de la plus haute) ; chaque carte (grille enfant directe) s'étire à 100 %. */
 .edit-row-haut {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 
 /* Bloc « Assurance RC Pro » : il a sa propre carte (edit-card).
-   Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
+   Les boutons sont empilés à gauche, jamais coupés au milieu d'un libellé. */
 .rcpro-bloc { min-width: 0; }
 
 .rcpro-etat,
@@ -573,9 +574,11 @@ td:last-child {
   font-weight: 700;
 }
 
+/* Boutons l'un sous l'autre, alignés à gauche (pas de décalage quand la carte est étroite). */
 .rcpro-boutons {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   margin-top: 12px;
 }
