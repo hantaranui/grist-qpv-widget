@@ -400,3 +400,4 @@ Décisions de Hanta, suite à la note UX de designer-ux (docs/ux/contacts-une-li
 - E6-3 : un tiret s'affiche quand la Fonction est vide (pour l'alignement), petit écart assumé à la décision du 21/10 sur ce point précis.
 - E6-4 : troncature acceptée (Fonction, puis nom, puis e-mail en dernier recours), avec l'attribut title natif pour voir la valeur complète. Téléphone et boutons jamais tronqués.
 - E6-5 : colonnes alignées sans en-têtes, pas un vrai tableau avec en-têtes.
+- E6-6 : la règle "Fonction vide : ne rien afficher" de docs/ux/contacts-fiche-club.md (§5) est contredite par E6-3 (un tiret s'affiche si Fonction est vide, pour l'alignement) pour la carte Contacts de la fiche club. DÉCISION DE HANTA : mettre à jour contacts-fiche-club.md pour refléter la nouvelle règle (plutôt que de laisser deux documents se contredire).
