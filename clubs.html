@@ -525,7 +525,8 @@ td:last-child {
 /* Contacts et actions cote a cote ne laissent plus assez de place a leurs
    colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
 @media (max-width: 900px) {
-  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+  .edit-row-lists,
+  .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -561,12 +562,15 @@ td:last-child {
 #contactModal .modal,
 #rcProModal .modal { display: block; overflow-y: auto; }
 
-/* Colonne de droite de la fiche : bloc « Assurance RC Pro » au-dessus de la carte Actions. */
-.colonne-droite {
+/* Haut de la fiche : carte Club seule, ou carte Club puis carte « Assurance RC Pro »
+   à sa droite (classe avec-rcpro). align-items: start évite d'étirer la plus courte. */
+.edit-row-haut {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  min-width: 0;
+  align-items: start;
 }
+.edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 
 /* Bloc « Assurance RC Pro » : il a sa propre carte (edit-card).
    Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
@@ -1141,6 +1145,9 @@ function renderFiche() {
   const actionOuverte = state.actionId !== null ? detail.actions.find(item => item.id === state.actionId) : null;
   if (state.actionId !== null && !actionOuverte) state.actionId = null;
 
+  // Carte « Assurance RC Pro » (texte vide si les colonnes ne sont pas lisibles).
+  const rcProHtml = renderRcPro(club);
+
   ficheView.innerHTML = `
     <div class="edit-panel">
       <header class="edit-header">
@@ -1148,6 +1155,9 @@ function renderFiche() {
         <div class="edit-header-actions"><button class="btn btn-secondary" type="button" id="backToList"><span class="btn-content">&larr; Retour à la liste</span></button></div>
       </header>
       <div class="edit-layout">
+        <!-- Haut de la fiche : la carte Club, avec la carte « Assurance RC Pro » à sa droite
+             (si les colonnes RC Pro sont lisibles ; sinon la carte Club prend toute la largeur) -->
+        <div class="edit-row-haut${rcProHtml ? ' avec-rcpro' : ''}">
         <section class="edit-card">
           <div class="section-head"><span>Club</span></div>
           <div class="card-body">
@@ -1166,6 +1176,8 @@ function renderFiche() {
             </div>
           </div>
         </section>
+        ${rcProHtml}
+        </div>
         <div class="edit-row-lists">
           <section class="edit-card" aria-labelledby="contactsTitle">
             <div class="section-head"><span id="contactsTitle">Contacts</span></div>
@@ -1175,20 +1187,16 @@ function renderFiche() {
                 : '<button class="btn btn-secondary btn-sm contact-add" type="button" id="addContact"><span class="btn-content">+ Ajouter un contact</span></button>' + renderContacts(detail.contacts)}
             </div>
           </section>
-          <!-- Colonne de droite : le bloc « Assurance RC Pro » (s'il est affiché) puis la carte Actions -->
-          <div class="colonne-droite">
-            ${renderRcPro(club)}
-            <section class="edit-card" aria-labelledby="actionsTitle">
-              <div class="section-head"><span id="actionsTitle">Actions</span></div>
-              <div class="card-body">
-                ${actionOuverte
-                  ? renderDashboardSetup()
-                  : (state.unreadable.includes('Actions')
-                    ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
-                    : renderActionsList(detail.actions))}
-              </div>
-            </section>
-          </div>
+          <section class="edit-card" aria-labelledby="actionsTitle">
+            <div class="section-head"><span id="actionsTitle">Actions</span></div>
+            <div class="card-body">
+              ${actionOuverte
+                ? renderDashboardSetup()
+                : (state.unreadable.includes('Actions')
+                  ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
+                  : renderActionsList(detail.actions))}
+            </div>
+          </section>
         </div>
       </div>
     </div>

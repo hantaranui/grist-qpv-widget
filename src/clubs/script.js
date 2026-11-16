@@ -473,6 +473,9 @@ function renderFiche() {
   const actionOuverte = state.actionId !== null ? detail.actions.find(item => item.id === state.actionId) : null;
   if (state.actionId !== null && !actionOuverte) state.actionId = null;
 
+  // Carte « Assurance RC Pro » (texte vide si les colonnes ne sont pas lisibles).
+  const rcProHtml = renderRcPro(club);
+
   ficheView.innerHTML = `
     <div class="edit-panel">
       <header class="edit-header">
@@ -480,6 +483,9 @@ function renderFiche() {
         <div class="edit-header-actions"><button class="btn btn-secondary" type="button" id="backToList"><span class="btn-content">&larr; Retour à la liste</span></button></div>
       </header>
       <div class="edit-layout">
+        <!-- Haut de la fiche : la carte Club, avec la carte « Assurance RC Pro » à sa droite
+             (si les colonnes RC Pro sont lisibles ; sinon la carte Club prend toute la largeur) -->
+        <div class="edit-row-haut${rcProHtml ? ' avec-rcpro' : ''}">
         <section class="edit-card">
           <div class="section-head"><span>Club</span></div>
           <div class="card-body">
@@ -498,6 +504,8 @@ function renderFiche() {
             </div>
           </div>
         </section>
+        ${rcProHtml}
+        </div>
         <div class="edit-row-lists">
           <section class="edit-card" aria-labelledby="contactsTitle">
             <div class="section-head"><span id="contactsTitle">Contacts</span></div>
@@ -507,20 +515,16 @@ function renderFiche() {
                 : '<button class="btn btn-secondary btn-sm contact-add" type="button" id="addContact"><span class="btn-content">+ Ajouter un contact</span></button>' + renderContacts(detail.contacts)}
             </div>
           </section>
-          <!-- Colonne de droite : le bloc « Assurance RC Pro » (s'il est affiché) puis la carte Actions -->
-          <div class="colonne-droite">
-            ${renderRcPro(club)}
-            <section class="edit-card" aria-labelledby="actionsTitle">
-              <div class="section-head"><span id="actionsTitle">Actions</span></div>
-              <div class="card-body">
-                ${actionOuverte
-                  ? renderDashboardSetup()
-                  : (state.unreadable.includes('Actions')
-                    ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
-                    : renderActionsList(detail.actions))}
-              </div>
-            </section>
-          </div>
+          <section class="edit-card" aria-labelledby="actionsTitle">
+            <div class="section-head"><span id="actionsTitle">Actions</span></div>
+            <div class="card-body">
+              ${actionOuverte
+                ? renderDashboardSetup()
+                : (state.unreadable.includes('Actions')
+                  ? '<p class="empty-note">Vos droits ne permettent pas de lire les actions.</p>'
+                  : renderActionsList(detail.actions))}
+            </div>
+          </section>
         </div>
       </div>
     </div>

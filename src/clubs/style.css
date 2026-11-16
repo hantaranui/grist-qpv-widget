@@ -513,7 +513,8 @@ td:last-child {
 /* Contacts et actions cote a cote ne laissent plus assez de place a leurs
    colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
 @media (max-width: 900px) {
-  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+  .edit-row-lists,
+  .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -549,12 +550,15 @@ td:last-child {
 #contactModal .modal,
 #rcProModal .modal { display: block; overflow-y: auto; }
 
-/* Colonne de droite de la fiche : bloc « Assurance RC Pro » au-dessus de la carte Actions. */
-.colonne-droite {
+/* Haut de la fiche : carte Club seule, ou carte Club puis carte « Assurance RC Pro »
+   à sa droite (classe avec-rcpro). align-items: start évite d'étirer la plus courte. */
+.edit-row-haut {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  min-width: 0;
+  align-items: start;
 }
+.edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 
 /* Bloc « Assurance RC Pro » : il a sa propre carte (edit-card).
    Les boutons passent à la ligne entre eux (flex-wrap), jamais au milieu d'un libellé. */
