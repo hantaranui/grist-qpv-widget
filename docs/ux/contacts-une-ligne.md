@@ -2,8 +2,79 @@
 
 Widget : clubs (src/clubs/). Écran : carte « Contacts » de la fiche d'un club.
 Date : 16/11/2026. Origine : demande de Pierre (chaque contact sur UNE ligne).
-Statut : **seuil de ligne unique baissé de 800 à 680 px de carte le 16/11/2026 (E6-9, décision de Hanta, proposé par le designer-ux ; Fonction tronquée à environ 100 px au seuil). Avant cela : corrigée le 16/11/2026 (E6-8, docs/backlog.md) : E6-1 (« Voie A ») est ANNULÉE. Voie B retenue : les deux colonnes restent côte à côte, Contacts à 3fr et Actions à 2fr, empilées seulement sous 900 px. Disposition finale au §7. Prête à coder par dev-interface.** « Rôle » = Fonction, tiret si Fonction vide, troncature acceptée avec `title` quand la CARTE Contacts est assez large (E6-7 : jamais de texte coupé en dessous), colonnes alignées sans en-têtes. Les seuils d'une ligne de contact réagissent à la largeur de la carte (container queries), pas à celle de l'écran.
+Statut : **REVISION E6-10 du 16/11/2026 en tête de note (structure Nom + Fonction empilés, 1fr/1fr, seuils 560/360 px) : elle remplace les valeurs 3fr/2fr, 680 px et 560 px citées plus bas, en attente de confirmation de Hanta (R6).** Historique : seuil de ligne unique baissé de 800 à 680 px de carte le 16/11/2026 (E6-9, décision de Hanta, proposé par le designer-ux ; Fonction tronquée à environ 100 px au seuil). Avant cela : corrigée le 16/11/2026 (E6-8, docs/backlog.md) : E6-1 (« Voie A ») est ANNULÉE. Voie B retenue : les deux colonnes restent côte à côte, Contacts à 3fr et Actions à 2fr, empilées seulement sous 900 px. Disposition finale au §7. Prête à coder par dev-interface.** « Rôle » = Fonction, tiret si Fonction vide, troncature acceptée avec `title` quand la CARTE Contacts est assez large (E6-7 : jamais de texte coupé en dessous), colonnes alignées sans en-têtes. Les seuils d'une ligne de contact réagissent à la largeur de la carte (container queries), pas à celle de l'écran.
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, docs/ux/contacts-fiche-club.md, src/clubs/style.css (lignes 295-385, 505-545), src/clubs/script.js (`renderContacts`, lignes 722-744), feuille du design system (https://cdn.francetravail.fr/studio/design-system/css/styles.css), page https://designsystem.francetravail.io/components/detail/table--default.html (et table--sort.html).
+
+## REVISION E6-10 (16/11/2026) : ce bloc PASSE AVANT les §1 à §8 ci-dessous
+
+Origine : Hanta, après essai visuel (capture) : avec 3fr/2fr, le bloc Actions est trop étroit (« 100% financé » passe à la ligne). Elle propose une ligne de contact plus étroite. **Toutes les largeurs de ce bloc sont des estimations faites à la main, NON mesurées** : à constater au rendu par Hanta avant de les figer. Quand un chiffre des §1 à §8 (3fr/2fr, 680 px, 560 px, « Fonction à côté du nom », 4 lignes) contredit ce bloc, c'est ce bloc qui gagne. Les autres décisions (E6-2 à E6-7 : Fonction = « Rôle », colonnes alignées sans en-têtes, pas de vrai tableau, aucune troncature sous le seuil de ligne unique, `title` natif) restent. Rappel : E6-9 (680 px) est remplacée par le seuil ci-dessous, parce que la ligne devient plus étroite ; c'est une conséquence de la structure demandée par Hanta, à lui faire confirmer (question ouverte 1).
+
+### R1. Nouvelle disposition d'un contact
+
+Deux « niveaux » empilés dans un seul bloc d'identité, puis le reste centré verticalement sur ce bloc :
+
+```
+┌─ CONTACTS (carte de 560 px et plus) ────────────────────────────────────┐
+│  [ + Ajouter un contact ]                                                │
+│                                                                          │
+│  Marie Dupont            marie.dupont@exemple.fr  01 23 45 67 89  [✎][🗑] │
+│  Responsable admin…                                                      │
+│  ──────────────────────────────────────────────────────────────────────  │
+│  Karim Martin            k.martin@exemple.fr      —               [✎][🗑] │
+│  —                                                                       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Bloc d'identité** (à gauche) : niveau 1 = Prénom Nom en gras (`.contact-name`), niveau 2 = Fonction en texte secondaire et plus petit (`.contact-fonction`), directement dessous, sans espace perdu entre les deux. Les deux niveaux sont enveloppés dans UN élément commun (nouveau nom de classe à nous, par exemple `contact-identite`, jamais un nom du design system ; à vérifier par test/styles.test.js). C'est ce bloc qui est la « colonne » alignée d'un contact à l'autre.
+- Puis, de gauche à droite : E-mail (lien), Téléphone (lien), boutons Modifier et Supprimer collés à droite.
+- **Alignement vertical : `align-items: center` sur `li.contact-item`** (et sur ses regroupements de lignes aux largeurs plus étroites), PAS `baseline`. Raison : avec `baseline`, e-mail, téléphone et boutons s'alignent sur la première ligne du bloc (le nom), et les boutons, plus hauts que le texte, semblent décalés (bug signalé par dev-interface / Hanta, E6-10). Centrés, e-mail, téléphone et boutons se placent au milieu de la hauteur Nom + Fonction. Les boutons gardent leur taille (`btn-ratio-square`) et ne se déforment pas : `flex-shrink: 0` (ou colonne en largeur du contenu).
+- Même ordre de tabulation qu'avant : nom, e-mail, téléphone, crayon, corbeille. Le bloc d'identité n'est pas un lien et ne prend pas le focus.
+- Rien ne change dans le contenu lu par un lecteur d'écran : nom, puis fonction, puis e-mail, téléphone, boutons (leurs `aria-label` inchangés).
+
+### R2. Fonction vide : le tiret reste, en dessous du nom
+
+Décision proposée : **on affiche toujours le tiret `missing(...)` au niveau 2**, comme décidé en E6-3. Raisons : (1) la hauteur de chaque contact est la même, donc les lignes se lisent de façon régulière et rien ne « saute » quand on modifie une Fonction ; (2) e-mail, téléphone et boutons restent centrés au même endroit d'un contact à l'autre ; (3) c'est la règle déjà validée par Hanta, on ne la défait pas. Le tiret garde sa version cachée pour les lecteurs d'écran (« non renseigné »). Alternative écartée : nom seul centré sur une hauteur plus basse, contacts de hauteurs inégales, bloc qui change de forme dès qu'on renseigne la Fonction.
+
+### R3. Proportion Contacts / Actions : retour à 1fr / 1fr
+
+Estimation de la ligne complète avec le bloc d'identité empilé (largeur du bloc = la plus large des deux lignes, plafonnée à environ 150 px, la Fonction étant tronquée au-delà) :
+
+| Élément | Largeur estimée |
+|---|---|
+| Bloc Nom Prénom + Fonction | 150 px (au lieu de 110 + 160 = 270) |
+| E-mail | 190 px |
+| Téléphone | 110 px |
+| 2 boutons icône + écart de 8 px | 90 px |
+| 3 écarts entre éléments (16 px) | 48 px |
+| **Total** | **environ 590 px** (au lieu de 725) |
+
+Gain : environ 135 px par rapport à avant. Proposition : **`grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)`**, c'est-à-dire la décision 7 du 21/10/2026 (deux moitiés égales), seuil d'empilement de 900 px inchangé. Largeur de chaque carte (déjà donnée au §1, non mesurée) : environ 570 px à 1200 px d'écran, 460 px à 992 px, 415 px à 901 px. Actions retrouve donc ses 570 px d'avant E6, où « 100% financé » tenait. Contacts à 570 px : la ligne (590 px) tient en réduisant le bloc d'identité vers 130 px, la Fonction étant alors tronquée par « … » (voir R5).
+- Les deux nombres restent des constantes en tête de style.css (comme demandé au §2). Si, au rendu, Hanta trouve la ligne trop serrée à 1200 px, ajuster en `minmax(0, 6fr) minmax(0, 5fr)` (Contacts ≈ 620 px, Actions ≈ 520 px) : intermédiaire sans retour à 3fr/2fr. Je ne propose pas 6fr/5fr d'emblée, car la plainte de Hanta porte sur Actions.
+
+### R4. Seuils des container queries (largeur de la CARTE Contacts)
+
+| Largeur de la carte | Disposition | Ancien seuil |
+|---|---|---|
+| **560 px et plus** | une ligne par contact (R1), troncature « … » + `title` | 680 px |
+| **de 361 à 559 px** | deux lignes : ligne 1 = bloc nom + fonction (à gauche) et boutons (à droite) ; ligne 2 = e-mail et téléphone ; aucune troncature | 561 à 679 px |
+| **360 px et moins** | trois lignes : bloc nom + fonction avec les boutons à droite ; e-mail ; téléphone ; aucune troncature | 560 px et moins (4 lignes) |
+
+Estimations : une ligne = 590 px de contenu, mais le bloc d'identité peut descendre à 130 px, soit 570 px ; marge intérieure de la carte déjà retranchée dans la largeur du conteneur (à constater). On retient 560 px, juste sous le point où le bloc d'identité devrait tomber sous 120 px. Deux lignes : ligne 1 environ 150 + 16 + 90 = 256 px, ligne 2 environ 190 + 16 + 110 = 316 px, donc 360 px laisse une marge pour un nom plus long (le texte passe à la ligne, sans « … »). Le niveau « 3 lignes » gagne une ligne sur les quatre d'avant parce que la Fonction est désormais sous le nom. Conséquence : à 1200 px d'écran la carte (570 px) est une ligne, à 992 px (460 px) et 901 px (415 px) deux lignes ; **sous 900 px d'écran**, les cartes s'empilent et chacune prend presque toute la largeur : une ligne apparaît dès environ 640 px d'écran. À 400 px d'écran, la carte (environ 340 px) est en trois lignes. Mêmes règles qu'avant : `@container` (pas `@media`), constantes en tête de style.css, règles du `li` dans le bloc `@container`.
+
+### R5. Troncature : l'ordre reste pertinent, avec une précision
+
+L'ordre (1. Fonction, 2. Nom Prénom, 3. E-mail ; téléphone et boutons jamais coupés) **reste valable**, et il est même plus simple : Fonction et nom sont dans le même bloc, donc le bloc se rétrécit d'abord en coupant la Fonction (niveau 2, `text-truncate`), puis, seulement si la Fonction est déjà réduite à son minimum (environ 80 px) et que la place manque encore, le nom (niveau 1). Précisions pour dev-interface :
+- Chaque niveau tronque sur sa propre ligne (une ligne par niveau, `text-truncate` + `min-width: 0` sur le bloc et sur chaque niveau) ; `title` natif sur le niveau tronqué avec le texte complet, passé par `escapeAttr`.
+- Largeur du bloc : flexible (`flex: 1 1 auto`), plafond d'environ 150 px, plancher d'environ 120 px, constantes en tête de fichier. Le plafond évite qu'une fonction très longue repousse l'e-mail.
+- L'e-mail reste tronqué en dernier, avec son `title`.
+- Sous 560 px de carte : aucune troncature (E6-7), le niveau 2 passe à la ligne dans le bloc, rien n'est coupé.
+
+### R6. Questions ouvertes (réponse de Hanta souhaitée)
+
+1. Le seuil de ligne unique passe de 680 à 560 px et le niveau étroit de 4 à 3 lignes : confirmer (c'est une conséquence de la nouvelle structure, pas déjà décidée par E6-9).
+2. À 1200 px d'écran, la Fonction sera tronquée vers 130 px : acceptable, ou préférer 6fr/5fr (R3) ?
+3. Les mesures réelles de la carte Contacts à 1400, 1200, 992, 901 et 400 px seront données par Hanta pour figer ces seuils.
+4. Le HTML de `renderContacts` change (un élément enveloppe nom et fonction) : les tests d'écran de clubs (test/clubs-contacts-ecran.test.js, **non lu**) peuvent en dépendre ; à vérifier par dev-interface.
 
 ## 0. Ce qui existe aujourd'hui
 
