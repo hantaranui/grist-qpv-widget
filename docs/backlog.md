@@ -389,3 +389,14 @@ Questions encore ouvertes (à trancher avec designer-ux/chef-de-projet) :
 - Q3 : un document expiré reste-t-il téléchargeable/consultable ?
 - Q4 : le remplacement doit-il être proposé même quand le document actuel est encore valide (renouvellement anticipé) ?
 - Q5 : noms exacts des tables/colonnes Grist à créer (aucune n'existe encore) : à définir par dev-backend avec l'accord de Hanta avant tout code.
+
+## Sprint E6 — Contacts sur une seule ligne (fiche club)
+
+Besoin d'origine : demande de Pierre, chaque contact doit tenir sur une seule ligne dans la carte "Contacts" (actuellement réparti sur plusieurs lignes).
+
+Décisions de Hanta, suite à la note UX de designer-ux (docs/ux/contacts-une-ligne.md) :
+- E6-1 : Voie A retenue pour les écrans étroits - la carte "Contacts" prend toute la largeur, "Actions" passe dessous. Remplace la décision du 21/10 (deux moitiés égales).
+- E6-2 : "Rôle" = la colonne Fonction, confirmé.
+- E6-3 : un tiret s'affiche quand la Fonction est vide (pour l'alignement), petit écart assumé à la décision du 21/10 sur ce point précis.
+- E6-4 : troncature acceptée (Fonction, puis nom, puis e-mail en dernier recours), avec l'attribut title natif pour voir la valeur complète. Téléphone et boutons jamais tronqués.
+- E6-5 : colonnes alignées sans en-têtes, pas un vrai tableau avec en-têtes.
