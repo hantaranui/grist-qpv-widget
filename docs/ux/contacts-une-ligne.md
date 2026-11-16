@@ -2,7 +2,7 @@
 
 Widget : clubs (src/clubs/). Écran : carte « Contacts » de la fiche d'un club.
 Date : 16/11/2026. Origine : demande de Pierre (chaque contact sur UNE ligne).
-Statut : **décisions de Hanta reçues (E6-1 à E6-5, docs/backlog.md), disposition finale au §7. Prête à coder par dev-interface.** Voie A, « Rôle » = Fonction, tiret si Fonction vide, troncature acceptée avec `title`, colonnes alignées sans en-têtes.
+Statut : **décisions de Hanta reçues (E6-1 à E6-5, docs/backlog.md), disposition finale au §7. Prête à coder par dev-interface.** Voie A, « Rôle » = Fonction, tiret si Fonction vide, troncature acceptée avec `title` à 800 px et plus seulement (E6-7 : jamais de texte coupé en dessous), colonnes alignées sans en-têtes.
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, docs/ux/contacts-fiche-club.md, src/clubs/style.css (lignes 295-385, 505-545), src/clubs/script.js (`renderContacts`, lignes 722-744), feuille du design system (https://cdn.francetravail.fr/studio/design-system/css/styles.css), page https://designsystem.francetravail.io/components/detail/table--default.html (et table--sort.html).
 
 ## 0. Ce qui existe aujourd'hui
@@ -78,7 +78,7 @@ Règles de la ligne (décidées) :
 │  ──────────────────────────────────────────────────────────────────────  │
 ```
 
-Ligne 1 : nom, fonction (tronquée si besoin), boutons à droite. Ligne 2 : e-mail, téléphone. Seuil de 800 px : estimé (725 px de ligne + marges de 24 px de chaque côté), à constater au rendu. À mettre en constante, en tête du fichier (règle CLAUDE.md « bonnes pratiques »), avec les autres seuils.
+Ligne 1 : nom, fonction, boutons à droite. Ligne 2 : e-mail, téléphone. **Aucune troncature à ces largeurs** (décision de Hanta, E6-7, docs/backlog.md) : si un texte est long, il passe à la ligne suivante dans son bloc, il n'est jamais coupé par « … ». Seuil de 800 px : estimé (725 px de ligne + marges de 24 px de chaque côté), à constater au rendu. À mettre en constante, en tête du fichier (règle CLAUDE.md « bonnes pratiques »), avec les autres seuils.
 
 ### 4.3 Mobile (560 px et moins) : quatre lignes au lieu de cinq
 
@@ -114,7 +114,7 @@ Mise en œuvre :
 - La feuille du design system contient `.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`. **Je l'ai lue dans la feuille du CDN, pas sur une page du site** (pas de page de documentation trouvée) : la feuille fait foi pour les noms de classe (CLAUDE.md). dev-interface vérifie la règle dans la feuille avant de l'employer. Sur un élément enfant d'un conteneur en flex, elle ne fonctionne que si l'élément a aussi `min-width: 0` (règle à écrire dans notre CSS). Aucune classe inventée.
 - Info-bulle : **attribut HTML natif `title="Texte complet"`** sur chaque élément tronqué (décision de Hanta). Le design system prévoit `data-ft-tooltip` seulement sur les boutons : on ne l'emploie pas sur du texte. Limite connue : `title` ne s'affiche ni au toucher ni au clavier. C'est pourquoi la valeur complète reste lisible dans la fenêtre « Modification d'un contact » (bouton crayon), et que le lecteur d'écran lit toujours le texte entier (la coupure « … » est seulement visuelle).
 - **E-mail** : tronqué en dernier seulement, parce que c'est ce que l'agent veut lire exactement ou copier. En voie A, il ne devrait presque jamais l'être. Le lien `mailto:` garde l'adresse entière, et `title` donne l'adresse complète.
-- Pas de troncature en dessous de 560 px : à cette largeur, tout passe à la ligne (`overflow-wrap: anywhere` existe déjà), rien n'est caché.
+- **Pas de troncature en dessous de 800 px** (décision de Hanta, E6-7) : la troncature « … » et `title` ne s'appliquent qu'à 800 px et plus. En dessous, les lignes passent sur plusieurs niveaux (§4.2 et §4.3), tout passe à la ligne (`overflow-wrap: anywhere` existe déjà), rien n'est caché ni coupé.
 
 ## 6. Composants du design system (vérifié le 16/11/2026)
 
@@ -169,13 +169,13 @@ Décisions (E6-1 à E6-5, docs/backlog.md) :
 1. **Voie A** : Contacts prend toute la largeur sur écran étroit, Actions passe dessous.
 2. **« Rôle » = Fonction** (colonne Contacts.Fonction).
 3. **Tiret affiché** si Fonction est vide.
-4. **Troncature acceptée** (Fonction, puis nom, puis e-mail), avec `title` natif.
+4. **Troncature acceptée** (Fonction, puis nom, puis e-mail), avec `title` natif, **à 800 px et plus seulement** (E6-7 : aucune troncature en dessous).
 5. **Colonnes alignées sans en-têtes**, pas un vrai tableau.
 
 Disposition finale :
 - **Grille des cartes** : `.edit-row-lists` en **une seule colonne à toutes les largeurs** (Contacts, puis Actions, chacune en pleine largeur). La carte Actions est élargie, sans autre changement.
 - **800 px et plus** : une ligne par contact, colonnes alignées dans l'ordre Nom Prénom (gras) · Fonction (texte secondaire, tiret si vide) · E-mail (lien) · Téléphone (lien, tiret si vide) · boutons Modifier, Supprimer à droite. Pas d'en-têtes. Troncature « … » + `title` sur Fonction, puis nom, puis e-mail ; téléphone et boutons jamais coupés.
-- **561 à 799 px** : deux lignes (nom, fonction, boutons ; puis e-mail, téléphone).
+- **561 à 799 px** : deux lignes (nom, fonction, boutons ; puis e-mail, téléphone), **sans troncature** (E6-7).
 - **560 px et moins** : quatre lignes (nom + boutons ; fonction ; e-mail ; téléphone), sans troncature.
 - Inchangés : fenêtres d'ajout, de modification et de suppression, messages, boutons icône, ordre de tabulation, focus après modification et suppression.
 - Seuils 800 px et 560 px : **estimés à la main**, à constater au rendu (point 7 du §8) avant de les figer.

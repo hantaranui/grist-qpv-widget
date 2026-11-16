@@ -211,20 +211,37 @@ const occurrences = (texte, motif) => texte.split(motif).length - 1;
 // Carte Contacts
 // =============================================================================
 
-test("carte : la fonction s'affiche sous le nom seulement si elle est renseignee", async () => {
+const TIRET_FONCTION = /<div class="contact-fonction"><span class="muted-text"><span aria-hidden="true">—<\/span><span class="sr-only">Fonction non renseignée<\/span><\/span><\/div>/;
+
+test("carte : la fonction renseignee s'affiche sous le nom, coupable et avec son title", async () => {
   const ecran = await ouvrirFiche();
   // Classes par nom : Bernard (Alex, sans fonction) puis Martin (Zoe).
-  const [alex, zoe] = lignesDe(fiche(ecran));
+  const [, zoe] = lignesDe(fiche(ecran));
 
-  assert.match(zoe, /<span class="contact-name">Zoe Martin<\/span>\s*<div class="contact-fonction muted-text">Entraineuse<\/div>\s*<a class="contact-mail"/,
-    "la fonction est juste sous le nom, avant l'e-mail");
-  assert.ok(!alex.includes("contact-fonction"), "sans fonction : aucune ligne, pas de tiret");
-  assert.equal(occurrences(fiche(ecran), "contact-fonction"), 1);
+  assert.match(zoe, /<span class="contact-name text-truncate" title="Zoe Martin">Zoe Martin<\/span>\s*<div class="contact-fonction muted-text text-truncate" title="Entraineuse">Entraineuse<\/div>\s*<div class="contact-coordonnees">/,
+    "la fonction est juste sous le nom, avant les coordonnees, avec text-truncate et title");
+  assert.ok(!TIRET_FONCTION.test(zoe), "avec une fonction, pas de tiret");
 });
 
-test("carte : une fonction faite d'espaces ne laisse pas de ligne vide", async () => {
+test("carte : sans fonction, un tiret lu « Fonction non renseignée » garde la place, sans text-truncate", async () => {
+  const ecran = await ouvrirFiche();
+  const [alex, zoe] = lignesDe(fiche(ecran));
+
+  assert.match(alex, TIRET_FONCTION, "le tiret est toujours affiche, avec son texte pour les lecteurs d'ecran");
+  assert.ok(!/contact-fonction[^>]*text-truncate/.test(alex), "le tiret n'est pas coupable");
+  assert.ok(!/contact-fonction[^>]*title=/.test(alex), "le tiret n'a pas de title");
+  // Une ligne « fonction » par contact, renseignee ou non : colonnes alignees.
+  assert.equal(occurrences(fiche(ecran), 'class="contact-fonction'), 2);
+  assert.ok(alex.indexOf("contact-fonction") < alex.indexOf("contact-coordonnees"), "le tiret est avant les coordonnees");
+  assert.ok(zoe.includes("contact-fonction"));
+});
+
+test("carte : une fonction faite d'espaces affiche le tiret, pas une ligne vide", async () => {
   const ecran = await ouvrirFiche({contacts: [{...ALEX, Fonction: "   "}]});
-  assert.ok(!fiche(ecran).includes("contact-fonction"));
+  const [alex] = lignesDe(fiche(ecran));
+  assert.match(alex, TIRET_FONCTION);
+  assert.equal(occurrences(fiche(ecran), 'class="contact-fonction'), 1);
+  assert.ok(!/contact-fonction[^>]*>\s*<\/div>/.test(alex), "jamais un contact-fonction vide");
 });
 
 test("carte : « + Ajouter un contact » est present, avec des contacts comme sans contact", async () => {
