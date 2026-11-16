@@ -2,7 +2,7 @@
 
 Widget : clubs (src/clubs/). Écran : carte « Contacts » de la fiche d'un club.
 Date : 16/11/2026. Origine : demande de Pierre (chaque contact sur UNE ligne).
-Statut : **proposition, en attente de réponse de Hanta** (questions au §7). Rien n'est à coder avant.
+Statut : **décisions de Hanta reçues (E6-1 à E6-5, docs/backlog.md), disposition finale au §7. Prête à coder par dev-interface.** Voie A, « Rôle » = Fonction, tiret si Fonction vide, troncature acceptée avec `title`, colonnes alignées sans en-têtes.
 Sources lues : CLAUDE.md, docs/design-system-france-travail.md, docs/ux/contacts-fiche-club.md, src/clubs/style.css (lignes 295-385, 505-545), src/clubs/script.js (`renderContacts`, lignes 722-744), feuille du design system (https://cdn.francetravail.fr/studio/design-system/css/styles.css), page https://designsystem.francetravail.io/components/detail/table--default.html (et table--sort.html).
 
 ## 0. Ce qui existe aujourd'hui
@@ -26,17 +26,17 @@ Largeur qu'il faut pour afficher une ligne complète sans couper (estimation, à
 | 4 écarts entre éléments (16 px) | 64 px |
 | **Total** | **environ 725 px** |
 
-Conclusion : avec les cinq informations (Fonction comprise), une seule ligne **ne tient dans aucune des demi-cartes** (570 px au mieux). Il faut donc choisir entre trois voies (§2). Je recommande la voie A.
+Conclusion : avec les cinq informations (Fonction comprise), une seule ligne **ne tient dans aucune des demi-cartes** (570 px au mieux). Il fallait choisir entre trois voies (§2). **Hanta a retenu la voie A.**
 
-## 2. Trois voies (choix à faire par Hanta, §7 question 1)
+## 2. Trois voies (décision de Hanta : voie A retenue)
 
-**Voie A — Contacts sur toute la largeur, Actions dessous (recommandée).**
+**Voie A — Contacts sur toute la largeur, Actions dessous (RETENUE).** Décision de Hanta : Contacts prend toute la largeur sur écran étroit, Actions passe dessous. Elle remplace la décision 7 du 21/10/2026 (deux moitiés égales) et vaut accord explicite pour toucher la grille de la carte Actions.
 La grille `.edit-row-lists` passe à une seule colonne à toutes les largeurs (c'est la règle qui existe déjà sous 900 px, appliquée partout). Contacts, puis Actions, chacune pleine largeur : environ 1100 px à 1200 px, 920 px à 992 px. La ligne complète tient avec de la marge. Une seule valeur CSS à changer. Le bloc Actions n'est pas « réduit » : il est aussi élargi, ses lignes ont plus de place. Contrepartie : la fiche est plus haute (les deux cartes ne sont plus côte à côte) et la décision 7 (deux moitiés égales) est remplacée.
 
-**Voie B — Garder les deux moitiés, élargir seulement Contacts.**
+**Voie B — écartée.** Garder les deux moitiés, élargir seulement Contacts.
 Exemple : `minmax(0, 3fr) minmax(0, 2fr)`. À 1200 px, Contacts ≈ 660 px : la ligne tient en tronquant la Fonction (≈ 100 px sur 160). À 992 px, ≈ 550 px : Fonction presque disparue. Actions passe à ≈ 440 px à 1200 px, donc ses lignes se replient beaucoup plus. Bénéfice faible, coût élevé sur Actions : non recommandée.
 
-**Voie C — Garder les deux moitiés, sans Fonction sur la ligne.**
+**Voie C — écartée.** Garder les deux moitiés, sans Fonction sur la ligne.
 Nom · e-mail · téléphone · boutons ≈ 565 px : tient à peine à 1200 px, pas en dessous. Cela retire la Fonction de la carte, ce que Hanta a refusé le 21/10/2026 (§5). Non recommandée.
 
 ## 3. Parcours (rappel court)
@@ -64,9 +64,9 @@ Même ordre que celui des champs du formulaire (Nom, Prénom, E-mail, Téléphon
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Règles de la ligne :
-- Les éléments sont **alignés en colonnes d'un contact à l'autre** seulement si la grille de la ligne a des colonnes fixes ; sinon chaque ligne a ses propres largeurs et l'œil ne descend pas droit. Je recommande des colonnes alignées : nom (flexible), fonction (flexible), e-mail (flexible), téléphone (largeur du contenu, jamais coupé), boutons (largeur du contenu, jamais coupés). Détail de mise en œuvre laissé à dev-interface, avec ses propres noms de classe.
-- Valeur absente : on garde `missing(...)` (tiret caché aux lecteurs d'écran + « non renseigné »). Pour la Fonction vide, le tiret **est** affiché à l'écran en voie A (sinon les colonnes se décalent). C'est un écart à contacts-fiche-club.md §5 (« si Fonction est vide : ne rien afficher ») : à valider (§7 question 3).
+Règles de la ligne (décidées) :
+- **Colonnes alignées d'un contact à l'autre, sans en-têtes, et pas un vrai tableau** (décision de Hanta). Cela demande que la grille de la ligne ait des colonnes communes à tous les contacts : nom (flexible), fonction (flexible), e-mail (flexible), téléphone (largeur du contenu, jamais coupé), boutons (largeur du contenu, jamais coupés). Détail de mise en œuvre laissé à dev-interface, avec ses propres noms de classe. La structure `ul.contact-list` / `li.contact-item` reste.
+- Valeur absente : on garde `missing(...)` (tiret caché aux lecteurs d'écran + « non renseigné »). **Si Fonction est vide, un tiret est affiché à l'écran** (décision de Hanta), pour que les colonnes ne se décalent pas. Cela remplace la règle de contacts-fiche-club.md §5 (« si Fonction est vide : ne rien afficher »), à ne plus appliquer pour cette carte.
 - Aucune information n'est portée par la seule couleur : le texte secondaire (`muted-text`) reste lisible, les liens restent soulignés par le style du design system.
 - Les boutons restent des boutons icône (`btn-ratio-square`), inchangés (contacts-fiche-club.md §7.2).
 
@@ -104,16 +104,16 @@ Ligne 1 : nom, fonction (tronquée si besoin), boutons à droite. Ligne 2 : e-ma
 
 ## 5. Troncature (« … » et info-bulle)
 
-Oui, c'est possible et utile, avec des limites. Ordre de sacrifice quand la place manque (le premier se raccourcit en premier) :
+**Troncature acceptée par Hanta**, avec l'attribut `title` natif. Ordre de sacrifice quand la place manque (le premier se raccourcit en premier) :
 1. **Fonction** : la moins utile pour agir, la plus longue.
 2. **Nom Prénom** : raccourci seulement après la Fonction.
-3. **E-mail** : raccourci en dernier recours (voir ci-dessous).
+3. **E-mail** : raccourci en dernier.
 4. **Téléphone et boutons** : jamais coupés.
 
 Mise en œuvre :
-- La feuille du design system contient `.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`. **Je l'ai lue dans la feuille du CDN, pas sur une page du site** (je n'ai pas trouvé de page de documentation pour cette classe) : la feuille fait foi pour les noms de classe (CLAUDE.md), mais à confirmer par Hanta (§7 question 4). Sur un élément enfant d'un conteneur en flex, elle ne fonctionne que si l'élément a aussi `min-width: 0` (règle à écrire dans notre CSS). Aucune classe inventée.
-- Info-bulle : le design system prévoit `data-ft-tooltip` **seulement sur les boutons** (pages « Avec une infobulle » et « Icône seule », lues le 22/10/2026) ; je n'ai pas vu qu'il marche sur du texte. Je propose donc l'attribut HTML natif `title="Texte complet"` sur l'élément tronqué, qui n'est pas un composant du design system. Limite connue : `title` ne s'affiche ni au toucher ni au clavier. C'est pourquoi la valeur complète reste lisible dans la fenêtre « Modification d'un contact » (bouton crayon), et que le lecteur d'écran lit toujours le texte entier (la coupure « … » est seulement visuelle).
-- **E-mail** : le tronquer est le plus risqué, parce que c'est ce que l'agent veut lire exactement ou copier. Avec la voie A, il n'y a normalement pas besoin de le tronquer ; on ne le tronque qu'au-delà d'une largeur maximale (par exemple 40 caractères, à décider), jamais avant. Le lien `mailto:` garde l'adresse entière.
+- La feuille du design system contient `.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`. **Je l'ai lue dans la feuille du CDN, pas sur une page du site** (pas de page de documentation trouvée) : la feuille fait foi pour les noms de classe (CLAUDE.md). dev-interface vérifie la règle dans la feuille avant de l'employer. Sur un élément enfant d'un conteneur en flex, elle ne fonctionne que si l'élément a aussi `min-width: 0` (règle à écrire dans notre CSS). Aucune classe inventée.
+- Info-bulle : **attribut HTML natif `title="Texte complet"`** sur chaque élément tronqué (décision de Hanta). Le design system prévoit `data-ft-tooltip` seulement sur les boutons : on ne l'emploie pas sur du texte. Limite connue : `title` ne s'affiche ni au toucher ni au clavier. C'est pourquoi la valeur complète reste lisible dans la fenêtre « Modification d'un contact » (bouton crayon), et que le lecteur d'écran lit toujours le texte entier (la coupure « … » est seulement visuelle).
+- **E-mail** : tronqué en dernier seulement, parce que c'est ce que l'agent veut lire exactement ou copier. En voie A, il ne devrait presque jamais l'être. Le lien `mailto:` garde l'adresse entière, et `title` donne l'adresse complète.
 - Pas de troncature en dessous de 560 px : à cette largeur, tout passe à la ligne (`overflow-wrap: anywhere` existe déjà), rien n'est caché.
 
 ## 6. Composants du design system (vérifié le 16/11/2026)
@@ -148,12 +148,12 @@ Mise en œuvre :
 </div>
 ```
 
-Ma recommandation : **ne pas l'utiliser ici**, pour trois raisons.
+**Décision de Hanta : colonnes alignées sans en-têtes, pas un vrai tableau.** Le composant `table` n'est donc pas utilisé, pour trois raisons.
 1. La page ne dit rien du comportement sur petit écran ; seul `table-responsive` existe, et il fait **défiler horizontalement** (`overflow-x: auto` dans la feuille) : 5 colonnes + boutons dans une carte de 415 px, c'est un défilement horizontal, ce que notre règle d'accessibilité mobile interdit (contacts-fiche-club.md §6.1).
 2. Il remplace la liste `ul/li` actuelle par un tableau : les tests d'écran de clubs (test/clubs-contacts-ecran.test.js, **non lu pour cette note**) et le focus après modification/suppression en dépendent probablement.
 3. Le tableau de bord a déjà un écart documenté avec `.table` (en-tête collant).
 
-Le tableau reste la bonne réponse si Hanta préfère de vraies colonnes alignées avec en-têtes (« Nom / Fonction / E-mail / Téléphone / Actions ») : à demander (§7 question 5). Dans ce cas, la voie A est indispensable.
+Le tableau (avec en-têtes « Nom / Fonction / E-mail / Téléphone / Actions ») aurait été l'alternative ; elle est écartée.
 
 **Liste** : la feuille contient `.list-unstyled`, `.list-inline-item` et `.list-group`, mais la page https://designsystem.francetravail.io/components/detail/list--default.html **n'existe pas** (erreur 404) et je n'ai trouvé aucune page de composant « liste avec actions ». Pas de composant liste documenté : on garde la liste existante `ul.contact-list` avec nos propres classes (comme déjà signalé au §7.5 de contacts-fiche-club.md).
 
@@ -163,18 +163,26 @@ Le tableau reste la bonne réponse si Hanta préfère de vraies colonnes aligné
 
 **Composant manquant** : aucun « ligne de données avec actions » hors tableau. Le plus proche : le tableau (écarté ci-dessus).
 
-## 7. Questions ouvertes (réponse de Hanta nécessaire)
+## 7. Décisions de Hanta et disposition finale à coder
 
-1. **Voie A, B ou C ?** (§2). Ma recommandation : A. Elle remplace la décision 7 du 21/10/2026 (deux moitiés égales) et agrandit aussi le bloc Actions. Selon CLAUDE.md, « toute autre modification de clubs demande l'accord explicite de Hanta » : changer la grille touche la carte Actions, donc il faut son accord écrit. Pierre a-t-il lui-même proposé « réduire Actions » : veut-il que les deux cartes restent côte à côte ?
-2. **« Rôle » = la colonne Fonction ?** Je l'ai compris ainsi (Contacts n'a pas d'autre colonne de rôle dans CLAUDE.md).
-3. **Fonction vide : tiret affiché** pour garder les colonnes alignées (écart à la décision du 21/10/2026) ou rien ?
-4. **Troncature** : OK pour la classe `text-truncate` de la feuille du CDN et pour l'attribut natif `title` comme info-bulle ? Et pour l'e-mail : jamais tronqué en dessous d'une largeur maximale, ou jamais tronqué du tout ?
-5. **Colonnes alignées sans en-têtes** (ma proposition) ou **vrai tableau avec en-têtes** (composant `table`) ?
-6. **Seuils** (800 px et 560 px) : estimés à la main. À mesurer au rendu avec de vrais contacts (noms longs, e-mails de 30 caractères) avant de les figer.
+Décisions (E6-1 à E6-5, docs/backlog.md) :
+1. **Voie A** : Contacts prend toute la largeur sur écran étroit, Actions passe dessous.
+2. **« Rôle » = Fonction** (colonne Contacts.Fonction).
+3. **Tiret affiché** si Fonction est vide.
+4. **Troncature acceptée** (Fonction, puis nom, puis e-mail), avec `title` natif.
+5. **Colonnes alignées sans en-têtes**, pas un vrai tableau.
 
-## 8. Règles pour dev-interface (une fois la voie choisie)
+Disposition finale :
+- **Grille des cartes** : `.edit-row-lists` en **une seule colonne à toutes les largeurs** (Contacts, puis Actions, chacune en pleine largeur). La carte Actions est élargie, sans autre changement.
+- **800 px et plus** : une ligne par contact, colonnes alignées dans l'ordre Nom Prénom (gras) · Fonction (texte secondaire, tiret si vide) · E-mail (lien) · Téléphone (lien, tiret si vide) · boutons Modifier, Supprimer à droite. Pas d'en-têtes. Troncature « … » + `title` sur Fonction, puis nom, puis e-mail ; téléphone et boutons jamais coupés.
+- **561 à 799 px** : deux lignes (nom, fonction, boutons ; puis e-mail, téléphone).
+- **560 px et moins** : quatre lignes (nom + boutons ; fonction ; e-mail ; téléphone), sans troncature.
+- Inchangés : fenêtres d'ajout, de modification et de suppression, messages, boutons icône, ordre de tabulation, focus après modification et suppression.
+- Seuils 800 px et 560 px : **estimés à la main**, à constater au rendu (point 7 du §8) avant de les figer.
 
-1. Ne rien coder avant la réponse aux questions 1 à 5. La note UX passe avant la modification du HTML (CLAUDE.md).
+## 8. Règles pour dev-interface
+
+1. Les décisions du §7 sont prises : on peut coder. La note UX passe avant la modification du HTML (CLAUDE.md).
 2. Uniquement des composants et variables du design system ; nos classes ne reprennent jamais un nom du design system (test/styles.test.js). Les noms existants (`contact-item`, `contact-name`, `contact-fonction`, `contact-mail`, `contact-tel`, `contact-buttons`) restent.
 3. Seuils de largeur, largeur maximale de l'e-mail et écarts : constantes regroupées en tête de style.css / script.js (CLAUDE.md, « Bonnes pratiques de code »).
 4. Tout ce qui vient de Grist passe par `escapeHtml` / `escapeAttr`, **y compris la valeur de `title`**.
