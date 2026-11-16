@@ -585,6 +585,11 @@ td:last-child {
 
 .rcpro-boutons .btn { flex: 0 0 auto; }
 
+/* Le design system met une marge à gauche à tout bouton qui en suit un autre (.btn + .btn),
+   pour les boutons côte à côte. Ici ils sont l'un sous l'autre : on l'annule pour que
+   les deux boutons restent alignés sur le même bord gauche. */
+.rcpro-boutons .btn + .btn { margin-left: 0; }
+
 /* Pop-up de dépôt : mêmes espacements que la fenêtre des contacts. */
 .rcpro-club,
 .rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
