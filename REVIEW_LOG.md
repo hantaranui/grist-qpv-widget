@@ -1302,3 +1302,41 @@ Tests : 913 tests, 0 échec (aucun test automatisé dédié à ce statut, donc r
 Fichiers modifiés : src/actions-dashboard/script.js, src/actions-dashboard/style.css, actions-dashboard.html
 Build refait : oui
 Mise en PROD : 10/11/2026, commit 71c08a4 (fusion directe dans main, urgence). Aucune action n'avait encore été enregistrée avec ce statut au moment du changement : aucune donnée à corriger.
+## Tâche 30 — Sprint E5 : Assurance RC Pro des clubs (dépôt manuel)
+
+Date : 10-17/11/2026
+Agents : chef-de-projet (cadrage), designer-ux (note UX, nombreuses itérations), dev-backend (données/logique, dupliquées dans clubs et actions-dashboard), dev-interface (interface dans les deux widgets)
+Prompt : demande de Pierre (note de réunion), rendre accessible l'assurance RC Pro d'un club et sa validité, dépôt manuel via les widgets (la collecte automatique via Démarche Numérique est hors périmètre)
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Nouvelles colonnes dans Structures : Assurance_RC_PDF, Assurance_RC_Date_expiration, Assurance_RC_Date_depot. Nouvelle règle d'accès, copie conforme de celle de Logo (National complet, Régional/Départemental limités à leur périmètre).
+- Widget clubs : carte "Assurance RC Pro" positionnée à droite du bloc "Club" (après plusieurs ajustements de position demandés par Pierre). Trois états (absent/valide/expiré), pop-up de dépôt/remplacement, texte en rouge gras si expiré.
+- Widget actions-dashboard (première écriture dans Structures) : résumé compact dans la carte "Club" de la fiche action (phrase d'état + bouton "Gérer l'assurance", toujours présent), ouvre le même pop-up que clubs.
+- "Voir l'attestation" (clubs) : pop-up plein écran intégré au widget, sur le modèle de "Voir la convention signée", suite à un retour de Pierre (l'ouverture en nouvel onglet exposait une adresse technique blob:).
+- Calcul de l'état : jour d'expiration inclus, fuseau Paris, fichier sans date traité comme expiré. Dupliqué à l'identique dans les deux widgets.
+Tests : 913 tests, 0 échec. Vérifié à l'écran par Hanta dans DEV7, puis par Pierre sur TEST (deux retours corrigés : cadre du champ fichier, pop-up pour Voir l'attestation).
+Fichiers modifiés : src/clubs/script.js, src/clubs/index.html, src/clubs/style.css, clubs.html, src/actions-dashboard/script.js, src/actions-dashboard/index.html, src/actions-dashboard/style.css, actions-dashboard.html, docs/ux/assurance-rc-pro.md (nouveau), docs/backlog.md
+Build refait : oui
+Publié sur TEST : 17/11/2026, fusionné avec feature/contacts-une-ligne.
+Reste à faire avant la PROD : audit de sécurité (jamais lancé) ; vérification des droits d'écriture avec de vrais comptes, dans les deux widgets ; mise à jour de CLAUDE.md (nouvelle écriture d'actions-dashboard dans Structures) ; carnet de recette ; retour final de Pierre sur TEST.
+
+## Tâche 31 — Sprint E6 : Contacts sur une seule ligne (fiche club)
+
+Date : 16-17/11/2026
+Agents : designer-ux (note UX, plusieurs révisions), dev-interface (interface), testeur (mise à jour des tests d'écran)
+Prompt : demande de Pierre, chaque contact doit tenir sur une seule ligne dans la carte "Contacts" (actuellement réparti sur plusieurs lignes)
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Disposition finale : un bloc "identité" (nom en gras, fonction en petit juste en dessous, sur deux niveaux compacts), puis e-mail, téléphone et boutons Modifier/Supprimer, alignés sur une ligne à partir de 600px de largeur de carte.
+- Colonnes Contacts/Actions restées côte à côte sur grand écran (1fr/1fr), empilées sous 900px, après une erreur corrigée en cours de route (une première interprétation avait empilé les deux blocs sur toute la largeur, ce qui n'était pas la demande de Pierre).
+- Fonction vide : un tiret s'affiche toujours, pour garder l'alignement et la hauteur constante entre contacts.
+- Seuils de disposition basés sur des container queries CSS (largeur réelle de la carte Contacts), pas sur la largeur de l'écran, pour rester cohérents quelles que soient les proportions des colonnes.
+- Colonne identité en fit-content, pour éviter un espace vide gaspillé entre le nom et l'e-mail.
+Ce qui a pris du temps : plusieurs allers-retours sur la disposition exacte (proportions des colonnes, seuils, structure de la ligne), avec deux vrais bugs trouvés et corrigés en cours de route (désalignement des boutons, espace vide gaspillé).
+Tests : 914 tests, 0 échec. Deux tests mis à jour pour refléter le nouveau comportement (tiret toujours affiché, classes text-truncate).
+Fichiers modifiés : src/clubs/script.js, src/clubs/style.css, clubs.html, test/clubs-contacts-ecran.test.js, docs/ux/contacts-une-ligne.md (nouveau), docs/backlog.md, docs/ux/contacts-fiche-club.md
+Build refait : oui
+Publié sur TEST : 17/11/2026, fusionné avec feature/assurance-rc-pro.
+Reste à faire avant la PROD : validation finale de Pierre sur TEST.
