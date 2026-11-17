@@ -27,17 +27,15 @@ Les lignes sont rangées en deux catégories :
 
 Pour chaque parcours : suivre les étapes, comparer avec le résultat attendu, puis noter **OK**, **KO**, **Bloqué** ou **Non testé**. En cas de KO : décrire ce qui s'est passé et joindre une capture d'écran.
 
-## À préparer avant de jouer (à confirmer par Hanta)
+## À préparer avant de jouer
 
-Les clubs ci-dessous ne sont pas nommés : aucun n'a été identifié avec certitude dans TEST. Hanta les choisit et complète ce tableau avant de transmettre le document.
+Les trois clubs de test ont été identifiés par Hanta.
 
 | Nom utilisé ci-dessous | Ce qu'il faut | Nom du club dans TEST |
 | --- | --- | --- |
-| Club A | Un club **sans** attestation, avec **au moins 2 actions** | [À vérifier par Hanta] |
-| Club B | Un club avec une attestation **valide** | [À vérifier par Hanta] |
-| Club C | Un club avec une attestation **expirée** | [À vérifier par Hanta] |
-
-Si aucun club C n'existe, il se prépare en déposant d'abord une attestation avec une date passée (voir P-05).
+| Club A | Un club **sans** attestation, avec **au moins 2 actions** | AGEN BASKET CLUB |
+| Club B | Un club avec une attestation **valide** | 974 ACTION |
+| Club C | Un club avec une attestation **expirée** | ECHIQUIER CARCASSONNAIS |
 
 Fichiers à avoir sous la main (fictifs, sans donnée de personne) :
 
@@ -136,7 +134,7 @@ Jouer dans l'ordre. P-01, P-02 et P-03 s'enchaînent sur le club A. P-04 utilise
 
 ### P-05 : Remplacer une attestation expirée (majeur)
 
-**Avant de commencer** : Club C (attestation expirée). S'il n'existe pas : déposer d'abord une attestation sur un club sans attestation, avec une date d'expiration **passée** (par exemple il y a un mois) ; l'attestation est alors acceptée et s'affiche directement comme expirée.
+**Avant de commencer** : Club C (attestation expirée) : ECHIQUIER CARCASSONNAIS.
 
 **Étapes**
 
