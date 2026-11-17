@@ -794,7 +794,8 @@ const RC_TEXTE_VOIR_CACHE = " (s'ouvre dans une fenêtre)";
 const RC_TEXTE_TELECHARGER = 'Télécharger';
 const RC_TEXTE_TELECHARGER_CACHE = " le fichier PDF de l'attestation";
 const RC_TEXTE_REPLI_APERCU = "Le PDF ne s'affiche pas ? Utilisez « Télécharger ».";
-const RC_NOM_FICHIER_APERCU = 'Attestation-RC-Pro.pdf';
+const RC_NOM_FICHIER_APERCU = 'Attestation-RC-Pro.pdf'; // nom de secours (club sans SIRET ni nom exploitable)
+const RC_NOM_CLUB_MAX = 40; // longueur maximale de la partie « nom du club » dans le nom du fichier
 
 // Libelles des codes de l'indicateur « codefrr » de l'Observatoire des
 // territoires. Le fichier ne les donne pas : ils ont ete etablis en croisant les
@@ -2941,7 +2942,7 @@ async function rcProVoir(clubId) {
     if (!ids.length) throw new Error('Pas de fichier.');
     const pdf = await rcProAvecDelai(rcProRecupererPdf(ids[0]));
     adresse = URL.createObjectURL(pdf);
-    rcProApercuOuvrir(adresse);
+    rcProApercuOuvrir(adresse, rcProNomFichier(state.clubs.find(item => item.id === clubId)));
   } catch (error) {
     if (adresse) {
       rcProApercuFermer(false);
@@ -2966,6 +2967,8 @@ async function rcProVoir(clubId) {
 
 // Adresse blob: de la pop-up ouverte ('' sinon). Elle reste ici, jamais dans un attribut de la page.
 let rcProApercuAdresse = '';
+// Nom propose au clic sur « Telecharger » (calcule a l'ouverture, depuis le club affiche).
+let rcProApercuNomFichier = RC_NOM_FICHIER_APERCU;
 
 // Ni l'adresse ni le jeton ne sont dans ce texte : l'adresse est posee ensuite, par propriete.
 function rcProApercuHtml() {
@@ -2990,9 +2993,10 @@ function rcProApercuHtml() {
 
 // Ouvre la pop-up. Le focus d'ouverture va sur la fenetre elle-meme, jamais sur
 // « Telecharger » (une touche Entree distraite lancerait un telechargement) ni sur le cadre.
-function rcProApercuOuvrir(adresse) {
+function rcProApercuOuvrir(adresse, nomFichier) {
   if (rcProApercuAdresse) rcProApercuFermer(false);
   rcProApercuAdresse = adresse;
+  rcProApercuNomFichier = nomFichier || RC_NOM_FICHIER_APERCU;
   document.getElementById('rcProApercuModal').innerHTML = rcProApercuHtml();
   document.getElementById('rcProApercuCadre').src = adresse;
   document.getElementById('rcProApercuTelecharger').addEventListener('click', rcProApercuTelecharger);
@@ -3003,13 +3007,38 @@ function rcProApercuOuvrir(adresse) {
   requestResize();
 }
 
+// Nettoie un morceau de nom de fichier : accents retires, œ → oe, æ → ae, toute suite d'autres
+// caracteres que A-Z a-z 0-9 devient un tiret, pas de tiret au bord, casse gardee. Meme regle que
+// conventionNomNettoye du tableau de bord (copiee : les deux widgets ne partagent pas de code).
+function rcProNomNettoye(texte, longueurMax) {
+  let nettoye = String(texte ?? '')
+    .replace(/œ/g, 'oe').replace(/Œ/g, 'Oe').replace(/æ/g, 'ae').replace(/Æ/g, 'Ae')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (longueurMax && nettoye.length > longueurMax) nettoye = nettoye.slice(0, longueurMax).replace(/-+$/, '');
+  return nettoye;
+}
+
+// Nom du fichier telecharge : [SIRET]-[nom-du-club].pdf (ex. 775950751-Nom-du-club.pdf).
+// SIRET : espaces retires, puis seulement chiffres. SIRET vide ou absent : le nom du club seul.
+// Nom du club vide aussi : on garde le SIRET seul ; les deux vides : nom de secours. Ne plante jamais.
+// Aucune donnee de personne, aucun identifiant de piece jointe. Fonction pure.
+function rcProNomFichier(club) {
+  const siret = String((club && club.siret) ?? '').replace(/\s/g, '').replace(/[^0-9]/g, '');
+  const nom = rcProNomNettoye(club && club.nom, RC_NOM_CLUB_MAX);
+  const base = [siret, nom].filter(Boolean).join('-');
+  return base ? `${base}.pdf` : RC_NOM_FICHIER_APERCU;
+}
+
 // « Telecharger » : lien <a download> temporaire vers l'adresse deja en memoire, declenche
 // par programme puis retire aussitot. L'adresse sert encore a l'apercu : elle n'est pas liberee ici.
 function rcProApercuTelecharger() {
   if (!rcProApercuAdresse) return;
   const lien = document.createElement('a');
   lien.href = rcProApercuAdresse;
-  lien.download = RC_NOM_FICHIER_APERCU;
+  lien.download = rcProApercuNomFichier;
   lien.rel = 'noopener';
   lien.hidden = true;
   document.body.appendChild(lien);
