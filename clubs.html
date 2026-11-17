@@ -608,6 +608,19 @@ td:last-child {
 .rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
 .rcpro-field { display: grid; gap: 6px; }
 
+/* Champ fichier du pop-up RC Pro : le cadre arrondi de form-control (hauteur fixe) etait
+   plus petit que le bouton natif « Choisir un fichier », qui debordait. On retire ce cadre
+   et cette hauteur fixe : le bouton natif du navigateur se suffit a lui-meme. */
+.rcpro-field input[type="file"] {
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+
 /* Bouton de confirmation de suppression : le design system n'a pas de bouton
    destructeur, on colore le bouton primaire avec ses jetons d'erreur (regle
    reprise a l'identique du tableau de bord). */

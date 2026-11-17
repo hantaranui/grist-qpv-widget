@@ -698,6 +698,19 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
 .rcpro-club, .rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
 .rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
 .rcpro-field { display: grid; gap: 6px; }
+
+/* Champ fichier du pop-up RC Pro : le cadre arrondi de form-control (hauteur fixe) etait
+   plus petit que le bouton natif « Choisir un fichier », qui debordait. On retire ce cadre
+   et cette hauteur fixe : le bouton natif du navigateur se suffit a lui-meme. */
+.rcpro-field input[type="file"] {
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .agency-summary { display: grid; gap: 18px; color: var(--ink); font-size: 15px; line-height: 1.5; }
 .agency-summary strong { font-weight: 700; }
 /* Une ligne par statut, sur le modele du widget de reference : le controle de
