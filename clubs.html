@@ -560,7 +560,21 @@ td:last-child {
    nous l'affichons nous-memes en ne la creant que pendant qu'elle est ouverte
    (meme regle que #addActionModal dans le tableau de bord). */
 #contactModal .modal,
-#rcProModal .modal { display: block; overflow-y: auto; }
+#rcProModal .modal,
+#rcProApercuModal .modal { display: block; overflow-y: auto; }
+
+/* Pop-up d'aperçu de l'attestation : plein écran DANS le widget, sans fond assombri
+   (même principe que « Voir la convention signée » du tableau de bord). La feuille du
+   design system n'a pas de classe plein écran pour modal-dialog : ces classes du widget
+   donnent seulement la taille. Aucune couleur. */
+#rcProApercuModal .rcpro-apercu-plein-ecran { max-width: none; width: 100%; height: 100%; max-height: none; margin: 0; }
+#rcProApercuModal .rcpro-apercu-plein-ecran .modal-content { height: 100%; max-height: none; border-radius: 0; }
+#rcProApercuModal .modal-header { flex-wrap: wrap; gap: 12px; }
+#rcProApercuModal .modal-title { min-width: 0; overflow-wrap: anywhere; }
+.rcpro-apercu-actions { display: flex; align-items: center; gap: 12px; }
+/* Annule la marge à gauche que le design system met à tout bouton qui en suit un autre. */
+.rcpro-apercu-actions .btn + .btn { margin-left: 0; }
+.rcpro-apercu-cadre { display: block; width: 100%; height: calc(100vh - 150px); min-height: 420px; border: 0; }
 
 /* Haut de la fiche : carte Club seule, ou carte Club puis carte « Assurance RC Pro »
    à sa droite (classe avec-rcpro). align-items: stretch donne aux deux cartes la même
@@ -689,6 +703,8 @@ td:last-child {
          hors de la fiche, qui est redessinée à chaque relecture. -->
     <p class="sr-only" id="rcProStatus" role="status" aria-live="polite"></p>
     <div id="rcProModal"></div>
+    <!-- Pop-up d'aperçu de l'attestation (« Voir l'attestation »), vide tant qu'elle est fermée. -->
+    <div id="rcProApercuModal"></div>
 
     <script>
 // Widget « Clubs » : une liste filtrable de la table Structures, et la fiche
@@ -767,10 +783,18 @@ const RC_MESSAGES_SAISIE = {
 // Les deux champs du pop-up : « id » du champ, « aide » du texte d'aide relie par aria-describedby.
 const RC_CHAMP_FICHIER = {id: 'rcProFichier', aide: 'rcProFichierHelp'};
 const RC_CHAMP_DATE = {id: 'rcProDate', aide: 'rcProDateHelp'};
-// Ouverture du PDF : delai maximal de recuperation, puis delai avant de liberer
-// l'adresse blob: (le temps que l'onglet la lise).
+// Ouverture du PDF : delai maximal de recuperation. L'adresse blob: est liberee
+// a la fermeture de la pop-up d'apercu (rcProApercuFermer), plus apres un delai.
 const RC_TELECHARGEMENT_DELAI_MS = 30000;
-const RC_LIBERATION_MS = 60000;
+// Pop-up d'apercu de l'attestation : titre, texte cache du bouton « Voir »,
+// textes de la pop-up et nom du fichier enregistre par « Telecharger ».
+const RC_TITRE_APERCU = "Attestation d'assurance RC Pro";
+const RC_TEXTE_VOIR = "Voir l'attestation";
+const RC_TEXTE_VOIR_CACHE = " (s'ouvre dans une fenêtre)";
+const RC_TEXTE_TELECHARGER = 'Télécharger';
+const RC_TEXTE_TELECHARGER_CACHE = " le fichier PDF de l'attestation";
+const RC_TEXTE_REPLI_APERCU = "Le PDF ne s'affiche pas ? Utilisez « Télécharger ».";
+const RC_NOM_FICHIER_APERCU = 'Attestation-RC-Pro.pdf';
 
 // Libelles des codes de l'indicateur « codefrr » de l'Observatoire des
 // territoires. Le fichier ne les donne pas : ils ont ete etablis en croisant les
@@ -2808,6 +2832,11 @@ function rcProPhrasesHtml(etat) {
   return `<p class="${classeEtat}">${phrase}</p>${depot}`;
 }
 
+// Libelle du bouton « Voir » : texte visible, puis texte cache pour les lecteurs d'ecran.
+function rcProVoirLibelleHtml() {
+  return `${escapeHtml(RC_TEXTE_VOIR)}<span class="sr-only">${escapeHtml(RC_TEXTE_VOIR_CACHE)}</span>`;
+}
+
 // Le bloc entier, ou rien du tout si Grist refuse de lire les colonnes (E5-12) :
 // pas de titre, pas de message, pas de bouton.
 function renderRcPro(club) {
@@ -2816,7 +2845,7 @@ function renderRcPro(club) {
   if (!etat) return '';
   const boutons = etat.etat === 'absent'
     ? '<button class="btn btn-secondary btn-sm" type="button" id="rcProDeposer"><span class="btn-content">Déposer l\'attestation</span></button>'
-    : `<button class="btn btn-secondary btn-sm" type="button" id="rcProVoir"><span class="btn-content">Voir l'attestation<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span></span></button>
+    : `<button class="btn btn-secondary btn-sm" type="button" id="rcProVoir" aria-haspopup="dialog"><span class="btn-content">${rcProVoirLibelleHtml()}</span></button>
        <button class="btn btn-secondary btn-sm" type="button" id="rcProRemplacer"><span class="btn-content">Remplacer l'attestation</span></button>`;
   // Meme structure que les cartes Club, Contacts et Actions : bandeau de titre
   // (section-head) hors du corps de la carte (card-body).
@@ -2892,45 +2921,140 @@ function rcProBoutonVoirOccupe(occupe) {
     contenu.textContent = RC_TEXTE_OUVERTURE;
   } else {
     bouton.removeAttribute('aria-disabled');
-    contenu.innerHTML = 'Voir l\'attestation<span class="sr-only"> (s\'ouvre dans un nouvel onglet)</span>';
+    contenu.innerHTML = rcProVoirLibelleHtml();
   }
 }
 
-// Ouvre le PDF dans un nouvel onglet (adresse blob:), quel que soit l'etat,
-// document expire compris. aria-disabled et non disabled : le focus reste sur le bouton.
+// Affiche le PDF dans une pop-up plein ecran du widget (plus de nouvel onglet :
+// l'adresse blob: n'apparait jamais dans la barre d'adresse). Quel que soit
+// l'etat, document expire compris. aria-disabled et non disabled : le focus reste
+// sur le bouton.
 async function rcProVoir(clubId) {
   const bouton = document.getElementById('rcProVoir');
   if (!bouton || bouton.getAttribute('aria-disabled') === 'true') return;
   rcProAlerteOuverture('');
   rcProBoutonVoirOccupe(true);
   let adresse = '';
-  let lien = null;
   try {
     const structure = (state.raw.Structures || []).find(row => row.id === clubId);
     const ids = attachmentIds(structure && structure[RC_COL_PDF]);
     if (!ids.length) throw new Error('Pas de fichier.');
     const pdf = await rcProAvecDelai(rcProRecupererPdf(ids[0]));
     adresse = URL.createObjectURL(pdf);
-    lien = document.createElement('a');
-    lien.href = adresse;
-    lien.target = '_blank';
-    lien.rel = 'noopener';
-    lien.hidden = true;
-    document.body.appendChild(lien);
-    lien.click();
-    const aRetirer = {adresse, lien};
-    setTimeout(() => {
-      aRetirer.lien.remove();
-      URL.revokeObjectURL(aRetirer.adresse);
-    }, RC_LIBERATION_MS);
+    rcProApercuOuvrir(adresse);
   } catch (error) {
-    if (lien) lien.remove();
-    if (adresse) URL.revokeObjectURL(adresse);
+    if (adresse) {
+      rcProApercuFermer(false);
+      URL.revokeObjectURL(adresse);
+    }
     // Rien d'autre que ce texte fixe : l'erreur d'origine peut contenir une adresse avec le jeton.
     console.error("Ouverture de l'attestation RC Pro non aboutie.");
     rcProAlerteOuverture(RC_MESSAGE_OUVERTURE_ECHEC);
   } finally {
     rcProBoutonVoirOccupe(false);
+  }
+}
+
+// --- Pop-up d'apercu du PDF ---------------------------------------------------
+// Meme principe que « Voir la convention signee » du tableau de bord : le PDF est
+// montre dans un cadre (iframe) de la pop-up. Regles de securite reprises :
+//  1. l'adresse blob: entre dans le cadre par `cadre.src = adresse`, jamais dans un texte HTML ;
+//  2. le cadre porte referrerpolicy="no-referrer", sans `allow` ni `sandbox` ;
+//  3. a la fermeture (ou si l'ouverture echoue), le src du cadre est vide et l'adresse est liberee ;
+//  4. aucun lien permanent ni window.open ne mene a l'adresse : le seul lien est le lien
+//     temporaire (attribut download) cree au clic sur « Telecharger », puis retire aussitot.
+
+// Adresse blob: de la pop-up ouverte ('' sinon). Elle reste ici, jamais dans un attribut de la page.
+let rcProApercuAdresse = '';
+
+// Ni l'adresse ni le jeton ne sont dans ce texte : l'adresse est posee ensuite, par propriete.
+function rcProApercuHtml() {
+  return `<div class="modal fade show" id="rcProApercuDialog" role="dialog" aria-modal="true" aria-labelledby="rcProApercuTitre" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable rcpro-apercu-plein-ecran">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="rcProApercuTitre">${escapeHtml(RC_TITRE_APERCU)}</h2>
+          <div class="rcpro-apercu-actions">
+            <button type="button" class="btn btn-primary" id="rcProApercuTelecharger"><span class="btn-content">${escapeHtml(RC_TEXTE_TELECHARGER)}<span class="sr-only">${escapeHtml(RC_TEXTE_TELECHARGER_CACHE)}</span></span></button>
+            <button type="button" class="btn btn-secondary btn-ratio-square" id="rcProApercuFermer" aria-label="Fermer" title="Fermer"><span aria-hidden="true" class="icon icon-close"></span></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <iframe class="rcpro-apercu-cadre" id="rcProApercuCadre" title="Aperçu de l'attestation d'assurance RC Pro" referrerpolicy="no-referrer"></iframe>
+          <p class="help-block">${escapeHtml(RC_TEXTE_REPLI_APERCU)}</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Ouvre la pop-up. Le focus d'ouverture va sur la fenetre elle-meme, jamais sur
+// « Telecharger » (une touche Entree distraite lancerait un telechargement) ni sur le cadre.
+function rcProApercuOuvrir(adresse) {
+  if (rcProApercuAdresse) rcProApercuFermer(false);
+  rcProApercuAdresse = adresse;
+  document.getElementById('rcProApercuModal').innerHTML = rcProApercuHtml();
+  document.getElementById('rcProApercuCadre').src = adresse;
+  document.getElementById('rcProApercuTelecharger').addEventListener('click', rcProApercuTelecharger);
+  document.getElementById('rcProApercuFermer').addEventListener('click', () => rcProApercuFermer());
+  document.addEventListener('keydown', keepFocusInRcProApercu);
+  document.body.classList.add('modal-open');
+  document.getElementById('rcProApercuDialog').focus();
+  requestResize();
+}
+
+// « Telecharger » : lien <a download> temporaire vers l'adresse deja en memoire, declenche
+// par programme puis retire aussitot. L'adresse sert encore a l'apercu : elle n'est pas liberee ici.
+function rcProApercuTelecharger() {
+  if (!rcProApercuAdresse) return;
+  const lien = document.createElement('a');
+  lien.href = rcProApercuAdresse;
+  lien.download = RC_NOM_FICHIER_APERCU;
+  lien.rel = 'noopener';
+  lien.hidden = true;
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+}
+
+// Fermeture (croix, Echap, ou ouverture qui echoue) : src du cadre vide, adresse liberee,
+// pop-up retiree. `rendreLeFocus` : le bouton « Voir » (refait a chaque rendu de la fiche,
+// donc cherche par son id) reprend le focus.
+function rcProApercuFermer(rendreLeFocus = true) {
+  document.removeEventListener('keydown', keepFocusInRcProApercu);
+  const cadre = document.getElementById('rcProApercuCadre');
+  if (cadre) cadre.src = '';
+  if (rcProApercuAdresse) URL.revokeObjectURL(rcProApercuAdresse);
+  rcProApercuAdresse = '';
+  const hote = document.getElementById('rcProApercuModal');
+  if (hote) hote.innerHTML = '';
+  document.body.classList.remove('modal-open');
+  const bouton = rendreLeFocus ? document.getElementById('rcProVoir') : null;
+  if (bouton) bouton.focus();
+  requestResize();
+}
+
+// Echap ferme ; Tab et Maj+Tab tournent entre Telecharger, la croix et le cadre.
+function keepFocusInRcProApercu(event) {
+  if (!rcProApercuAdresse) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    rcProApercuFermer();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const dialog = document.getElementById('rcProApercuDialog');
+  const focusable = [...document.querySelectorAll('#rcProApercuDialog button:not(:disabled), #rcProApercuDialog iframe')];
+  if (!dialog || !focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  // Le focus d'ouverture est sur la fenetre elle-meme : Maj+Tab y boucle sur le dernier element.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
