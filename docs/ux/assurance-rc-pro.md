@@ -4,6 +4,7 @@ Widgets : clubs (src/clubs/) ET tableau de bord (src/actions-dashboard/).
 Sprint : E5 (docs/backlog.md, lignes 372-408, décisions E5-1 à E5-8 toutes tranchées).
 Statut : VALIDÉE sur les points de cadrage. Hanta a répondu aux questions de la version précédente (backlog E5-10) ; les décisions sont intégrées ci-dessous et signalées « (décision Hanta, E5-10) ». Les maquettes restent à valider au rendu.
 Sources lues : CLAUDE.md, docs/backlog.md (Sprint E5), docs/ux/contacts-fiche-club.md (modèle de la fenêtre), docs/ux/convention.md (dépôt d'un PDF), src/clubs/script.js (fiche club, ligne 425 et suivantes), src/actions-dashboard/script.js (fiche action, lignes 748-785 ; bloc Convention, lignes 2960-3020), feuille du CDN du design system (lecture partielle, voir §9).
+Mis à jour le 2026-11-17 (décision Hanta, E5-18/E5-19, docs/backlog.md) : « Voir l'attestation » (widget clubs uniquement) ouvre un pop-up plein écran avec un bouton « Télécharger », au lieu d'un nouvel onglet (§2.1, §3.5, §4, §7, §8 règle 7, §9.3). La fiche action n'est pas concernée. Source ajoutée : docs/ux/convention.md §14 et src/clubs/script.js (`rcProApercuHtml`).
 Aucun nom de colonne Grist n'est cité : ils sont à définir par dev-backend. Cette note dit seulement ce qui s'affiche.
 
 ## 1. Point de départ
@@ -21,7 +22,7 @@ Aucun nom de colonne Grist n'est cité : ils sont à définir par dev-backend. C
 
 1. L'agent ouvre la fiche d'un club (bouton Voir de la liste) ou la fiche d'une action.
 2. Dans la carte « Club », un bloc « Assurance RC Pro » dit l'état en une phrase : absent, valide jusqu'à une date, ou expiré depuis une date, avec la date de dépôt.
-3. Fiche club : si un document existe, « Voir l'attestation » l'ouvre dans un nouvel onglet. Un document expiré s'ouvre aussi (E5-7 Q3). Fiche action : résumé compact (§3.2), un seul bouton « Gérer l'assurance » qui ouvre le pop-up de dépôt ou de remplacement ; pas d'ouverture du PDF depuis cette fiche (E5-16).
+3. Fiche club : si un document existe, « Voir l'attestation » l'ouvre dans un pop-up plein écran du widget, avec un bouton « Télécharger » dans son en-tête (§3.5 ; décision Hanta, E5-18/E5-19, qui remplace le nouvel onglet). Un document expiré s'ouvre aussi (E5-7 Q3). Fiche action : résumé compact (§3.2), un seul bouton « Gérer l'assurance » qui ouvre le pop-up de dépôt ou de remplacement ; pas d'ouverture du PDF depuis cette fiche (E5-16) : ce changement de « Voir l'attestation » ne concerne QUE le widget clubs.
 
 ### 2.2 Déposer le premier document (état « absent », 5 étapes)
 
@@ -141,6 +142,75 @@ L'erreur n'est jamais portée par la couleur seule : texte sous le champ + `aria
 - Pop-up : un seul bloc vertical, un champ par ligne ; Annuler / Déposer en bas, comme la fenêtre « Ajout d'un contact ». Deux champs seulement : plus court que la fenêtre contact, donc moins de risque de rognage dans l'iframe de Grist (risque déjà vérifié sans problème pour les contacts en recette du 21/10/2026).
 - Le champ date natif ouvre le sélecteur de date du téléphone.
 
+### 3.5 Le pop-up plein écran « Voir l'attestation » (widget clubs SEULEMENT ; décision Hanta, E5-18/E5-19, mis à jour le 2026-11-17)
+
+Périmètre : ce pop-up n'existe que dans le widget clubs. La fiche action (tableau de bord) n'a PAS de bouton « Voir l'attestation » : elle garde seulement « Gérer l'assurance », qui ouvre la fenêtre de dépôt / remplacement (§3.3), inchangée. Rien à faire dans actions-dashboard.
+
+Principe : le même que « Voir la convention signée » (docs/ux/convention.md §14.3). Le PDF s'affiche dans un cadre (`iframe`) à l'intérieur du widget ; plus de nouvel onglet, plus d'adresse blob: dans une barre d'adresse. « Plein écran » veut dire tout le cadre du widget dans Grist, pas l'écran de l'ordinateur (§14.3 de convention.md).
+
+Parcours (clic sur « Voir l'attestation » dans le bloc, fiche club) :
+1. Le bouton passe à « Ouverture en cours… » le temps de récupérer le PDF (`aria-disabled="true"`, jamais `disabled`).
+2. Le pop-up s'ouvre seulement quand le PDF est récupéré. Le focus va sur la fenêtre elle-même, pas sur « Télécharger » (une touche Entrée distraite lancerait un téléchargement) ni sur le cadre.
+3. L'agent lit, puis clique sur « Télécharger » (le fichier est enregistré), ou ferme par la croix ou Échap. Le focus revient sur « Voir l'attestation ».
+En cas d'échec de la récupération, rien ne s'ouvre : l'alerte d'ouverture du §4 s'affiche dans le bloc.
+
+Maquette :
+```
+┌──────────────────────────────────────────────────────────┐
+│ Attestation d'assurance RC Pro        [ Télécharger ] [✕]│  (en-tête, une seule ligne)
+├──────────────────────────────────────────────────────────┤
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │                                                      │ │
+│ │              aperçu du PDF (cadre)                   │ │
+│ │                                                      │ │
+│ └──────────────────────────────────────────────────────┘ │
+│ Le PDF ne s'affiche pas ? Utilisez « Télécharger ».       │
+└──────────────────────────────────────────────────────────┘
+```
+Pas de pied de page, pas de fond assombri (la fenêtre recouvre tout le cadre). Mobile : même disposition ; le titre passe à la ligne si besoin, les deux commandes restent à droite, la fenêtre défile si le cadre du widget est bas (`modal-dialog-scrollable`).
+
+Textes exacts :
+| Où | Texte |
+|---|---|
+| Titre du pop-up (seul titre) | « Attestation d'assurance RC Pro » |
+| Bouton de l'en-tête | « Télécharger » + `<span class="sr-only"> le fichier PDF de l'attestation</span>` |
+| Croix de l'en-tête | icône de fermeture, nom accessible « Fermer » (`aria-label` et `title`) |
+| `title` du cadre | « Aperçu de l'attestation d'assurance RC Pro » |
+| Texte de repli sous le cadre (visible en permanence, sans lien) | « Le PDF ne s'affiche pas ? Utilisez « Télécharger ». » |
+| Nom du fichier enregistré par « Télécharger » | `Attestation-RC-Pro.pdf` (nom fixe, accepté tel quel par Hanta, E5-19) |
+
+Comportement :
+- « Télécharger » est un `<button type="button">` (pas un lien : aucune adresse ne s'affiche au survol). Au clic, le code crée un lien `<a download>` temporaire vers l'adresse déjà en mémoire, le déclenche, puis le retire. Pas de message de succès ni d'attente : l'adresse existe déjà. Il garde `btn btn-primary` ; la croix `btn btn-secondary btn-ratio-square`.
+- Fermeture : croix ou Échap (rien d'autre à enregistrer). À la fermeture, le `src` du cadre est vidé, l'adresse blob: est libérée, `modal-open` est retiré du `body`, et le focus revient sur « Voir l'attestation ».
+- Boucle de Tab : en-tête (« Télécharger », croix), puis cadre PDF ; Tab et Maj+Tab restent dans la fenêtre.
+- Le corps de la page ne défile pas derrière le pop-up (`modal-open` sur `body`).
+- Sécurité (mêmes cinq garde-fous que convention.md §14.3) : type `application/pdf` forcé à la création du Blob ; adresse posée par `cadre.src = adresse`, jamais dans un texte HTML ; `referrerpolicy="no-referrer"`, sans `allow` ni `sandbox` ; adresse libérée à la fermeture ; aucun lien permanent ni `window.open` vers l'adresse. L'identifiant de la pièce jointe et le jeton n'apparaissent nulle part (page, console, message).
+
+Structure HTML (recopiée du code de src/clubs/script.js, `rcProApercuHtml`, qui reprend celle de la convention ; page du composant : https://designsystem.francetravail.io/components/detail/modal--default.html). Le conteneur est `<div id="rcProApercuModal"></div>` dans src/clubs/index.html, vide hors ouverture :
+```html
+<div class="modal fade show" id="rcProApercuDialog" role="dialog" aria-modal="true"
+     aria-labelledby="rcProApercuTitre" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable rcpro-apercu-plein-ecran">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="rcProApercuTitre">Attestation d'assurance RC Pro</h2>
+        <div class="rcpro-apercu-actions">
+          <button type="button" class="btn btn-primary" id="rcProApercuTelecharger"><span class="btn-content">Télécharger<span class="sr-only"> le fichier PDF de l'attestation</span></span></button>
+          <button type="button" class="btn btn-secondary btn-ratio-square" id="rcProApercuFermer" aria-label="Fermer" title="Fermer"><span aria-hidden="true" class="icon icon-close"></span></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <iframe class="rcpro-apercu-cadre" id="rcProApercuCadre" title="Aperçu de l'attestation d'assurance RC Pro" referrerpolicy="no-referrer"></iframe>
+        <p class="help-block">Le PDF ne s'affiche pas ? Utilisez « Télécharger ».</p>
+      </div>
+    </div>
+  </div>
+</div>
+```
+(`src` du cadre posé par le code, jamais écrit dans ce HTML.) Classes à nous : `rcpro-apercu-plein-ecran` (largeur et hauteur 100 %, sans marge ni angle arrondi), `rcpro-apercu-actions` (rangée des deux commandes), `rcpro-apercu-cadre` (largeur 100 %, `height: calc(100vh - 150px)`, `min-height: 420px`, sans bordure) : aucune ne reprend un nom du design system. La règle `#rcProApercuModal .modal { display: block; overflow-y: auto; }` est nécessaire, comme pour les autres fenêtres (§8 règle 9). Icône de fermeture `icon-close` et `btn-ratio-square` : employées dans le code ; à constater au rendu comme le reste de la fiche.
+
+Note d'écart : le nom du fichier (« Attestation-RC-Pro.pdf ») est fixe et ne contient ni le nom du club ni la date, donc deux attestations de clubs différents se téléchargent sous le même nom (le navigateur ajoute « (1) »). Accepté par Hanta pour l'instant (E5-19).
+
 ## 4. Textes exacts des états
 
 Les quatre états sont les mêmes sur les deux fiches, mais le FORMAT diffère (E5-16) : la fiche club garde le bloc complet (4.1) ; la fiche action affiche un résumé compact (4.2).
@@ -177,8 +247,8 @@ Règles :
   - Pas de nouvelle alerte ni de pastille : le bloc reste un texte (voir §9.5).
 - Dans la fiche action, la phrase est celle du tableau 4.2, précédée de l'étiquette « Assurance RC Pro : » (§3.2) ; dans la fiche club, celle du tableau 4.1, sous le titre « Assurance RC Pro » (§3.1).
 - Document sans date d'expiration : il est traité comme « expiré » (décision Hanta, E5-10 ; confirmée pour la fiche action, E5-16) et affiche la phrase de la dernière ligne du tableau concerné, en rouge gras (4.2 : « expirée, date d'expiration non renseignée. »). Il reste consultable (fiche club) et remplaçable. Sur la fiche club, si la date de dépôt manque aussi, la ligne « Déposée le… » est omise.
-- « Voir l'attestation » est un bouton qui ouvre le PDF dans un nouvel onglet à une adresse blob:, comme « Voir la convention » (docs/ux/convention.md) ; texte caché pour lecteurs d'écran « (s'ouvre dans un nouvel onglet) » ; pendant l'ouverture : « Ouverture en cours… ». Mêmes contraintes de sécurité que la convention (CLAUDE.md) : l'identifiant de la pièce jointe et le jeton ne s'affichent jamais, ne vont jamais dans la console ni dans un message.
-- Échec d'ouverture : « L'attestation n'a pas pu être ouverte. Réessayez. Si le problème continue, vos droits ne permettent peut-être pas de la consulter. » (`role="alert"`, dans le bloc).
+- « Voir l'attestation » (widget clubs seulement) est un bouton qui ouvre le PDF dans un pop-up plein écran intégré au widget, sur le même principe que « Voir la convention signée » (docs/ux/convention.md §14) ; il n'ouvre plus de nouvel onglet, donc l'adresse blob: n'apparaît jamais dans une barre d'adresse (décision Hanta, E5-18/E5-19). Texte caché pour lecteurs d'écran « (s'ouvre dans une fenêtre) », `aria-haspopup="dialog"` ; pendant l'ouverture : « Ouverture en cours… ». Détail du pop-up : §3.5. Mêmes contraintes de sécurité que la convention (CLAUDE.md) : l'identifiant de la pièce jointe et le jeton ne s'affichent jamais, ne vont jamais dans la console ni dans un message.
+- Échec d'ouverture (récupération du PDF avant l'ouverture du pop-up, §3.5) : « L'attestation n'a pas pu être ouverte. Réessayez. Si le problème continue, vos droits ne permettent peut-être pas de la consulter. » (`role="alert"`, dans le bloc).
 
 ## 5. Messages
 
@@ -239,6 +309,7 @@ Quand l'état change (dépôt, remplacement), le bloc est recalculé et réaffic
 - Focus : à l'ouverture, sur le champ fichier. Tab et Maj+Tab tournent dans la fenêtre. Échap et Annuler ferment sans rien enregistrer. À la fermeture sans enregistrement : retour sur le bouton qui a ouvert le pop-up. Après un dépôt réussi : sur « Voir l'attestation » (le bouton « Déposer l'attestation » a disparu). Après un remplacement réussi : sur « Remplacer l'attestation ». Après une erreur de saisie : sur le premier champ en erreur. Entrée dans la date valide le formulaire (bouton `type="submit"`).
 - Erreurs de champ : `aria-invalid="true"` + `aria-describedby` vers le message ; préfixe `<span class="sr-only">Erreur :&nbsp;</span>`.
 - Le corps de la page ne défile pas sous le pop-up (`modal-open` sur `body`, comme au tableau de bord et dans les contacts).
+- Pop-up d'aperçu « Voir l'attestation » (§3.5, widget clubs seulement) : `role="dialog"`, `aria-modal="true"`, `aria-labelledby` vers son titre (pas d'`aria-describedby` : le titre suffit). Focus d'ouverture sur la fenêtre elle-même (jamais sur « Télécharger »). Tab et Maj+Tab tournent entre « Télécharger », la croix et le cadre ; Échap et la croix ferment ; à la fermeture, le focus revient sur « Voir l'attestation ». La croix a un nom accessible (« Fermer ») et son icône est cachée aux lecteurs d'écran (`aria-hidden="true"`). Le cadre PDF a un `title`.
 - Les boutons du bloc ont des noms complets (« Remplacer l'attestation »), compréhensibles hors contexte. Dans la fiche action, le bloc est introduit par l'étiquette « Assurance RC Pro : » ; pas besoin de `aria-label`.
 - Annonce de l'état : le bloc a une zone `p.sr-only` `role="status"` (§5.1) vide au départ.
 - Contraste : la seule couleur ajoutée est `var(--ft-color-text-error-default)` pour la phrase d'état expiré (§4), contraste 6,24:1 sur blanc ; l'état n'est jamais porté par la couleur seule (mot « expirée » + gras).
@@ -251,11 +322,11 @@ Quand l'état change (dépôt, remplacement), le bloc est recalculé et réaffic
 4. Le pop-up est le MÊME dans les deux widgets : mêmes titres, mêmes champs, mêmes textes, mêmes boutons. Les sources étant séparées (clubs / tableau de bord), le code est dupliqué : dev-interface le signale et garde les textes strictement identiques (constantes en tête de fichier, règle de CLAUDE.md).
 5. Boutons visibles pour tous les profils qui peuvent lire : on tente l'écriture ; si Grist refuse, message du §5.3. Le code ne teste jamais le nom du profil et le bloc n'a aucun traitement spécifique lié à un profil (décision Hanta, E5-11).
 6. Écriture en une seule opération (fichier + date), jamais en deux temps. Le détail (noms de colonnes, REST) vient de dev-backend ; aucun nom de colonne n'est inventé ici.
-7. Le jeton et l'identifiant de pièce jointe ne s'affichent jamais, ne vont pas dans la console ni dans les messages. « Voir l'attestation » ouvre une adresse blob:.
+7. Le jeton et l'identifiant de pièce jointe ne s'affichent jamais, ne vont pas dans la console ni dans les messages. « Voir l'attestation » affiche le PDF dans le pop-up plein écran (§3.5) à partir d'une adresse blob: gardée en mémoire par le code : aucun nouvel onglet, aucun `window.open`, aucun lien permanent vers cette adresse.
 8. Tout ce qui vient de Grist (nom du club, dates) passe par `escapeHtml` / `escapeAttr`. Les dates sont formatées comme le reste du widget concerné.
 9. Fenêtre créée seulement pendant qu'elle est ouverte, dans un conteneur vide de la page (comme `#addActionModal` et le conteneur des contacts). La règle `display: block; overflow-y: auto` sur `.modal` du conteneur est à écrire dans clubs et dans le tableau de bord (voir docs/ux/contacts-fiche-club.md §7.1).
 10. Une seule tâche : l'assurance RC Pro. Filtre et export CSV hors périmètre (E5-7 E). Pas de suppression (D). Pas de lecture du PDF (E5-3).
-11. Tests de comportement à prévoir (testeur) : trois états sur les deux fiches, fichier manquant, pas un PDF, vide, plus de 10 Mo, date manquante, date passée acceptée, succès, refus, échec réseau, annulation (Échap et bouton), retour du focus, échappement du HTML, document expiré encore consultable.
+11. Tests de comportement à prévoir (testeur) : trois états sur les deux fiches, fichier manquant, pas un PDF, vide, plus de 10 Mo, date manquante, date passée acceptée, succès, refus, échec réseau, annulation (Échap et bouton), retour du focus, échappement du HTML, document expiré encore consultable. Pop-up « Voir l'attestation » (clubs seulement) : s'ouvre dans le widget sans nouvel onglet, « Télécharger » enregistre `Attestation-RC-Pro.pdf`, croix et Échap ferment, focus de retour sur « Voir l'attestation », adresse blob: libérée et `src` vidé à la fermeture, échec de récupération = alerte dans le bloc et aucun pop-up, aucun « Voir l'attestation » dans la fiche action.
 12. Lecture refusée (décision Hanta, E5-12) : si Grist refuse de lire les colonnes RC Pro, ne rien afficher dans la carte « Club », sur les deux fiches : pas de bloc, pas de titre, pas d'alerte, pas de message, pas de zone `role="status"`. Ce n'est pas un test de profil (règle 5) : le code constate que la lecture a échoué, comme `hasRaisonColumn()` pour la colonne Raison. L'« état absent » (§4) ne s'applique que lorsque la lecture réussit sans document. Le reste de la fiche (autres cartes) reste inchangé. Détail technique à voir avec dev-backend.
 
 ## 9. Composants du design system et structures HTML
@@ -325,7 +396,7 @@ Page : https://designsystem.francetravail.io/components/detail/button--primary.h
 | Bouton | Classes | Texte |
 |---|---|---|
 | Déposer l'attestation (bloc) | `btn btn-secondary btn-sm` | « Déposer l'attestation » |
-| Voir l'attestation (bloc) | `btn btn-secondary btn-sm` | « Voir l'attestation » + `<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span>` |
+| Voir l'attestation (bloc, fiche club seulement) | `btn btn-secondary btn-sm`, `aria-haspopup="dialog"` | « Voir l'attestation » + `<span class="sr-only"> (s'ouvre dans une fenêtre)</span>` |
 | Remplacer l'attestation (bloc) | `btn btn-secondary btn-sm` | « Remplacer l'attestation » |
 | Annuler (pop-up) | `btn btn-secondary` | « Annuler » |
 | Déposer / Remplacer (pop-up) | `btn btn-primary` | « Déposer » ou « Remplacer » |
