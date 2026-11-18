@@ -9,7 +9,9 @@ const vm = require("vm");
 const {makeElement} = require("./widget");
 
 const SCRIPT = path.join(__dirname, "..", "..", "src", "clubs", "script.js");
-const EXPORTED = ["state", "TABLES", "FILTERS", "SEARCHABLE_FILTERS"];
+const EXPORTED = ["state", "TABLES", "FILTERS", "SEARCHABLE_FILTERS",
+  "CSV_SEPARATEUR", "CSV_BOM", "CSV_FIN_DE_LIGNE", "CSV_COLONNES_CHIFFRES", "CSV_DEBUT_DE_FORMULE",
+  "EXPORT_CLUBS_ENTETES", "EXPORT_CLUBS_PREFIXE_FICHIER", "EXPORT_EXTENSION_FICHIER"];
 
 // Doublure minimale de window.localStorage : une Map suffit, mais les cles et
 // valeurs y transitent en chaines, comme le vrai stockage du navigateur.
