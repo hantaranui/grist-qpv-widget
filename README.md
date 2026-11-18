@@ -95,7 +95,8 @@ Il lit les tables Grist `Actions`, `Cofinancements` et leurs tables de reference
 - la synthese des actions et du financement global ;
 - les repartitions par statut, dispositif et federation ;
 - la liste detaillee des actions avec les cofinancements ;
-- l'export CSV.
+- l'export CSV ;
+- le tri de la colonne STATUT : le menu A-Z / Z-A range les actions d'abord par statut, puis par date a l'interieur de chaque statut (Planifiee : la plus ancienne d'abord ; Realisee : la plus recente d'abord ; A confirmer : par periode, dans l'ordre alphabetique). Les actions sans date ou sans periode restent a la fin de leur groupe. Le tri choisi est garde tant que l'onglet reste ouvert, et le bouton « Reinitialiser » ne l'efface pas.
 
 URL a utiliser dans Grist :
 

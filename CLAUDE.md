@@ -62,7 +62,7 @@ Il affiche les actions d'insertion par le sport : filtres (Numéro Osiris, DR, D
 - src/clubs/ : les sources du widget clubs.
 - build.js : assemble chaque dossier src/[widget]/ en [widget].html à la racine. Il reconstruit les trois widgets.
 - actions-dashboard.html, clubs.html : fichiers générés. Ne jamais les modifier à la main.
-- test/ : tests avec le lanceur de tests de Node, sans dépendance. Ceux du tableau de bord : logic, render, ajout-action, suppression-action, navigation-dashboard, styles. Ceux de clubs : clubs.test.js, clubs-fiche.test.js, clubs-contacts.test.js, clubs-contacts-ecran.test.js, navigation-clubs.test.js, avec test/helpers/clubs.js. build.test.js vérifie que les fichiers générés sont à jour. test/helpers/widget.js évalue le script du tableau de bord dans un bac à sable, avec des doublures du DOM et de l'API Grist.
+- test/ : tests avec le lanceur de tests de Node, sans dépendance. Ceux du tableau de bord : logic, render, ajout-action, suppression-action, navigation-dashboard, styles, tri-statut (tri de la colonne Statut à deux niveaux, 22 tests), tri-garde (tri gardé le temps de la session sous la clé dashboard-tri-v1:, 40 tests). Ceux de clubs : clubs.test.js, clubs-fiche.test.js, clubs-contacts.test.js, clubs-contacts-ecran.test.js, navigation-clubs.test.js, avec test/helpers/clubs.js. build.test.js vérifie que les fichiers générés sont à jour. test/helpers/widget.js évalue le script du tableau de bord dans un bac à sable, avec des doublures du DOM et de l'API Grist.
 - dev-server.js : serveur local (npm run dev).
 - docs/reference-widget.html : ancienne version du widget, gardée comme référence. Ne pas la modifier.
 - docs/audit-design-system.html : audit de conformité, gardé en local, ignoré par git.

@@ -410,17 +410,19 @@ Règles validées par Pierre et Hanta :
 - E7-7 : le tri choisi est gardé le temps de la session, comme les filtres (sessionStorage). Le bouton Réinitialiser ne touche pas au tri. Un tri gardé devenu impossible est ignoré au démarrage.
 - E7-8 : le libellé A-Z / Z-A reste inchangé : aucune modification d'écran.
 - E7-9 : le tri alphabétique des périodes ne suit pas le calendrier (« Avril 2027 » avant « Décembre 2026 ») : choix assumé par Pierre.
+- E7-10 : constat de recette. Dans « A confirmer », les périodes qui commencent par un chiffre passent d'abord, classées par ce chiffre, puis celles qui commencent par une lettre. Conforme à E7-2 et E7-9.
+- E7-11 : limites connues. Aucun repère n'indique quelle colonne est triée, et aucun bouton ne permet de retirer le tri. Non traité dans ce sprint.
 
 Tâches prévues (ordre validé) :
 
 | Tâche | Description | Agent | Statut |
 |---|---|---|---|
-| Tâche 1 | Tri à deux niveaux pour la clé statut dans sortActions, réglages en constantes en tête de fichier | dev-backend | À faire |
-| Tâche 2 | Tests du tri à deux niveaux (A-Z, Z-A, valeurs vides, statut inconnu) ; les tests de tri existants passent toujours | testeur | À faire |
-| Tâche 3 | Garder le tri le temps de la session ; Réinitialiser ne l'efface pas ; tri invalide ignoré | dev-backend | À faire |
-| Tâche 4 | Tests du tri gardé ; vérifier dans test/filtres-gardes.test.js l'usage de « dir » au lieu de « direction » | testeur | À faire |
-| Tâche 5 | Cas de recette dans le carnet de tests | recetteur | À faire |
-| Tâche 6 | Recette dans Grist DEV | Hanta | À faire |
-| Tâche 7 | README du tableau de bord, backlog, journal | documentaliste | À faire |
+| Tâche 1 | Tri à deux niveaux pour la clé statut dans sortActions, réglages en constantes en tête de fichier | dev-backend | Fait (commit 0b1ad89) |
+| Tâche 2 | Tests du tri à deux niveaux (A-Z, Z-A, valeurs vides, statut inconnu) ; les tests de tri existants passent toujours | testeur | Fait (commit 390ea51) |
+| Tâche 3 | Garder le tri le temps de la session ; Réinitialiser ne l'efface pas ; tri invalide ignoré | dev-backend | Fait (commit 9f9ecbc) |
+| Tâche 4 | Tests du tri gardé ; vérifier dans test/filtres-gardes.test.js l'usage de « dir » au lieu de « direction » | testeur | Fait (commit a7b3721) |
+| Tâche 5 | Cas de recette dans le carnet de tests | recetteur | Fait (commit fd9e97f) |
+| Tâche 6 | Recette dans Grist DEV | Hanta | En cours : les 6 points vérifiés par Hanta en DEV le 18/11/2026 ; les 6 parcours restent à jouer par le testeur en TEST |
+| Tâche 7 | README du tableau de bord, backlog, journal | documentaliste | Fait |
 
 Risques : conflit de fusion avec les branches feature/assurance-rc-pro (E5) et feature/contacts-une-ligne (E6), non encore fusionnées dans main, sur src/actions-dashboard/script.js, docs/backlog.md et le fichier généré actions-dashboard.html.
