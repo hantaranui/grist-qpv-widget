@@ -1943,6 +1943,55 @@ function fichierExportClubs(clubs = filteredClubs(), date = new Date()) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Export CSV (sprint E8, tache E8-6) : fichier « Contacts »
+// ---------------------------------------------------------------------------
+// Meme principe que « Liste des clubs » : aucun appel a Grist, aucune ecriture,
+// uniquement les donnees deja chargees (state.raw). Pas d'interface (tache E8-8).
+
+// En-tetes exacts, dans l'ordre. « Téléphone » est ecrit comme dans
+// CSV_COLONNES_CHIFFRES, sinon la regle des chiffres ne s'appliquerait pas.
+const EXPORT_CONTACTS_ENTETES = ['SIRET', 'Nom du club', 'Nom', 'Prénom', 'Fonction', 'E-mail', 'Téléphone'];
+const EXPORT_CONTACTS_PREFIXE_FICHIER = 'contacts-clubs-insertion-sport';
+const EXPORT_TABLE_CONTACTS = 'Contacts';            // table dont la lecture est necessaire
+const EXPORT_REFUS_DROITS = 'droits';                // valeur de « refus » quand Contacts est illisible
+
+// Une ligne par contact. Les contacts viennent de buildFicheDetail (meme lecture
+// et meme ordre que la fiche : nom, puis prenom), sans le modifier. Un club sans
+// contact a une seule ligne : SIRET et nom du club, les 5 champs du contact vides.
+// Les clubs gardent l'ordre recu (celui de l'ecran).
+function lignesExportContacts(clubs, raw = state.raw) {
+  const lignes = [];
+  clubs.forEach(club => {
+    const debutClub = [club.siret, club.nom];
+    const contacts = buildFicheDetail(raw, club.id).contacts;
+    if (contacts.length === 0) {
+      lignes.push([...debutClub, '', '', '', '', '']);
+      return;
+    }
+    contacts.forEach(contact => {
+      lignes.push([...debutClub, contact.nom, contact.prenom, contact.fonction, contact.email, contact.telephone]);
+    });
+  });
+  return lignes;
+}
+
+// Le fichier « Contacts » complet.
+//  - Contacts illisible : renvoie { refus: 'droits' } (sans nom ni contenu),
+//    sans exception et sans rien ecrire dans la console.
+//  - Sinon : { nom, contenu, nombre (lignes), nombreClubs }.
+// Par defaut : clubs affiches apres filtres, donnees chargees, date du jour.
+function fichierExportContacts(clubs = filteredClubs(), date = new Date(), raw = state.raw, illisibles = state.unreadable) {
+  if (illisibles.includes(EXPORT_TABLE_CONTACTS)) return {refus: EXPORT_REFUS_DROITS};
+  const lignes = lignesExportContacts(clubs, raw);
+  return {
+    nom: nomFichierExport(EXPORT_CONTACTS_PREFIXE_FICHIER, date),
+    contenu: construireCsv(EXPORT_CONTACTS_ENTETES, lignes),
+    nombre: lignes.length,
+    nombreClubs: clubs.length,
+  };
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 }
