@@ -414,18 +414,26 @@ Décisions prises :
 | E8-5 | Tests de E8-4 : anti-formule, guillemets et point-virgule dans une valeur, code postal 01000, SIRET 14 chiffres, accents, ordre des colonnes | testeur | npm test lancé par Hanta, 0 échec |
 | E8-6 | Lignes du fichier « Contacts » (une ligne par contact, club sans contact = une ligne aux champs vides, comportement si Contacts illisible), sans modifier buildFicheDetail | dev-backend | Fonctions écrites, build refait par Hanta |
 | E8-7 | Tests de E8-6 : 3 contacts = 3 lignes, club sans contact = 1 ligne, clubs hors filtre absents, Contacts illisible | testeur | npm test lancé par Hanta, 0 échec |
-| E8-8 | Bouton et téléchargement dans src/clubs/index.html et script.js, conforme à la note UX, nouveau code dans un bloc séparé | dev-interface | Build refait, fichier téléchargé avec les seuls clubs filtrés |
+| E8-8 | Bouton « Exporter (CSV) » avec menu Dropdown dans le bandeau (src/clubs/index.html, script.js, et style.css en recopiant les règles du tableau de bord sans nouvelle valeur), téléchargement, conforme à docs/ux/export-csv-clubs.md, nouveau code dans un bloc séparé | dev-interface | Build refait, fichier téléchargé avec les seuls clubs filtrés |
 | E8-9 | Tests d'écran et de non-régression dans un nouveau fichier de test (ne pas modifier test/clubs-contacts-ecran.test.js) | testeur | npm test lancé par Hanta, 0 échec |
 | E8-10 | Cas de recette docs/tests/cas-de-test-export-csv-clubs.md et .tsv (11 colonnes). Préfixes : EXP-V-xx = points vérifiés par Hanta en DEV ; EXP-P-xx = parcours du collègue en TEST | recetteur | Fichiers livrés |
 | E8-11 | Documentation : README et CLAUDE.md (section clubs). modele-de-donnees.md du dossier France-Travail-Partenariat-Simplifie (Structures.Ville = formule équivalente à la ville de Communes) : autre dépôt, commit séparé | documentaliste | Docs à jour, aucune donnée réelle |
 
-### Points à confirmer (E8-3)
+### Décisions E8-3 (18/11/2026)
 
-- Profils : la story dit « DR » ; contexte-projet.md dit que tous les profils ont les mêmes fonctions, seul le périmètre change. Hypothèse : tous les profils. À confirmer avec Pierre.
-- Conservation des zéros et du SIRET dans Excel : option à choisir après l'audit.
-- Contacts illisibles ou masqués par les règles d'accès : bloquer avec un message, ou exporter les clubs sans contact ?
-- Avertissement RGPD avant téléchargement : oui ou non, après l'audit.
-- Nom des fichiers, tri des lignes, clubs sans SIRET ou sans nom.
+- Forme : un seul bouton « Exporter (CSV) » qui ouvre un menu (composant Dropdown du design system) avec deux choix : « Liste des clubs » et « Contacts » (décision de Pierre).
+- Emplacement : dans le bandeau du haut, à droite, comme le bouton « Exporter (CSV) » du tableau de bord (décision de Pierre).
+- Profils : tous les profils FT (National, Régional, Départemental) ont accès à l'export, chacun dans son périmètre, garanti par les règles d'accès de Grist (vérifiées en DEV le 18/11/2026 avec un compte de test éditeur : la lecture de Structures et de Contacts est limitée au périmètre de chaque profil).
+- Contacts illisibles (droits insuffisants) : la ligne « Contacts » du menu est grisée avec le message « Vos droits ne permettent pas de lire les contacts. » ; aucun fichier produit. Pas de traitement spécial pour l'ANS (profil appelé à disparaître) : la règle générale s'applique.
+- Aucun club affiché : bouton principal grisé.
+- Désactivation par aria-disabled="true" ; le script disabled-a11y.js n'est pas chargé dans le widget clubs, le code ignore le clic lui-même.
+- Avertissement données personnelles : aucun (décision de Hanta : les agents saisissent eux-mêmes ces données et travaillent déjà avec ce type de fichiers).
+- Zéros et SIRET dans Excel : formule texte ="..." uniquement pour les colonnes SIRET, code postal et téléphone, et uniquement quand la valeur ne contient que des chiffres. Sinon, valeur texte normale avec la protection anti-formule (apostrophe devant = + - @, tabulation, retour chariot).
+- Noms des fichiers : avec la date du jour.
+- Ordre des lignes : clubs dans le même ordre qu'à l'écran ; contacts d'un même club dans le même ordre que dans la fiche (nom, puis prénom).
+- Club sans SIRET ou sans nom : exporté quand même, avec la case vide.
+- Pas de nombre maximal : on exporte tous les clubs affichés.
+- Zone d'annonce du résultat : zone dédiée, choisie par designer-ux (voir docs/ux/export-csv-clubs.md).
 
 ### Risques
 
