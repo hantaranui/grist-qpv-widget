@@ -15,6 +15,35 @@
     <div id="listView">
       <div class="topbar">
         <h1>Clubs</h1>
+        <!-- Export CSV (tâche E8-8) : un seul bouton qui ouvre un menu (composant Dropdown du
+             design system) avec deux choix. Le bouton est grisé (aria-disabled) tant qu'aucun
+             club n'est affiché ; script.js le met à jour à chaque affichage de la liste.
+             Les lignes du menu sont des liens (structure du design system) : script.js annule
+             la navigation au clic. -->
+        <div class="topbar-actions">
+          <div class="dropdown" id="exportDropdown">
+            <button class="btn btn-secondary dropdown-toggle" data-ft-dropdown="exportMenu" type="button" id="exportMenuBtn" aria-disabled="true">
+              <span class="btn-content">Exporter (CSV)</span>
+              <span aria-hidden="true" class="icon icon-chevron-sm-d"></span>
+            </button>
+
+            <div id="exportMenu" class="dropdown-menu dropdown-md dropdown-menu-right">
+              <ul class="dropdown-list">
+                <li>
+                  <a class="dropdown-item" href="#" id="exportClubsItem" data-export="clubs">Liste des clubs</a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="#" id="exportContactsItem" data-export="contacts" aria-describedby="exportContactsAide">Contacts</a>
+                </li>
+                <!-- Phrase d'explication de la ligne « Contacts » grisée : visible seulement
+                     quand les contacts sont illisibles (script.js retire is-hidden). -->
+                <li>
+                  <p class="dropdown-item-text is-hidden" id="exportContactsAide">Vos droits ne permettent pas de lire les contacts.</p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
 
       <section class="filters-bar">
@@ -57,6 +86,10 @@
          modification ou d'une suppression de contact). Elle est ici, hors de la fiche, pour exister
          avant l'écriture du texte : la fiche est redessinée à chaque relecture. -->
     <p class="sr-only" id="contactStatus" role="status" aria-live="polite"></p>
+
+    <!-- Zone d'annonce de l'export CSV (nombre de lignes exportées). Séparée de la zone des
+         contacts pour que chacune garde son rôle ; elle existe dès le chargement de la page. -->
+    <p class="sr-only" id="exportStatus" role="status" aria-live="polite"></p>
 
     <!-- Conteneur de la fenêtre d'ajout / modification / suppression d'un contact : vide tant
          que la fenêtre est fermée, hors de la fiche pour survivre à son rendu. -->

@@ -280,6 +280,8 @@ function render() {
   document.getElementById('ficheView').classList.toggle('is-hidden', !ficheOuverte);
   document.getElementById('listView').classList.toggle('is-hidden', ficheOuverte);
   if (ficheOuverte) renderFiche();
+  // Export CSV (E8-8) : le bouton suit les clubs affichés après les filtres.
+  majBoutonExport(clubs);
   requestResize();
 }
 
@@ -1991,6 +1993,135 @@ function fichierExportContacts(clubs = filteredClubs(), date = new Date(), raw =
     nombreClubs: clubs.length,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Export CSV (sprint E8, tache E8-8) : bouton, menu et telechargement
+// ---------------------------------------------------------------------------
+// Interface seulement : les fichiers viennent de fichierExportClubs et
+// fichierExportContacts (blocs ci-dessus, non modifies). Aucun appel a Grist,
+// aucun jeton, rien dans la console ni dans le stockage du navigateur.
+// Note UX : docs/ux/export-csv-clubs.md.
+
+const EXPORT_ID_MENU_BOUTON = 'exportMenuBtn';        // bouton « Exporter (CSV) »
+const EXPORT_ID_CONTENEUR = 'exportDropdown';         // div.dropdown qui contient bouton et menu
+const EXPORT_ID_LIGNE_CONTACTS = 'exportContactsItem';
+const EXPORT_ID_AIDE_CONTACTS = 'exportContactsAide'; // phrase « Vos droits ne permettent pas... »
+const EXPORT_ID_ANNONCE = 'exportStatus';             // zone lue aux lecteurs d'ecran
+const EXPORT_ID_MESSAGE_VIDE = 'empty';               // « Aucun club ne correspond aux filtres. »
+const EXPORT_TYPE_MIME = 'text/csv;charset=utf-8';
+
+// Colle un nombre et son mot, au pluriel si besoin : (12, 'club') -> « 12 clubs ».
+function exportNombreEtMot(nombre, mot) {
+  return `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
+}
+
+// Textes lus apres un telechargement (note UX, §6.3).
+function exportTexteAnnonceClubs(nombre) {
+  return `Fichier téléchargé : ${exportNombreEtMot(nombre, 'club')} ${nombre > 1 ? 'exportés' : 'exporté'}.`;
+}
+function exportTexteAnnonceContacts(nombre, nombreClubs) {
+  return `Fichier téléchargé : ${exportNombreEtMot(nombre, 'ligne')} pour ${exportNombreEtMot(nombreClubs, 'club')}.`;
+}
+
+// Ecrit (ou efface, avec '') le texte lu aux lecteurs d'ecran. Vide d'abord,
+// pour que deux exports de suite soient annonces tous les deux.
+function annoncerExport(texte) {
+  const zone = document.getElementById(EXPORT_ID_ANNONCE);
+  if (!zone) return;
+  zone.textContent = '';
+  if (texte) zone.textContent = texte;
+}
+
+// Ferme le menu avec l'instance du design system (posee sur le bouton par son
+// script). Absente (script pas encore charge), il n'y a rien a fermer.
+function fermerMenuExport(bouton) {
+  if (bouton && bouton.ftDropdown && typeof bouton.ftDropdown.close === 'function') bouton.ftDropdown.close();
+}
+
+// Met le bouton et la ligne « Contacts » dans le bon etat.
+//  - Aucun club affiche : bouton grise (aria-disabled), relie au message « Aucun
+//    club ne correspond aux filtres. » ; le menu est ferme s'il etait ouvert.
+//  - Contacts illisible : ligne « Contacts » grisee, phrase d'explication visible.
+// Appelee par render() : a chaque changement de filtre et au retour a la liste.
+function majBoutonExport(clubs) {
+  const bouton = document.getElementById(EXPORT_ID_MENU_BOUTON);
+  if (!bouton) return;
+  const vide = clubs.length === 0;
+  bouton.setAttribute('aria-disabled', vide ? 'true' : 'false');
+  if (vide) {
+    bouton.setAttribute('aria-describedby', EXPORT_ID_MESSAGE_VIDE);
+    fermerMenuExport(bouton);
+  } else {
+    bouton.removeAttribute('aria-describedby');
+  }
+
+  const contactsIllisibles = state.unreadable.includes(EXPORT_TABLE_CONTACTS);
+  const ligneContacts = document.getElementById(EXPORT_ID_LIGNE_CONTACTS);
+  if (ligneContacts) ligneContacts.setAttribute('aria-disabled', contactsIllisibles ? 'true' : 'false');
+  const aide = document.getElementById(EXPORT_ID_AIDE_CONTACTS);
+  if (aide) aide.classList.toggle('is-hidden', !contactsIllisibles);
+}
+
+// Lance le telechargement : Blob, lien temporaire, adresse liberee ensuite
+// (comme exportCsv du tableau de bord). Le texte du fichier commence deja par la BOM.
+function telechargerFichierCsv(fichier) {
+  const blob = new Blob([fichier.contenu], {type: EXPORT_TYPE_MIME});
+  const url = URL.createObjectURL(blob);
+  const lien = document.createElement('a');
+  lien.href = url;
+  lien.download = fichier.nom;
+  lien.click();
+  URL.revokeObjectURL(url);
+}
+
+// Clic sur une ligne du menu. Les lignes sont des liens (href="#") : on annule
+// la navigation. Une ligne grisee (aria-disabled) ne produit aucun fichier.
+function exporterDepuisMenu(event, type) {
+  event.preventDefault();
+  if (event.currentTarget.getAttribute('aria-disabled') === 'true') return;
+  const clubs = filteredClubs();
+  if (clubs.length === 0) return;
+  let fichier;
+  let annonce;
+  if (type === 'contacts') {
+    fichier = fichierExportContacts(clubs);
+    if (fichier.refus) return;
+    annonce = exportTexteAnnonceContacts(fichier.nombre, fichier.nombreClubs);
+  } else {
+    fichier = fichierExportClubs(clubs);
+    annonce = exportTexteAnnonceClubs(fichier.nombre);
+  }
+  telechargerFichierCsv(fichier);
+  // Le menu se ferme (le design system ne le fait pas au clic sur une ligne) et le
+  // focus revient au bouton : la ligne cliquee disparait avec le menu.
+  const bouton = document.getElementById(EXPORT_ID_MENU_BOUTON);
+  fermerMenuExport(bouton);
+  if (bouton) bouton.focus();
+  annoncerExport(annonce);
+}
+
+function brancherExport() {
+  const conteneur = document.getElementById(EXPORT_ID_CONTENEUR);
+  const bouton = document.getElementById(EXPORT_ID_MENU_BOUTON);
+  if (conteneur && bouton) {
+    // Le script du design system ouvre le menu a chaque clic sur le bouton, meme
+    // grise, et disabled-a11y.js n'est pas charge. Cet ecouteur est pose en phase
+    // de capture sur le conteneur : il passe AVANT celui du bouton, quel que soit
+    // l'ordre dans lequel les deux ont ete poses, et stopPropagation l'empeche
+    // d'arriver jusqu'au bouton. Aucune fonction du design system n'est modifiee.
+    conteneur.addEventListener('click', event => {
+      if (!event.target.closest('#' + EXPORT_ID_MENU_BOUTON)) return;
+      if (bouton.getAttribute('aria-disabled') !== 'true') return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+  }
+  document.querySelectorAll('[data-export]').forEach(ligne => {
+    ligne.addEventListener('click', event => exporterDepuisMenu(event, ligne.dataset.export));
+  });
+}
+
+brancherExport();
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
