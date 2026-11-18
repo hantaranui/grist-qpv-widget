@@ -1,75 +1,249 @@
 # Note UX — Exporter (CSV) les clubs et leurs contacts
 
-Widget : clubs (src/clubs/). Écran concerné : la liste « Liste des clubs sportifs » (src/clubs/index.html), barre de filtres.
-Statut : proposition (tâche E8-2), à valider par Hanta et Pierre (E8-3). Aucun code modifié.
+Widget : clubs (src/clubs/). Écran concerné : la liste « Liste des clubs sportifs » (src/clubs/index.html), barre de titre.
+Statut : mise à jour après les réponses de Hanta et de Pierre (tâche E8-2). Une seule question reste ouverte (§8). Aucun code modifié.
 Sources lues : CLAUDE.md, docs/backlog.md (Sprint E8), docs/design-system-france-travail.md, src/clubs/index.html, src/clubs/style.css, src/clubs/script.js (filteredClubs, renderFilters, messages « Vos droits ne permettent pas… »), src/actions-dashboard/index.html, style.css et script.js (bouton et fonction exportCsv), docs/ux/contacts-fiche-club.md, feuille https://cdn.francetravail.fr/studio/design-system/css/styles.css (classes vérifiées), pages du design system citées plus bas. Aucun skill UI/UX dans .claude/skills/ (dossier absent).
 
 ## 0. Point de départ (ce qui existe)
 
-- Liste des clubs : `div.topbar` avec `h1` « Clubs », puis `section.filters-bar` (`div.filters-body#filters` pour les quatre filtres, puis `button.btn.btn-link.btn-sm#resetBtn` « Réinitialiser les filtres »), puis `section.table-panel` avec le tableau et `div.empty#empty` « Aucun club ne correspond aux filtres. ».
-- `.filters-bar` est un flex qui passe à la ligne (`flex-wrap: wrap`, `align-items: end`). `.filters-body` prend la place restante (`flex: 1 1 auto`).
-- Tableau de bord : `button.btn.btn-secondary#exportBtn` > `span.btn-content` « Exporter (CSV) », dans `div.topbar-actions`, en haut à droite de la barre de titre, à côté du bouton principal « Ajouter une action ». Il exporte les lignes filtrées. Il n'a pas d'état désactivé, pas d'annonce, pas de message.
+- Liste des clubs (src/clubs/index.html) : `div.topbar` qui contient seulement `h1` « Clubs » ; puis `section.filters-bar` (`div.filters-body#filters`, puis `button.btn.btn-link.btn-sm#resetBtn` « Réinitialiser les filtres ») ; puis `section.table-panel` avec le tableau et `div.empty#empty` « Aucun club ne correspond aux filtres. ». Le tout est dans `div#listView`, masqué quand la fiche d'un club est ouverte.
+- Tableau de bord (src/actions-dashboard/index.html) : `div.topbar` contient `h1` puis `div.topbar-actions`, qui contient `button.btn.btn-secondary#exportBtn` > `span.btn-content` « Exporter (CSV) », puis le bouton principal « Ajouter une action ». Il exporte les lignes filtrées, sans état désactivé ni annonce.
+- Styles du tableau de bord (src/actions-dashboard/style.css) : `.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px; … }`, `.topbar-actions { display: flex; align-items: center; gap: 12px; }`, et sous le point de rupture mobile du fichier : `.topbar { align-items: flex-start; flex-direction: column; }`.
+- Styles de clubs (src/clubs/style.css) : `.topbar` n'a que `padding: 24px` (16 px sous 560 px), un fond et une bordure. Il n'est pas flex et `.topbar-actions` n'existe pas.
 - Table Contacts illisible : la fiche affiche « Vos droits ne permettent pas de lire les contacts. » (`p.empty-note`, script.js).
-- Zone d'annonce existante : `p.sr-only#contactStatus` (`role="status"`, `aria-live="polite"`), créée pour les contacts. Le widget a déjà ce principe d'annonce vocale sans texte visible.
-- Alertes déjà utilisées dans clubs : `div.alert.alert-error` > `p.alert-content`, avec `role="alert"`.
+- Zone d'annonce existante : `p.sr-only#contactStatus` (`role="status"`, `aria-live="polite"`), commentée dans le HTML comme réservée aux contacts de la fiche.
+- Le script `disabled-a11y.js` du design system n'est pas chargé dans le widget clubs (information de Hanta). Aucune balise de ce script dans src/clubs/index.html.
 
 ## 1. Utilisateur et parcours
 
-Qui : un agent France Travail (National, Régional, Départemental) ou ANS (hypothèse : tous les profils ; point à confirmer, §8). Il veut un fichier à ouvrir dans Excel avec les clubs de son périmètre, filtrés comme il le souhaite.
+Qui : un agent France Travail (National, Régional, Départemental) ou ANS. Il veut un fichier à ouvrir dans Excel avec les clubs de son périmètre, filtrés comme il le souhaite. Les profils FT (National, Régional, Départemental) ont accès à l'export, chacun dans son périmètre : c'est garanti par les règles d'accès de Grist, l'écran ne cache rien selon le profil. Cas de l'ANS : question ouverte, §8.
 
-Parcours (4 étapes pour la liste des clubs, 4 pour les contacts) :
+Parcours en 4 étapes :
 
 1. L'agent règle les filtres Région, Département, Fédération, Club (ou n'en règle aucun).
-2. Il clique sur « Exporter la liste des clubs » ou sur « Exporter les contacts ».
-3. Le navigateur télécharge le fichier (les clubs affichés dans le tableau, pas d'autres).
-4. Une annonce vocale confirme le nombre de clubs exportés. Pour les contacts, l'avertissement données personnelles a été vu avant (voir §3.4).
+2. Il clique sur « Exporter (CSV) » en haut à droite : un menu s'ouvre.
+3. Il choisit « Liste des clubs » ou « Contacts » : le navigateur télécharge le fichier (les clubs affichés dans le tableau, pas d'autres) et le menu se ferme.
+4. Une annonce vocale confirme le nombre de lignes exportées.
 
-## 2. Emplacement et choix entre les deux exports
+Tout ce qui est affiché dans le tableau est exporté : il n'y a pas de nombre maximal de clubs.
 
-### 2.1 Emplacement du bouton
+## 2. Emplacement et composant
 
-Recommandation : **dans la barre de filtres (`section.filters-bar`), à droite, après « Réinitialiser les filtres »**, à la fin de la ligne. Raison : l'export dépend directement des filtres, il doit être au même endroit visuel. Le widget clubs n'a pas de bouton principal dans sa barre de titre (contrairement au tableau de bord), la barre de titre reste donc inchangée.
+### 2.1 Emplacement : la barre de titre, à droite, comme au tableau de bord
 
-Alternative écartée : la barre de titre (`topbar`). Le tableau de bord y met son bouton, mais clubs n'y a que le titre, et l'export serait éloigné des filtres dont il dépend. La seule chose qui rapproche des deux widgets est l'apparence du bouton : `btn btn-secondary`, comme demandé.
+Le bouton « Exporter (CSV) » est dans le bandeau du haut du widget (`div.topbar`), à droite du titre « Clubs », au même endroit et avec la même apparence que celui du tableau de bord (`btn btn-secondary` > `span.btn-content`). Il n'y a pas de bouton principal à côté : il est seul à droite.
 
-### 2.2 Deux boutons ou un bouton avec un choix : deux boutons groupés
+Comment le placer de la même façon (à faire par dev-interface dans src/clubs/index.html et src/clubs/style.css) :
 
-Recommandation : **deux boutons côte à côte dans un groupe de boutons du design system**, chacun avec un libellé qui dit ce qu'il télécharge. Raisons :
+1. Dans `div.topbar`, après `h1`, ajouter un `div.topbar-actions` qui contient le composant Dropdown (§2.2), comme le tableau de bord.
+2. Dans src/clubs/style.css, donner à `.topbar` et à `.topbar-actions` les mêmes règles que celles du tableau de bord (valeurs relevées au §0 : flex, alignement centré, `space-between`, écart 16 px ; actions en flex, écart 12 px) et, sur petit écran, le même passage en colonne. Valeurs à recopier telles quelles : aucune nouvelle valeur. Le `padding` de `.topbar` de clubs (24 px, puis 16 px sous 560 px) ne change pas.
+3. Le bandeau commun (balise `bandeau.js`, `data-titre="Liste des clubs sportifs"`) n'est pas touché. Il reste dans l'en-tête de la page ; le titre `h1` « Clubs » reste le titre propre du widget.
 
-- un seul clic au lieu de deux (un menu demande ouvrir, puis choisir) ;
-- aucun composant de menu à ajouter : le groupe de boutons existe ;
-- le choix est visible, donc compréhensible sans explication ;
-- moins de risque d'accessibilité (un menu déroulant demande un focus géré, la touche Échap, les flèches).
+Les deux widgets gardent la même position et le même bouton ; la seule différence visible est la flèche du menu (icône `icon-chevron-sm-d`, voir §2.2).
 
-Le bouton unique « Exporter (CSV) » de la user story est conservé comme **nom du groupe** (étiquette lue par le lecteur d'écran), et les deux boutons portent chacun une précision. Choix à confirmer (question 1, §8).
+### 2.2 Composant retenu : Dropdown (menu déroulant)
 
-Alternative si Hanta préfère un seul bouton : le composant Dropdown du design system (webcomposant), pages https://designsystem.francetravail.io/components/detail/dropdown--default.html et https://designsystem.francetravail.io/components/detail/dropdown--liste.html. Je n'ai pas relevé sa structure HTML exacte ici (aucun split button n'existe dans le design system) : si cette option est retenue, je dois la relever avant que dev-interface code. Pas de menu fabriqué à la main.
+Pages : https://designsystem.francetravail.io/components/detail/dropdown--liste.html (exemple « Avec une liste d'actions ») et https://designsystem.francetravail.io/components/detail/dropdown--default.html (exemple de base).
 
-### 2.3 Composant retenu : groupe de boutons secondaires
+Le Dropdown convient : la page le décrit comme une liste d'actions contextuelles qui apparaissent après le clic sur un bouton, et non comme un choix de valeur (c'est le rôle de Select ou Autocomplete). Deux actions d'export entrent exactement dans cet usage. Aucun composant à inventer.
 
-Page : https://designsystem.francetravail.io/components/detail/button-group--secondary.html
-Classes vérifiées dans la feuille du CDN : `.btn-group`, `.btn-group-item`, `.btn-group-sm`.
-
-Structure HTML exacte de la page (3 boutons dans l'exemple ; on en garde 2) :
+Structure HTML exacte de la page (exemple « Avec une liste d'actions », recopiée, 3 lignes dans l'exemple ; on en garde 2) :
 
 ```html
-<ul class="btn-group" role="group">
-  <li class="btn-group-item">
-    <button class="btn btn-secondary" type="button">
-      <span class="btn-content">Gauche</span>
-    </button>
-  </li>
-  <li class="btn-group-item">
-    <button class="btn btn-secondary" type="button">
-      <span class="btn-content">Droite</span>
-    </button>
-  </li>
-</ul>
+<div class="dropdown">
+  <button class="btn btn-secondary dropdown-toggle" data-ft-dropdown="dropdown-example" type="button">
+    <span class="btn-content">Plus d'actions</span>
+    <span aria-hidden="true" class="icon icon-chevron-sm-d"></span>
+  </button>
+
+  <div id="dropdown-example" class="dropdown-menu dropdown-md">
+    <ul class="dropdown-list">
+      <li>
+        <a class="dropdown-item" href="#">
+          <span aria-hidden="true" class="icon icon-home"></span>
+          Espace personnel
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item" href="#">
+          <span aria-hidden="true" class="icon icon-mail"></span>
+          Courriers reçus
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item" href="#">
+          <span aria-hidden="true" class="icon icon-gear"></span>
+          Mon compte
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
 ```
 
-La page ne donne qu'un attribut ARIA, `role="group"`. **Ajout proposé** (pas dans la page) : `aria-label="Exporter (CSV)"` sur le `<ul>`, pour que le groupe soit nommé. À valider (question 6, §8).
+Adaptation pour clubs (seuls le texte, l'`id` du menu et le nombre de lignes changent ; `id` à choisir par dev-interface, unique dans la page) :
 
-Bouton secondaire : https://designsystem.francetravail.io/components/detail/button--secondary.html
+- Libellé du bouton : « Exporter (CSV) » (dans `span.btn-content`, comme le tableau de bord).
+- `data-ft-dropdown` du bouton = `id` du `div.dropdown-menu`.
+- Ligne 1 : « Liste des clubs ». Ligne 2 : « Contacts ». Pas d'icône dans les lignes : la page en montre, mais elles sont décoratives (`aria-hidden`) et je n'en choisis pas sans besoin (aucune icône proposée, pour ne pas en inventer).
+- Menu aligné sur le bord droit du bouton : la feuille contient une classe `dropdown-menu-right`, mais je n'ai pas relevé de page qui l'utilise. À essayer par dev-interface et à confirmer à l'écran ; sinon le menu risque de dépasser du widget, le bouton étant tout à droite.
+- Pas d'attribut sur la structure de la page autre que ceux ci-dessus, sauf la désactivation (§3).
+
+Ce que la page ne dit pas (je ne l'invente pas) :
+
+- Aucun attribut ARIA sur le bouton ni sur le menu (ni `aria-expanded`, ni `aria-controls`, ni `role`). Seule l'icône a `aria-hidden="true"`.
+- Aucune description du comportement au clavier ni pour les lecteurs d'écran. Le comportement vient du script `ft-autoloader.js` (CDN), dont je n'ai pas le contenu.
+- Les lignes sont des liens (`a href="#"`) : la page ne prévoit pas de ligne de type bouton. Le code doit empêcher la navigation par défaut du lien (`href="#"`) et lancer l'export.
+
+Comportement attendu (à vérifier à la main par la personne qui teste, car la page ne le garantit pas) :
+
+| Geste | Attendu |
+| --- | --- |
+| Tab | Le bouton « Exporter (CSV) » reçoit le focus, après le titre et avant la barre de filtres. |
+| Entrée ou Espace sur le bouton | Le menu s'ouvre (comportement natif de `button` + script du design system). |
+| Tab dans le menu ouvert | Le focus passe sur « Liste des clubs », puis « Contacts ». |
+| Entrée sur une ligne | Lance l'export, ferme le menu. |
+| Échap | Ferme le menu, focus sur le bouton « Exporter (CSV) ». |
+| Clic ailleurs | Ferme le menu. |
+| Lecteur d'écran | Lit « Exporter (CSV), bouton » puis, dans le menu, le texte de chaque ligne (« lien » pour une ligne, car la page utilise des liens). Sans `aria-expanded` sur la page, l'état ouvert ou fermé n'est pas annoncé : à tester. |
+
+Si le test montre qu'Échap, la fermeture ou le retour du focus ne fonctionnent pas, c'est un défaut du composant du design system, pas du widget : le signaler à Hanta, ne rien fabriquer à la main.
+
+### 2.3 Maquette en texte
+
+Écran large :
+
+```
+┌─ Barre de titre ───────────────────────────────────────────────────────┐
+│ ▌Clubs                                              [ Exporter (CSV) ▾ ]│
+│                                                     ┌─────────────────┐ │
+│                                                     │ Liste des clubs │ │
+│                                                     │ Contacts        │ │
+│                                                     └─────────────────┘ │
+├─ Filtres ──────────────────────────────────────────────────────────────┤
+│ Région [Toutes ▾]  Département [Tous ▾]  Fédération [Toutes ▾]  Club [Tous ▾] │
+│ Réinitialiser les filtres                                               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+(le menu n'est visible que quand il est ouvert)
+
+Écran étroit (mobile) : comme au tableau de bord, la barre de titre passe en colonne, le titre au-dessus, le bouton « Exporter (CSV) » dessous, aligné à gauche. Le menu s'ouvre sous le bouton. Aucun défilement horizontal de la page.
+
+Ordre de lecture et de tabulation : titre (non focalisable), « Exporter (CSV) », puis (menu ouvert) « Liste des clubs », « Contacts » ; puis filtres, « Réinitialiser les filtres », tableau.
+
+## 3. États et désactivation
+
+Désactivation par `aria-disabled="true"`, pas par `disabled` :
+
+- Un bouton ou une ligne `aria-disabled="true"` reste dans l'ordre de tabulation et est annoncé « indisponible », alors qu'un `disabled` disparaît du clavier et des lecteurs d'écran : l'agent ne saurait pas pourquoi l'export manque.
+- La feuille du CDN contient des styles pour `[aria-disabled=true]` sur les boutons, et la règle `.dropdown-item[aria-disabled=true]` pour les lignes du menu (relevées dans la feuille). L'apparence grisée vient donc du design system.
+- Le script `disabled-a11y.js`, qui bloque le clic de ces éléments, n'est PAS chargé dans le widget clubs : **le code devra ignorer lui-même le clic** sur un élément `aria-disabled="true"` (aucun fichier produit, aucune annonce d'export). Pour le bouton principal, il faut aussi que le menu ne s'ouvre pas : le script `ft-autoloader.js` ouvre le menu sur le clic ; je ne sais pas comment l'en empêcher proprement. À essayer par dev-interface ; si ce n'est pas possible sans fabriquer, le signaler à Hanta (voir §9, risques).
+
+| État | Bouton « Exporter (CSV) » | Ligne « Liste des clubs » | Ligne « Contacts » | Ce qui est affiché |
+| --- | --- | --- | --- | --- |
+| Au moins 1 club affiché, contacts lisibles | actif | active | active | rien de plus |
+| Aucun club affiché | `aria-disabled="true"` | (menu fermé) | (menu fermé) | « Aucun club ne correspond aux filtres. » (texte existant `#empty`, voir ci-dessous) |
+| Au moins 1 club, contacts illisibles | actif | active | `aria-disabled="true"` | « Vos droits ne permettent pas de lire les contacts. » (voir §8 : variante à choisir pour l'ANS) |
+| Données pas encore chargées | `aria-disabled="true"` | (menu fermé) | (menu fermé) | rien de plus (le tableau est vide aussi) |
+
+Aucun club affiché : le menu ne s'ouvre pas ; la raison est le texte déjà affiché sous le tableau, « Aucun club ne correspond aux filtres. » (`div#empty`). Pour qu'un lecteur d'écran la lise au focus du bouton, relier le bouton à ce texte par `aria-describedby` (valeur : l'`id` existant `empty`). Aucun texte nouveau.
+
+Contacts illisibles : le message est celui de la fiche du club, mot pour mot : « Vos droits ne permettent pas de lire les contacts. » Il doit être visible quand le menu est ouvert, sans dépendre de l'infobulle ni de la couleur seule. La feuille du CDN contient une classe `dropdown-item-text`, mais je n'ai relevé aucune page qui montre son usage : si dev-interface ne peut pas la confirmer, mettre la phrase dans une ligne de texte du menu à côté de « Contacts » est le plus proche, sans fabriquer. Dans tous les cas, la ligne « Contacts » est reliée à cette phrase par `aria-describedby`. À valider par Hanta après essai.
+
+Autres états sans écran supplémentaire :
+
+- Pendant la fabrication du fichier : aucun état « en cours » (opération immédiate, tout est déjà en mémoire). Pas de barre de progression.
+- Échec du téléchargement par le navigateur : rien n'est détectable par le widget. Aucun message prévu (le tableau de bord n'en a pas non plus).
+- Après un changement de filtre : l'état du bouton et des lignes se met à jour à chaque affichage de la liste (`render()`).
+- Fiche d'un club ouverte : la liste, donc la barre de titre et le bouton, est masquée. Retour à la liste : l'état est recalculé.
+
+## 4. Textes exacts (français)
+
+| Élément | Texte |
+| --- | --- |
+| Bouton | Exporter (CSV) |
+| Ligne 1 du menu | Liste des clubs |
+| Ligne 2 du menu | Contacts |
+| Contacts illisibles | Vos droits ne permettent pas de lire les contacts. |
+| Aucun club affiché | Aucun club ne correspond aux filtres. (texte existant) |
+
+Annonces vocales après un export : voir §6.3.
+
+## 5. Nom des fichiers
+
+Avec la date du jour, au format AAAA-MM-JJ, en minuscules et avec des tirets (comme `actions-insertion-sport.csv` du tableau de bord) :
+
+- Liste des clubs : `clubs-insertion-sport-AAAA-MM-JJ.csv`, par exemple `clubs-insertion-sport-2026-11-18.csv`
+- Contacts : `contacts-clubs-insertion-sport-AAAA-MM-JJ.csv`, par exemple `contacts-clubs-insertion-sport-2026-11-18.csv`
+
+Ni le nom de la région, ni un nom de club dans le nom du fichier (pas d'accents ni d'espaces à traiter, aucune donnée du périmètre dans un nom de fichier qui circule). La date est celle du jour de l'export, prise sur l'ordinateur de l'agent.
+
+## 6. Accessibilité
+
+### 6.1 Libellés pour lecteur d'écran
+
+- Le bouton et les lignes du menu : le texte visible suffit comme nom accessible. Pas d'`aria-label` différent du texte visible (WCAG 2.5.3, étiquette dans le nom). Il n'y a plus de groupe de boutons, donc plus d'`aria-label` de groupe.
+- Les icônes (flèche du bouton) restent `aria-hidden="true"`, comme sur la page.
+- Les phrases d'aide (§3) sont reliées par `aria-describedby`. Les `id` nouveaux sont à choisir par dev-interface, non inventés ici.
+- Aucune information portée par la seule couleur : un élément désactivé a une phrase écrite qui l'explique (Contacts), ou un texte déjà visible (aucun club), pas seulement un grisé.
+
+### 6.2 Clavier
+
+Voir le tableau du §2.2. Le focus visible existant du widget (`outline: 2px solid var(--ft--color-primary)`, style.css) s'applique ; ne rien redéfinir. Un élément `aria-disabled` reste atteignable au clavier et ne fait rien (§3).
+
+### 6.3 Annonce du résultat
+
+Après l'export, annonce vocale polie (`role="status"`, `aria-live="polite"`), sans texte visible, dans une zone `sr-only` qui existe déjà au chargement de la page.
+
+**Choix : une zone dédiée**, avec la même forme que `#contactStatus` (`p.sr-only`, `role="status"`, `aria-live="polite"`), placée à côté d'elle dans le HTML. Raison : `#contactStatus` est commentée et nommée pour les contacts de la fiche ; la réutiliser pour l'export détourne son nom et son commentaire et ferait écrire deux fonctions différentes dans la même zone, alors qu'une zone de plus ne coûte qu'une ligne de HTML. L'`id` de la nouvelle zone est à choisir par dev-interface.
+
+Textes :
+
+- Liste des clubs : « Fichier téléchargé : 12 clubs exportés. » (singulier : « Fichier téléchargé : 1 club exporté. »)
+- Contacts : « Fichier téléchargé : 31 lignes pour 12 clubs. » (singulier à adapter.) Un club sans contact compte pour une ligne vide : le nombre de lignes peut donc dépasser ou égaler le nombre de clubs.
+
+Le nombre vient de la liste réellement écrite, pas d'un autre calcul. L'agent qui voit voit le fichier arriver dans son navigateur : aucune alerte de succès visible n'est ajoutée (même choix que contacts-fiche-club.md §7.4 et que le tableau de bord).
+
+### 6.4 Autres points
+
+- Contraste : couleurs du design system seulement (bouton secondaire, lignes du menu et styles `aria-disabled` de la feuille). La phrase d'aide utilise la couleur de texte atténuée déjà présente dans le widget (`muted-text`), à contrôler en contraste par dev-interface comme pour les autres textes gris.
+- Zoom 200 % et petit écran : la barre de titre passe en colonne (§2.3).
+- Titre « Clubs » (`h1`) inchangé, aucun nouveau titre.
+
+## 7. Règles à respecter pour dev-interface
+
+1. Aucune couleur, police ni espacement nouveaux : uniquement les classes du design system citées dans cette note et les variables ou valeurs déjà présentes dans style.css (dont celles de `.topbar` et `.topbar-actions` du tableau de bord).
+2. Nos propres classes ne reprennent aucun nom du design system (test/styles.test.js). `topbar-actions` existe déjà côté tableau de bord ; les `id` et classes nouveaux sont à choisir et à vérifier dans le dépôt, je n'en invente pas.
+3. Le bouton garde exactement l'apparence de celui du tableau de bord : `btn btn-secondary` > `span.btn-content`, avec en plus `dropdown-toggle` et l'icône de la page.
+4. Désactivation par `aria-disabled="true"` ; `disabled-a11y.js` n'est pas chargé : le code ignore lui-même le clic (§3).
+5. Tout ce qui est affiché venant de Grist est échappé (escapeHtml). Aucune donnée réelle dans les tests ou la documentation : exemples fictifs en `exemple.fr`.
+6. Le bandeau commun n'est pas touché (balise `data-titre="Liste des clubs sportifs"` inchangée dans l'en-tête).
+7. Nouveau code dans un bloc séparé (consigne de la tâche E8-8). Les valeurs répétées (noms de fichiers, textes) vont en constantes en tête de fichier.
+8. Les textes de la note sont recopiés tels quels, sans reformulation.
+9. Aucun avertissement sur les données personnelles n'est affiché (décision, §10).
+10. Le menu du design system est testé à la main (clavier, Échap, lecteur d'écran) avant de conclure : la page ne documente pas ce comportement.
+
+## 8. Question ouverte
+
+Pour Pierre :
+
+**Question 9 — ANS (clubs lisibles, contacts illisibles) : que fait la ligne « Contacts » ?**
+
+- Variante A : griser la ligne. Elle reste dans le menu avec `aria-disabled="true"` et le message « Vos droits ne permettent pas de lire les contacts. » Avantage : l'agent comprend pourquoi, et le menu est identique pour tous les profils. Inconvénient : une ligne qui ne sert jamais à ce profil.
+- Variante B : masquer la ligne. Le menu de l'ANS n'a plus que « Liste des clubs ». Avantage : rien d'inutilisable à l'écran. Inconvénient : l'agent ne sait pas que l'export des contacts existe ni pourquoi il n'y a pas accès ; le menu diffère selon le profil (l'écran « décide » alors d'un affichage selon les droits, ce qui n'est pas le principe posé dans CLAUDE.md, où les droits viennent de Grist). Dans cette variante, il resterait un menu à une seule ligne : à signaler à Hanta.
+
+Pas de recommandation de ma part. Le reste du comportement (grisé + message quand la table Contacts est illisible pour une raison inattendue) est inchangé.
+
+## 9. Composants cités et risques sur le design system
+
+| Composant | Page | Classes vérifiées dans la feuille CDN |
+| --- | --- | --- |
+| Dropdown (liste d'actions) | https://designsystem.francetravail.io/components/detail/dropdown--liste.html | `dropdown`, `dropdown-toggle`, `dropdown-menu`, `dropdown-md`, `dropdown-list`, `dropdown-item`, `dropdown-item[aria-disabled=true]` ; aussi présentes dans la feuille, usage non relevé : `dropdown-menu-right`, `dropdown-item-text` |
+| Dropdown (exemple de base) | https://designsystem.francetravail.io/components/detail/dropdown--default.html | `dropdown-body` (non utilisée ici) |
+| Bouton secondaire | https://designsystem.francetravail.io/components/detail/button--secondary.html | `btn`, `btn-secondary`, `btn-content` |
+
+Structure du bouton secondaire (page ci-dessus) :
 
 ```html
 <button class="btn btn-secondary" type="button">
@@ -77,200 +251,18 @@ Bouton secondaire : https://designsystem.francetravail.io/components/detail/butt
 </button>
 ```
 
-Les deux boutons gardent donc exactement l'apparence de l'export du tableau de bord (`btn btn-secondary` > `span.btn-content`). Ne pas ajouter `btn-sm` : le tableau de bord n'en met pas, et « Réinitialiser les filtres » (lien `btn-link btn-sm`) doit rester le bouton le plus discret de la barre.
+Composant manquant : aucun. Écarts à signaler :
 
-### 2.4 Maquette en texte
+1. Les lignes du Dropdown de la page sont des liens (`a href="#"`), pas des boutons : le code doit annuler la navigation. Aucun composant de « ligne bouton » n'a été relevé.
+2. La page ne documente ni le clavier, ni les annonces, ni `aria-expanded`.
+3. Désactiver le bouton principal sans que le menu s'ouvre n'est pas décrit par le design system (voir §3).
 
-Écran large :
+## 10. Décisions déjà prises (rappel)
 
-```
-┌─ Filtres ──────────────────────────────────────────────────────────────┐
-│ Région [Toutes ▾]  Département [Tous ▾]  Fédération [Toutes ▾]  Club [Tous ▾]│
-│ Réinitialiser les filtres      ┌ Exporter (CSV) ────────────────────────┐│
-│                                │ [Exporter la liste des clubs][Exporter les contacts] ││
-│                                └────────────────────────────────────────┘│
-└────────────────────────────────────────────────────────────────────────┘
-(la ligne « Exporter (CSV) » est le nom du groupe, lu par le lecteur d'écran, non affiché)
-```
-
-Écran étroit (mobile) : la barre passe déjà à la ligne (`flex-wrap`). Le groupe passe sous les filtres, sur toute la largeur disponible ; si les deux libellés ne tiennent pas côte à côte, ils passent l'un sous l'autre, dans l'ordre : liste des clubs, puis contacts. Aucun défilement horizontal de la page.
-
-Ordre de lecture et de tabulation : filtres, « Réinitialiser les filtres », « Exporter la liste des clubs », « Exporter les contacts », tableau.
-
-## 3. Textes exacts (français)
-
-### 3.1 Libellés
-
-| Élément | Texte |
-| --- | --- |
-| Nom du groupe (aria-label) | Exporter (CSV) |
-| Bouton 1 | Exporter la liste des clubs |
-| Bouton 2 | Exporter les contacts |
-
-Les deux boutons gardent la même mention « (CSV) » dans le nom du groupe : un lecteur d'écran lit « Exporter (CSV), groupe, Exporter la liste des clubs, bouton ».
-
-### 3.2 Aucun club affiché
-
-Les deux boutons sont désactivés (§5). Pour que l'agent comprenne pourquoi, sans dépendre de l'infobulle ni de la couleur :
-
-- le texte déjà affiché sous le tableau, « Aucun club ne correspond aux filtres. » (div#empty), reste la raison visible ;
-- phrase d'aide, liée aux boutons par `aria-describedby`, lue par les lecteurs d'écran, visible sous le groupe seulement quand les boutons sont désactivés : « Aucun club n'est affiché : modifiez les filtres pour exporter. »
-
-Si un agent actionne tout de même un bouton désactivé (voir §5), aucun fichier n'est produit, et la phrase d'aide est annoncée.
-
-### 3.3 Contacts illisibles
-
-Quand la table Contacts ne peut pas être lue :
-
-- « Exporter les contacts » est désactivé ;
-- phrase d'aide liée au bouton (`aria-describedby`), visible sous le groupe : « Vos droits ne permettent pas de lire les contacts. » (même phrase que la fiche du club, mot pour mot) ;
-- « Exporter la liste des clubs » reste actif si au moins un club est affiché (décision de l'audit E8-1).
-
-Raison du choix « désactivé + phrase » plutôt qu'« actif + message au clic » : l'agent sait avant de cliquer, et on n'affiche pas une alerte pour une chose que le profil n'a jamais pu faire. La fiche du club n'affiche d'ailleurs pas non plus d'alerte, seulement la phrase en note grise (`p.empty-note`).
-
-Si les deux problèmes sont présents (aucun club ET contacts illisibles) : deux phrases d'aide, l'une sous l'autre, « Aucun club n'est affiché : modifiez les filtres pour exporter. » puis « Vos droits ne permettent pas de lire les contacts. »
-
-### 3.4 Avertissement données personnelles (proposition, pour l'export des contacts uniquement)
-
-Texte proposé (court, deux phrases) :
-
-> Ce fichier contient des données personnelles (noms, e-mails, téléphones). Il n'est pas protégé hors de Grist : ne le partagez pas et supprimez-le après usage.
-
-Deux formes possibles, l'une des deux à retenir :
-
-**Forme A : texte permanent près du bouton (recommandée).**
-Le texte est affiché en permanence sous le groupe, en note grise, et relié au bouton « Exporter les contacts » par `aria-describedby` : le lecteur d'écran le lit quand le bouton prend le focus. Avantages : aucun clic de plus, aucune fenêtre à gérer, vu à chaque fois sans qu'on puisse « ne plus le voir ». Inconvénient : occupe une ligne dans la barre de filtres, même quand on exporte seulement la liste des clubs. Composant : la note grise existante `p.empty-note` n'est pas faite pour ça (italique, sens « vide »). Classe à ne pas inventer : si Hanta retient la forme A, utiliser une alerte d'information (ci-dessous) ou le texte `muted-text` déjà présent dans clubs (`span.muted-text`, style.css) ; décision à prendre (question 4, §8).
-
-**Forme B : message avant téléchargement.**
-Un clic sur « Exporter les contacts » ouvre une fenêtre de confirmation (modale, comme la suppression d'un contact : `role="alertdialog"`, focus sur « Annuler ») avec le texte ci-dessus et deux boutons : « Annuler » et « Télécharger ». Avantages : message impossible à rater. Inconvénients : un clic de plus à chaque export, fatigue (l'agent clique sans lire), une fenêtre à coder et à tester de plus.
-
-Composant retenu dans les deux formes pour afficher le texte : alerte d'avertissement du design system.
-Page : https://designsystem.francetravail.io/components/detail/alert--warning.html
-Classe vérifiée dans la feuille du CDN : `.alert-warning`. La page montre un webcomposant (`ft-alert`), alors que le widget utilise déjà les classes de la feuille pour l'alerte d'erreur (`div.alert.alert-error` > `p.alert-content`). Par cohérence avec le widget, dev-interface reprendrait la forme déjà utilisée dans clubs, avec `alert-warning` à la place de `alert-error` ; **cette forme n'est pas celle de la page** (voir « Écarts » ci-dessous).
-
-Structure HTML exacte de la page :
-
-```html
-<ft-alert nextfocus="id-element-next-focus" version="warning">
-  <p class="alert-title">
-    Alerte d'avertissement
-  </p>
-  <p class="alert-content">Je suis une alerte d'avertissement.</p>
-</ft-alert>
-```
-
-La page ne montre ni icône, ni bouton de fermeture, ni `role`/`aria-*`.
-
-Écarts à signaler (je ne les ai pas tranchés) :
-1. Le widget n'utilise pas `ft-alert` mais les classes `alert alert-error`. La variante « avertissement » avec ces classes (`alert alert-warning`) n'a pas été relevée sur une page : je n'ai vu que la classe dans la feuille. À vérifier par Hanta ou par une lecture du site avant le code.
-2. Sur la page, aucun `role`. Un avertissement permanent n'a pas besoin de `role="alert"` (qui interrompt la voix) ; il se lit par `aria-describedby` sur le bouton.
-
-Ma recommandation : **forme A**, texte d'avertissement permanent sous le groupe, car l'export des contacts est une action fréquente d'un agent habitué, et une fenêtre à chaque fois serait contournée sans lecture. Si Pierre veut une preuve que l'agent a vu le message, forme B.
-
-## 4. Nom des fichiers (proposition)
-
-Pour rester proche de celui du tableau de bord (`actions-insertion-sport.csv`, minuscules, tirets) :
-
-- Liste des clubs : `clubs-insertion-sport.csv`
-- Contacts : `contacts-clubs-insertion-sport.csv`
-
-Variante avec la date du jour (utile quand un agent exporte plusieurs fois) : `clubs-insertion-sport-AAAA-MM-JJ.csv` et `contacts-clubs-insertion-sport-AAAA-MM-JJ.csv`, par exemple `clubs-insertion-sport-2026-11-18.csv`. Question 5, §8 : sans date ou avec date. Ni le nom de la région, ni un nom de club dans le nom du fichier (pas de caractères accentués ni d'espaces à traiter, pas de donnée du périmètre dans un nom de fichier qui circule).
-
-## 5. États
-
-| État | Liste des clubs | Contacts | Ce qui est affiché |
-| --- | --- | --- | --- |
-| Au moins 1 club affiché, contacts lisibles | actif | actif | rien de plus (+ avertissement forme A) |
-| Aucun club affiché | désactivé | désactivé | « Aucun club n'est affiché : modifiez les filtres pour exporter. » |
-| Contacts illisibles | actif si ≥ 1 club | désactivé | « Vos droits ne permettent pas de lire les contacts. » |
-| Données pas encore chargées | désactivé | désactivé | rien de plus (le tableau est vide aussi) |
-| Téléchargement lancé | actif | actif | annonce vocale (§6.3) |
-
-Désactivation : proposer `aria-disabled="true"` et non l'attribut `disabled`.
-
-- Raison : un bouton `disabled` sort de l'ordre de tabulation et n'est plus annoncé, l'agent au clavier ou au lecteur d'écran ne sait pas pourquoi il manque. Avec `aria-disabled="true"` le bouton reste atteignable, annoncé « indisponible », et sa phrase d'aide est lue.
-- La feuille du CDN contient bien un style pour `[aria-disabled=true]` (relevé). La page du bouton dit que le script `disabled-a11y.js` bloque le clic des éléments `aria-disabled="true"`, mais **je n'ai pas vérifié que ce script est chargé dans le widget** : dev-interface doit donc aussi ignorer le clic dans son propre code (et ne produire aucun fichier). À vérifier (question 7, §8).
-- Le tableau de bord utilise `disabled` pour les boutons de ses fenêtres (script.js, ex. `submit.disabled`). `aria-disabled` est donc un écart de technique, pas d'apparence ; à confirmer par Hanta.
-
-Autres états sans écran supplémentaire :
-
-- Pendant la fabrication du fichier : aucun état « en cours » (opération immédiate, tout est déjà en mémoire). Pas de barre de progression.
-- Échec du téléchargement par le navigateur : rien n'est détectable par le widget. Aucun message prévu (le tableau de bord n'en a pas non plus).
-- Après un changement de filtre : l'état des boutons et les phrases d'aide se mettent à jour à chaque affichage de la liste (`render()`).
-- Fiche d'un club ouverte : la liste est masquée, donc les boutons aussi. Retour à la liste : l'état est recalculé.
-
-## 6. Accessibilité
-
-### 6.1 Libellés pour lecteur d'écran
-
-- Groupe : `role="group"` (celui de la page) + `aria-label="Exporter (CSV)"`.
-- Boutons : le texte visible suffit comme nom accessible (« Exporter la liste des clubs », « Exporter les contacts »). Pas d'`aria-label` différent du texte visible (WCAG 2.5.3, étiquette dans le nom).
-- Phrases d'aide : `<p id="…">` reliée au bouton concerné par `aria-describedby`. Ces `id` sont à choisir par dev-interface, non inventés ici.
-- Pas d'information portée par la seule couleur : un bouton désactivé a une phrase écrite qui l'explique, pas seulement un grisé.
-
-### 6.2 Clavier
-
-- Tab : filtres, « Réinitialiser les filtres », « Exporter la liste des clubs », « Exporter les contacts », puis tableau.
-- Entrée et Espace déclenchent le bouton (comportement natif de `button`).
-- Un bouton `aria-disabled` reste dans l'ordre de tabulation et ne fait rien (§5).
-- Le focus reste sur le bouton après le téléchargement (rien ne se ferme, rien ne s'ouvre en forme A). En forme B, le focus revient sur « Exporter les contacts » à la fermeture de la fenêtre.
-- Le focus visible existant du widget (`outline: 2px solid var(--ft--color-primary)`, style.css) s'applique ; ne rien redéfinir.
-
-### 6.3 Annonce du résultat
-
-Après le clic, annonce vocale polie (`role="status"`, `aria-live="polite"`), sans texte visible, dans une zone `sr-only` **qui existe déjà au chargement de la page**, comme `p#contactStatus`. Deux solutions : réutiliser cette zone, ou en ajouter une autre, avec la même forme (question 8, §8). Réutiliser `#contactStatus` pour autre chose que les contacts de la fiche est un détournement de nom ; je laisse le choix à Hanta.
-
-Textes :
-
-- Liste des clubs : « Fichier téléchargé : 12 clubs exportés. » (singulier : « Fichier téléchargé : 1 club exporté. »)
-- Contacts : « Fichier téléchargé : 12 clubs, 31 lignes. » (singulier à adapter.) Un club sans contact compte pour une ligne vide : le nombre de lignes peut donc dépasser, ou égaler, le nombre de clubs. Alternative plus claire : « Fichier téléchargé : 31 lignes pour 12 clubs. »
-
-Le nombre vient de la liste qui est réellement écrite, pas d'un autre calcul.
-
-L'agent qui voit voit le fichier arriver dans son navigateur : aucune alerte de succès visible n'est ajoutée (même choix que la note contacts-fiche-club.md §7.4 et que le tableau de bord).
-
-### 6.4 Autres points
-
-- Contraste : couleurs du design system seulement ; la phrase d'aide utilise la couleur de texte atténuée déjà présente dans le widget (`muted-text`), à contrôler en contraste par dev-interface comme pour les autres textes gris.
-- Zoom 200 % et petit écran : la barre se replie (flex wrap), les boutons passent à la ligne.
-- Titre « Clubs » (`h1`) inchangé, aucun nouveau titre.
-
-## 7. Règles à respecter pour dev-interface
-
-1. Aucune couleur, police ni espacement nouveaux : uniquement les classes du design system citées ci-dessus et les variables CSS déjà utilisées dans style.css.
-2. Nos propres classes ne reprennent aucun nom du design system (test/styles.test.js). Les noms de classes ou d'`id` nouveaux sont à choisir et à vérifier dans le dépôt, je n'en invente pas.
-3. Le bouton garde exactement l'apparence de celui du tableau de bord : `btn btn-secondary` > `span.btn-content`.
-4. Tout ce qui est affiché venant de Grist est échappé (escapeHtml). Aucune donnée réelle dans les tests ou la documentation : exemples fictifs en `exemple.fr`.
-5. Le bandeau commun n'est pas touché (balise `data-titre="Liste des clubs sportifs"` inchangée dans l'en-tête).
-6. Nouveau code dans un bloc séparé (consigne de la tâche E8-8). Les valeurs répétées (noms de fichiers, textes) vont en constantes en tête de fichier.
-7. Les textes de la note sont recopiés tels quels, sans reformulation.
-
-## 8. Questions ouvertes
-
-Pour Hanta :
-
-1. Deux boutons groupés (recommandé) ou un seul bouton « Exporter (CSV) » avec un menu (Dropdown : structure à relever avant le code) ?
-2. Le bouton placé dans la barre de filtres, à droite de « Réinitialiser les filtres » (recommandé) ou dans la barre de titre comme au tableau de bord ?
-3. Désactivation par `aria-disabled="true"` (recommandé) ou par `disabled`, comme ailleurs dans les widgets ?
-4. Avertissement données personnelles : forme A (texte permanent, recommandée) ou forme B (fenêtre de confirmation) ? Et le texte proposé, ou une autre formulation ? Faut-il l'ajouter aussi à l'export de la liste des clubs (non : pas de données de personnes, selon le périmètre de l'audit) ?
-5. Noms de fichiers : avec ou sans la date du jour ?
-6. `aria-label="Exporter (CSV)"` sur le groupe : accepté (ajout aux consignes de la page) ?
-7. Le script `disabled-a11y.js` du design system est-il chargé dans le widget ? Je ne l'ai pas vérifié.
-8. Annonce du résultat : réutiliser la zone `#contactStatus` ou en ajouter une autre ?
-
-Pour Pierre :
-
-9. Tous les profils (National, Régional, Départemental, ANS) ont-ils accès aux deux exports (hypothèse du backlog), ou seulement les DR ? Pour l'ANS, qui ne lit pas les contacts, « Exporter les contacts » serait toujours désactivé : le masquer entièrement plutôt que le griser ?
-10. L'avertissement données personnelles doit-il suivre un texte validé par un référent (DPO / protection des données) ?
-11. Faut-il un nombre maximal de clubs exportables, ou « tout ce qui est affiché » suffit-il ?
-
-## 9. Composants cités
-
-| Composant | Page | Classes vérifiées dans la feuille CDN |
-| --- | --- | --- |
-| Bouton secondaire | https://designsystem.francetravail.io/components/detail/button--secondary.html | `btn`, `btn-secondary`, `btn-content` |
-| Groupe de boutons | https://designsystem.francetravail.io/components/detail/button-group--secondary.html | `btn-group`, `btn-group-item` |
-| Alerte avertissement | https://designsystem.francetravail.io/components/detail/alert--warning.html | `alert-warning`, `alert-content`, `alert-title` |
-| Dropdown (alternative, structure non relevée) | https://designsystem.francetravail.io/components/detail/dropdown--liste.html | non vérifiées |
-
-Composant manquant : aucun bouton à menu intégré (split button) dans le design system ; le plus proche est le Dropdown, ou le groupe de boutons retenu ici.
+- Un seul bouton « Exporter (CSV) » avec un menu à deux choix (décision de Hanta et Pierre).
+- Emplacement : barre de titre, à droite, comme au tableau de bord.
+- Désactivation par `aria-disabled="true"`.
+- Aucun avertissement sur les données personnelles : choix fait par Hanta, car les agents saisissent eux-mêmes ces données et travaillent déjà avec ce type de fichiers.
+- Noms de fichiers avec la date du jour.
+- Profils FT National, Régional, Départemental : accès à l'export, chacun dans son périmètre (règles d'accès de Grist).
+- Pas de nombre maximal de clubs : on exporte tout ce qui est affiché.
