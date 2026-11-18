@@ -123,9 +123,20 @@ const state = { raw: {}, tablesRefusees: [], actions: [], filters: {}, statusCho
 // widget et state.filters repartirait de zero. On les garde dans sessionStorage,
 // propre a chaque onglet donc a chaque utilisateur. La cle contient le nom du
 // document pour que DEV, TEST et PROD ne se melangent pas. Seules les valeurs
-// des filtres sont gardees : ni tri, ni blocs replies, ni jeton.
+// des filtres sont gardees : ni blocs replies, ni jeton. Le tri choisi est garde
+// a part, sous sa propre cle (voir sauverTri plus bas).
 const FILTRES_CLE_PREFIXE = 'dashboard-filtres-v1:';
 let filtresCle = null; // reste null tant que le nom du document n'est pas connu
+
+// Conservation du tri choisi, sur le meme principe que les filtres mais sous une
+// cle separee (le format des filtres gardes ne change pas). On ne garde que la
+// colonne et le sens du tri. Le bouton Reinitialiser n'y touche pas.
+const TRI_CLE_PREFIXE = 'dashboard-tri-v1:';
+let triCle = null; // reste null tant que le nom du document n'est pas connu
+// Colonnes proposees par les menus de tri (attributs data-sort-option de index.html)
+// et sens possibles : tout autre tri garde est ignore.
+const TRI_CLES_ACCEPTEES = ['agency', 'club', 'intitule', 'statut', 'budget'];
+const TRI_SENS_ACCEPTES = ['asc', 'desc'];
 
 // Ecrit les filtres courants. Tout est protege : en navigation privee ou si le
 // stockage est bloque, le widget marche normalement, sans filtres gardes.
@@ -155,6 +166,7 @@ async function restaurerFiltres() {
     const nom = await grist.docApi.getDocName();
     if (!nom) return;
     filtresCle = FILTRES_CLE_PREFIXE + nom;
+    triCle = TRI_CLE_PREFIXE + nom;
   } catch (error) {
     return;
   }
@@ -174,6 +186,47 @@ async function restaurerFiltres() {
   });
   pruneGeoFilters();
   sauverFiltres();
+}
+
+// Ecrit le tri courant ({cle, sens}) ; un tri efface retire la cle du stockage.
+// Protege comme les filtres : stockage bloque = widget normal, sans tri garde.
+function sauverTri() {
+  if (!triCle) return;
+  try {
+    const {key, direction} = state.sort;
+    if (key && direction) {
+      window.sessionStorage.setItem(triCle, JSON.stringify({key, direction}));
+    } else {
+      window.sessionStorage.removeItem(triCle);
+    }
+  } catch (error) {
+    // Stockage indisponible : on continue sans rien afficher.
+  }
+}
+
+// Appelee au demarrage apres restaurerFiltres (qui fixe triCle), avant le premier
+// affichage. Un tri garde devenu impossible est ignore puis retire du stockage.
+function restaurerTri() {
+  if (!triCle) return;
+  try {
+    const brut = window.sessionStorage.getItem(triCle);
+    if (brut === null) return;
+    let garde = null;
+    try {
+      garde = JSON.parse(brut);
+    } catch (error) {
+      garde = null;
+    }
+    const valide = garde && typeof garde === 'object' && !Array.isArray(garde)
+      && TRI_CLES_ACCEPTEES.includes(garde.key) && TRI_SENS_ACCEPTES.includes(garde.direction);
+    if (valide) {
+      state.sort = {key: garde.key, direction: garde.direction};
+    } else {
+      window.sessionStorage.removeItem(triCle);
+    }
+  } catch (error) {
+    // Stockage indisponible : on continue sans tri garde.
+  }
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
@@ -205,6 +258,7 @@ document.querySelectorAll('[data-sort-option]').forEach(button => {
     const key = event.currentTarget.dataset.sortOption;
     const direction = event.currentTarget.dataset.sortDirection;
     state.sort = direction ? {key, direction} : {};
+    sauverTri();
     document.querySelectorAll('.sort-menu[open]').forEach(menu => menu.removeAttribute('open'));
     renderRows(filteredActions());
   });
@@ -235,6 +289,7 @@ async function load() {
     state.raisonChoices = await loadColumnChoices('Actions', 'Raison_du_refus');
     state.actions = buildActions(state.raw);
     await restaurerFiltres();
+    restaurerTri();
     ouvrirActionDemandee();
     render();
   } catch (error) {
