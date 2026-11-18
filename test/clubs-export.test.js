@@ -345,3 +345,203 @@ test("fichierExportClubs sans argument exporte les clubs affichés après les fi
   assert.equal(resultat.nombre, w2.filteredClubs().length);
   assert.match(resultat.nom, /^clubs-insertion-sport-\d{4}-\d{2}-\d{2}\.csv$/);
 });
+
+// ===========================================================================
+// Sprint E8, tache E8-7 : fichier « Contacts »
+// ===========================================================================
+
+const ENTETES_CONTACTS = ["SIRET", "Nom du club", "Nom", "Prénom", "Fonction", "E-mail", "Téléphone"];
+const DATE_FIXE = new Date(2026, 10, 18);
+
+const clubContacts = (id, surcharge = {}) => ({id, siret: `1234567890123${id}`, nom: `Club ${id}`, ...surcharge});
+
+const contactFictif = (club, surcharge = {}) => ({
+  id: 1,
+  Club: club,
+  Nom: "Dupont",
+  Prenom: "Alice",
+  Fonction: "Présidente",
+  Email: "alice@exemple.fr",
+  Telephone: "01 02 03 04 05",
+  ...surcharge,
+});
+
+// Un contact numerote automatiquement, pour ne pas repeter les identifiants.
+let compteurContact = 100;
+const contact = (club, surcharge = {}) => contactFictif(club, {id: ++compteurContact, ...surcharge});
+
+// Lignes de donnees (sans l'en-tete) du fichier Contacts pour des donnees fictives.
+function lignesFichierContacts(clubs, contacts) {
+  const fichier = w.fichierExportContacts(clubs, DATE_FIXE, {Contacts: contacts}, []);
+  return lireCsv(fichier.contenu).slice(1);
+}
+
+test("les en-têtes du fichier contacts sont exactement SIRET, Nom du club, Nom, Prénom, Fonction, E-mail, Téléphone, dans cet ordre", () => {
+  assert.deepEqual(plain(w.EXPORT_CONTACTS_ENTETES), ENTETES_CONTACTS);
+  const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: []}, []);
+  assert.deepEqual(lireCsv(fichier.contenu)[0], ENTETES_CONTACTS);
+});
+
+test("un club avec 3 contacts donne 3 lignes, chacune avec le SIRET et le nom du club", () => {
+  const club = clubContacts(1);
+  const lignes = lignesFichierContacts([club], [
+    contact(1, {Nom: "Alpha"}), contact(1, {Nom: "Beta"}), contact(1, {Nom: "Gamma"}),
+  ]);
+  assert.equal(lignes.length, 3);
+  lignes.forEach(ligne => {
+    assert.equal(ligne[0], `="${club.siret}"`); // SIRET en chiffres : formule texte
+    assert.equal(ligne[1], "Club 1");
+  });
+});
+
+test("un club sans contact donne exactement 1 ligne : SIRET et nom remplis, les 5 champs du contact vides", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], []);
+  assert.equal(lignes.length, 1);
+  assert.equal(lignes[0].length, 7);
+  assert.equal(lignes[0][0], '="12345678901231"');
+  assert.equal(lignes[0][1], "Club 1");
+  assert.deepEqual(lignes[0].slice(2), ["", "", "", "", ""]);
+});
+
+test("un contact d'un autre club (hors filtre) n'apparaît pas dans le fichier", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [
+    contact(1, {Nom: "Présent"}), contact(2, {Nom: "Absent"}),
+  ]);
+  assert.deepEqual(lignes.map(ligne => ligne[2]), ["Présent"]);
+});
+
+test("un contact dont le club n'existe pas n'apparaît pas dans le fichier", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [
+    contact(1, {Nom: "Présent"}), contact(999, {Nom: "Orphelin"}), contact(0, {Nom: "SansClub"}), contact(null, {Nom: "ClubVide"}),
+  ]);
+  assert.deepEqual(lignes.map(ligne => ligne[2]), ["Présent"]);
+});
+
+test("les clubs sont exportés dans l'ordre reçu, sans être retriés", () => {
+  const lignes = lignesFichierContacts(
+    [clubContacts(3, {nom: "Zèbre"}), clubContacts(1, {nom: "Alpha"}), clubContacts(2, {nom: "Milieu"})],
+    [contact(1, {Nom: "A"}), contact(2, {Nom: "B"}), contact(3, {Nom: "C"})]
+  );
+  assert.deepEqual(lignes.map(ligne => ligne[1]), ["Zèbre", "Alpha", "Milieu"]);
+});
+
+test("les contacts d'un même club sont triés par nom, puis par prénom, comme dans la fiche", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [
+    contact(1, {Nom: "Martin", Prenom: "Zoé"}),
+    contact(1, {Nom: "Durand", Prenom: "Paul"}),
+    contact(1, {Nom: "Martin", Prenom: "Adam"}),
+    contact(1, {Nom: "Bernard", Prenom: "Léa"}),
+  ]);
+  assert.deepEqual(lignes.map(ligne => `${ligne[2]} ${ligne[3]}`), ["Bernard Léa", "Durand Paul", "Martin Adam", "Martin Zoé"]);
+});
+
+test("quand la table Contacts est illisible, fichierExportContacts renvoie exactement {refus: 'droits'}", () => {
+  const resultat = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1)]}, ["Contacts"]);
+  assert.deepEqual(plain(resultat), {refus: "droits"});
+  assert.equal(w.EXPORT_REFUS_DROITS, "droits");
+  assert.equal(w.EXPORT_TABLE_CONTACTS, "Contacts");
+  assert.equal("nom" in resultat, false);
+  assert.equal("contenu" in resultat, false);
+});
+
+test("quand Contacts est illisible, il n'y a aucune exception et rien n'est écrit dans la console", () => {
+  const appels = [];
+  const originaux = {};
+  ["log", "warn", "error", "info"].forEach(nom => {
+    originaux[nom] = w.console[nom];
+    w.console[nom] = (...args) => appels.push([nom, ...args]);
+  });
+  try {
+    assert.doesNotThrow(() => w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1)]}, ["Contacts", "Actions"]));
+  } finally {
+    Object.assign(w.console, originaux);
+  }
+  assert.deepEqual(appels, []);
+});
+
+test("une autre table illisible que Contacts ne bloque pas l'export des contacts", () => {
+  const resultat = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1)]}, ["Actions"]);
+  assert.equal(resultat.refus, undefined);
+  assert.equal(resultat.nombre, 1);
+});
+
+test("téléphone en chiffres seuls : formule texte qui garde le zéro initial", () => {
+  const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1, {Telephone: "0102030405"})]}, []);
+  assert.ok(fichier.contenu.endsWith(`;"=""0102030405"""`));
+  assert.equal(lireCsv(fichier.contenu)[1][6], '="0102030405"');
+});
+
+test("téléphone commençant par + : apostrophe devant", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [contact(1, {Telephone: "+33 1 02 03 04 05"})]);
+  assert.equal(lignes[0][6], "'+33 1 02 03 04 05");
+});
+
+test("téléphone avec des espaces : texte normal, sans formule ni apostrophe", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [contact(1, {Telephone: "01 02 03 04 05"})]);
+  assert.equal(lignes[0][6], "01 02 03 04 05");
+});
+
+test("un nom, un prénom, une fonction ou un e-mail commençant par = + - @ reçoit une apostrophe", () => {
+  ["=", "+", "-", "@"].forEach(signe => {
+    const lignes = lignesFichierContacts([clubContacts(1)], [contact(1, {
+      Nom: `${signe}Nom`, Prenom: `${signe}Prenom`, Fonction: `${signe}Fonction`, Email: `${signe}mail@exemple.fr`,
+    })]);
+    assert.deepEqual(lignes[0].slice(2, 6), [`'${signe}Nom`, `'${signe}Prenom`, `'${signe}Fonction`, `'${signe}mail@exemple.fr`]);
+  });
+});
+
+test("les valeurs vides ou absentes d'un contact donnent des cellules vides, jamais « null » ni « undefined »", () => {
+  const lignes = lignesFichierContacts([clubContacts(1)], [
+    {id: 201, Club: 1, Nom: "Seul", Prenom: null, Fonction: undefined, Email: "", Telephone: null},
+    {id: 202, Club: 1, Nom: "Zèbre"},
+  ]);
+  assert.equal(lignes.length, 2);
+  assert.deepEqual(lignes[0].slice(2), ["Seul", "", "", "", ""]);
+  assert.deepEqual(lignes[1].slice(2), ["Zèbre", "", "", "", ""]);
+  const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [{id: 201, Club: 1, Nom: "Seul"}]}, []);
+  assert.doesNotMatch(fichier.contenu, /null|undefined/);
+});
+
+test("le nom du fichier contacts est contacts-clubs-insertion-sport-2026-11-18.csv pour le 18 novembre 2026", () => {
+  assert.equal(w.EXPORT_CONTACTS_PREFIXE_FICHIER, "contacts-clubs-insertion-sport");
+  const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: []}, []);
+  assert.equal(fichier.nom, "contacts-clubs-insertion-sport-2026-11-18.csv");
+});
+
+test("2 clubs, dont un avec 3 contacts et un sans contact : nombre = 4 et nombreClubs = 2", () => {
+  const fichier = w.fichierExportContacts([clubContacts(1), clubContacts(2)], DATE_FIXE, {
+    Contacts: [contact(1), contact(1), contact(1)],
+  }, []);
+  assert.equal(fichier.nombre, 4);
+  assert.equal(fichier.nombreClubs, 2);
+  assert.equal(lireCsv(fichier.contenu).length, 1 + 4);
+});
+
+test("sans aucun club, le fichier contacts a seulement la ligne d'en-têtes, nombre = 0 et nombreClubs = 0", () => {
+  const fichier = w.fichierExportContacts([], DATE_FIXE, {Contacts: [contact(1)]}, []);
+  assert.equal(fichier.nombre, 0);
+  assert.equal(fichier.nombreClubs, 0);
+  assert.equal(fichier.contenu, `${BOM}${ENTETES_CONTACTS.map(e => `"${e}"`).join(";")}`);
+});
+
+test("le fichier contacts commence par le BOM, utilise le point-virgule et \\r\\n", () => {
+  const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1), contact(1, {Nom: "Zed"})]}, []);
+  assert.ok(fichier.contenu.startsWith(BOM));
+  const sansBom = fichier.contenu.slice(1);
+  const lignes = sansBom.split("\r\n");
+  assert.equal(lignes.length, 3);
+  lignes.forEach(ligne => assert.equal(ligne.split('";"').length, 7));
+  assert.doesNotMatch(sansBom.replaceAll("\r\n", ""), /[\r\n]/);
+  assert.ok(!sansBom.endsWith("\r\n"));
+});
+
+test("fichierExportContacts sans argument lit state.raw et state.unreadable", () => {
+  const w2 = loadClubs();
+  w2.state.raw = {Contacts: []};
+  w2.state.unreadable = [];
+  const resultat = w2.fichierExportContacts();
+  assert.equal(resultat.nombre, w2.filteredClubs().length);
+  assert.match(resultat.nom, /^contacts-clubs-insertion-sport-\d{4}-\d{2}-\d{2}\.csv$/);
+  w2.state.unreadable = ["Contacts"];
+  assert.deepEqual(plain(w2.fichierExportContacts()), {refus: "droits"});
+});
