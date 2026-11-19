@@ -127,9 +127,9 @@ test("un retour chariot suivi d'un retour à la ligne dans une valeur ne casse p
 // 4. Anti-formule
 // ---------------------------------------------------------------------------
 
-test("une valeur de Nom, Adresse ou Ville qui commence par = + - @ reçoit une apostrophe devant", () => {
+test("une valeur de Nom, Adresse, Ville, SIRET, Code postal ou Téléphone qui commence par = + - @ reçoit une apostrophe devant", () => {
   for (const debut of ["=", "+", "-", "@"]) {
-    for (const entete of ["Nom", "Adresse", "Ville"]) {
+    for (const entete of ["Nom", "Adresse", "Ville", "SIRET", "Code postal", "Téléphone"]) {
       assert.equal(w.celluleCsv(`${debut}SOMME(A1)`, entete), `"'${debut}SOMME(A1)"`, `${entete} commençant par ${debut}`);
     }
   }
@@ -138,6 +138,10 @@ test("une valeur de Nom, Adresse ou Ville qui commence par = + - @ reçoit une a
 test("une valeur qui commence par une tabulation ou un retour chariot reçoit une apostrophe devant", () => {
   assert.equal(w.celluleCsv("\tabc", "Nom"), `"'\tabc"`);
   assert.equal(w.celluleCsv("\rabc", "Adresse"), `"'\rabc"`);
+  for (const entete of ["SIRET", "Code postal", "Téléphone"]) {
+    assert.equal(w.celluleCsv("\t0102030405", entete), `"'\t0102030405"`, `${entete} commençant par une tabulation`);
+    assert.equal(w.celluleCsv("\r0102030405", entete), `"'\r0102030405"`, `${entete} commençant par un retour chariot`);
+  }
 });
 
 test("l'anti-formule s'applique aussi à travers le fichier clubs complet", () => {
@@ -147,6 +151,13 @@ test("l'anti-formule s'applique aussi à travers le fichier clubs complet", () =
   assert.equal(lignes[1][4], "'@Ville");
 });
 
+test("l'anti-formule s'applique aussi aux colonnes SIRET et Code postal du fichier clubs complet", () => {
+  const club = clubFictif({siret: "=12345678901234", codePostal: "+75001"});
+  const lignes = lireCsv(w.fichierExportClubs([club], new Date(2026, 10, 18)).contenu);
+  assert.equal(lignes[1][0], "'=12345678901234");
+  assert.equal(lignes[1][3], "'+75001");
+});
+
 test("une valeur qui contient = + - @ ailleurs qu'au début n'est pas modifiée", () => {
   assert.equal(w.celluleCsv("Club a=b", "Nom"), '"Club a=b"');
   assert.equal(w.celluleCsv("Aix-en-Provence", "Ville"), '"Aix-en-Provence"');
@@ -154,28 +165,39 @@ test("une valeur qui contient = + - @ ailleurs qu'au début n'est pas modifiée"
 });
 
 // ---------------------------------------------------------------------------
-// 5. Colonnes de chiffres : formule texte
+// 5. Colonnes de chiffres : valeur telle quelle, sans formule
 // ---------------------------------------------------------------------------
 
-test("les colonnes à chiffres sont SIRET, Code postal et Téléphone", () => {
-  assert.deepEqual(plain(w.CSV_COLONNES_CHIFFRES), ["SIRET", "Code postal", "Téléphone"]);
+test("aucune formule =\"...\" n'est écrite : SIRET, Code postal et Téléphone en chiffres restent tels quels, entre guillemets", () => {
+  assert.equal(w.celluleCsv("0102030405", "Téléphone"), '"0102030405"');
+  assert.equal(w.celluleCsv("01000", "Code postal"), '"01000"');
+  assert.equal(w.celluleCsv("12345678901234", "SIRET"), '"12345678901234"');
 });
 
-test("une valeur faite uniquement de chiffres, dans SIRET, Code postal ou Téléphone, devient une formule texte", () => {
-  assert.equal(w.celluleCsv("0102030405", "Téléphone"), '"=""0102030405"""');
-  assert.equal(w.celluleCsv("01000", "Code postal"), '"=""01000"""');
-  assert.equal(w.celluleCsv("12345678901234", "SIRET"), '"=""12345678901234"""');
+test("aucune cellule du fichier clubs ni du fichier contacts ne contient la formule =\"...", () => {
+  const clubs = [clubFictif({siret: "12345678900012", codePostal: "01000"}), clubFictif({siret: "00012345600017", codePostal: "75001"})];
+  const fichierClubs = w.fichierExportClubs(clubs, new Date(2026, 10, 18));
+  assert.ok(!fichierClubs.contenu.includes('="'), "fichier clubs");
+  assert.ok(!fichierClubs.contenu.includes('""'), "fichier clubs : pas de guillemet doublé");
+  const fichierContacts = w.fichierExportContacts(
+    [{id: 1, siret: "12345678900012", nom: "Club 1"}], new Date(2026, 10, 18),
+    {Contacts: [{id: 301, Club: 1, Nom: "Dupont", Prenom: "Alice", Fonction: "Présidente", Email: "alice@exemple.fr", Telephone: "0612345678"}]}, []);
+  assert.ok(!fichierContacts.contenu.includes('="'), "fichier contacts");
+  assert.ok(!fichierContacts.contenu.includes('""'), "fichier contacts : pas de guillemet doublé");
 });
 
-test("un code postal 01000 garde son zéro dans le fichier", () => {
+test("un code postal 01000 garde son zéro dans le fichier, tel quel", () => {
   const fichier = w.fichierExportClubs([clubFictif({codePostal: "01000"})], new Date(2026, 10, 18));
-  assert.ok(fichier.contenu.includes('"=""01000"""'));
-  assert.equal(lireCsv(fichier.contenu)[1][3], '="01000"');
+  assert.ok(fichier.contenu.includes(';"01000";'));
+  assert.equal(lireCsv(fichier.contenu)[1][3], "01000");
 });
 
-test("un SIRET de 14 chiffres est conservé en entier dans le fichier", () => {
-  const fichier = w.fichierExportClubs([clubFictif({siret: "00012345600017"})], new Date(2026, 10, 18));
-  assert.equal(lireCsv(fichier.contenu)[1][0], '="00012345600017"');
+test("un SIRET de 14 chiffres est conservé en entier dans le fichier, tel quel", () => {
+  const fichier = w.fichierExportClubs([clubFictif({siret: "12345678900012"})], new Date(2026, 10, 18));
+  assert.ok(fichier.contenu.includes('"12345678900012"'));
+  assert.equal(lireCsv(fichier.contenu)[1][0], "12345678900012");
+  const avecZeros = w.fichierExportClubs([clubFictif({siret: "00012345600017"})], new Date(2026, 10, 18));
+  assert.equal(lireCsv(avecZeros.contenu)[1][0], "00012345600017");
 });
 
 test("une valeur faite de chiffres dans une colonne autre que SIRET, Code postal et Téléphone reste du texte simple", () => {
@@ -208,14 +230,14 @@ test("un téléphone avec des espaces mais sans « + » reste du texte normal", 
 // 7. Valeurs numeriques (documente le comportement actuel, sans le corriger)
 // ---------------------------------------------------------------------------
 
-test("un code postal reçu comme nombre 1000 ne plante pas et est écrit en formule texte (le zéro perdu n'est pas rendu)", () => {
+test("un code postal reçu comme nombre 1000 ne plante pas et est écrit tel quel (le zéro perdu n'est pas rendu)", () => {
   let cellule;
   assert.doesNotThrow(() => { cellule = w.celluleCsv(1000, "Code postal"); });
-  assert.equal(cellule, '"=""1000"""');
+  assert.equal(cellule, '"1000"');
 });
 
-test("un SIRET reçu comme nombre ne plante pas et est écrit en formule texte", () => {
-  assert.equal(w.celluleCsv(12345678901234, "SIRET"), '"=""12345678901234"""');
+test("un SIRET reçu comme nombre ne plante pas et est écrit tel quel", () => {
+  assert.equal(w.celluleCsv(12345678901234, "SIRET"), '"12345678901234"');
 });
 
 test("un nombre dans une colonne de texte ne plante pas et reste du texte simple", () => {
@@ -275,7 +297,7 @@ test("un club sans nom est exporté avec la case Nom vide", () => {
   const lignes = lireCsv(w.fichierExportClubs([clubFictif({nom: ""})], new Date(2026, 10, 18)).contenu);
   assert.equal(lignes.length, 2);
   assert.equal(lignes[1][1], "");
-  assert.equal(lignes[1][0], '="12345678901234"');
+  assert.equal(lignes[1][0], "12345678901234");
 });
 
 test("un club sans SIRET et sans nom, ni aucune autre information, donne une ligne de cinq cases vides", () => {
@@ -389,7 +411,7 @@ test("un club avec 3 contacts donne 3 lignes, chacune avec le SIRET et le nom du
   ]);
   assert.equal(lignes.length, 3);
   lignes.forEach(ligne => {
-    assert.equal(ligne[0], `="${club.siret}"`); // SIRET en chiffres : formule texte
+    assert.equal(ligne[0], club.siret); // SIRET en chiffres : valeur telle quelle
     assert.equal(ligne[1], "Club 1");
   });
 });
@@ -398,7 +420,7 @@ test("un club sans contact donne exactement 1 ligne : SIRET et nom remplis, les 
   const lignes = lignesFichierContacts([clubContacts(1)], []);
   assert.equal(lignes.length, 1);
   assert.equal(lignes[0].length, 7);
-  assert.equal(lignes[0][0], '="12345678901231"');
+  assert.equal(lignes[0][0], "12345678901231");
   assert.equal(lignes[0][1], "Club 1");
   assert.deepEqual(lignes[0].slice(2), ["", "", "", "", ""]);
 });
@@ -465,10 +487,10 @@ test("une autre table illisible que Contacts ne bloque pas l'export des contacts
   assert.equal(resultat.nombre, 1);
 });
 
-test("téléphone en chiffres seuls : formule texte qui garde le zéro initial", () => {
+test("téléphone en chiffres seuls : valeur telle quelle, qui garde le zéro initial", () => {
   const fichier = w.fichierExportContacts([clubContacts(1)], DATE_FIXE, {Contacts: [contact(1, {Telephone: "0102030405"})]}, []);
-  assert.ok(fichier.contenu.endsWith(`;"=""0102030405"""`));
-  assert.equal(lireCsv(fichier.contenu)[1][6], '="0102030405"');
+  assert.ok(fichier.contenu.endsWith(`;"0102030405"`));
+  assert.equal(lireCsv(fichier.contenu)[1][6], "0102030405");
 });
 
 test("téléphone commençant par + : apostrophe devant", () => {
@@ -479,6 +501,14 @@ test("téléphone commençant par + : apostrophe devant", () => {
 test("téléphone avec des espaces : texte normal, sans formule ni apostrophe", () => {
   const lignes = lignesFichierContacts([clubContacts(1)], [contact(1, {Telephone: "01 02 03 04 05"})]);
   assert.equal(lignes[0][6], "01 02 03 04 05");
+});
+
+test("un SIRET ou un téléphone de contact commençant par = - @ reçoit une apostrophe", () => {
+  ["=", "-", "@"].forEach(signe => {
+    const lignes = lignesFichierContacts([clubContacts(1, {siret: `${signe}12345678901234`})], [contact(1, {Telephone: `${signe}0102030405`})]);
+    assert.equal(lignes[0][0], `'${signe}12345678901234`);
+    assert.equal(lignes[0][6], `'${signe}0102030405`);
+  });
 });
 
 test("un nom, un prénom, une fonction ou un e-mail commençant par = + - @ reçoit une apostrophe", () => {

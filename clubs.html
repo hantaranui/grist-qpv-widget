@@ -2548,10 +2548,9 @@ function uploadErrorMessage(error) {
 const CSV_SEPARATEUR = ';';              // Excel en francais attend le point-virgule
 const CSV_BOM = '\uFEFF';                // marque UTF-8 : sans elle, Excel casse les accents
 const CSV_FIN_DE_LIGNE = '\r\n';         // fin de ligne attendue par Excel
-// Colonnes (reperees par leur en-tete) dont une valeur faite uniquement de
-// chiffres est ecrite en formule texte ="..." : Excel garderait sinon la valeur
-// comme un nombre et perdrait les zeros de tete (code postal 01000).
-const CSV_COLONNES_CHIFFRES = ['SIRET', 'Code postal', 'Téléphone'];
+// Les donnees sont exportees telles quelles, y compris SIRET, code postal et
+// telephone (pas de formule ="..." : le fichier reste propre dans un editeur de
+// texte ; c'est a la personne de regler Excel pour garder les zeros de tete).
 // Premiers caracteres qu'Excel lit comme le debut d'une formule.
 const CSV_DEBUT_DE_FORMULE = /^[=+\-@\t\r]/;
 
@@ -2561,14 +2560,13 @@ const EXPORT_CLUBS_PREFIXE_FICHIER = 'clubs-insertion-sport';
 const EXPORT_EXTENSION_FICHIER = '.csv';
 
 // Ecrit UNE cellule : toujours entre guillemets, guillemets internes doubles.
-// « entete » est l'en-tete de sa colonne (pour la regle des chiffres) ; sans
-// elle (ligne d'en-tetes), la cellule est ecrite telle quelle.
+// « entete » est l'en-tete de sa colonne ; sans elle (ligne d'en-tetes), la
+// cellule est ecrite telle quelle. Les valeurs de donnees sont ecrites telles
+// quelles, sauf la protection anti-formule (toutes les colonnes).
 function celluleCsv(valeur, entete) {
   let contenu = String(valeur ?? '');
   if (entete !== undefined) {
-    if (CSV_COLONNES_CHIFFRES.includes(entete) && /^[0-9]+$/.test(contenu)) {
-      contenu = `="${contenu}"`;
-    } else if (CSV_DEBUT_DE_FORMULE.test(contenu)) {
+    if (CSV_DEBUT_DE_FORMULE.test(contenu)) {
       // Protection anti-formule : l'apostrophe fait lire la cellule comme du texte.
       contenu = `'${contenu}`;
     }
@@ -2619,8 +2617,8 @@ function fichierExportClubs(clubs = filteredClubs(), date = new Date()) {
 // Meme principe que « Liste des clubs » : aucun appel a Grist, aucune ecriture,
 // uniquement les donnees deja chargees (state.raw). Pas d'interface (tache E8-8).
 
-// En-tetes exacts, dans l'ordre. « Téléphone » est ecrit comme dans
-// CSV_COLONNES_CHIFFRES, sinon la regle des chiffres ne s'appliquerait pas.
+// En-tetes exacts, dans l'ordre. Les valeurs (SIRET, telephone...) sont
+// exportees telles quelles, avec la seule protection anti-formule.
 const EXPORT_CONTACTS_ENTETES = ['SIRET', 'Nom du club', 'Nom', 'Prénom', 'Fonction', 'E-mail', 'Téléphone'];
 const EXPORT_CONTACTS_PREFIXE_FICHIER = 'contacts-clubs-insertion-sport';
 const EXPORT_TABLE_CONTACTS = 'Contacts';            // table dont la lecture est necessaire
