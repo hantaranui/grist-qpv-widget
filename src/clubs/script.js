@@ -90,20 +90,30 @@ const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 const DASHBOARD_URL_STOCKAGE = 'clubs-dashboard-url-v1';
 
 // --- Adresses fixes du tableau de bord (PROD et TEST) ------------------------
-// Si le document Grist ouvert porte exactement l'un de ces deux noms, le widget
-// utilise directement l'adresse correspondante, sans jamais demander de la
-// coller. Pour tout autre document (DEV7, futur environnement), rien ne change :
-// le formulaire de saisie manuelle reste en place.
+// Si le document Grist ouvert a exactement l'un de ces deux identifiants, le
+// widget utilise directement l'adresse correspondante, sans jamais demander de
+// la coller. Pour tout autre document (DEV7, futur environnement), rien ne
+// change : le formulaire de saisie manuelle reste en place.
+//
+// ATTENTION, PIEGE DEJA RENCONTRE : grist.docApi.getDocName() ne renvoie PAS le
+// nom lisible du document (« Partenariat Simplifié… »), mais son IDENTIFIANT
+// technique complet (22 caracteres). Comparer son resultat a un nom lisible
+// echoue toujours. Les deux identifiants ci-dessous ont ete verifies en
+// appelant getDocName() dans la console du navigateur sur chaque document.
+//
+// LIEN AVEC LES ADRESSES : l'adresse contient seulement le DEBUT (12 premiers
+// caracteres) de cet identifiant, apres /o/<organisation>/. On garde donc les
+// deux sous deux formes (identifiant complet pour detecter, adresse pour
+// naviguer) : l'identifiant complet ne se deduit pas de l'adresse.
 //
 // QUOI CHANGER SI UNE ADRESSE BOUGE :
 //   - le nom de domaine (ex. grist.numerique.gouv.fr) : si Grist est deplace ;
-//   - l'identifiant du document (la suite de lettres apres /o/.../) : si le
-//     document est recree ou copie ;
+//   - l'identifiant du document (ici ET dans l'adresse) : si le document est
+//     recree ou copie ;
 //   - le numero de page (/p/35) : si la page du tableau de bord change.
-// Le NOM du document doit aussi correspondre exactement (casse, tirets, espaces).
-const DASHBOARD_PROD_NOM = 'Partenariat Simplifié';
+const DASHBOARD_PROD_DOC_ID = 'aYxzLYFNGJSaULjRjk5ekw';
 const DASHBOARD_PROD_URL = 'https://grist.numerique.gouv.fr/o/francetravail/aYxzLYFNGJSa/Partenariat-Simplifie/p/35';
-const DASHBOARD_TEST_NOM = 'Partenariat Simplifié - TEST - JL';
+const DASHBOARD_TEST_DOC_ID = 'iymHJ4B9QFoTe1ahjCrXC6';
 const DASHBOARD_TEST_URL = 'https://grist.aucarre.tech/o/docs/iymHJ4B9QFoT/Partenariat-Simplifie-TEST-JL/p/35';
 
 // Contrat partage avec src/actions-dashboard/ (branche main, tableau de bord) :
@@ -1264,18 +1274,19 @@ function enregistrerAdresseDashboard(actionId) {
   render();
 }
 
-// Lit le nom du document Grist (grist.docApi.getDocName, deja utilise par le
-// tableau de bord) et renvoie l'adresse fixe PROD ou TEST si le nom correspond
-// exactement. Renvoie '' dans tous les autres cas : nom inconnu, vide, ou
-// lecture impossible (erreur ou API absente) — on retombe alors sur la saisie
-// manuelle, sans bruit ni blocage du chargement.
+// Lit l'IDENTIFIANT technique du document Grist (grist.docApi.getDocName le
+// renvoie, malgre son nom : ce n'est pas le nom lisible) et renvoie l'adresse
+// fixe PROD ou TEST si l'identifiant correspond exactement. Renvoie '' dans tous
+// les autres cas : identifiant inconnu, vide, ou lecture impossible (erreur ou
+// API absente) — on retombe alors sur la saisie manuelle, sans bruit ni blocage
+// du chargement.
 async function adresseDashboardDetectee() {
   try {
-    const nom = await grist.docApi.getDocName();
-    if (nom === DASHBOARD_PROD_NOM) return DASHBOARD_PROD_URL;
-    if (nom === DASHBOARD_TEST_NOM) return DASHBOARD_TEST_URL;
+    const idDocument = await grist.docApi.getDocName();
+    if (idDocument === DASHBOARD_PROD_DOC_ID) return DASHBOARD_PROD_URL;
+    if (idDocument === DASHBOARD_TEST_DOC_ID) return DASHBOARD_TEST_URL;
   } catch (error) {
-    // Pas de nom lisible : comportement habituel.
+    // Identifiant illisible : comportement habituel.
   }
   return '';
 }
