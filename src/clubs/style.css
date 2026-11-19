@@ -68,10 +68,17 @@ a:focus-visible {
 }
 
 .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 24px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
+
+/* Boutons à droite du titre (export CSV) : règle recopiée du tableau de bord. */
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
 
 h1 {
   margin: 0;
@@ -650,6 +657,13 @@ td:last-child {
    comme les autres rangees de la fiche club. */
 @media (max-width: 899px) {
   .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 1fr); }
+}
+/* Contacts et actions cote a cote ne laissent plus assez de place a leurs
+   colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
+@media (max-width: 900px) {
+  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+  /* Barre de titre : le titre au-dessus, le bouton d'export dessous (comme le tableau de bord). */
+  .topbar { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 560px) {
   .topbar { padding: 16px; }

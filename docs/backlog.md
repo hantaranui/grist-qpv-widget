@@ -493,3 +493,51 @@ Tâches prévues (ordre validé) :
 | Tâche 7 | README du tableau de bord, backlog, journal | documentaliste | Fait |
 
 Risques : conflit de fusion avec les branches feature/assurance-rc-pro (E5) et feature/contacts-une-ligne (E6), non encore fusionnées dans main, sur src/actions-dashboard/script.js, docs/backlog.md et le fichier généré actions-dashboard.html.
+## Sprint E8 — Export CSV des clubs et des contacts (widget clubs)
+
+Branche : feature/export-csv-clubs (depuis main, commit 60da0c4). Campagne de recette : C12. Première fiche REVIEW_LOG : Tâche 33.
+
+User story : « En tant que DR, je souhaite exporter la liste des clubs et des contacts. » Depuis la page « Liste des clubs sportifs », bouton « Exporter (CSV) ». Clubs exportés = clubs affichés après les filtres Région, Département, Fédération et Club (réutiliser filteredClubs(), sans refaire de filtrage). Deux exports : (1) Liste des clubs : SIRET, nom, adresse, code postal, ville ; (2) Contacts, une ligne par contact : SIRET, nom du club, nom, prénom, fonction, e-mail, téléphone ; un club sans contact a une ligne avec les champs du contact vides. Fichier ouvert dans Excel en français.
+
+Décisions prises :
+- Lecture seule : aucune écriture dans Grist.
+- Colonnes lues : Structures (SIRET, Nom, Adresse, Code_postal, Code_Insee), Contacts (Nom, Prenom, Fonction, Email, Telephone, Club).
+- Ville : celle déjà calculée par le widget (Communes.Libelle_Commune retrouvée par Code_Insee), identique à la formule de la colonne Structures.Ville. Pas de nouvelle colonne lue.
+- Format CSV repris de l'export du tableau de bord (point-virgule, BOM UTF-8, guillemets doublés, apostrophe devant une cellule texte commençant par = + - @, décision E4-26), copié dans clubs (duplication assumée, un fichier par widget).
+- Données personnelles : oui (contacts). Audit de sécurité avant toute conception.
+
+### Tâches
+
+| N° | Tâche | Agent | Critère de fin |
+| --- | --- | --- | --- |
+| E8-1 | Audit : données personnelles exportées hors de Grist, droits et périmètre (fetchTable, règles d'accès de Contacts par profil), RGPD (avertissement éventuel), injection de formule (= + - @, tabulation, retour chariot), interaction avec la règle des zéros | auditeur-securite | Rapport classé par gravité, chaque point traité, aucun fichier modifié |
+| E8-2 | Note UX : emplacement du bouton, choix entre les deux exports, textes (libellés, aucun club, refus de droits, avertissement si retenu), nom des fichiers, état désactivé, accessibilité, design system uniquement | designer-ux | docs/ux/export-csv-clubs.md écrit, questions ouvertes listées |
+| E8-3 | Décisions de Hanta et Pierre sur les points à confirmer | Hanta (sans agent) | Chaque point a une réponse notée dans ce backlog |
+| E8-4 | Lignes du fichier « Liste des clubs » et constructeur CSV commun (séparateur, guillemets, BOM, anti-formule, règle des zéros retenue) | dev-backend | Fonctions écrites, build refait par Hanta |
+| E8-5 | Tests de E8-4 : anti-formule, guillemets et point-virgule dans une valeur, code postal 01000, SIRET 14 chiffres, accents, ordre des colonnes | testeur | npm test lancé par Hanta, 0 échec |
+| E8-6 | Lignes du fichier « Contacts » (une ligne par contact, club sans contact = une ligne aux champs vides, comportement si Contacts illisible), sans modifier buildFicheDetail | dev-backend | Fonctions écrites, build refait par Hanta |
+| E8-7 | Tests de E8-6 : 3 contacts = 3 lignes, club sans contact = 1 ligne, clubs hors filtre absents, Contacts illisible | testeur | npm test lancé par Hanta, 0 échec |
+| E8-8 | Bouton « Exporter (CSV) » avec menu Dropdown dans le bandeau (src/clubs/index.html, script.js, et style.css en recopiant les règles du tableau de bord sans nouvelle valeur), téléchargement, conforme à docs/ux/export-csv-clubs.md, nouveau code dans un bloc séparé | dev-interface | Build refait, fichier téléchargé avec les seuls clubs filtrés |
+| E8-9 | Tests d'écran et de non-régression dans un nouveau fichier de test (ne pas modifier test/clubs-contacts-ecran.test.js) | testeur | npm test lancé par Hanta, 0 échec |
+| E8-10 | Cas de recette docs/tests/cas-de-test-export-csv-clubs.md et .tsv (11 colonnes). Préfixes : EXP-V-xx = points vérifiés par Hanta en DEV ; EXP-P-xx = parcours du collègue en TEST | recetteur | Fichiers livrés |
+| E8-11 | Documentation : README et CLAUDE.md (section clubs). modele-de-donnees.md du dossier France-Travail-Partenariat-Simplifie (Structures.Ville = formule équivalente à la ville de Communes) : autre dépôt, commit séparé | documentaliste | Docs à jour, aucune donnée réelle |
+
+### Décisions E8-3 (18/11/2026)
+
+- Forme : un seul bouton « Exporter (CSV) » qui ouvre un menu (composant Dropdown du design system) avec deux choix : « Liste des clubs » et « Contacts » (décision de Pierre).
+- Emplacement : dans le bandeau du haut, à droite, comme le bouton « Exporter (CSV) » du tableau de bord (décision de Pierre).
+- Profils : tous les profils FT (National, Régional, Départemental) ont accès à l'export, chacun dans son périmètre, garanti par les règles d'accès de Grist (vérifiées en DEV le 18/11/2026 avec un compte de test éditeur : la lecture de Structures et de Contacts est limitée au périmètre de chaque profil).
+- Contacts illisibles (droits insuffisants) : la ligne « Contacts » du menu est grisée avec le message « Vos droits ne permettent pas de lire les contacts. » ; aucun fichier produit. Pas de traitement spécial pour l'ANS (profil appelé à disparaître) : la règle générale s'applique.
+- Aucun club affiché : bouton principal grisé.
+- Désactivation par aria-disabled="true" ; le script disabled-a11y.js n'est pas chargé dans le widget clubs, le code ignore le clic lui-même.
+- Avertissement données personnelles : aucun (décision de Hanta : les agents saisissent eux-mêmes ces données et travaillent déjà avec ce type de fichiers).
+- Zéros et SIRET dans Excel : formule texte ="..." uniquement pour les colonnes SIRET, code postal et téléphone, et uniquement quand la valeur ne contient que des chiffres. Sinon, valeur texte normale avec la protection anti-formule (apostrophe devant = + - @, tabulation, retour chariot).
+- Noms des fichiers : avec la date du jour.
+- Ordre des lignes : clubs dans le même ordre qu'à l'écran ; contacts d'un même club dans le même ordre que dans la fiche (nom, puis prénom).
+- Club sans SIRET ou sans nom : exporté quand même, avec la case vide.
+- Pas de nombre maximal : on exporte tous les clubs affichés.
+- Zone d'annonce du résultat : zone dédiée, choisie par designer-ux (voir docs/ux/export-csv-clubs.md).
+
+### Risques
+
+Données personnelles hors de Grist ; copie de la logique CSV entre deux widgets ; conflits à la fusion avec E5, E6 et E7 (src/clubs/script.js, index.html, style.css, clubs.html, docs/backlog.md, REVIEW_LOG.md, README.md, CLAUDE.md).
