@@ -795,11 +795,28 @@ function renderContacts(contacts) {
     const libelleSupprimer = nomComplet ? `Supprimer le contact ${nomComplet}` : 'Supprimer le contact sans nom';
     const mail = mailHref(contact.email);
     const tel = telHref(contact.telephone);
+    // Un contact = une ligne (docs/ux/contacts-une-ligne.md). Le nom et la
+    // fonction sont empiles dans un bloc « identite » (contact-identite). Le nom, la fonction
+    // et l'e-mail portent « text-truncate » (classe du design system : coupe avec
+    // « … ») et un title qui donne la valeur complete. La feuille de style
+    // annule la coupure sur petit ecran. Fonction vide : un tiret, lu « Fonction
+    // non renseignee » par un lecteur d'ecran : le bloc garde toujours deux niveaux.
+    const fonction = contact.fonction
+      ? `<div class="contact-fonction muted-text text-truncate" title="${escapeAttr(contact.fonction)}">${escapeHtml(contact.fonction)}</div>`
+      : `<div class="contact-fonction">${missing('Fonction non renseignée', contact.fonction)}</div>`;
+    // L'e-mail et le telephone sont groupes dans un meme <div> : sur ecran moyen
+    // ou etroit ils forment la 2e ligne ; sur grand ecran le <div> disparait
+    // (display: contents) et chacun redevient une colonne. L'ordre de tabulation
+    // ne change pas : e-mail, telephone, modifier, supprimer.
     return `<li class="contact-item">
-      <span class="contact-name">${escapeHtml(nom)}</span>
-      ${contact.fonction ? `<div class="contact-fonction muted-text">${escapeHtml(contact.fonction)}</div>` : ''}
-      ${mail ? `<a class="contact-mail" href="${escapeAttr(mail)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
-      ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+      <div class="contact-identite">
+        <span class="contact-name text-truncate" title="${escapeAttr(nom)}">${escapeHtml(nom)}</span>
+        ${fonction}
+      </div>
+      <div class="contact-coordonnees">
+        ${mail ? `<a class="contact-mail text-truncate" href="${escapeAttr(mail)}" title="${escapeAttr(contact.email)}">${escapeHtml(contact.email)}</a>` : missing('E-mail non renseigné', contact.email)}
+        ${tel ? `<a class="contact-tel" href="${escapeAttr(tel)}">${escapeHtml(contact.telephone)}</a>` : missing('Téléphone non renseigné', contact.telephone)}
+      </div>
       <div class="contact-buttons">
         <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Modifier" data-ft-vocalize="false" data-edit-contact="${contact.id}" aria-label="${escapeAttr(libelleModifier)}"><span aria-hidden="true" class="icon icon-edit"></span></button>
         <button class="btn btn-secondary btn-ratio-square" type="button" data-ft-tooltip="Supprimer" data-ft-vocalize="false" data-delete-contact="${contact.id}" aria-label="${escapeAttr(libelleSupprimer)}"><span aria-hidden="true" class="icon icon-trash"></span></button>

@@ -176,7 +176,8 @@ test("les contacts sont des liens reels, sans entete de tableau", () => {
   const w = charger();
   const html = w.renderContacts(w.buildFicheDetail(tables(w), 7).contacts);
   assert.ok(!/<table|<th/.test(html), "une liste, pas un tableau");
-  assert.match(html, /<a class="contact-mail" href="mailto:zoe\.martin@example\.org">/);
+  assert.match(html, /<a class="contact-mail text-truncate" href="mailto:zoe\.martin@example\.org" title="zoe\.martin@example\.org">zoe\.martin@example\.org<\/a>/,
+    "l'e-mail est un lien mailto:, coupable (text-truncate) et garde sa valeur complete en title");
   assert.match(html, /<a class="contact-tel" href="tel:\+33612345678">06 12 34 56 78<\/a>/);
   assert.match(html, /<span class="sr-only">E-mail non renseigné<\/span>/,
     "une valeur absente est annoncée aux lecteurs d'écran");

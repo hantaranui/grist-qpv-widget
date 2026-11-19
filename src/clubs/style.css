@@ -13,6 +13,27 @@
   --line: var(--ft--color-border-neutral-default-weaker);
   --accent: var(--ft--color-primary);
   --logo-size: 128px;
+  /* Carte Contacts, un contact par ligne (docs/ux/contacts-une-ligne.md,
+     revision E6-10). Tailles a regler ici, en un seul endroit.
+     Bloc « identite » (nom + fonction, empiles) : largeur plafonnee a
+     --contact-identite-max, jamais sous --contact-identite-min (colonne en fit-content, plancher porté par le bloc). Quand la place
+     manque, la fonction (plus longue) est coupee par « … » en premier, puis le
+     nom, puis l'e-mail. Valeurs estimees, a constater au rendu.
+     Seuils de largeur : ni @media ni @container ne savent lire une variable,
+     ils sont ecrits en dur dans le bloc « Carte Contacts » plus bas :
+       - 600px de LARGEUR DE CARTE (une ligne par contact, avec coupure « … ») ;
+       - 360px de LARGEUR DE CARTE (trois lignes en dessous, deux lignes au-dessus) ;
+       - 900px de LARGEUR D'ECRAN (Contacts et Actions empiles en dessous).
+     Les changer a tous les endroits ou ils sont ecrits (chercher la valeur). */
+  --contact-gap: 16px;
+  --contact-identite-min: 120px;
+  --contact-identite-max: 150px;
+  --contact-fonction-size: 12px;
+  --contact-mail-min: 160px;
+  /* Part de chaque carte dans la rangee Contacts / Actions (docs/ux, E6-10) :
+     deux moities egales. */
+  --lists-part-contacts: 1fr;
+  --lists-part-actions: 1fr;
 }
 
 * { box-sizing: border-box; }
@@ -312,14 +333,33 @@ td:last-child {
 
 .club-identity { min-width: 0; }
 
-/* Contacts et actions cote a cote, sous la carte Club : deux cartes distinctes,
-   pas une troisieme colonne dans le meme edit-row que le club (leur contenu —
-   des listes qui s'allongent — n'a rien a voir avec un formulaire d'identite). */
+/* Contacts et actions COTE A COTE (decision E6-8, qui annule E6-1) : Contacts
+   a 3 parts, Actions a 2 parts (constantes --lists-part-* en tete de fichier).
+   Deux cartes distinctes, pas une troisieme colonne dans le meme edit-row que le
+   club (leur contenu — des listes qui s'allongent — n'a rien a voir avec un
+   formulaire d'identite). minmax(0, …) : un long texte n'elargit pas la colonne. */
 .edit-row-lists {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns:
+    minmax(0, var(--lists-part-contacts))
+    minmax(0, var(--lists-part-actions));
   gap: 24px;
   align-items: start;
+}
+
+/* Sous 900 px d'ecran : une colonne, Contacts puis Actions. */
+@media (max-width: 899px) {
+  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Les deux cartes de la rangee sont des « conteneurs » : les regles @container
+   de la carte Contacts (plus bas) lisent la largeur REELLE de la carte, pas celle
+   de l'ecran. inline-size = on ne mesure que la largeur ; elle ne depend pas du
+   contenu (colonne de grille minmax(0, …)). Ces regles ne stylisent que les
+   descendants de la carte, jamais la carte elle-meme. */
+.edit-row-lists > .edit-card {
+  container-type: inline-size;
+  container-name: carte-liste;
 }
 
 .empty-note {
@@ -352,17 +392,12 @@ td:last-child {
 
 .contact-name { flex: 0 1 auto; font-weight: 700; }
 
-/* La fonction prend sa propre ligne sous le nom (pleine largeur dans la ligne
-   qui passe a la ligne). Une <div>, pas un <span> : la regle ci-dessous donne
-   aux <span> une largeur selon leur contenu. */
-.contact-fonction { width: 100%; }
-
-/* Boutons Modifier / Supprimer de la ligne : groupes, a droite de la ligne ; ils
-   passent a la ligne suivante si la carte est etroite, et restent espaces pour
-   qu'on puisse en toucher un sans toucher l'autre. */
+/* Boutons Modifier / Supprimer de la ligne : cote a cote, jamais coupes ni
+   passes a la ligne, et espaces pour qu'on puisse en toucher un sans toucher
+   l'autre. Leur place (a droite) est decidee par la grille « Carte Contacts ». */
 .contact-buttons {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -371,6 +406,107 @@ td:last-child {
 .contact-add { margin-bottom: 16px; }
 .contact-item a,
 .contact-item > span:not(.contact-name) { flex: 0 1 auto; min-width: 0; }
+
+/* --- Carte Contacts : un contact = une ligne (docs/ux/contacts-une-ligne.md) ---
+   Pas un tableau, pas d'en-tetes : une grille dont les colonnes sont communes
+   a tous les contacts, pour qu'elles restent alignees d'une ligne a l'autre.
+   Ecrit en partant du plus petit ecran (trois lignes), puis on enrichit.
+   align-items: center (et non baseline) : e-mail, telephone et boutons se
+   centrent sur la hauteur du bloc identite (nom + fonction). Le selecteur
+   « .contact-list .contact-item » l'emporte sur la regle flex plus haut et sur
+   la regle des petits ecrans (align-items: stretch). */
+
+/* Petit ecran (360 px de carte et moins) : trois lignes. Ligne 1 : bloc identite
+   (nom, fonction dessous) et boutons ; ligne 2 : e-mail ; ligne 3 : telephone. */
+.contact-list .contact-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--contact-gap);
+  row-gap: 4px;
+}
+/* Bloc identite : deux niveaux empiles, hauteur toujours a deux niveaux (la
+   fonction vide affiche un tiret). min-width: 0 : il peut retrecir dans la grille. */
+.contact-identite {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.contact-name { display: block; }
+.contact-fonction { font-size: var(--contact-fonction-size); }
+.contact-coordonnees {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  row-gap: 4px;
+}
+.contact-buttons {
+  grid-column: 2;
+  grid-row: 1;
+  flex-shrink: 0;
+}
+
+/* Les elements coupes par « … » (classe text-truncate du design system) doivent
+   pouvoir retrecir dans la grille. */
+.contact-item .text-truncate { min-width: 0; }
+
+/* Carte de moins de 600 px (LARGEUR DE CARTE), rien n'est coupe : le texte long
+   passe a la ligne. */
+@container carte-liste (width < 600px) {
+  .contact-item .text-truncate {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* Carte moyenne (de 361 a 599 px de large) : deux lignes. Ligne 1 : bloc identite
+   et boutons ; ligne 2 : e-mail et telephone. (width > 360px) plutot que
+   min-width: 361px : pas de trou si la largeur est fractionnaire (360,5 px). */
+@container carte-liste (width > 360px) {
+  .contact-coordonnees {
+    flex-direction: row;
+    flex-wrap: wrap;
+    column-gap: 24px;
+  }
+}
+
+/* Grande carte (600 px de large et plus) : une seule ligne, colonnes alignees
+   entre les contacts. Ordre : bloc identite (nom + fonction), e-mail, telephone,
+   boutons. La liste porte les colonnes, chaque ligne les reprend (subgrid) et le
+   bloc e-mail + telephone disparait (display: contents) pour que chacun ait sa
+   colonne. Ordre de coupure quand la place manque : le bloc identite se reduit
+   (fonction coupee, puis nom) jusqu'a son plancher, puis l'e-mail. Telephone et
+   boutons gardent toute leur largeur (max-content). La derniere colonne (boutons)
+   prend le reste et les pousse a droite. */
+@container carte-liste (width >= 600px) {
+  .contact-list {
+    display: grid;
+    grid-template-columns:
+      fit-content(var(--contact-identite-max))
+      minmax(var(--contact-mail-min), max-content)
+      max-content
+      minmax(max-content, 1fr);
+    column-gap: var(--contact-gap);
+  }
+  .contact-list .contact-item {
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+  .contact-identite,
+  .contact-buttons { grid-column: auto; grid-row: auto; }
+  /* Plancher du bloc identite : fit-content() n'a pas de minimum, il est donc
+     porte par le bloc lui-meme. Son min-width compte dans la taille de la colonne
+     (y compris en subgrid), qui ne descend jamais sous --contact-identite-min. */
+  .contact-identite { min-width: var(--contact-identite-min); }
+  .contact-coordonnees { display: contents; }
+  .contact-tel { white-space: nowrap; }
+  .contact-buttons { justify-self: end; }
+}
 
 .action-date { flex: 0 1 auto; }
 .action-status { flex: 0 0 auto; }
@@ -510,13 +646,11 @@ td:last-child {
 
 .logo-message.is-error { color: var(--ft--icon-error); }
 
-/* Contacts et actions cote a cote ne laissent plus assez de place a leurs
-   colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
-@media (max-width: 900px) {
-  .edit-row-lists,
+/* Sous 900 px d'ecran, le bloc RC Pro (a droite du bloc Club) passe en dessous,
+   comme les autres rangees de la fiche club. */
+@media (max-width: 899px) {
   .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 1fr); }
 }
-
 @media (max-width: 560px) {
   .topbar { padding: 16px; }
   .filters-bar { padding: 16px; }
@@ -535,8 +669,8 @@ td:last-child {
      presque plus de place a chacun. */
   .contact-item,
   .action-item { flex-direction: column; align-items: stretch; }
-  /* En colonne, margin-left: auto pousserait le groupe de boutons a droite : on
-     veut une derniere ligne alignee a gauche. */
+  /* Pour les contacts, la grille « Carte Contacts » (plus haut) decide de la
+     disposition : flex-direction ne vaut ici que pour les actions. */
   .contact-buttons { margin-left: 0; }
   .action-dispositif,
   .action-funding { flex-basis: auto; max-width: none; min-width: 0; }

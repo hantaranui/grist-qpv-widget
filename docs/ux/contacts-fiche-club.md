@@ -57,7 +57,7 @@ La carte garde son en-tête actuel (`section-head`, titre « Contacts »). Le bo
 │  marie.dupont@exemple.fr   01 23 45 67 89             │
 │  ───────────────────────────────────────────────────  │
 │  Karim Martin                                  [✎] [🗑]│
-│  (Fonction non renseignée : aucune ligne)             │
+│  —  (Fonction non renseignée : tiret, voir §5)        │
 │  k.martin@exemple.fr       —                          │
 │                                                       │
 └───────────────────────────────────────────────────────┘
@@ -227,7 +227,7 @@ Fonction est un champ du formulaire (décision de CLAUDE.md). Décision de Hanta
   marie.dupont@exemple.fr   01 23 45 67 89
 ```
 
-Pourquoi : sans cela, on saisit une information qu'on ne revoit jamais, et un agent ne peut pas choisir le bon interlocuteur parmi plusieurs contacts. Contre : une ligne de plus par contact. Si elle n'est pas affichée, elle reste visible dans la fenêtre de modification. Si Fonction est vide : ne rien afficher (pas de tiret) pour ne pas allonger la carte.
+Pourquoi : sans cela, on saisit une information qu'on ne revoit jamais, et un agent ne peut pas choisir le bon interlocuteur parmi plusieurs contacts. Contre : une ligne de plus par contact. Si elle n'est pas affichée, elle reste visible dans la fenêtre de modification. **Mise à jour (E6-6, décision de Hanta) : si Fonction est vide, un tiret s'affiche** (tiret caché aux lecteurs d'écran + texte « Fonction non renseignée », comme `missing(...)`), pour que les colonnes restent alignées d'un contact à l'autre. L'ancienne règle « si Fonction est vide : ne rien afficher » est **retirée** et ne s'applique plus. La disposition « sous le nom, sur sa propre ligne » de cette section, de même que les maquettes du §2.1 et du §6.1 (version mobile), sont remplacées par la disposition sur une ligne décrite dans **docs/ux/contacts-une-ligne.md** (§7 : nom · fonction · e-mail · téléphone · boutons, troncature, version mobile). En cas de différence, c'est ce fichier qui fait foi.
 
 Le nom de classe de cette ligne est à choisir par dev-interface (pas de nom du design system, vérifié par test/styles.test.js).
 
@@ -527,7 +527,7 @@ Limite à connaître : une personne qui voit l'écran n'a pas de message écrit 
 
 ## Décisions de Hanta (21/10/2026)
 
-1. Fonction affichée dans la carte Contacts, sous le nom (§5).
+1. Fonction affichée dans la carte Contacts, sous le nom (§5). Mise à jour E6-6 : tiret si Fonction est vide, disposition détaillée dans contacts-une-ligne.md.
 2. Table Contacts illisible : bouton « Ajouter un contact » masqué (seul écart à « boutons visibles pour tous »).
 3. Bouton de confirmation de suppression : « Supprimer ».
 4. E-mail : on garde la règle actuelle de `mailHref`.
