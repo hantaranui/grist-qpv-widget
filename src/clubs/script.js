@@ -112,9 +112,9 @@ const DASHBOARD_URL_STOCKAGE = 'clubs-dashboard-url-v1';
 //     recree ou copie ;
 //   - le numero de page (/p/35) : si la page du tableau de bord change.
 const DASHBOARD_PROD_DOC_ID = 'aYxzLYFNGJSaULjRjk5ekw';
-const DASHBOARD_PROD_URL = 'https://grist.numerique.gouv.fr/o/francetravail/aYxzLYFNGJSa/Partenariat-Simplifie/p/35';
+const DASHBOARD_PROD_URL = 'https://grist.numerique.gouv.fr/o/francetravail/aYxzLYFNGJSa/Partenariat-Simplifie/p/35?style=singlePage';
 const DASHBOARD_TEST_DOC_ID = 'iymHJ4B9QFoTe1ahjCrXC6';
-const DASHBOARD_TEST_URL = 'https://grist.aucarre.tech/o/docs/iymHJ4B9QFoT/Partenariat-Simplifie-TEST-JL/p/35';
+const DASHBOARD_TEST_URL = 'https://grist.aucarre.tech/o/docs/iymHJ4B9QFoT/Partenariat-Simplifie-TEST-JL/p/35?style=singlePage';
 
 // Contrat partage avec src/actions-dashboard/ (branche main, tableau de bord) :
 // avant de suivre le lien vers sa page, on depose ici l'action a ouvrir. Le
