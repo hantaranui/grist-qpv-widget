@@ -389,3 +389,16 @@ Questions encore ouvertes (à trancher avec designer-ux/chef-de-projet) :
 - Q3 : un document expiré reste-t-il téléchargeable/consultable ?
 - Q4 : le remplacement doit-il être proposé même quand le document actuel est encore valide (renouvellement anticipé) ?
 - Q5 : noms exacts des tables/colonnes Grist à créer (aucune n'existe encore) : à définir par dev-backend avec l'accord de Hanta avant tout code.
+
+## Sprint E9 — Adresse du tableau de bord détectée automatiquement (widget clubs)
+
+Besoin d'origine : le bouton "Voir" (fiche club → action du tableau de bord) demande à chaque utilisateur de coller une fois l'adresse du tableau de bord, gardée ensuite dans le navigateur (localStorage, clé clubs-dashboard-url-v1). Pierre a testé en PROD et confirmé que ce n'est pas acceptable pour les utilisateurs finaux : il ne veut pas qu'ils voient cette demande.
+
+Décisions de Hanta :
+- E9-1 : adresses fixes à coder en dur pour les deux environnements connus.
+  - PROD (document Grist "Partenariat Simplifié") : adresse réelle donnée en privé à dev-backend, jamais inscrite dans ce fichier de documentation (publiquement visible sur GitHub).
+  - TEST (document Grist "Partenariat Simplifié - TEST - JL") : idem, adresse réelle donnée en privé à dev-backend.
+  - Note : les adresses réelles seront nécessairement visibles dans le code source publié (clubs.html), comme c'est déjà le cas avec le système actuel - impossible de les cacher complètement, un widget tournant dans le navigateur. Seul ce fichier de documentation les masque, par prudence.
+- E9-2 : détection automatique par le NOM du document Grist (pas par le domaine, qui diffère entre les deux environnements : grist.numerique.gouv.fr en PROD, grist.aucarre.tech en TEST).
+- E9-3 : si le nom du document ne correspond à aucun des deux connus (DEV7, ou un futur environnement), garder en repli le comportement actuel (demander l'adresse une fois, la stocker dans le navigateur), pour ne rien casser.
+- E9-4 : les deux adresses doivent être écrites en CONSTANTES NOMMÉES, groupées en un seul endroit très visible en tête du fichier (pas dispersées), avec un commentaire clair expliquant QUOI changer si jamais l'adresse d'un widget bouge un jour (changement de page Grist, changement de domaine, renommage du document). Même principe de prudence que pour le domaine jsdelivr.net de la Convention, déjà documenté dans ce projet : une adresse figée peut casser, donc elle doit être facile à repérer et à corriger rapidement, par Hanta elle-même si besoin, sans devoir chercher dans tout le fichier.
