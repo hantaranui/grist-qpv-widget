@@ -715,6 +715,23 @@ const SEARCHABLE_FILTERS = new Set(['dd', 'federation', 'nom']);
 // plutot qu'une fois pour tout le monde.
 const DASHBOARD_URL_STOCKAGE = 'clubs-dashboard-url-v1';
 
+// --- Adresses fixes du tableau de bord (PROD et TEST) ------------------------
+// Si le document Grist ouvert porte exactement l'un de ces deux noms, le widget
+// utilise directement l'adresse correspondante, sans jamais demander de la
+// coller. Pour tout autre document (DEV7, futur environnement), rien ne change :
+// le formulaire de saisie manuelle reste en place.
+//
+// QUOI CHANGER SI UNE ADRESSE BOUGE :
+//   - le nom de domaine (ex. grist.numerique.gouv.fr) : si Grist est deplace ;
+//   - l'identifiant du document (la suite de lettres apres /o/.../) : si le
+//     document est recree ou copie ;
+//   - le numero de page (/p/35) : si la page du tableau de bord change.
+// Le NOM du document doit aussi correspondre exactement (casse, tirets, espaces).
+const DASHBOARD_PROD_NOM = 'Partenariat Simplifié';
+const DASHBOARD_PROD_URL = 'https://grist.numerique.gouv.fr/o/francetravail/aYxzLYFNGJSa/Partenariat-Simplifie/p/35';
+const DASHBOARD_TEST_NOM = 'Partenariat Simplifié - TEST - JL';
+const DASHBOARD_TEST_URL = 'https://grist.aucarre.tech/o/docs/iymHJ4B9QFoT/Partenariat-Simplifie-TEST-JL/p/35';
+
 // Contrat partage avec src/actions-dashboard/ (branche main, tableau de bord) :
 // avant de suivre le lien vers sa page, on depose ici l'action a ouvrir. Le
 // tableau de bord la lit a son chargement et l'efface aussitot. Meme cle,
@@ -770,7 +787,9 @@ async function load() {
     state.unreadable = unreadable;
     state.clubs = buildClubs(state.raw);
     state.readAccess = readAccess;
-    state.dashboardUrl = lireAdresseDashboard();
+    // Document PROD ou TEST reconnu : adresse fixe. Sinon : celle saisie a la
+    // main (stockage du navigateur), comme avant.
+    state.dashboardUrl = (await adresseDashboardDetectee()) || lireAdresseDashboard();
     render();
   } catch (error) {
     document.getElementById('rows').innerHTML = '';
@@ -1869,6 +1888,22 @@ function enregistrerAdresseDashboard(actionId) {
     return;
   }
   render();
+}
+
+// Lit le nom du document Grist (grist.docApi.getDocName, deja utilise par le
+// tableau de bord) et renvoie l'adresse fixe PROD ou TEST si le nom correspond
+// exactement. Renvoie '' dans tous les autres cas : nom inconnu, vide, ou
+// lecture impossible (erreur ou API absente) — on retombe alors sur la saisie
+// manuelle, sans bruit ni blocage du chargement.
+async function adresseDashboardDetectee() {
+  try {
+    const nom = await grist.docApi.getDocName();
+    if (nom === DASHBOARD_PROD_NOM) return DASHBOARD_PROD_URL;
+    if (nom === DASHBOARD_TEST_NOM) return DASHBOARD_TEST_URL;
+  } catch (error) {
+    // Pas de nom lisible : comportement habituel.
+  }
+  return '';
 }
 
 function lireAdresseDashboard() {
