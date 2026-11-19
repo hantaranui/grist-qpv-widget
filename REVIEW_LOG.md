@@ -1338,3 +1338,23 @@ Fichiers modifiés : src/clubs/script.js, src/clubs/style.css, clubs.html, test/
 Build refait : oui
 Publié sur TEST : 17/11/2026, fusionné avec feature/assurance-rc-pro.
 Reste à faire avant la PROD : validation finale de Pierre sur TEST.
+
+## Tâche 32 — Sprint E7 : Tri des actions par statut puis par date (tableau de bord)
+
+Date : 18/11/2026
+Agents : chef-de-projet (cadrage), dev-backend (tri à deux niveaux, tri gardé), testeur (tests), recetteur (cas de recette), documentaliste (README, CLAUDE.md, backlog). designer-ux et dev-interface non appelés : l'écran ne change pas.
+Prompt : demande d'un DR via Pierre, "En tant que DR, je veux trier les actions par date dans le dashboard" ; réponse de Pierre : trier par statut, puis par date à l'intérieur des statuts
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Le menu A-Z / Z-A de la colonne STATUT trie maintenant à deux niveaux. A-Z : statuts dans l'ordre alphabétique (A confirmer, Annulée, Non retenue, Planifiée, Réalisée) ; Planifiée par date, la plus ancienne d'abord ; Réalisée par date, la plus récente d'abord ; A confirmer par période, dans l'ordre alphabétique ; Annulée et Non retenue dans l'ordre habituel. Z-A inverse l'ordre des statuts, des dates et des périodes. Dans les deux sens, une action sans date ou sans période reste à la fin de son groupe, et un statut inconnu va à la fin.
+- Le tri choisi est gardé le temps de la session (sessionStorage, clé dashboard-tri-v1: suivie du nom du document). Le bouton "Réinitialiser" vide les filtres mais ne touche pas au tri. Un nouvel onglet repart sans tri. Un tri gardé devenu impossible est ignoré au démarrage.
+- Lecture seule : colonnes Statut, Date et Periode_approx de la table Actions. Aucune colonne ajoutée ou écrite dans Grist, aucun changement d'écran.
+- Limites connues, non traitées dans ce sprint : aucun repère n'indique quelle colonne est triée, aucun bouton ne permet de retirer le tri. Le tri alphabétique des périodes ne suit pas le calendrier : les périodes qui commencent par un chiffre passent avant celles qui commencent par une lettre (choix assumé par Pierre).
+Ce qui a pris du temps : le cadrage (plusieurs allers-retours avec Pierre sur l'ordre des statuts, le sens du Z-A et la place des actions sans date), puis le constat à la recette, sur les vraies données, de l'ordre des périodes de "A confirmer".
+Tests : 62 tests ajoutés (22 pour le tri à deux niveaux, 40 pour le tri gardé), 0 échec. Lancés par Hanta : 935 tests, 0 échec après la tâche 3 ; 976 tests, 0 échec sur la fusion publiée sur TEST (E5, E6 et E7 ensemble). Vérifié à l'écran par Hanta dans DEV : 6 points, 18/11/2026.
+Fichiers modifiés : src/actions-dashboard/script.js, actions-dashboard.html, test/tri-statut.test.js (nouveau), test/tri-garde.test.js (nouveau), docs/backlog.md, README.md, CLAUDE.md, docs/tests/cas-de-test-tri-actions-date.md (nouveau), docs/tests/cas-de-test-tri-actions-date.tsv (nouveau)
+Build refait : oui
+Commits : 4803b12 (backlog E7), 0b1ad89 (tâche 1, tri à deux niveaux), 390ea51 (tâche 2, tests), 9f9ecbc (tâche 3, tri gardé), a7b3721 (tâche 4, tests), fd9e97f (tâche 5, cas de recette), 3af6d9f (tâche 7, documentation)
+Publié sur TEST : 18/11/2026, commit f9fa4d4, fusionné avec feature/assurance-rc-pro et feature/contacts-une-ligne sans les écraser.
+Reste à faire avant la PROD : les 6 parcours de recette à jouer par le testeur en TEST (campagne C11 du carnet du dashboard) ; retour de Pierre ; pull request vers main, avec le conflit attendu dans docs/backlog.md (E5, E6 et E7 ajoutent chacun leur section à la fin) et un npm run build pour vérifier le fichier généré.

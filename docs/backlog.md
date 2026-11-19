@@ -457,3 +457,39 @@ Décisions de Hanta :
 - E9-3 : si le nom du document ne correspond à aucun des deux connus (DEV7, ou un futur environnement), garder en repli le comportement actuel (demander l'adresse une fois, la stocker dans le navigateur), pour ne rien casser.
 - E9-4 : les deux adresses doivent être écrites en CONSTANTES NOMMÉES, groupées en un seul endroit très visible en tête du fichier (pas dispersées), avec un commentaire clair expliquant QUOI changer si jamais l'adresse d'un widget bouge un jour (changement de page Grist, changement de domaine, renommage du document). Même principe de prudence que pour le domaine jsdelivr.net de la Convention, déjà documenté dans ce projet : une adresse figée peut casser, donc elle doit être facile à repérer et à corriger rapidement, par Hanta elle-même si besoin, sans devoir chercher dans tout le fichier.
 - E9-5 : bug trouvé après test réel (collègue) : les deux adresses fixes DASHBOARD_PROD_URL et DASHBOARD_TEST_URL n'ont pas le paramètre ?style=singlePage, qui maintient Grist en plein écran (sans le menu latéral). Résultat : la redirection automatique fait perdre le plein écran, contrairement à l'ancien système où l'utilisateur collait lui-même une adresse qui l'avait déjà. DÉCISION : ajouter ?style=singlePage à la fin des deux adresses fixes.
+## Sprint E7 — Tri des actions par statut puis par date (actions-dashboard)
+
+Besoin d'origine (user story) : « En tant que DR, je veux trier les actions par date dans le dashboard. » Disponible pour tous les profils (National, Régional, Départemental).
+
+Périmètre : widget actions-dashboard seulement (src/actions-dashboard/script.js : sortActions, gestionnaire du menu de tri). Lecture seule des colonnes Statut, Date et Periode_approx de la table Actions. Aucune écriture dans Grist, aucune nouvelle colonne, aucune donnée personnelle.
+
+Règles validées par Pierre et Hanta :
+- E7-1 : le menu de la colonne STATUT (A-Z / Z-A) trie d'abord par statut, puis à l'intérieur de chaque statut.
+- E7-2 : sens A-Z, statuts dans l'ordre alphabétique : A confirmer, Annulée, Non retenue, Planifiée, Réalisée.
+  - A confirmer : par Periode_approx, ordre alphabétique de A à Z (pas de lecture de date).
+  - Annulée et Non retenue : ordre actuel des lignes.
+  - Planifiée : date la plus ancienne d'abord (les dates passées apparaissent en premier).
+  - Réalisée : date la plus récente d'abord.
+- E7-3 : sens Z-A, tout s'inverse (ordre des statuts, sens des dates, ordre alphabétique des périodes), sauf la place des valeurs vides.
+- E7-4 : dans les deux sens, les actions sans date ou sans période restent toujours à la fin de leur groupe.
+- E7-5 : deux actions de même statut et de même date : ordre actuel des lignes. Statut inconnu : à la fin.
+- E7-6 : seul le menu de la colonne STATUT change. Les autres colonnes gardent leur tri actuel. Pas de tri automatique à l'ouverture. L'export CSV suit le tri choisi, comme aujourd'hui.
+- E7-7 : le tri choisi est gardé le temps de la session, comme les filtres (sessionStorage). Le bouton Réinitialiser ne touche pas au tri. Un tri gardé devenu impossible est ignoré au démarrage.
+- E7-8 : le libellé A-Z / Z-A reste inchangé : aucune modification d'écran.
+- E7-9 : le tri alphabétique des périodes ne suit pas le calendrier (« Avril 2027 » avant « Décembre 2026 ») : choix assumé par Pierre.
+- E7-10 : constat de recette. Dans « A confirmer », les périodes qui commencent par un chiffre passent d'abord, classées par ce chiffre, puis celles qui commencent par une lettre. Conforme à E7-2 et E7-9.
+- E7-11 : limites connues. Aucun repère n'indique quelle colonne est triée, et aucun bouton ne permet de retirer le tri. Non traité dans ce sprint.
+
+Tâches prévues (ordre validé) :
+
+| Tâche | Description | Agent | Statut |
+|---|---|---|---|
+| Tâche 1 | Tri à deux niveaux pour la clé statut dans sortActions, réglages en constantes en tête de fichier | dev-backend | Fait (commit 0b1ad89) |
+| Tâche 2 | Tests du tri à deux niveaux (A-Z, Z-A, valeurs vides, statut inconnu) ; les tests de tri existants passent toujours | testeur | Fait (commit 390ea51) |
+| Tâche 3 | Garder le tri le temps de la session ; Réinitialiser ne l'efface pas ; tri invalide ignoré | dev-backend | Fait (commit 9f9ecbc) |
+| Tâche 4 | Tests du tri gardé ; vérifier dans test/filtres-gardes.test.js l'usage de « dir » au lieu de « direction » | testeur | Fait (commit a7b3721) |
+| Tâche 5 | Cas de recette dans le carnet de tests | recetteur | Fait (commit fd9e97f) |
+| Tâche 6 | Recette dans Grist DEV | Hanta | En cours : les 6 points vérifiés par Hanta en DEV le 18/11/2026 ; les 6 parcours restent à jouer par le testeur en TEST |
+| Tâche 7 | README du tableau de bord, backlog, journal | documentaliste | Fait |
+
+Risques : conflit de fusion avec les branches feature/assurance-rc-pro (E5) et feature/contacts-une-ligne (E6), non encore fusionnées dans main, sur src/actions-dashboard/script.js, docs/backlog.md et le fichier généré actions-dashboard.html.
