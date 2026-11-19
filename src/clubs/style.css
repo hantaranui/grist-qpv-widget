@@ -513,7 +513,8 @@ td:last-child {
 /* Contacts et actions cote a cote ne laissent plus assez de place a leurs
    colonnes sous ~900 px : ils passent l'un sous l'autre, comme dans fiche-club. */
 @media (max-width: 900px) {
-  .edit-row-lists { grid-template-columns: minmax(0, 1fr); }
+  .edit-row-lists,
+  .edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -546,7 +547,81 @@ td:last-child {
    son habillage viennent du design system. Sa feuille masque .modal par defaut :
    nous l'affichons nous-memes en ne la creant que pendant qu'elle est ouverte
    (meme regle que #addActionModal dans le tableau de bord). */
-#contactModal .modal { display: block; overflow-y: auto; }
+#contactModal .modal,
+#rcProModal .modal,
+#rcProApercuModal .modal { display: block; overflow-y: auto; }
+
+/* Pop-up d'aperçu de l'attestation : plein écran DANS le widget, sans fond assombri
+   (même principe que « Voir la convention signée » du tableau de bord). La feuille du
+   design system n'a pas de classe plein écran pour modal-dialog : ces classes du widget
+   donnent seulement la taille. Aucune couleur. */
+#rcProApercuModal .rcpro-apercu-plein-ecran { max-width: none; width: 100%; height: 100%; max-height: none; margin: 0; }
+#rcProApercuModal .rcpro-apercu-plein-ecran .modal-content { height: 100%; max-height: none; border-radius: 0; }
+#rcProApercuModal .modal-header { flex-wrap: wrap; gap: 12px; }
+#rcProApercuModal .modal-title { min-width: 0; overflow-wrap: anywhere; }
+.rcpro-apercu-actions { display: flex; align-items: center; gap: 12px; }
+/* Annule la marge à gauche que le design system met à tout bouton qui en suit un autre. */
+.rcpro-apercu-actions .btn + .btn { margin-left: 0; }
+.rcpro-apercu-cadre { display: block; width: 100%; height: calc(100vh - 150px); min-height: 420px; border: 0; }
+
+/* Haut de la fiche : carte Club seule, ou carte Club puis carte « Assurance RC Pro »
+   à sa droite (classe avec-rcpro). align-items: stretch donne aux deux cartes la même
+   hauteur (celle de la plus haute) ; chaque carte (grille enfant directe) s'étire à 100 %. */
+.edit-row-haut {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+.edit-row-haut.avec-rcpro { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+
+/* Bloc « Assurance RC Pro » : il a sa propre carte (edit-card).
+   Les boutons sont empilés à gauche, jamais coupés au milieu d'un libellé. */
+.rcpro-bloc { min-width: 0; }
+
+.rcpro-etat,
+.rcpro-depot { margin: 0 0 4px; overflow-wrap: anywhere; }
+
+/* Phrase d'état « expirée » (ou sans date d'expiration) : couleur d'erreur du design system, en gras. */
+.rcpro-etat-expire {
+  color: var(--ft-color-text-error-default);
+  font-weight: 700;
+}
+
+/* Boutons l'un sous l'autre, alignés à gauche (pas de décalage quand la carte est étroite). */
+.rcpro-boutons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rcpro-boutons .btn { flex: 0 0 auto; }
+
+/* Le design system met une marge à gauche à tout bouton qui en suit un autre (.btn + .btn),
+   pour les boutons côte à côte. Ici ils sont l'un sous l'autre : on l'annule pour que
+   les deux boutons restent alignés sur le même bord gauche. */
+.rcpro-boutons .btn + .btn { margin-left: 0; }
+
+/* Pop-up de dépôt : mêmes espacements que la fenêtre des contacts. */
+.rcpro-club,
+.rcpro-ecrasement { margin: 0 0 8px; overflow-wrap: anywhere; }
+.rcpro-fields { display: grid; gap: 16px; margin-top: 8px; }
+.rcpro-field { display: grid; gap: 6px; }
+
+/* Champ fichier du pop-up RC Pro : le cadre arrondi de form-control (hauteur fixe) etait
+   plus petit que le bouton natif « Choisir un fichier », qui debordait. On retire ce cadre
+   et cette hauteur fixe : le bouton natif du navigateur se suffit a lui-meme. */
+.rcpro-field input[type="file"] {
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 
 /* Bouton de confirmation de suppression : le design system n'a pas de bouton
    destructeur, on colore le bouton primaire avec ses jetons d'erreur (regle
