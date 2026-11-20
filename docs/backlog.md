@@ -541,3 +541,35 @@ Décisions prises :
 ### Risques
 
 Données personnelles hors de Grist ; copie de la logique CSV entre deux widgets ; conflits à la fusion avec E5, E6 et E7 (src/clubs/script.js, index.html, style.css, clubs.html, docs/backlog.md, REVIEW_LOG.md, README.md, CLAUDE.md).
+
+## Filtre et colonne Code MEE (branche feature/filtre-code-mee)
+
+User story : En tant que DR, je veux voir facilement si les codes MEE ont été saisis.
+
+### Décisions
+
+- Colonne Grist existante : Actions.Code_MEE (Texte). Aucune colonne ni règle d'accès à créer.
+- Liste : colonne « MEE » entre Agence et Club. Tiret si vide. Espaces seuls = vide.
+- Tri de la colonne : numérique (9 avant 10), actions sans code toujours en fin.
+- Filtre : champ de saisie, recherche du code exact sans tenir compte des majuscules ni des espaces avant ou après, appliqué sur Entrée ou bouton loupe comme le filtre Osiris ; case à cocher « Sans code MEE ». Combiné aux autres filtres.
+- Filtre conservé pendant la session, effacé par Réinitialiser.
+- Colonne Code_MEE absente du document : colonne et filtre cachés.
+- Export CSV : colonne MEE entre Agence et Club, valeur brute (case vide si pas de code, jamais de tiret).
+- Lecture seule : le widget n'écrit rien.
+
+### Tâches, dans l'ordre
+
+| N° | Tâche | Agent |
+|---|---|---|
+| 1 | Note docs/ux/ : colonne, tiret et lecteur d'écran, tri, codes longs, filtre, cas code tapé + case cochée, libellés | designer-ux |
+| 2 | Lecture du code (espaces seuls = vide, colonne absente) | dev-backend |
+| 3 | Filtre code exact + case Sans code MEE | dev-backend |
+| 4 | Conservation pendant la session et Réinitialiser | dev-backend |
+| 5 | Tri numérique, vides en fin | dev-backend |
+| 6 | Export CSV, valeur brute | dev-backend |
+| 7 | Tests des tâches 2 à 6 | testeur |
+| 8 | Colonne MEE dans la liste (en-tête, lignes, largeurs, menu de tri) | dev-interface |
+| 9 | Champ, loupe et case dans les filtres | dev-interface |
+| 10 | Tests des écrans | testeur |
+| 11 | README et docs | documentaliste |
+| 12 | Cas de recette au format des 18 colonnes du carnet | recetteur |
