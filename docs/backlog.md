@@ -542,7 +542,7 @@ Décisions prises :
 
 Données personnelles hors de Grist ; copie de la logique CSV entre deux widgets ; conflits à la fusion avec E5, E6 et E7 (src/clubs/script.js, index.html, style.css, clubs.html, docs/backlog.md, REVIEW_LOG.md, README.md, CLAUDE.md).
 
-## Filtre et colonne Code MEE (branche feature/filtre-code-mee)
+## Sprint E10 — Filtre et colonne Code MEE (tableau de bord, branche feature/filtre-code-mee)
 
 User story : En tant que DR, je veux voir facilement si les codes MEE ont été saisis.
 

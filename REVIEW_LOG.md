@@ -1396,3 +1396,22 @@ Build refait : oui
 Publié sur TEST : 17-20/11/2026, avec deux republications après les deux corrections (identifiant du document, puis ?style=singlePage).
 Mise en PROD : 20/11/2026, commit ffc9465 (fusion des 5 branches E5, E6, E7, E8, E9 dans main). 913 tests, 0 échec.
 Reste à faire avant la PROD : identifiants réels PROD et TEST confirmés par Hanta, masqués dans docs/backlog.md (dépôt public), visibles uniquement dans le code source publié (limite technique, un widget tourne dans le navigateur).
+
+## Tâche 35 — Sprint E10 : Colonne et filtre Code MEE (tableau de bord)
+
+Date : 20/11/2026
+Agents : chef-de-projet (cadrage), designer-ux (note UX). À venir : dev-backend, testeur, dev-interface, documentaliste, recetteur.
+Prompt : demande d'un DR, "En tant que DR je veux voir facilement si les codes ont été saisis" : ajouter une colonne MEE affichant le code MEE, et un filtre pour rechercher par code MEE qui permet aussi de voir les actions sans code
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Cadrage : la colonne Actions.Code_MEE (Texte) existe déjà et le widget la lit déjà. Aucune colonne ni règle d'accès à créer. Règles de la table Actions vérifiées dans DEV7 : aucune règle propre à Code_MEE.
+- Décisions : colonne MEE entre Agence et Club, tiret si vide (espaces seuls = vide) ; tri numérique, actions sans code toujours en fin ; filtre code exact (sans tenir compte des majuscules ni des espaces autour), appliqué sur Entrée ou loupe comme Osiris ; case "Sans code MEE" qui vide et désactive le champ ; filtre gardé pendant la session et effacé par Réinitialiser ; colonne et filtre cachés si Code_MEE est absente ; export CSV avec la colonne MEE en valeur brute.
+- Note UX docs/ux/filtre-code-mee.md validée par Hanta le 20/11/2026.
+- [résultat à compléter : ce qui a changé dans le code]
+Ce qui a pris du temps : [résultat à compléter]
+Tests : [résultat à compléter]
+Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), [résultat à compléter]
+Build refait : [résultat à compléter]
+Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX)
+Publié sur TEST : [résultat à compléter]
