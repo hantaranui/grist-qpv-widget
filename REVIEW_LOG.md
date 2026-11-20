@@ -1400,7 +1400,7 @@ Reste à faire avant la PROD : identifiants réels PROD et TEST confirmés par H
 ## Tâche 35 — Sprint E10 : Colonne et filtre Code MEE (tableau de bord)
 
 Date : 20/11/2026
-Agents : chef-de-projet (cadrage), designer-ux (note UX), dev-backend (tâche 2, code MEE vide ; tâche 3, filtre ; tâche 4, conservation pendant la session ; tâche 5, tri numérique). À venir : testeur, dev-interface, documentaliste, recetteur.
+Agents : chef-de-projet (cadrage), designer-ux (note UX), dev-backend (tâche 2, code MEE vide ; tâche 3, filtre ; tâche 4, conservation pendant la session ; tâche 5, tri numérique ; tâche 6, export CSV). À venir : testeur, dev-interface, documentaliste, recetteur.
 Prompt : demande d'un DR, "En tant que DR je veux voir facilement si les codes ont été saisis" : ajouter une colonne MEE affichant le code MEE, et un filtre pour rechercher par code MEE qui permet aussi de voir les actions sans code
 
 Note /5 : sans objet
@@ -1410,8 +1410,9 @@ Ce qui a changé, résumé :
 - Note UX docs/ux/filtre-code-mee.md validée par Hanta le 20/11/2026.
 - [résultat à compléter : ce qui a changé dans le code]
 Ce qui a pris du temps : [résultat à compléter]
-Tests : lancés par Hanta, 1089 tests, 0 échec après les tâches 2, 3, 4 et 5 (aucun test ajouté). [résultat à compléter]
+Tests : lancés par Hanta, 1089 tests, 0 échec après les tâches 2, 3, 4, 5 et 6 (aucun test ajouté). [résultat à compléter]
 Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), src/actions-dashboard/script.js, actions-dashboard.html, [résultat à compléter]
 Build refait : [résultat à compléter]
-Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX), f92d6ca (tâche 2, code MEE vide), 5a3984d (tâche 3, filtre), 526e354 (tâche 4, conservation), ec46eff (tâche 5, tri numérique)
+Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX), f92d6ca (tâche 2, code MEE vide), 5a3984d (tâche 3, filtre), 526e354 (tâche 4, conservation), ec46eff (tâche 5, tri numérique), dbd0c53 (tâche 6, export CSV)
 Publié sur TEST : [résultat à compléter]
+Reste à faire avant la PROD : [résultat à compléter]. À montrer à Pierre (hors de ce sprint) : l'export CSV du tableau de bord n'est pas entièrement « tel quel » (apostrophe anti-formule devant les valeurs qui commencent par = + - @, dates au format écran, montants arrondis à l'euro) ; la ligne du backlog E8 sur la formule ="..." est périmée, à corriger par le documentaliste.
