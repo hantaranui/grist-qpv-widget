@@ -1147,6 +1147,14 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
+// ---- Filtre Code MEE (Sprint E10) : clés de state.filters et valeur de la case ----
+// Deux clés, car le code tapé et la case sont deux réglages distincts.
+// Les filtres gardés n'acceptent que des chaînes non vides : la case cochée
+// est donc la valeur texte fixe MEE_VIDE_COCHEE, et la case décochée n'a pas de clé.
+const FILTRE_MEE_CODE = 'mee';
+const FILTRE_MEE_VIDE = 'meeVide';
+const MEE_VIDE_COCHEE = 'oui';
+
 // ---- Tri de la colonne Statut (Sprint E7) : tous les réglages au même endroit ----
 // Ordre des statuts dans le sens A-Z. Chaque statut est écrit sous la forme rendue
 // par statusClass() (sans accent, en minuscules, avec des tirets), comme le fait
@@ -1757,6 +1765,15 @@ function filteredActions() {
   const actions = state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
     if (key === 'financeur') return action.financeurs.some(item => item.label === value);
     if (key === 'osiris') return normalizeText(action.osiris).includes(normalizeText(value));
+    if (key === FILTRE_MEE_VIDE) return value !== MEE_VIDE_COCHEE || codeMeeVide(action.codeMee);
+    if (key === FILTRE_MEE_CODE) {
+      // La case « Sans code MEE » l'emporte : le code tapé est alors ignoré.
+      if (state.filters[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE) return true;
+      // Code exact (pas « contient »), sans majuscules ni espaces autour, des deux côtés.
+      const cherche = text(value).toLowerCase();
+      // Un code fait d'espaces seuls ne filtre rien (sinon il garderait les codes vides).
+      return !cherche || text(action.codeMee).toLowerCase() === cherche;
+    }
     return action[key] === value;
   }));
   return sortActions(actions);
