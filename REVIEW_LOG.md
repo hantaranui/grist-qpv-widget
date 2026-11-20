@@ -1400,7 +1400,7 @@ Reste à faire avant la PROD : identifiants réels PROD et TEST confirmés par H
 ## Tâche 35 — Sprint E10 : Colonne et filtre Code MEE (tableau de bord)
 
 Date : 20/11/2026
-Agents : chef-de-projet (cadrage), designer-ux (note UX). À venir : dev-backend, testeur, dev-interface, documentaliste, recetteur.
+Agents : chef-de-projet (cadrage), designer-ux (note UX), dev-backend (tâche 2, code MEE vide). À venir : testeur, dev-interface, documentaliste, recetteur.
 Prompt : demande d'un DR, "En tant que DR je veux voir facilement si les codes ont été saisis" : ajouter une colonne MEE affichant le code MEE, et un filtre pour rechercher par code MEE qui permet aussi de voir les actions sans code
 
 Note /5 : sans objet
@@ -1410,8 +1410,8 @@ Ce qui a changé, résumé :
 - Note UX docs/ux/filtre-code-mee.md validée par Hanta le 20/11/2026.
 - [résultat à compléter : ce qui a changé dans le code]
 Ce qui a pris du temps : [résultat à compléter]
-Tests : [résultat à compléter]
-Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), [résultat à compléter]
+Tests : lancés par Hanta, 1089 tests, 0 échec après la tâche 2 (aucun test ajouté). [résultat à compléter]
+Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), src/actions-dashboard/script.js, actions-dashboard.html, [résultat à compléter]
 Build refait : [résultat à compléter]
-Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX)
+Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX), f92d6ca (tâche 2, code MEE vide)
 Publié sur TEST : [résultat à compléter]
