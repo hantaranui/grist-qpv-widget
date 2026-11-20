@@ -3382,9 +3382,14 @@ function frDateToIso(fr) {
 }
 
 function exportCsv(actions) {
-  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
+  // La colonne MEE n'existe dans le fichier que si la colonne Code_MEE existe dans le document.
+  const avecMee = hasCodeMee();
+  const header = ['Agence', 'DD', 'DR', ...(avecMee ? ['MEE'] : []), 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
   const lines = actions.map(action => [
-    action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
+    action.agency, action.dd, action.dr,
+    // Code MEE brut, tel qu'enregistré dans Grist (case vide s'il n'y en a pas).
+    ...(avecMee ? [action.codeMee ?? ''] : []),
+    action.club, action.federation, action.intitule, action.dispositif,
     action.participants, action.public, action.ville, action.statut, formatDate(action.date), Math.round(action.budget), Math.round(action.financed),
     action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
     isNonRetenu(action.statut) ? action.raison : ''
