@@ -496,12 +496,17 @@ table {
   table-layout: fixed;
 }
 
-.col-agency { width: 15%; }
-.col-club { width: 17%; }
-.col-action { width: 27%; }
+.col-agency { width: 13%; }
+.col-mee { width: 9%; }
+.col-club { width: 15%; }
+.col-action { width: 25%; }
 .col-status { width: 12%; }
-.col-finance { width: 25%; }
+.col-finance { width: 22%; }
 .col-edit { width: 100px; }
+
+/* Code MEE : un code long sans espace passe a la ligne au lieu de deborder sur
+   la colonne Club (le tableau est en table-layout: fixed). */
+.cell-mee { overflow-wrap: anywhere; }
 
 th {
   height: var(--ft--table-th-height);
@@ -963,6 +968,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
             <caption class="sr-only">Liste des actions d'insertion par le sport</caption>
             <colgroup>
               <col class="col-agency">
+              <col class="col-mee is-hidden" data-col-mee>
               <col class="col-club">
               <col class="col-action">
               <col class="col-status">
@@ -972,6 +978,7 @@ td:last-child { padding-right: var(--ft--table-padding-x); padding-left: var(--f
             <thead>
               <tr>
                 <th scope="col"><details class="sort-menu"><summary aria-label="Trier la colonne Agence"><span>Agence</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary><div class="sort-options"><button type="button" data-sort-option="agency" data-sort-direction="asc"><span class="icon icon-arrow-up" aria-hidden="true"></span>A-Z</button><button type="button" data-sort-option="agency" data-sort-direction="desc"><span class="icon icon-arrow-down" aria-hidden="true"></span>Z-A</button></div></details></th>
+                <th scope="col" class="is-hidden" data-col-mee><details class="sort-menu"><summary aria-label="Trier la colonne MEE"><span>MEE</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary><div class="sort-options"><button type="button" data-sort-option="codeMee" data-sort-direction="asc"><span class="icon icon-arrow-up" aria-hidden="true"></span>Croissant</button><button type="button" data-sort-option="codeMee" data-sort-direction="desc"><span class="icon icon-arrow-down" aria-hidden="true"></span>Décroissant</button></div></details></th>
                 <th scope="col"><details class="sort-menu"><summary aria-label="Trier la colonne Club"><span>Club</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary><div class="sort-options"><button type="button" data-sort-option="club" data-sort-direction="asc"><span class="icon icon-arrow-up" aria-hidden="true"></span>A-Z</button><button type="button" data-sort-option="club" data-sort-direction="desc"><span class="icon icon-arrow-down" aria-hidden="true"></span>Z-A</button></div></details></th>
                 <th scope="col"><details class="sort-menu"><summary aria-label="Trier la colonne Action"><span>Action</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary><div class="sort-options"><button type="button" data-sort-option="intitule" data-sort-direction="asc"><span class="icon icon-arrow-up" aria-hidden="true"></span>A-Z</button><button type="button" data-sort-option="intitule" data-sort-direction="desc"><span class="icon icon-arrow-down" aria-hidden="true"></span>Z-A</button></div></details></th>
                 <th scope="col"><details class="sort-menu"><summary aria-label="Trier la colonne Statut"><span>Statut</span><span class="icon icon-chevron-up-down" aria-hidden="true"></span></summary><div class="sort-options"><button type="button" data-sort-option="statut" data-sort-direction="asc"><span class="icon icon-arrow-up" aria-hidden="true"></span>A-Z</button><button type="button" data-sort-option="statut" data-sort-direction="desc"><span class="icon icon-arrow-down" aria-hidden="true"></span>Z-A</button></div></details></th>
@@ -1836,9 +1843,14 @@ function renderRows(actions) {
   const tbody = document.getElementById('rows');
   const empty = document.getElementById('empty');
   empty.classList.toggle('is-hidden', actions.length > 0);
+  // Colonne MEE : visible seulement si la colonne Code_MEE existe dans Grist.
+  // Le <col> et l'en-tête sont dans index.html, cachés au départ (is-hidden).
+  const avecMee = hasCodeMee();
+  document.querySelectorAll('[data-col-mee]').forEach(element => element.classList.toggle('is-hidden', !avecMee));
   tbody.innerHTML = actions.map(action => `
     <tr>
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
+      ${avecMee ? `<td class="cell-mee">${codeMeeVide(action.codeMee) ? '<span aria-hidden="true">—</span><span class="sr-only">Code MEE non renseigné</span>' : escapeHtml(action.codeMee)}</td>` : ''}
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
       <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>

@@ -831,9 +831,14 @@ function renderRows(actions) {
   const tbody = document.getElementById('rows');
   const empty = document.getElementById('empty');
   empty.classList.toggle('is-hidden', actions.length > 0);
+  // Colonne MEE : visible seulement si la colonne Code_MEE existe dans Grist.
+  // Le <col> et l'en-tête sont dans index.html, cachés au départ (is-hidden).
+  const avecMee = hasCodeMee();
+  document.querySelectorAll('[data-col-mee]').forEach(element => element.classList.toggle('is-hidden', !avecMee));
   tbody.innerHTML = actions.map(action => `
     <tr>
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
+      ${avecMee ? `<td class="cell-mee">${codeMeeVide(action.codeMee) ? '<span aria-hidden="true">—</span><span class="sr-only">Code MEE non renseigné</span>' : escapeHtml(action.codeMee)}</td>` : ''}
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
       <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
