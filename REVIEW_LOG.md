@@ -1400,7 +1400,7 @@ Reste à faire avant la PROD : identifiants réels PROD et TEST confirmés par H
 ## Tâche 35 — Sprint E10 : Colonne et filtre Code MEE (tableau de bord)
 
 Date : 20/11/2026
-Agents : chef-de-projet (cadrage), designer-ux (note UX), dev-backend (tâche 2, code MEE vide ; tâche 3, filtre ; tâche 4, conservation pendant la session ; tâche 5, tri numérique ; tâche 6, export CSV). À venir : testeur, dev-interface, documentaliste, recetteur.
+Agents : chef-de-projet (cadrage), designer-ux (note UX), dev-backend (tâche 2, code MEE vide ; tâche 3, filtre ; tâche 4, conservation pendant la session ; tâche 5, tri numérique ; tâche 6, export CSV), testeur (tâche 7, tests des données). À venir : dev-interface, testeur (écrans), documentaliste, recetteur.
 Prompt : demande d'un DR, "En tant que DR je veux voir facilement si les codes ont été saisis" : ajouter une colonne MEE affichant le code MEE, et un filtre pour rechercher par code MEE qui permet aussi de voir les actions sans code
 
 Note /5 : sans objet
@@ -1408,11 +1408,12 @@ Ce qui a changé, résumé :
 - Cadrage : la colonne Actions.Code_MEE (Texte) existe déjà et le widget la lit déjà. Aucune colonne ni règle d'accès à créer. Règles de la table Actions vérifiées dans DEV7 : aucune règle propre à Code_MEE.
 - Décisions : colonne MEE entre Agence et Club, tiret si vide (espaces seuls = vide) ; tri numérique, actions sans code toujours en fin ; filtre code exact (sans tenir compte des majuscules ni des espaces autour), appliqué sur Entrée ou loupe comme Osiris ; case "Sans code MEE" qui vide et désactive le champ ; filtre gardé pendant la session et effacé par Réinitialiser ; colonne et filtre cachés si Code_MEE est absente ; export CSV avec la colonne MEE en valeur brute.
 - Note UX docs/ux/filtre-code-mee.md validée par Hanta le 20/11/2026.
+- Décision de Hanta (20/11/2026) : à l'export, un code fait seulement d'espaces sort tel quel (règle de Pierre : données telles quelles) ; la case est vide seulement quand il n'y a rien dans Grist.
 - [résultat à compléter : ce qui a changé dans le code]
 Ce qui a pris du temps : [résultat à compléter]
-Tests : lancés par Hanta, 1089 tests, 0 échec après les tâches 2, 3, 4, 5 et 6 (aucun test ajouté). [résultat à compléter]
-Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), src/actions-dashboard/script.js, actions-dashboard.html, [résultat à compléter]
+Tests : lancés par Hanta, 1089 tests, 0 échec après les tâches 2 à 6 (aucun test ajouté) ; 1120 tests, 0 échec après la tâche 7 (31 tests ajoutés dans test/code-mee.test.js). [résultat à compléter]
+Fichiers modifiés : docs/backlog.md, docs/ux/filtre-code-mee.md (nouveau), src/actions-dashboard/script.js, actions-dashboard.html, test/code-mee.test.js (nouveau), [résultat à compléter]
 Build refait : [résultat à compléter]
-Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX), f92d6ca (tâche 2, code MEE vide), 5a3984d (tâche 3, filtre), 526e354 (tâche 4, conservation), ec46eff (tâche 5, tri numérique), dbd0c53 (tâche 6, export CSV)
+Commits : 0642df2 (backlog E10), 19834f8 (tâche 1, note UX), f92d6ca (tâche 2, code MEE vide), 5a3984d (tâche 3, filtre), 526e354 (tâche 4, conservation), ec46eff (tâche 5, tri numérique), dbd0c53 (tâche 6, export CSV), 32f2e7a (tâche 7, tests des données)
 Publié sur TEST : [résultat à compléter]
 Reste à faire avant la PROD : [résultat à compléter]. À montrer à Pierre (hors de ce sprint) : l'export CSV du tableau de bord n'est pas entièrement « tel quel » (apostrophe anti-formule devant les valeurs qui commencent par = + - @, dates au format écran, montants arrondis à l'euro) ; la ligne du backlog E8 sur la formule ="..." est périmée, à corriger par le documentaliste.
