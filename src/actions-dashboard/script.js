@@ -641,7 +641,7 @@ function renderFilters() {
   container.innerHTML = FILTERS.map(([key, label, tous]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
-      return `<div class="filter-field">
+      const champOsiris = `<div class="filter-field">
         <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
         <span class="filter-text-control">
           <input class="form-control filter-text-input" type="search" id="filter-${key}" name="filter-${key}" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher">
@@ -650,6 +650,8 @@ function renderFilters() {
           </button>
         </span>
       </div>`;
+      // Le filtre Code MEE vient juste apres « Numero Osiris » (note UX, point 3).
+      return key === 'osiris' ? champOsiris + filtreMeeHtml() : champOsiris;
     }
     const values = optionsFor(key);
     if (SEARCHABLE_FILTERS.has(key)) {
@@ -715,6 +717,28 @@ function renderFilters() {
     button.addEventListener('click', () => applyTextFilter(button.dataset.filterSubmit));
   });
 
+  // Case « Sans code MEE » : appliquee des le clic. Cochee, elle vide le champ
+  // du code et le desactive ; decochee, elle le reactive (vide). Comme
+  // renderResults ne reconstruit pas les filtres, on met le champ a jour ici.
+  const caseMeeVide = container.querySelector('#filter-mee-vide');
+  if (caseMeeVide) {
+    caseMeeVide.addEventListener('change', () => {
+      const champMee = container.querySelector('#filter-mee');
+      if (caseMeeVide.checked) {
+        state.filters[FILTRE_MEE_VIDE] = MEE_VIDE_COCHEE;
+        delete state.filters[FILTRE_MEE_CODE];
+      } else {
+        delete state.filters[FILTRE_MEE_VIDE];
+      }
+      if (champMee) {
+        champMee.value = '';
+        champMee.disabled = caseMeeVide.checked;
+      }
+      sauverFiltres();
+      renderResults();
+    });
+  }
+
   container.querySelectorAll('[data-filter-search]').forEach(input => {
     input.addEventListener('input', event => {
       const query = normalizeText(event.target.value);
@@ -736,6 +760,30 @@ function renderFilters() {
       render();
     });
   });
+}
+
+// Bloc du filtre « Code MEE » (note UX docs/ux/filtre-code-mee.md, points 3 et 7).
+// Rien du tout si la colonne Code_MEE n'existe pas dans le document.
+// Le champ et la loupe reprennent data-filter-text / data-filter-submit : ce sont
+// les memes ecouteurs qu'Osiris (Entree, evenement search, clic sur la loupe).
+// Si la case est cochee, le champ est vide et desactive (la case l'emporte).
+function filtreMeeHtml() {
+  if (!hasCodeMee()) return '';
+  const sansCode = state.filters[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE;
+  const code = sansCode ? '' : (state.filters[FILTRE_MEE_CODE] || '');
+  return `<div class="filter-field">
+        <label class="form-label" for="filter-mee">Code MEE</label>
+        <span class="filter-text-control">
+          <input class="form-control filter-text-input" type="search" id="filter-mee" name="filter-mee" data-filter-text="${FILTRE_MEE_CODE}" value="${escapeAttr(code)}" placeholder="Rechercher"${sansCode ? ' disabled' : ''}>
+          <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${FILTRE_MEE_CODE}" aria-label="Lancer la recherche par Code MEE" title="Chercher">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+          </button>
+        </span>
+        <div class="form-check with-checked-bg">
+          <input class="form-check-input" type="checkbox" id="filter-mee-vide" name="filter-mee-vide"${sansCode ? ' checked' : ''}>
+          <label class="form-check-label" for="filter-mee-vide">Sans code MEE</label>
+        </div>
+      </div>`;
 }
 
 // Retire de state.filters la DD et l'agence qui ne sont plus proposees apres un
