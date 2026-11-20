@@ -1195,7 +1195,8 @@ const TRI_CLE_PREFIXE = 'dashboard-tri-v1:';
 let triCle = null; // reste null tant que le nom du document n'est pas connu
 // Colonnes proposees par les menus de tri (attributs data-sort-option de index.html)
 // et sens possibles : tout autre tri garde est ignore.
-const TRI_CLES_ACCEPTEES = ['agency', 'club', 'intitule', 'statut', 'budget'];
+const TRI_CLE_MEE = 'codeMee'; // tri de la colonne MEE (champ codeMee des actions)
+const TRI_CLES_ACCEPTEES = ['agency', 'club', 'intitule', 'statut', 'budget', TRI_CLE_MEE];
 const TRI_SENS_ACCEPTES = ['asc', 'desc'];
 
 // Ecrit les filtres courants. Tout est protege : en navigation privee ou si le
@@ -1289,7 +1290,9 @@ function restaurerTri() {
       garde = null;
     }
     const valide = garde && typeof garde === 'object' && !Array.isArray(garde)
-      && TRI_CLES_ACCEPTEES.includes(garde.key) && TRI_SENS_ACCEPTES.includes(garde.direction);
+      && TRI_CLES_ACCEPTEES.includes(garde.key) && TRI_SENS_ACCEPTES.includes(garde.direction)
+      // Un tri MEE garde n'a plus de sens si la colonne Code_MEE n'existe pas.
+      && (garde.key !== TRI_CLE_MEE || hasCodeMee());
     if (valide) {
       state.sort = {key: garde.key, direction: garde.direction};
     } else {
@@ -3210,11 +3213,37 @@ function comparerActionsParStatut(gauche, droite, direction) {
   return facteur * regle.sens * comparerValeursTri(valeurGauche, valeurDroite);
 }
 
+// Compare deux actions pour le tri de la colonne MEE. Renvoie 0 quand l'ordre
+// actuel des lignes doit etre garde (le tri de JavaScript est stable).
+// - Les actions sans code (codeMeeVide) sont toujours a la fin, dans les deux sens.
+// - Un code fait de chiffres seulement se compare comme un nombre (9 avant 10).
+// - Un code avec autre chose que des chiffres (ex. « A12 ») ne fait pas planter
+//   le tri : il se compare comme du texte, et vient apres les codes numeriques
+//   en croissant (avant en decroissant), mais toujours avant les actions sans code.
+function comparerActionsParCodeMee(gauche, droite, direction) {
+  const facteur = direction === 'desc' ? -1 : 1;
+  const videGauche = codeMeeVide(gauche.codeMee);
+  const videDroite = codeMeeVide(droite.codeMee);
+  if (videGauche || videDroite) {
+    if (videGauche && videDroite) return 0;
+    return (videGauche ? 1 : -1) * TRI_VALEUR_VIDE_PLACE; // vides en fin, sens sans effet
+  }
+  const codeGauche = text(gauche.codeMee);
+  const codeDroite = text(droite.codeMee);
+  const numeriqueGauche = /^\d+$/.test(codeGauche);
+  const numeriqueDroite = /^\d+$/.test(codeDroite);
+  if (numeriqueGauche && numeriqueDroite) return facteur * (Number(codeGauche) - Number(codeDroite));
+  if (numeriqueGauche !== numeriqueDroite) return facteur * (numeriqueGauche ? -1 : 1);
+  return facteur * codeGauche.localeCompare(codeDroite, 'fr', {numeric: true});
+}
+
 function sortActions(actions) {
   const {key, direction} = state.sort;
   if (!key || !direction) return actions;
   // Colonne Statut : tri à deux niveaux (statut, puis date ou période).
   if (key === 'statut') return [...actions].sort((a, b) => comparerActionsParStatut(a, b, direction));
+  // Colonne MEE : tri numerique, actions sans code toujours en fin.
+  if (key === TRI_CLE_MEE) return [...actions].sort((a, b) => comparerActionsParCodeMee(a, b, direction));
   const factor = direction === 'asc' ? 1 : -1;
   return [...actions].sort((a, b) => {
     const left = a[key];
