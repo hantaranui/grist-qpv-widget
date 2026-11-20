@@ -1317,7 +1317,7 @@ Tests : 913 tests, 0 échec. Vérifié à l'écran par Hanta dans DEV7, puis par
 Fichiers modifiés : src/clubs/script.js, src/clubs/index.html, src/clubs/style.css, clubs.html, src/actions-dashboard/script.js, src/actions-dashboard/index.html, src/actions-dashboard/style.css, actions-dashboard.html, docs/ux/assurance-rc-pro.md (nouveau), docs/backlog.md
 Build refait : oui
 Publié sur TEST : 17/11/2026, fusionné avec feature/contacts-une-ligne.
-Reste à faire avant la PROD : audit de sécurité (jamais lancé) ; vérification des droits d'écriture avec de vrais comptes, dans les deux widgets ; mise à jour de CLAUDE.md (nouvelle écriture d'actions-dashboard dans Structures) ; carnet de recette ; retour final de Pierre sur TEST.
+Mise en PROD : 20/11/2026, commit ffc9465 (fusion des 5 branches E5, E6, E7, E8, E9 dans main). 913 tests, 0 échec. Audit de sécurité fait, règle d'accès vérifiée (4 profils), CLAUDE.md à jour, carnet de recette complet, retour de Pierre sur TEST confirmé.
 
 ## Tâche 31 — Sprint E6 : Contacts sur une seule ligne (fiche club)
 
@@ -1337,7 +1337,7 @@ Tests : 914 tests, 0 échec. Deux tests mis à jour pour refléter le nouveau co
 Fichiers modifiés : src/clubs/script.js, src/clubs/style.css, clubs.html, test/clubs-contacts-ecran.test.js, docs/ux/contacts-une-ligne.md (nouveau), docs/backlog.md, docs/ux/contacts-fiche-club.md
 Build refait : oui
 Publié sur TEST : 17/11/2026, fusionné avec feature/assurance-rc-pro.
-Reste à faire avant la PROD : validation finale de Pierre sur TEST.
+Mise en PROD : 20/11/2026, commit ffc9465 (fusion des 5 branches E5, E6, E7, E8, E9 dans main). 914 tests, 0 échec. Validation finale de Pierre sur TEST confirmée.
 
 ## Tâche 32 — Sprint E7 : Tri des actions par statut puis par date (tableau de bord)
 
@@ -1358,3 +1358,41 @@ Build refait : oui
 Commits : 4803b12 (backlog E7), 0b1ad89 (tâche 1, tri à deux niveaux), 390ea51 (tâche 2, tests), 9f9ecbc (tâche 3, tri gardé), a7b3721 (tâche 4, tests), fd9e97f (tâche 5, cas de recette), 3af6d9f (tâche 7, documentation)
 Publié sur TEST : 18/11/2026, commit f9fa4d4, fusionné avec feature/assurance-rc-pro et feature/contacts-une-ligne sans les écraser.
 Reste à faire avant la PROD : les 6 parcours de recette à jouer par le testeur en TEST (campagne C11 du carnet du dashboard) ; retour de Pierre ; pull request vers main, avec le conflit attendu dans docs/backlog.md (E5, E6 et E7 ajoutent chacun leur section à la fin) et un npm run build pour vérifier le fichier généré.
+
+## Tâche 33 — Sprint E8 : Export CSV des clubs et des contacts (widget clubs)
+
+Date : 18-19/11/2026
+Agents : chef-de-projet (cadrage), dev-backend (logique CSV, lecture seule), testeur (tests), recetteur (cas de recette), documentaliste (README, CLAUDE.md, backlog)
+Prompt : demande de Pierre, export CSV des clubs et de leurs contacts depuis le widget clubs, sur le même principe que l'export CSV déjà existant dans le tableau de bord
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Bouton d'export dans la barre de titre du widget clubs, avec un menu : "Liste des clubs" (un fichier CSV, une ligne par club) et "Liste des contacts" (un fichier CSV, une ligne par contact, avec le club associé).
+- Logique CSV copiée du tableau de bord (séparateur point-virgule, marque UTF-8, fin de ligne Windows), car aucun partage de code entre les deux widgets.
+- SIRET, code postal et téléphone exportés tels quels (texte), sans formule, pour qu'Excel ne les déforme pas (nécessite de cliquer sur "Ne pas convertir" à l'ouverture dans Excel, documenté dans le carnet de recette).
+- Lecture seule : aucune colonne ajoutée ni écrite dans Grist.
+Tests : ajoutés pour la logique CSV et pour l'écran du menu d'export, 1089 tests au total sur la fusion finale, 0 échec.
+Fichiers modifiés : src/clubs/script.js, src/clubs/index.html, src/clubs/style.css, clubs.html, test/clubs-export.test.js (nouveau), test/clubs-export-ecran.test.js (nouveau), test/helpers/clubs-export-ecran.js (nouveau), docs/ux/export-csv-clubs.md (nouveau), docs/backlog.md, docs/tests/cas-de-test-export-csv-clubs.md (nouveau), docs/tests/cas-de-test-export-csv-clubs.tsv (nouveau)
+Build refait : oui
+Publié sur TEST : 18-19/11/2026, fusionné avec feature/assurance-rc-pro, feature/contacts-une-ligne, feature/adresse-dashboard-automatique et feature/tri-actions-date.
+Mise en PROD : 20/11/2026, commit ffc9465 (fusion des 5 branches E5, E6, E7, E8, E9 dans main). 1089 tests, 0 échec.
+
+## Tâche 34 — Sprint E9 : Adresse du tableau de bord détectée automatiquement (widget clubs)
+
+Date : 17-20/11/2026
+Agents : dev-backend (détection automatique, correction après test réel)
+Prompt : le bouton "Voir" (fiche club vers une action du tableau de bord) demandait à chaque utilisateur de coller une fois l'adresse du tableau de bord, gardée ensuite dans le navigateur. Pierre a testé en PROD et confirmé que ce n'était pas acceptable pour les utilisateurs finaux.
+
+Note /5 : sans objet
+Ce qui a changé, résumé :
+- Détection automatique de l'environnement (PROD ou TEST) à l'ouverture du widget clubs, pour utiliser directement la bonne adresse fixe du tableau de bord, sans jamais demander la saisie manuelle dans ces deux cas.
+- Erreur découverte en testant avec un collègue : grist.docApi.getDocName() renvoie l'identifiant technique du document, pas son nom lisible. La détection comparait d'abord à des noms lisibles ("Partenariat Simplifié"), ce qui ne fonctionnait jamais. Corrigée pour comparer aux identifiants techniques réels.
+- Les deux adresses fixes ont aussi été complétées avec ?style=singlePage, après un second test réel qui a montré que la redirection automatique faisait perdre l'affichage plein écran.
+- Si le document n'est ni PROD ni TEST (DEV7, ou un futur environnement), le comportement habituel est gardé (saisie manuelle, stockage dans le navigateur), sans rien casser.
+Ce qui a pris du temps : deux erreurs trouvées seulement après des tests réels avec un collègue et avec Pierre, non détectables par les tests automatisés (ils ne peuvent pas simuler le vrai getDocName() de Grist ni le comportement réel du navigateur).
+Tests : 913 tests, 0 échec (fonctionnalité non couverte par des tests automatisés, car elle dépend de l'environnement Grist réel au moment de l'exécution).
+Fichiers modifiés : src/clubs/script.js, clubs.html, docs/backlog.md
+Build refait : oui
+Publié sur TEST : 17-20/11/2026, avec deux republications après les deux corrections (identifiant du document, puis ?style=singlePage).
+Mise en PROD : 20/11/2026, commit ffc9465 (fusion des 5 branches E5, E6, E7, E8, E9 dans main). 913 tests, 0 échec.
+Reste à faire avant la PROD : identifiants réels PROD et TEST confirmés par Hanta, masqués dans docs/backlog.md (dépôt public), visibles uniquement dans le code source publié (limite technique, un widget tourne dans le navigateur).
