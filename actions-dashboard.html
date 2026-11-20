@@ -1244,6 +1244,17 @@ async function restaurerFiltres() {
     if (typeof valeur !== 'string' || !valeur) return;
     if (TEXT_FILTERS.has(key) || optionsFor(key).includes(valeur)) state.filters[key] = valeur;
   });
+  // Filtre Code MEE : ses deux cles ne sont pas dans FILTERS (qui sert a dessiner
+  // les listes deroulantes), donc on les lit ici une par une. Sans la colonne
+  // Code_MEE dans le document, le filtre n'existe pas : on ne restaure rien.
+  if (hasCodeMee()) {
+    if (gardes[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE) {
+      // La case l'emporte : si les deux etaient gardes, le code est ignore.
+      state.filters[FILTRE_MEE_VIDE] = MEE_VIDE_COCHEE;
+    } else if (typeof gardes[FILTRE_MEE_CODE] === 'string' && gardes[FILTRE_MEE_CODE].trim() !== '') {
+      state.filters[FILTRE_MEE_CODE] = gardes[FILTRE_MEE_CODE].trim();
+    }
+  }
   pruneGeoFilters();
   sauverFiltres();
 }
