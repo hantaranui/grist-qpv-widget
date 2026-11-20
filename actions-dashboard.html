@@ -2073,6 +2073,13 @@ function hasCodeMee() {
   return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
 }
 
+// Dit si un code MEE est vide : absent, null, texte vide ou espaces seuls.
+// Accepte aussi une valeur qui n'est pas du texte (un nombre par exemple) : elle
+// est convertie en texte, donc 0 n'est PAS vide. Ne modifie pas la valeur recue.
+function codeMeeVide(value) {
+  return text(value) === '';
+}
+
 // Même principe que Code_MEE : si la colonne n'existe pas encore dans Grist,
 // on n'essaie pas de l'écrire (sinon tout l'enregistrement de la fiche échouerait).
 function hasRaisonColumn() {
