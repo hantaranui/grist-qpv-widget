@@ -48,7 +48,7 @@ Aujourd'hui : Agence 15 %, Club 17 %, Action 27 %, Statut 12 %, Financement 25 %
 
 Total : 13 + 9 + 15 + 25 + 12 + 22 = 96 %, comme avant. Avec la largeur minimale du tableau (980 px), MEE vaut environ 79 px de large (9 % de 980 − 100 px, soit ~ 79 px) avant les marges internes de la cellule. C'est assez pour un code court avec l'icône de tri ; un code long passe à la ligne. Cette largeur est une estimation, à ajuster à l'œil dans Grist DEV. Ne pas modifier la largeur minimale du tableau : le seuil de 1340 px de la mise en page en dépend (commentaire dans style.css).
 
-Il faut aussi ajouter une balise [col] dans le colgroup, entre col-agency et col-club (nom de classe à choisir par dev-interface, sans reprendre un nom du design system : test/styles.test.js le vérifie).
+Une balise [col] est ajoutée dans le colgroup, entre col-agency et col-club : sa classe est col-mee (nom du widget, pas du design system : test/styles.test.js le vérifie). Elle porte aussi la classe is-hidden et l'attribut data-col-mee, comme l'en-tête (th) et les cellules de la colonne (classe cell-mee) : le script retire is-hidden seulement si la colonne Code_MEE existe (fonction hasCodeMee).
 
 ---
 

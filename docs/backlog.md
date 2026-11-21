@@ -532,6 +532,7 @@ Décisions prises :
 - Désactivation par aria-disabled="true" ; le script disabled-a11y.js n'est pas chargé dans le widget clubs, le code ignore le clic lui-même.
 - Avertissement données personnelles : aucun (décision de Hanta : les agents saisissent eux-mêmes ces données et travaillent déjà avec ce type de fichiers).
 - Zéros et SIRET dans Excel : formule texte ="..." uniquement pour les colonnes SIRET, code postal et téléphone, et uniquement quand la valeur ne contient que des chiffres. Sinon, valeur texte normale avec la protection anti-formule (apostrophe devant = + - @, tabulation, retour chariot).
+- Remplacée par la décision du chef de projet (Sprint E10) : on exporte toujours les données telles quelles, sans formule ; si Excel transforme une valeur à l'ouverture (zéros du début, SIRET), c'est à l'utilisateur de le gérer.
 - Noms des fichiers : avec la date du jour.
 - Ordre des lignes : clubs dans le même ordre qu'à l'écran ; contacts d'un même club dans le même ordre que dans la fiche (nom, puis prénom).
 - Club sans SIRET ou sans nom : exporté quand même, avec la case vide.
@@ -555,6 +556,7 @@ User story : En tant que DR, je veux voir facilement si les codes MEE ont été 
 - Filtre conservé pendant la session, effacé par Réinitialiser.
 - Colonne Code_MEE absente du document : colonne et filtre cachés.
 - Export CSV : colonne MEE entre Agence et Club, valeur brute (case vide si pas de code, jamais de tiret).
+- Export CSV, code fait d'espaces seuls : il sort tel quel (décision du chef de projet : données telles quelles, jamais de formule).
 - Lecture seule : le widget n'écrit rien.
 
 ### Tâches, dans l'ordre

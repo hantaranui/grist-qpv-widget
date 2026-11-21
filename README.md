@@ -97,6 +97,10 @@ Il lit les tables Grist `Actions`, `Cofinancements` et leurs tables de reference
 - la liste detaillee des actions avec les cofinancements ;
 - l'export CSV ;
 - le tri de la colonne STATUT : le menu A-Z / Z-A range les actions d'abord par statut, puis par date a l'interieur de chaque statut (Planifiee : la plus ancienne d'abord ; Realisee : la plus recente d'abord ; A confirmer : par periode, dans l'ordre alphabetique). Les actions sans date ou sans periode restent a la fin de leur groupe. Le tri choisi est garde tant que l'onglet reste ouvert, et le bouton « Reinitialiser » ne l'efface pas.
+- la colonne MEE (Sprint E10) : elle affiche le code MEE de chaque action, entre les colonnes Agence et Club, avec un tiret quand il n'y a pas de code (un code fait d'espaces seuls compte comme vide). Son menu de tri propose Croissant et Decroissant : les codes de chiffres se comparent comme des nombres (9 avant 10) et les actions sans code restent toujours a la fin, dans les deux sens ;
+- le filtre « Code MEE » (Sprint E10) : il se trouve dans la zone Filtres, juste apres « Numero Osiris ». On tape un code, puis Entree ou clic sur la loupe : le widget garde les actions dont le code est exactement celui-la, sans tenir compte des majuscules ni des espaces avant ou apres. La case « Sans code MEE » ne garde que les actions sans code ; elle s'applique des qu'on la coche, et elle vide puis grise le champ de saisie. Le filtre se combine avec les autres filtres, il est garde tant que l'onglet reste ouvert, et le bouton « Reinitialiser » l'efface ;
+- l'export CSV et le code MEE : le fichier contient une colonne MEE juste avant la colonne Club, avec le code tel qu'il est dans Grist (case vide s'il n'y en a pas, jamais de tiret) ;
+- si la colonne Grist `Actions.Code_MEE` n'existe pas dans le document, la colonne MEE, le filtre « Code MEE » et la colonne MEE du fichier CSV sont caches : le tableau reste comme avant.
 
 URL a utiliser dans Grist :
 
