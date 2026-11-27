@@ -532,6 +532,7 @@ Décisions prises :
 - Désactivation par aria-disabled="true" ; le script disabled-a11y.js n'est pas chargé dans le widget clubs, le code ignore le clic lui-même.
 - Avertissement données personnelles : aucun (décision de Hanta : les agents saisissent eux-mêmes ces données et travaillent déjà avec ce type de fichiers).
 - Zéros et SIRET dans Excel : formule texte ="..." uniquement pour les colonnes SIRET, code postal et téléphone, et uniquement quand la valeur ne contient que des chiffres. Sinon, valeur texte normale avec la protection anti-formule (apostrophe devant = + - @, tabulation, retour chariot).
+- Remplacée par la décision du chef de projet (Sprint E10) : on exporte toujours les données telles quelles, sans formule ; si Excel transforme une valeur à l'ouverture (zéros du début, SIRET), c'est à l'utilisateur de le gérer.
 - Noms des fichiers : avec la date du jour.
 - Ordre des lignes : clubs dans le même ordre qu'à l'écran ; contacts d'un même club dans le même ordre que dans la fiche (nom, puis prénom).
 - Club sans SIRET ou sans nom : exporté quand même, avec la case vide.
@@ -541,3 +542,36 @@ Décisions prises :
 ### Risques
 
 Données personnelles hors de Grist ; copie de la logique CSV entre deux widgets ; conflits à la fusion avec E5, E6 et E7 (src/clubs/script.js, index.html, style.css, clubs.html, docs/backlog.md, REVIEW_LOG.md, README.md, CLAUDE.md).
+
+## Sprint E10 — Filtre et colonne Code MEE (tableau de bord, branche feature/filtre-code-mee)
+
+User story : En tant que DR, je veux voir facilement si les codes MEE ont été saisis.
+
+### Décisions
+
+- Colonne Grist existante : Actions.Code_MEE (Texte). Aucune colonne ni règle d'accès à créer.
+- Liste : colonne « MEE » entre Agence et Club. Tiret si vide. Espaces seuls = vide.
+- Tri de la colonne : numérique (9 avant 10), actions sans code toujours en fin.
+- Filtre : champ de saisie, recherche du code exact sans tenir compte des majuscules ni des espaces avant ou après, appliqué sur Entrée ou bouton loupe comme le filtre Osiris ; case à cocher « Sans code MEE ». Combiné aux autres filtres.
+- Filtre conservé pendant la session, effacé par Réinitialiser.
+- Colonne Code_MEE absente du document : colonne et filtre cachés.
+- Export CSV : colonne MEE entre Agence et Club, valeur brute (case vide si pas de code, jamais de tiret).
+- Export CSV, code fait d'espaces seuls : il sort tel quel (décision du chef de projet : données telles quelles, jamais de formule).
+- Lecture seule : le widget n'écrit rien.
+
+### Tâches, dans l'ordre
+
+| N° | Tâche | Agent |
+|---|---|---|
+| 1 | Note docs/ux/ : colonne, tiret et lecteur d'écran, tri, codes longs, filtre, cas code tapé + case cochée, libellés | designer-ux |
+| 2 | Lecture du code (espaces seuls = vide, colonne absente) | dev-backend |
+| 3 | Filtre code exact + case Sans code MEE | dev-backend |
+| 4 | Conservation pendant la session et Réinitialiser | dev-backend |
+| 5 | Tri numérique, vides en fin | dev-backend |
+| 6 | Export CSV, valeur brute | dev-backend |
+| 7 | Tests des tâches 2 à 6 | testeur |
+| 8 | Colonne MEE dans la liste (en-tête, lignes, largeurs, menu de tri) | dev-interface |
+| 9 | Champ, loupe et case dans les filtres | dev-interface |
+| 10 | Tests des écrans | testeur |
+| 11 | README et docs | documentaliste |
+| 12 | Cas de recette au format des 18 colonnes du carnet | recetteur |

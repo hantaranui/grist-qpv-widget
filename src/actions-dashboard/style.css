@@ -485,12 +485,17 @@ table {
   table-layout: fixed;
 }
 
-.col-agency { width: 15%; }
-.col-club { width: 17%; }
-.col-action { width: 27%; }
+.col-agency { width: 13%; }
+.col-mee { width: 9%; }
+.col-club { width: 15%; }
+.col-action { width: 25%; }
 .col-status { width: 12%; }
-.col-finance { width: 25%; }
+.col-finance { width: 22%; }
 .col-edit { width: 100px; }
+
+/* Code MEE : un code long sans espace passe a la ligne au lieu de deborder sur
+   la colonne Club (le tableau est en table-layout: fixed). */
+.cell-mee { overflow-wrap: anywhere; }
 
 th {
   height: var(--ft--table-th-height);

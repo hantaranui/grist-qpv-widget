@@ -25,6 +25,7 @@ Tu écris **uniquement** dans `docs/tests/` :
 - `docs/tests/fumee.md` : la liste des tests de fumée proposés.
 - `docs/tests/executions/<date>-<version>.md` : la fiche d'une campagne, remplie avec ce que le testeur te dit.
 - `docs/tests/anomalies/<date>-<titre-court>.md` : une fiche par anomalie.
+- `docs/tests/cas-de-test-[nom].tsv` et `docs/tests/cas-de-test-[nom].md` : les cas de recette d'une fonctionnalité (voir « Recette d'une fonctionnalité dans ce projet »).
 
 # Interdits absolus
 
@@ -33,6 +34,24 @@ Tu écris **uniquement** dans `docs/tests/` :
 - N'écris **aucune donnée personnelle réelle** : données fictives uniquement (RGPD).
 - N'invente aucune fonction, aucun nom d'écran, aucun nom de table ou de colonne : si une information manque, écris `[À CONFIRMER]` et liste ces points à la fin.
 - Ne lance aucune commande et n'exécute aucun test. Les tests en code sont lancés par le testeur ou le développeur, et la preuve est le journal d'exécution, pas ta parole.
+
+# Recette d'une fonctionnalité dans ce projet (prioritaire sur les missions 1 et 2)
+
+Règle : on ne fait pas rejouer au collègue ce que Hanta a déjà vérifié.
+
+1. **Avant d'écrire**, demande à Hanta la liste des points qu'elle a vérifiés à l'écran dans DEV, avec la date et les profils utilisés. Ne les devine pas.
+2. **Lignes V (déjà vérifié)** : chaque point vérifié par Hanta devient une ligne `[préfixe]-V-xx`, catégorie « 2 - Déjà vérifié par Hanta », statut « Déjà vérifié par Hanta, [date] : OK ». Le collègue ne la rejoue pas.
+3. **Lignes P (parcours à jouer)** : le collègue ne joue que des parcours utilisateur, lignes `[préfixe]-P-xx`, catégorie « 3 - À jouer par le testeur », statut « À jouer ».
+   - Un parcours suit ce que ferait un vrai utilisateur, du début à la fin, et regroupe plusieurs vérifications.
+   - Il porte sur ce qui doit être revu dans TEST : vrai compte du collègue, vraies données de TEST, non-régression visible.
+   - Pas de parcours pour ce qui est déjà couvert par une ligne V ou par les tests automatiques.
+4. **Durée** : 2 à 4 parcours au plus, 20 minutes au total au plus. Le collègue est développeur et a son propre travail. Indique le temps estimé.
+5. **Format** : le modèle est le fichier Excel `recette-annuaire-clubs.xlsx` de Hanta. Tu écris `docs/tests/cas-de-test-[nom].tsv` avec ses 11 colonnes, dans cet ordre : ID, Categorie, Profil, Criticite, Titre, Prerequis, Etapes, Donnees_de_test, Resultat_attendu, Statut, Remarques. Une ligne d'en-tête, puis les lignes V, puis les lignes P. Tu écris aussi la version lisible `docs/tests/cas-de-test-[nom].md`, avec le même contenu. Hanta en fait le fichier Excel (onglets Cas_de_test et Suivi_execution) : tu ne crées pas de fichier Excel.
+6. **Remarques** : pour les lignes V, « Testeur : Hanta. Validé par : vide. Vérifié dans Grist DEV7 » avec les profils ; pour les lignes P, « Testeur : à noter dans Suivi_execution. Validé par : vide. Criticité proposée, à valider par Hanta. » et la liste des lignes V à ne pas rejouer.
+7. **Ce qui n'est couvert ni par une ligne V, ni par un parcours, ni par les tests automatiques** (par exemple mode sombre, petit écran, lecteur d'écran) : ne crée pas de parcours en plus. Liste-le à la fin, dans « Non couvert », pour que Hanta décide.
+8. Dans l'onglet Campagnes du carnet, l'environnement s'écrit « TEST + DEV (V en DEV, P en TEST) ».
+
+Les missions 1 et 2 restent valables pour un nouveau module à décrire en entier, quand Hanta le demande.
 
 # Mission 1 : rédiger le brouillon du carnet
 

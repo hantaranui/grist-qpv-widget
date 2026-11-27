@@ -1,0 +1,44 @@
+# Cas de recette : colonne et filtre Code MEE (tableau de bord, Sprint E10)
+
+Version lisible de docs/tests/cas-de-test-filtre-code-mee.tsv, même contenu que le fichier Excel recette-code-mee.xlsx. Si les deux diffèrent, le .tsv fait foi.
+
+- Document TEST, version testée 65dd4d1 (publiée sur TEST le 21/11/2026). Aucune donnée à modifier, aucune donnée réelle.
+- MEE-V-01 à MEE-V-10 : déjà vérifiés par Hanta dans Grist DEV7 le 20/11/2026. Le testeur ne les rejoue pas.
+- MEE-P-01 et MEE-P-02 : parcours utilisateur à jouer par le collègue dans TEST, environ 15 minutes au total. Résultats notés dans l'onglet Suivi_execution du fichier Excel.
+
+## Déjà vérifié par Hanta (DEV7, 20/11/2026)
+
+| ID | Profil | Titre | Résultat attendu | Statut |
+| --- | --- | --- | --- | --- |
+| MEE-V-01 | Propriétaire (compte de Hanta) | Colonne MEE entre Agence et Club, tiret si pas de code | La colonne « MEE » est entre Agence et Club. Un code de 6 chiffres tient sur une ligne. Une action sans code affiche un tiret. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-02 | Propriétaire (compte de Hanta) | Tri de la colonne MEE : Croissant et Décroissant | Le menu de l'en-tête MEE propose « Croissant » et « Décroissant ». Dans les deux sens, les actions sans code restent à la fin. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-03 | Propriétaire (compte de Hanta) | Filtre « Code MEE » : code exact, avec Entrée puis avec la loupe | Le champ « Code MEE » est juste sous « Numéro Osiris ». Un code entier tapé puis Entrée (ou loupe) ne garde que cette action. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-04 | Propriétaire (compte de Hanta) | Filtre « Code MEE » : un code incomplet ne trouve rien | Un code privé de son dernier chiffre ne trouve aucune action ; le message « Aucune action ne correspond aux filtres. » s'affiche. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-05 | Propriétaire (compte de Hanta) | Case « Sans code MEE » | Cochée : seules les actions avec un tiret restent, le champ est vidé et grisé. Décochée : le champ redevient utilisable, vide. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-06 | Propriétaire (compte de Hanta) | Filtre gardé en changeant de page | Après un passage sur une autre page par le bandeau, la case « Sans code MEE » est toujours cochée au retour sur le tableau de bord. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-07 | Propriétaire (compte de Hanta) | Bouton Réinitialiser | Après Réinitialiser, le champ « Code MEE » est vide et la case décochée. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-08 | Propriétaire (compte de Hanta) | Ordre au clavier | Avec Tab : champ Osiris, loupe Osiris, champ Code MEE, loupe MEE, case « Sans code MEE », puis le filtre DR. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-09 | Propriétaire (compte de Hanta) | Export CSV : colonne MEE | Fichier ouvert dans un éditeur de texte : la colonne MEE est juste avant Club, les codes sont écrits tels quels (sans formule), la case est vide pour une action sans code. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+| MEE-V-10 | FT Régional et FT Départemental | Périmètre FT Régional et FT Départemental | Chaque profil voit la colonne MEE avec les codes de ses propres actions ; la case « Sans code MEE » ne montre que ses actions sans code. | Déjà vérifié par Hanta, 20/11/2026 : OK |
+
+## Parcours à jouer par le testeur (TEST)
+
+### MEE-P-01 — Parcours DR : repérer les actions sans code MEE et les isoler (criticité proposée : Majeur)
+
+- Profil : Compte du collègue (son profil est dans la table Utilisateurs de TEST)
+- Prérequis : Document TEST, page Dashboard. Le testeur est connecté à Grist avec son propre compte. Le code du widget a été publié sur TEST par Hanta (version 65dd4d1). TEST contient des actions avec un code MEE et des actions sans code.
+- Étapes : 1) Ouvrir la page Dashboard du document TEST et recharger (Cmd + Maj + R). 2) Cliquer sur « Réinitialiser ». 3) Regarder la colonne « MEE » dans la liste des actions. 4) Dans les filtres, cocher « Sans code MEE ». 5) Choisir une Direction régionale (DR) dans le filtre DR. 6) Ouvrir le menu de l'en-tête « MEE » et choisir « Croissant ». 7) Cliquer sur « Réinitialiser ».
+- Données : Aucune saisie à enregistrer. Ne modifier aucune donnée.
+- Résultat attendu : À l'étape 3, la colonne « MEE » est entre Agence et Club : un code pour les actions qui en ont un, un tiret pour les autres. À l'étape 4, il ne reste que des actions avec un tiret, et le champ « Code MEE » est vidé et grisé. À l'étape 5, il ne reste que les actions sans code de cette DR (ou le message « Aucune action ne correspond aux filtres. » si elle n'en a aucune). À l'étape 6, l'ordre ne provoque aucune erreur. À l'étape 7, la liste complète revient, la case est décochée et le champ est de nouveau utilisable. Aucun message d'erreur rouge.
+- Statut : À jouer
+- Remarques : Testeur : à noter dans Suivi_execution. Validé par : vide. Criticité proposée, à valider par Hanta. Ne rejoue pas MEE-V-01 à MEE-V-10.
+
+### MEE-P-02 — Parcours DR : retrouver une action par son code MEE, puis l'exporter (criticité proposée : Majeur)
+
+- Profil : Compte du collègue (son profil est dans la table Utilisateurs de TEST)
+- Prérequis : Document TEST, page Dashboard. Le testeur est connecté à Grist avec son propre compte. Le code du widget a été publié sur TEST par Hanta (version 65dd4d1). TEST contient des actions avec un code MEE et des actions sans code.
+- Étapes : 1) Ouvrir la page Dashboard du document TEST et cliquer sur « Réinitialiser ». 2) Noter le code MEE d'une action de la liste. 3) Taper ce code dans le champ « Code MEE », puis appuyer sur Entrée. 4) Aller sur une autre page par le bandeau, puis revenir sur le Dashboard. 5) Cliquer sur « Exporter (CSV) » et ouvrir le fichier téléchargé avec TextEdit (clic droit, Ouvrir avec), pas avec Excel. 6) Revenir sur le Dashboard, cliquer sur « Réinitialiser », puis taper le début d'un numéro dans « Numéro Osiris » et appuyer sur Entrée.
+- Données : Un code MEE visible dans la liste de TEST (le noter seulement le temps du test, ne pas le recopier dans le carnet).
+- Résultat attendu : À l'étape 3, seule l'action (ou les actions) de ce code reste dans la liste. À l'étape 4, le code est toujours dans le champ et la liste est toujours filtrée. À l'étape 5, la première ligne du fichier contient « MEE » juste avant « Club », et le code est écrit tel quel, sans « = » ni guillemets ajoutés. À l'étape 6, le filtre Numéro Osiris fonctionne comme avant. Aucun message d'erreur rouge.
+- Statut : À jouer
+- Remarques : Testeur : à noter dans Suivi_execution. Validé par : vide. Criticité proposée, à valider par Hanta. Le fichier exporté reste sur l'ordinateur du testeur : le supprimer après le test.

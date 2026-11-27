@@ -142,6 +142,14 @@ const SEARCHABLE_FILTERS = new Set(['agency', 'club', 'federation', 'dd']);
 const TEXT_FILTERS = new Set(['osiris']);
 const FINANCEMENT_STATES = ['100% financé', 'Partiellement financé', 'Non financé'];
 
+// ---- Filtre Code MEE (Sprint E10) : clés de state.filters et valeur de la case ----
+// Deux clés, car le code tapé et la case sont deux réglages distincts.
+// Les filtres gardés n'acceptent que des chaînes non vides : la case cochée
+// est donc la valeur texte fixe MEE_VIDE_COCHEE, et la case décochée n'a pas de clé.
+const FILTRE_MEE_CODE = 'mee';
+const FILTRE_MEE_VIDE = 'meeVide';
+const MEE_VIDE_COCHEE = 'oui';
+
 // ---- Tri de la colonne Statut (Sprint E7) : tous les réglages au même endroit ----
 // Ordre des statuts dans le sens A-Z. Chaque statut est écrit sous la forme rendue
 // par statusClass() (sans accent, en minuscules, avec des tirets), comme le fait
@@ -182,7 +190,8 @@ const TRI_CLE_PREFIXE = 'dashboard-tri-v1:';
 let triCle = null; // reste null tant que le nom du document n'est pas connu
 // Colonnes proposees par les menus de tri (attributs data-sort-option de index.html)
 // et sens possibles : tout autre tri garde est ignore.
-const TRI_CLES_ACCEPTEES = ['agency', 'club', 'intitule', 'statut', 'budget'];
+const TRI_CLE_MEE = 'codeMee'; // tri de la colonne MEE (champ codeMee des actions)
+const TRI_CLES_ACCEPTEES = ['agency', 'club', 'intitule', 'statut', 'budget', TRI_CLE_MEE];
 const TRI_SENS_ACCEPTES = ['asc', 'desc'];
 
 // Ecrit les filtres courants. Tout est protege : en navigation privee ou si le
@@ -231,6 +240,17 @@ async function restaurerFiltres() {
     if (typeof valeur !== 'string' || !valeur) return;
     if (TEXT_FILTERS.has(key) || optionsFor(key).includes(valeur)) state.filters[key] = valeur;
   });
+  // Filtre Code MEE : ses deux cles ne sont pas dans FILTERS (qui sert a dessiner
+  // les listes deroulantes), donc on les lit ici une par une. Sans la colonne
+  // Code_MEE dans le document, le filtre n'existe pas : on ne restaure rien.
+  if (hasCodeMee()) {
+    if (gardes[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE) {
+      // La case l'emporte : si les deux etaient gardes, le code est ignore.
+      state.filters[FILTRE_MEE_VIDE] = MEE_VIDE_COCHEE;
+    } else if (typeof gardes[FILTRE_MEE_CODE] === 'string' && gardes[FILTRE_MEE_CODE].trim() !== '') {
+      state.filters[FILTRE_MEE_CODE] = gardes[FILTRE_MEE_CODE].trim();
+    }
+  }
   pruneGeoFilters();
   sauverFiltres();
 }
@@ -265,7 +285,9 @@ function restaurerTri() {
       garde = null;
     }
     const valide = garde && typeof garde === 'object' && !Array.isArray(garde)
-      && TRI_CLES_ACCEPTEES.includes(garde.key) && TRI_SENS_ACCEPTES.includes(garde.direction);
+      && TRI_CLES_ACCEPTEES.includes(garde.key) && TRI_SENS_ACCEPTES.includes(garde.direction)
+      // Un tri MEE garde n'a plus de sens si la colonne Code_MEE n'existe pas.
+      && (garde.key !== TRI_CLE_MEE || hasCodeMee());
     if (valide) {
       state.sort = {key: garde.key, direction: garde.direction};
     } else {
@@ -619,7 +641,7 @@ function renderFilters() {
   container.innerHTML = FILTERS.map(([key, label, tous]) => {
     const selected = state.filters[key] || '';
     if (TEXT_FILTERS.has(key)) {
-      return `<div class="filter-field">
+      const champOsiris = `<div class="filter-field">
         <label class="form-label" for="filter-${key}">${escapeHtml(label)}</label>
         <span class="filter-text-control">
           <input class="form-control filter-text-input" type="search" id="filter-${key}" name="filter-${key}" data-filter-text="${key}" value="${escapeAttr(selected)}" placeholder="Rechercher">
@@ -628,6 +650,8 @@ function renderFilters() {
           </button>
         </span>
       </div>`;
+      // Le filtre Code MEE vient juste apres « Numero Osiris » (note UX, point 3).
+      return key === 'osiris' ? champOsiris + filtreMeeHtml() : champOsiris;
     }
     const values = optionsFor(key);
     if (SEARCHABLE_FILTERS.has(key)) {
@@ -693,6 +717,28 @@ function renderFilters() {
     button.addEventListener('click', () => applyTextFilter(button.dataset.filterSubmit));
   });
 
+  // Case « Sans code MEE » : appliquee des le clic. Cochee, elle vide le champ
+  // du code et le desactive ; decochee, elle le reactive (vide). Comme
+  // renderResults ne reconstruit pas les filtres, on met le champ a jour ici.
+  const caseMeeVide = container.querySelector('#filter-mee-vide');
+  if (caseMeeVide) {
+    caseMeeVide.addEventListener('change', () => {
+      const champMee = container.querySelector('#filter-mee');
+      if (caseMeeVide.checked) {
+        state.filters[FILTRE_MEE_VIDE] = MEE_VIDE_COCHEE;
+        delete state.filters[FILTRE_MEE_CODE];
+      } else {
+        delete state.filters[FILTRE_MEE_VIDE];
+      }
+      if (champMee) {
+        champMee.value = '';
+        champMee.disabled = caseMeeVide.checked;
+      }
+      sauverFiltres();
+      renderResults();
+    });
+  }
+
   container.querySelectorAll('[data-filter-search]').forEach(input => {
     input.addEventListener('input', event => {
       const query = normalizeText(event.target.value);
@@ -714,6 +760,30 @@ function renderFilters() {
       render();
     });
   });
+}
+
+// Bloc du filtre « Code MEE » (note UX docs/ux/filtre-code-mee.md, points 3 et 7).
+// Rien du tout si la colonne Code_MEE n'existe pas dans le document.
+// Le champ et la loupe reprennent data-filter-text / data-filter-submit : ce sont
+// les memes ecouteurs qu'Osiris (Entree, evenement search, clic sur la loupe).
+// Si la case est cochee, le champ est vide et desactive (la case l'emporte).
+function filtreMeeHtml() {
+  if (!hasCodeMee()) return '';
+  const sansCode = state.filters[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE;
+  const code = sansCode ? '' : (state.filters[FILTRE_MEE_CODE] || '');
+  return `<div class="filter-field">
+        <label class="form-label" for="filter-mee">Code MEE</label>
+        <span class="filter-text-control">
+          <input class="form-control filter-text-input" type="search" id="filter-mee" name="filter-mee" data-filter-text="${FILTRE_MEE_CODE}" value="${escapeAttr(code)}" placeholder="Rechercher"${sansCode ? ' disabled' : ''}>
+          <button class="btn btn-primary filter-text-submit" type="button" data-filter-submit="${FILTRE_MEE_CODE}" aria-label="Lancer la recherche par Code MEE" title="Chercher">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"></circle><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+          </button>
+        </span>
+        <div class="form-check with-checked-bg">
+          <input class="form-check-input" type="checkbox" id="filter-mee-vide" name="filter-mee-vide"${sansCode ? ' checked' : ''}>
+          <label class="form-check-label" for="filter-mee-vide">Sans code MEE</label>
+        </div>
+      </div>`;
 }
 
 // Retire de state.filters la DD et l'agence qui ne sont plus proposees apres un
@@ -752,6 +822,15 @@ function filteredActions() {
   const actions = state.actions.filter(action => Object.entries(state.filters).every(([key, value]) => {
     if (key === 'financeur') return action.financeurs.some(item => item.label === value);
     if (key === 'osiris') return normalizeText(action.osiris).includes(normalizeText(value));
+    if (key === FILTRE_MEE_VIDE) return value !== MEE_VIDE_COCHEE || codeMeeVide(action.codeMee);
+    if (key === FILTRE_MEE_CODE) {
+      // La case « Sans code MEE » l'emporte : le code tapé est alors ignoré.
+      if (state.filters[FILTRE_MEE_VIDE] === MEE_VIDE_COCHEE) return true;
+      // Code exact (pas « contient »), sans majuscules ni espaces autour, des deux côtés.
+      const cherche = text(value).toLowerCase();
+      // Un code fait d'espaces seuls ne filtre rien (sinon il garderait les codes vides).
+      return !cherche || text(action.codeMee).toLowerCase() === cherche;
+    }
     return action[key] === value;
   }));
   return sortActions(actions);
@@ -800,9 +879,14 @@ function renderRows(actions) {
   const tbody = document.getElementById('rows');
   const empty = document.getElementById('empty');
   empty.classList.toggle('is-hidden', actions.length > 0);
+  // Colonne MEE : visible seulement si la colonne Code_MEE existe dans Grist.
+  // Le <col> et l'en-tête sont dans index.html, cachés au départ (is-hidden).
+  const avecMee = hasCodeMee();
+  document.querySelectorAll('[data-col-mee]').forEach(element => element.classList.toggle('is-hidden', !avecMee));
   tbody.innerHTML = actions.map(action => `
     <tr>
       <td><div class="strong">${escapeHtml(action.agency)}</div><div class="muted">${escapeHtml(action.dd)}</div><div class="muted">${escapeHtml(action.dr)}</div></td>
+      ${avecMee ? `<td class="cell-mee">${codeMeeVide(action.codeMee) ? '<span aria-hidden="true">—</span><span class="sr-only">Code MEE non renseigné</span>' : escapeHtml(action.codeMee)}</td>` : ''}
       <td><div class="strong">${escapeHtml(action.club)}</div><div class="muted">${escapeHtml(action.federation)}</div></td>
       <td><div class="strong">${escapeHtml(action.nomComplet)}</div><div class="muted">${escapeHtml(action.dispositif)}</div><div class="muted">${action.participants} participants</div><div class="muted">Public : ${escapeHtml(action.public || 'non renseigné')}</div><div class="muted">Ville : ${escapeHtml(action.ville || 'non renseignée')}</div></td>
       <td><span class="status-tag ${statusClass(action.statut)}">${escapeHtml(action.statut)}</span><div class="muted" style="margin-top:8px">${escapeHtml(statusPeriodValue(action))}</div></td>
@@ -1066,6 +1150,13 @@ function financeLabel(financement, financeurs) {
 // rien n'est ecrit (Grist refuserait toute la mise a jour).
 function hasCodeMee() {
   return (state.raw.Actions || []).some(row => 'Code_MEE' in row);
+}
+
+// Dit si un code MEE est vide : absent, null, texte vide ou espaces seuls.
+// Accepte aussi une valeur qui n'est pas du texte (un nombre par exemple) : elle
+// est convertie en texte, donc 0 n'est PAS vide. Ne modifie pas la valeur recue.
+function codeMeeVide(value) {
+  return text(value) === '';
 }
 
 // Même principe que Code_MEE : si la colonne n'existe pas encore dans Grist,
@@ -2170,11 +2261,37 @@ function comparerActionsParStatut(gauche, droite, direction) {
   return facteur * regle.sens * comparerValeursTri(valeurGauche, valeurDroite);
 }
 
+// Compare deux actions pour le tri de la colonne MEE. Renvoie 0 quand l'ordre
+// actuel des lignes doit etre garde (le tri de JavaScript est stable).
+// - Les actions sans code (codeMeeVide) sont toujours a la fin, dans les deux sens.
+// - Un code fait de chiffres seulement se compare comme un nombre (9 avant 10).
+// - Un code avec autre chose que des chiffres (ex. « A12 ») ne fait pas planter
+//   le tri : il se compare comme du texte, et vient apres les codes numeriques
+//   en croissant (avant en decroissant), mais toujours avant les actions sans code.
+function comparerActionsParCodeMee(gauche, droite, direction) {
+  const facteur = direction === 'desc' ? -1 : 1;
+  const videGauche = codeMeeVide(gauche.codeMee);
+  const videDroite = codeMeeVide(droite.codeMee);
+  if (videGauche || videDroite) {
+    if (videGauche && videDroite) return 0;
+    return (videGauche ? 1 : -1) * TRI_VALEUR_VIDE_PLACE; // vides en fin, sens sans effet
+  }
+  const codeGauche = text(gauche.codeMee);
+  const codeDroite = text(droite.codeMee);
+  const numeriqueGauche = /^\d+$/.test(codeGauche);
+  const numeriqueDroite = /^\d+$/.test(codeDroite);
+  if (numeriqueGauche && numeriqueDroite) return facteur * (Number(codeGauche) - Number(codeDroite));
+  if (numeriqueGauche !== numeriqueDroite) return facteur * (numeriqueGauche ? -1 : 1);
+  return facteur * codeGauche.localeCompare(codeDroite, 'fr', {numeric: true});
+}
+
 function sortActions(actions) {
   const {key, direction} = state.sort;
   if (!key || !direction) return actions;
   // Colonne Statut : tri à deux niveaux (statut, puis date ou période).
   if (key === 'statut') return [...actions].sort((a, b) => comparerActionsParStatut(a, b, direction));
+  // Colonne MEE : tri numerique, actions sans code toujours en fin.
+  if (key === TRI_CLE_MEE) return [...actions].sort((a, b) => comparerActionsParCodeMee(a, b, direction));
   const factor = direction === 'asc' ? 1 : -1;
   return [...actions].sort((a, b) => {
     const left = a[key];
@@ -2313,9 +2430,14 @@ function frDateToIso(fr) {
 }
 
 function exportCsv(actions) {
-  const header = ['Agence', 'DD', 'DR', 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
+  // La colonne MEE n'existe dans le fichier que si la colonne Code_MEE existe dans le document.
+  const avecMee = hasCodeMee();
+  const header = ['Agence', 'DD', 'DR', ...(avecMee ? ['MEE'] : []), 'Club', 'Fédération', 'Action', 'Dispositif', 'Participants', 'Public', 'Ville', 'Statut', 'Date', 'Budget', 'Montant cofinancé', 'Financeurs', 'Raison du refus'];
   const lines = actions.map(action => [
-    action.agency, action.dd, action.dr, action.club, action.federation, action.intitule, action.dispositif,
+    action.agency, action.dd, action.dr,
+    // Code MEE brut, tel qu'enregistré dans Grist (case vide s'il n'y en a pas).
+    ...(avecMee ? [action.codeMee ?? ''] : []),
+    action.club, action.federation, action.intitule, action.dispositif,
     action.participants, action.public, action.ville, action.statut, formatDate(action.date), Math.round(action.budget), Math.round(action.financed),
     action.financeurs.map(item => `${item.label}: ${Math.round(item.montant)}`).join(' | '),
     isNonRetenu(action.statut) ? action.raison : ''
